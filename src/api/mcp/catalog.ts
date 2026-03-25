@@ -1,0 +1,46 @@
+export interface McpFunctionDef {
+  name: string;
+  domain: "o2c" | "p2p" | "r2r";
+  description: string;
+}
+
+export const mcpCatalog: McpFunctionDef[] = [
+  { name: "o2c_create_quote", domain: "o2c", description: "Create a sales quote in Draft state" },
+  { name: "o2c_add_quote_line", domain: "o2c", description: "Add a quote line" },
+  { name: "o2c_send_quote", domain: "o2c", description: "Transition quote from Draft to Sent" },
+  { name: "o2c_accept_quote", domain: "o2c", description: "Transition quote from Sent to Accepted" },
+  { name: "o2c_convert_quote_to_order", domain: "o2c", description: "Transition quote to ConvertedToOrder" },
+  { name: "o2c_confirm_order", domain: "o2c", description: "Confirm sales order" },
+  { name: "o2c_allocate_stock", domain: "o2c", description: "Allocate stock for order" },
+  { name: "o2c_ship_order", domain: "o2c", description: "Ship sales order" },
+  { name: "o2c_generate_invoice", domain: "o2c", description: "Generate invoice from shipped order" },
+  { name: "o2c_post_invoice", domain: "o2c", description: "Post invoice" },
+  { name: "o2c_register_payment", domain: "o2c", description: "Register payment for invoice" },
+  { name: "o2c_apply_payment_to_invoice", domain: "o2c", description: "Apply payment to invoice" },
+  { name: "p2p_create_requisition", domain: "p2p", description: "Create requisition in Draft state" },
+  { name: "p2p_submit_requisition", domain: "p2p", description: "Transition requisition to Submitted" },
+  { name: "p2p_approve_requisition", domain: "p2p", description: "Transition requisition to Approved" },
+  { name: "p2p_convert_requisition_to_po", domain: "p2p", description: "Transition requisition to ConvertedToPO" },
+  { name: "p2p_create_supplier", domain: "p2p", description: "Create supplier in Active state" },
+  { name: "p2p_create_po", domain: "p2p", description: "Create purchase order in Draft state" },
+  { name: "p2p_issue_po", domain: "p2p", description: "Issue purchase order" },
+  { name: "p2p_acknowledge_po", domain: "p2p", description: "Acknowledge purchase order" },
+  { name: "p2p_create_goods_receipt", domain: "p2p", description: "Create goods receipt from acknowledged PO" },
+  { name: "p2p_receive_goods", domain: "p2p", description: "Mark goods receipt as Received" },
+  { name: "p2p_accept_goods", domain: "p2p", description: "Accept received goods" },
+  { name: "p2p_create_supplier_invoice", domain: "p2p", description: "Create supplier invoice from accepted receipt" },
+  { name: "p2p_post_supplier_invoice", domain: "p2p", description: "Post supplier invoice" },
+  { name: "p2p_create_ap_payment", domain: "p2p", description: "Create AP payment in Initiated state" },
+  { name: "p2p_execute_ap_payment", domain: "p2p", description: "Execute AP payment" },
+  { name: "p2p_reconcile_ap_payment", domain: "p2p", description: "Reconcile AP payment" },
+  { name: "r2r_create_account", domain: "r2r", description: "Create chart of accounts entry" },
+  { name: "r2r_create_fiscal_year", domain: "r2r", description: "Create fiscal year in Open state" },
+  { name: "r2r_close_fiscal_year", domain: "r2r", description: "Close fiscal year" },
+  { name: "r2r_create_fiscal_period", domain: "r2r", description: "Create fiscal period in Open state" },
+  { name: "r2r_close_fiscal_period", domain: "r2r", description: "Close fiscal period" },
+  { name: "r2r_lock_fiscal_period", domain: "r2r", description: "Lock fiscal period" },
+  { name: "r2r_create_manual_journal", domain: "r2r", description: "Create journal in Draft state" },
+  { name: "r2r_add_journal_line", domain: "r2r", description: "Add a journal line" },
+  { name: "r2r_post_journal", domain: "r2r", description: "Post a draft journal" },
+  { name: "r2r_get_trial_balance", domain: "r2r", description: "Get trial balance for a fiscal period" }
+];

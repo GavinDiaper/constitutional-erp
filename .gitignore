@@ -1,0 +1,9 @@
+node_modules/
+dist/
+foundation.db
+foundation.db-wal
+foundation.db-shm
+test-foundation.db
+test-foundation.db-wal
+test-foundation.db-shm
+.env
