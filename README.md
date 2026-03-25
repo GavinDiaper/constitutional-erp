@@ -38,3 +38,35 @@ See `.env.example` for defaults.
 
 - `x-ingress-id: foundation-ingress` (or configured value)
 - `x-api-key: <configured API key>`
+
+## Postman And Newman
+
+Postman assets are located in `postman/`:
+
+- `postman/FoundationERP.postman_collection.json`
+- `postman/FoundationERP.local.postman_environment.json`
+
+Run Postman tests from CLI with Newman:
+
+```bash
+npm run build
+npm run migrate
+npm start
+```
+
+In a second terminal:
+
+```bash
+npm run test:postman
+```
+
+Newman writes reports to `reports/newman/`:
+
+- `results.json`
+- `results.xml` (JUnit)
+
+Optional overrides when your local server is not on defaults:
+
+```bash
+POSTMAN_BASE_URL=http://localhost:3001 POSTMAN_API_KEY=change-me POSTMAN_INGRESS_ID=foundation-ingress npm run test:postman
+```
