@@ -855,6 +855,6 @@
     }
   ],
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" }
+    { "key": "baseUrl", "value": "http://localhost:8080" }
   ]
 }
