@@ -11,7 +11,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
-    "test:integration": "tsx --test test/**/*.test.ts",
+    "test:integration": "tsx --test --test-concurrency=1 test/**/*.test.ts",
     "test:postman": "node scripts/run-postman.js"
   },
   "engines": {
