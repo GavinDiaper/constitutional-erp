@@ -44,6 +44,8 @@ Local runs load values from `.env` automatically. Keep `postman/FoundationERP.lo
 
 ## Postman And Newman
 
+Integration Hub developers should start with the API guide in `docs/IntegrationHub-API-Guide.md` and use `docs/IntegrationHub-Endpoint-Reference.md` for a shorter implementation reference.
+
 Postman assets are located in `postman/`:
 
 - `postman/FoundationERP.postman_collection.json`
