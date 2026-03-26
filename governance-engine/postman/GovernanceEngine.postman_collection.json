@@ -1,0 +1,55 @@
+{
+  "info": {
+    "_postman_id": "0a785a7b-f237-4d92-a0c0-4f7f4f8ffec0",
+    "name": "Governance Engine",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "10 - Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 - Governance",
+      "item": [
+        {
+          "name": "POST /governance/evaluate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actorId\": \"EMP-123\",\n  \"action\": \"approve\",\n  \"domain\": \"P2P\",\n  \"context\": {\n    \"requesterId\": \"EMP-321\",\n    \"amount\": 15000,\n    \"currency\": \"USD\"\n  },\n  \"authorityDecision\": {\n    \"allowed\": true,\n    \"effectiveTier\": 2,\n    \"requiredTier\": 2,\n    \"reasons\": []\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/governance/evaluate",
+              "host": ["{{baseUrl}}"],
+              "path": ["governance", "evaluate"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
