@@ -17,6 +17,30 @@ beforeEach(() => {
   resetTestState();
 });
 
+test("GET /health returns ok when replay is ready", async () => {
+  setReplayStatus("Ready");
+
+  const response = await request(app).get("/health");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.status, "ok");
+  assert.equal(response.body.service, "governance-engine");
+  assert.equal(response.body.replayStatus, "Ready");
+  assert.equal(response.body.replayError, undefined);
+});
+
+test("GET /health returns degraded details when replay has failed", async () => {
+  setReplayStatus("Failed", "Projection cursor mismatch");
+
+  const response = await request(app).get("/health");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.status, "degraded");
+  assert.equal(response.body.service, "governance-engine");
+  assert.equal(response.body.replayStatus, "Failed");
+  assert.equal(response.body.replayError, "Projection cursor mismatch");
+});
+
 test("POST /governance/evaluate rejects requests without API key", async () => {
   const response = await request(app).post("/governance/evaluate").send({});
 

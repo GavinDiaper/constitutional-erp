@@ -40,12 +40,40 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"actorId\": \"EMP-123\",\n  \"action\": \"approve\",\n  \"domain\": \"P2P\",\n  \"context\": {\n    \"requesterId\": \"EMP-321\",\n    \"amount\": 15000,\n    \"currency\": \"USD\"\n  },\n  \"authorityDecision\": {\n    \"allowed\": true,\n    \"effectiveTier\": 2,\n    \"requiredTier\": 2,\n    \"reasons\": []\n  }\n}"
+              "raw": "{\n  \"actorId\": \"EMP-123\",\n  \"action\": \"p2p_purchase_order_issued\",\n  \"domain\": \"P2P\",\n  \"context\": {\n    \"requesterId\": \"EMP-321\",\n    \"amount\": 15000,\n    \"currency\": \"USD\"\n  },\n  \"authorityDecision\": {\n    \"allowed\": true,\n    \"effectiveTier\": 2,\n    \"requiredTier\": 2,\n    \"reasons\": []\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/governance/evaluate",
               "host": ["{{baseUrl}}"],
               "path": ["governance", "evaluate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 - Events",
+      "item": [
+        {
+          "name": "GET /api/v1/events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/events?limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "events"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
             }
           }
         }
