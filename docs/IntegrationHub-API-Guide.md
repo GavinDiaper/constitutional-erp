@@ -4,11 +4,12 @@
 
 This document is intended for developers building or configuring Integration Hub solutions that need to interact with the Foundation ERP API.
 
-Foundation ERP is a canonical ERP kernel that exposes a stable HTTP API for three core enterprise process areas:
+Foundation ERP is a canonical ERP kernel that exposes a stable HTTP API for four core enterprise process areas:
 
 - Order to Cash (O2C)
 - Procure to Pay (P2P)
 - Record to Report (R2R)
+- H2R (Hire to Retire)
 
 The API is designed for:
 
@@ -26,7 +27,7 @@ Foundation ERP exposes four API styles:
 
 ### 1. Hypermedia business APIs
 
-These are the main business endpoints under `/api/v1/o2c`, `/api/v1/p2p`, and `/api/v1/r2r`.
+These are the main business endpoints under `/api/v1/o2c`, `/api/v1/p2p`, `/api/v1/r2r`, and `/api/v1/h2r`.
 
 They support:
 
@@ -257,7 +258,7 @@ Foundation ERP supports the core H2R progression:
 
 Typical integration use cases:
 
-- workforce or identity systems publish canonical worker and role records
+- H2R or identity systems publish canonical worker and role records
 - governance services consume authority rules and role assignments
 - orchestration layers read employee and credential state to drive approval routing
 
@@ -395,6 +396,10 @@ Runs a full procure-to-pay example end to end.
 
 Runs a finance lifecycle example including journal posting and period lock.
 
+#### 60 - H2R Flow
+
+Runs an H2R lifecycle example including employee, position, assignment, credential, and authority rule transitions.
+
 #### 40 - Events
 
 Validates event feed retrieval.
@@ -439,6 +444,7 @@ Run these next:
 1. `10 - O2C Flow`
 2. `20 - P2P Flow`
 3. `30 - R2R Flow`
+4. `60 - H2R Flow`
 
 This validates that Integration Hub can create, transition, and read the main business objects.
 
@@ -463,6 +469,7 @@ Examples:
 - create quote, then send and accept it
 - create requisition, then approve and convert it
 - create journal, add lines, and post it
+- create employee, assign position, issue credential, and manage employee lifecycle
 
 ### Pattern 2: State polling
 
@@ -493,6 +500,7 @@ Examples:
 - `o2c_create_quote`
 - `p2p_create_supplier_invoice`
 - `r2r_post_journal`
+- `h2r_assign_position`
 
 ## Practical Notes For Integration Hub Developers
 
@@ -509,7 +517,7 @@ For a new Integration Hub consumer, the recommended sequence is:
 
 1. import the Postman collection and environment
 2. validate health and security folders
-3. run one complete domain flow relevant to your integration
+3. run one complete domain flow relevant to your integration (O2C, P2P, R2R, or H2R)
 4. validate event and query surfaces
 5. translate the validated requests into Integration Hub connectors, orchestrations, or mappings
 
@@ -520,7 +528,7 @@ For a new Integration Hub consumer, the recommended sequence is:
 
 ## Summary
 
-Foundation ERP provides a stable, testable API for canonical ERP workflows across O2C, P2P, and R2R.
+Foundation ERP provides a stable, testable API for canonical ERP workflows across O2C, P2P, R2R, and H2R.
 
 For Integration Hub developers, the most important capabilities are:
 

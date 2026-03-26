@@ -4,6 +4,8 @@
 
 This document is a compact companion to the broader Integration Hub API guide.
 
+It covers all four Foundation ERP domains: O2C, P2P, R2R, and H2R.
+
 It is intended for implementers who need:
 
 - the base URL and headers
@@ -783,7 +785,7 @@ Example request:
 
 1. `GET /health`
 2. `GET /api/v1/o2c/customers` with auth headers
-3. run the relevant Postman domain flow
+3. run the relevant Postman domain flow, including `60 - H2R Flow` for H2R scenarios
 4. validate `/api/v1/events`
 5. validate `/api/v1/query/tables`
 
