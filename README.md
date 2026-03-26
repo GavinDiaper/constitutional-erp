@@ -54,6 +54,8 @@ npm run migrate
 npm start
 ```
 
+`npm start` uses the checked-in Postman environment's `baseUrl` port as its default when `PORT` is not already set in the shell.
+
 In a second terminal:
 
 ```bash
