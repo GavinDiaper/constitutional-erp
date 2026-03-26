@@ -1,6 +1,20 @@
 import { CanonicalEvent } from "../contracts/canonicalEvents";
 import { db } from "../db/connection";
 
+const SOD_RELEVANT_V1_EVENTS = new Set<string>([
+  "p2p_requisition_approved",
+  "p2p_purchase_order_issued",
+  "r2r_journal_posted",
+  "r2r_fiscal_period_closed",
+  "r2r_fiscal_period_locked",
+  "r2r_fiscal_year_closed",
+  "h2r_assignment_created",
+  "h2r_assignment_ended",
+  "h2r_credential_issued",
+  "h2r_credential_revoked",
+  "h2r_employee_terminated"
+]);
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -45,10 +59,14 @@ function upsertCredential(event: CanonicalEvent, status: "Valid" | "Expired" | "
 }
 
 function insertActionHistory(event: CanonicalEvent) {
+  if (!SOD_RELEVANT_V1_EVENTS.has(event.type)) {
+    return;
+  }
+
   const actorId = toOptionalString(event.payload.actorId) ?? event.entityId;
-  const requesterId = toOptionalString(event.payload.requesterId);
-  const action = toOptionalString(event.payload.action);
-  const domain = toOptionalString(event.payload.domain);
+  const requesterId = toOptionalString(event.payload.requesterId ?? event.payload.initiatorId ?? event.payload.employeeId);
+  const action = event.type;
+  const domain = event.type.slice(0, 3).toUpperCase();
 
   if (!actorId || !requesterId || !action || !domain) {
     return;
@@ -63,12 +81,15 @@ function insertActionHistory(event: CanonicalEvent) {
 
 export function applyCanonicalEvent(event: CanonicalEvent) {
   switch (event.type) {
+    case "h2r_credential_issued":
     case "CredentialIssued":
       upsertCredential(event, "Valid");
       return;
+    case "h2r_credential_expired":
     case "CredentialExpired":
       upsertCredential(event, "Expired");
       return;
+    case "h2r_credential_revoked":
     case "CredentialRevoked":
       upsertCredential(event, "Revoked");
       return;

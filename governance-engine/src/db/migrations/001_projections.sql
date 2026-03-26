@@ -96,8 +96,8 @@ INSERT OR IGNORE INTO governance_rule(
 (
   'SOD-001',
   'P2P',
-  'Prevent self-approval in P2P',
-  '{"type":"And","conditions":[{"type":"ActionIs","action":"approve"},{"type":"ActorIsRequester"}]}',
+  'Prevent self-approval for requisition approvals in P2P',
+  '{"type":"And","conditions":[{"type":"ActionIs","action":"p2p_requisition_approved"},{"type":"ActorIsRequester"}]}',
   '{"type":"Deny","reason":"SelfApprovalNotAllowed"}',
   10,
   1,
@@ -107,8 +107,8 @@ INSERT OR IGNORE INTO governance_rule(
 (
   'P2P-THRESHOLD-001',
   'P2P',
-  'Require Tier 3 approval for purchase approvals over 10000',
-  '{"type":"And","conditions":[{"type":"ActionIs","action":"approve"},{"type":"AmountGreaterThan","amount":10000},{"type":"TierLessThan","tier":3}]}',
+  'Require Tier 3 approval for purchase orders over 10000',
+  '{"type":"And","conditions":[{"type":"ActionIs","action":"p2p_purchase_order_issued"},{"type":"AmountGreaterThan","amount":10000},{"type":"TierLessThan","tier":3}]}',
   '{"type":"RequireApproval","approverTier":3,"reason":"TierTooLowForThreshold"}',
   20,
   1,
@@ -118,8 +118,8 @@ INSERT OR IGNORE INTO governance_rule(
 (
   'P2P-THRESHOLD-002',
   'P2P',
-  'Escalate approvals over 50000 to Tier 4',
-  '{"type":"And","conditions":[{"type":"ActionIs","action":"approve"},{"type":"AmountGreaterThan","amount":50000},{"type":"TierLessThan","tier":4}]}',
+  'Escalate purchase orders over 50000 to Tier 4',
+  '{"type":"And","conditions":[{"type":"ActionIs","action":"p2p_purchase_order_issued"},{"type":"AmountGreaterThan","amount":50000},{"type":"TierLessThan","tier":4}]}',
   '{"type":"Escalate","toTier":4,"reason":"EscalateHighValueApproval"}',
   30,
   1,

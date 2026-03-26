@@ -87,6 +87,7 @@ export interface GovernanceCheckResult {
   escalatedToTier?: number;
   riskLevel?: z.infer<typeof riskLevelSchema>;
   violations: string[];
+  constraints: string[];
   matchedRules: string[];
 }
 
@@ -228,6 +229,7 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
       allowed: false,
       requiresApproval: false,
       violations: ["AuthorityEngineDenied"],
+      constraints: [],
       matchedRules: []
     };
   }
@@ -235,8 +237,10 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
   const rules = readRules(input.domain);
   const matchedRules: string[] = [];
   const violations: string[] = [];
-  let denied = false;
-  let requiresApproval = false;
+  const constraints: string[] = [];
+  let hasDeny = false;
+  let hasRequireApproval = false;
+  let hasEscalate = false;
   let requiredApproverTier: number | undefined;
   let escalatedToTier: number | undefined;
   let riskLevel: z.infer<typeof riskLevelSchema> | undefined;
@@ -248,7 +252,7 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
       }
     } catch (error) {
       if (error instanceof MissingDataError) {
-        denied = true;
+        hasDeny = true;
         violations.push(error.message);
         matchedRules.push(rule.ruleId);
         continue;
@@ -263,36 +267,75 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
       case "Allow":
         break;
       case "Deny":
-        denied = true;
+        hasDeny = true;
         violations.push(rule.effect.reason);
         break;
       case "RequireApproval":
-        requiresApproval = true;
+        hasRequireApproval = true;
         requiredApproverTier = Math.max(requiredApproverTier ?? 0, rule.effect.approverTier);
-        violations.push(rule.effect.reason);
+        constraints.push(rule.effect.reason);
         break;
       case "Escalate":
-        requiresApproval = true;
+        hasEscalate = true;
         escalatedToTier = Math.max(escalatedToTier ?? 0, rule.effect.toTier);
-        requiredApproverTier = Math.max(requiredApproverTier ?? 0, rule.effect.toTier);
-        violations.push(rule.effect.reason);
+        constraints.push(rule.effect.reason);
         break;
       case "FlagRisk":
         if (!riskLevel || riskRank(rule.effect.level) > riskRank(riskLevel)) {
           riskLevel = rule.effect.level;
         }
-        violations.push(rule.effect.reason);
+        constraints.push(rule.effect.reason);
         break;
     }
   }
 
+  if (hasDeny) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      requiredApproverTier: undefined,
+      escalatedToTier: undefined,
+      riskLevel,
+      violations,
+      constraints,
+      matchedRules
+    };
+  }
+
+  if (hasRequireApproval) {
+    return {
+      allowed: false,
+      requiresApproval: true,
+      requiredApproverTier,
+      escalatedToTier,
+      riskLevel,
+      violations,
+      constraints,
+      matchedRules
+    };
+  }
+
+  if (hasEscalate) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      requiredApproverTier: undefined,
+      escalatedToTier,
+      riskLevel,
+      violations,
+      constraints,
+      matchedRules
+    };
+  }
+
   return {
-    allowed: !denied,
-    requiresApproval: denied ? false : requiresApproval,
-    requiredApproverTier: denied ? undefined : requiredApproverTier,
-    escalatedToTier: denied ? undefined : escalatedToTier,
+    allowed: true,
+    requiresApproval: false,
+    requiredApproverTier: undefined,
+    escalatedToTier,
     riskLevel,
     violations,
+    constraints,
     matchedRules
   };
 }
@@ -329,7 +372,7 @@ export function evaluateGovernance(input: GovernanceCheckInput): GovernanceCheck
     }
   });
 
-  if (!result.allowed) {
+  if (result.violations.length > 0) {
     appendGovernanceEvent({
       entityId: input.actorId,
       entityType: "Governance",
@@ -344,18 +387,21 @@ export function evaluateGovernance(input: GovernanceCheckInput): GovernanceCheck
     });
   }
 
-  if (result.requiresApproval && result.requiredApproverTier) {
+  if (result.constraints.length > 0 || result.requiresApproval || result.escalatedToTier || result.riskLevel) {
     appendGovernanceEvent({
       entityId: input.actorId,
       entityType: "Governance",
-      eventType: "ApprovalRequired",
+      eventType: "GovernanceConstraintApplied",
       version: 1,
       payload: {
         actorId: input.actorId,
         action: input.action,
         domain: input.domain,
+        requiresApproval: result.requiresApproval,
         requiredTier: result.requiredApproverTier,
-        escalatedToTier: result.escalatedToTier
+        escalatedToTier: result.escalatedToTier,
+        riskLevel: result.riskLevel,
+        constraints: result.constraints
       }
     });
   }
