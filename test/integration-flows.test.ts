@@ -194,6 +194,80 @@ test("R2R integration flow enforces period lifecycle and posting rules", async (
   assert.equal(createInLockedPeriod.body.title, "invalid_transition");
 });
 
+test("H2R integration flow transitions through workforce lifecycle", async () => {
+  const headers = authHeaders();
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: "Alice Governance", email: "alice.governance@example.com" })
+    .expect(201);
+
+  const position = await request(app)
+    .post("/api/v1/h2r/positions")
+    .set(headers)
+    .send({ title: "Finance Controller", department: "Finance", authorityDomain: "R2R", authorityTier: 3 })
+    .expect(201);
+
+  const assignment = await request(app)
+    .post("/api/v1/h2r/assignments")
+    .set(headers)
+    .send({ employeeId: employee.body.employee_id, positionId: position.body.position_id })
+    .expect(201);
+
+  const credential = await request(app)
+    .post("/api/v1/h2r/credentials")
+    .set(headers)
+    .send({
+      employeeId: employee.body.employee_id,
+      type: "FinancialApproval",
+      expiryDate: "2027-12-31"
+    })
+    .expect(201);
+
+  const authorityRule = await request(app)
+    .post("/api/v1/h2r/authority-rules")
+    .set(headers)
+    .send({ domain: "R2R", threshold: 10000, requiredTier: 3 })
+    .expect(201);
+
+  const onLeave = await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/leave`)
+    .set(headers)
+    .expect(200);
+
+  const returned = await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/return`)
+    .set(headers)
+    .expect(200);
+
+  const terminated = await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/terminate`)
+    .set(headers)
+    .expect(200);
+
+  const endedAssignment = await request(app)
+    .post(`/api/v1/h2r/assignments/${assignment.body.assignment_id}/end`)
+    .set(headers)
+    .expect(200);
+
+  const expiredCredential = await request(app)
+    .post(`/api/v1/h2r/credentials/${credential.body.credential_id}/expire`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(employee.body.status, "Active");
+  assert.equal(position.body.authority_domain, "R2R");
+  assert.equal(assignment.body.state, "Active");
+  assert.equal(credential.body.status, "Valid");
+  assert.equal(authorityRule.body.domain, "R2R");
+  assert.equal(onLeave.body.status, "OnLeave");
+  assert.equal(returned.body.status, "Active");
+  assert.equal(terminated.body.status, "Terminated");
+  assert.equal(endedAssignment.body.state, "Ended");
+  assert.equal(expiredCredential.body.status, "Expired");
+});
+
 test("Table query API returns data for all whitelisted tables", async () => {
   const headers = authHeaders();
 

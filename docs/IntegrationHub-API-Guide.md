@@ -148,6 +148,14 @@ These values are aligned across:
 - `/api/v1/r2r/journals`
 - `/api/v1/r2r/trial-balance/:fiscalPeriodId`
 
+### H2R
+
+- `/api/v1/h2r/employees`
+- `/api/v1/h2r/positions`
+- `/api/v1/h2r/assignments`
+- `/api/v1/h2r/credentials`
+- `/api/v1/h2r/authority-rules`
+
 ### Events
 
 - `/api/v1/events`
@@ -233,6 +241,30 @@ Typical integration use cases:
 - finance systems create journals from upstream transactions
 - closing workflows enforce period controls
 - reporting integrations retrieve trial balance and ledger state
+
+### H2R capabilities
+
+Foundation ERP supports the core H2R progression:
+
+- create employee
+- create position
+- assign position
+- issue credential
+- create authority rule
+- place employee on leave
+- return employee from leave
+- terminate employee
+
+Typical integration use cases:
+
+- workforce or identity systems publish canonical worker and role records
+- governance services consume authority rules and role assignments
+- orchestration layers read employee and credential state to drive approval routing
+
+Implementation boundary:
+
+- Foundation ERP exposes canonical H2R data and transitions
+- cross-domain authority enforcement is intentionally handled by Constitutional ERP governance and mesh layers
 
 ## Hypermedia Behavior
 

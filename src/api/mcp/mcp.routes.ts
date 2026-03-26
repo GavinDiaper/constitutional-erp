@@ -30,6 +30,16 @@ import {
   updateFiscalPeriodState,
   updateFiscalYearState
 } from "../../domain/r2r/fiscal/fiscalService";
+import {
+  createEmployee,
+  placeEmployeeOnLeave,
+  returnEmployeeFromLeave,
+  terminateEmployee
+} from "../../domain/h2r/employee/employeeService";
+import { createPosition } from "../../domain/h2r/position/positionService";
+import { createAssignment, endAssignment } from "../../domain/h2r/assignment/assignmentService";
+import { expireCredential, issueCredential, revokeCredential } from "../../domain/h2r/credential/credentialService";
+import { createAuthorityRule } from "../../domain/h2r/authorityRule/authorityRuleService";
 import { HttpError } from "../../utils/errors";
 
 const invokeSchema = z.object({
@@ -194,6 +204,48 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         break;
       case "r2r_get_trial_balance":
         result = getTrialBalance(input.fiscalPeriodId);
+        break;
+      case "h2r_create_employee":
+        result = createEmployee({ name: input.name, email: input.email });
+        break;
+      case "h2r_place_on_leave":
+        result = placeEmployeeOnLeave(input.employeeId);
+        break;
+      case "h2r_return_from_leave":
+        result = returnEmployeeFromLeave(input.employeeId);
+        break;
+      case "h2r_terminate_employee":
+        result = terminateEmployee(input.employeeId);
+        break;
+      case "h2r_create_position":
+        result = createPosition({
+          title: input.title,
+          department: input.department,
+          authorityDomain: input.authorityDomain,
+          authorityTier: Number(input.authorityTier)
+        });
+        break;
+      case "h2r_assign_position":
+        result = createAssignment({ employeeId: input.employeeId, positionId: input.positionId });
+        break;
+      case "h2r_end_assignment":
+        result = endAssignment(input.assignmentId);
+        break;
+      case "h2r_issue_credential":
+        result = issueCredential({ employeeId: input.employeeId, type: input.type, expiryDate: input.expiryDate });
+        break;
+      case "h2r_expire_credential":
+        result = expireCredential(input.credentialId);
+        break;
+      case "h2r_revoke_credential":
+        result = revokeCredential(input.credentialId);
+        break;
+      case "h2r_create_authority_rule":
+        result = createAuthorityRule({
+          domain: input.domain,
+          threshold: Number(input.threshold),
+          requiredTier: Number(input.requiredTier)
+        });
         break;
       default:
         throw new HttpError(404, "function_not_found", `Unknown MCP function: ${functionName}`);

@@ -6,6 +6,7 @@ import { loadConfig } from "./config/env";
 import { o2cRouter } from "./api/hypermedia/o2c.routes";
 import { p2pRouter } from "./api/hypermedia/p2p.routes";
 import { r2rRouter } from "./api/hypermedia/r2r.routes";
+import { h2rRouter } from "./api/hypermedia/h2r.routes";
 import { mcpRouter } from "./api/mcp/mcp.routes";
 import { eventRouter } from "./api/events.routes";
 import { queryRouter } from "./api/query.routes";
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api/v1/o2c", o2cRouter);
   app.use("/api/v1/p2p", p2pRouter);
   app.use("/api/v1/r2r", r2rRouter);
+  app.use("/api/v1/h2r", h2rRouter);
   app.use("/api/v1/mcp", mcpRouter);
   app.use("/api/v1", eventRouter);
   app.use("/api/v1", queryRouter);

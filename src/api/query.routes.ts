@@ -28,7 +28,12 @@ const tablePrimaryKeys = {
   r2r_journal: "journal_id",
   r2r_journal_line: "journal_line_id",
   r2r_ledger_entry: "ledger_entry_id",
-  r2r_trial_balance_row: "trial_balance_row_id"
+  r2r_trial_balance_row: "trial_balance_row_id",
+  h2r_employee: "employee_id",
+  h2r_position: "position_id",
+  h2r_assignment: "assignment_id",
+  h2r_credential: "credential_id",
+  h2r_authority_rule: "rule_id"
 } as const;
 
 type QueryTable = keyof typeof tablePrimaryKeys;

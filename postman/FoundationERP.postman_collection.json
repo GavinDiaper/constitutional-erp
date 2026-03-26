@@ -2499,7 +2499,7 @@
                   "var baseUrl = pm.environment.get(\"baseUrl\") || pm.collectionVariables.get(\"baseUrl\") || pm.variables.get(\"baseUrl\");",
                   "var apiKey = pm.environment.get(\"apiKey\");",
                   "var ingressId = pm.environment.get(\"ingressId\");",
-                  "var expectedTables = [\"event\",\"replay_checkpoint\",\"erp_mapping\",\"migration\",\"o2c_customer\",\"o2c_quote\",\"o2c_quote_line\",\"o2c_sales_order\",\"o2c_sales_order_line\",\"o2c_invoice\",\"o2c_payment\",\"p2p_supplier\",\"p2p_requisition\",\"p2p_requisition_line\",\"p2p_purchase_order\",\"p2p_purchase_order_line\",\"p2p_goods_receipt\",\"p2p_supplier_invoice\",\"p2p_ap_payment\",\"r2r_account\",\"r2r_fiscal_year\",\"r2r_fiscal_period\",\"r2r_journal\",\"r2r_journal_line\",\"r2r_ledger_entry\",\"r2r_trial_balance_row\"];",
+                  "var expectedTables = [\"event\",\"replay_checkpoint\",\"erp_mapping\",\"migration\",\"o2c_customer\",\"o2c_quote\",\"o2c_quote_line\",\"o2c_sales_order\",\"o2c_sales_order_line\",\"o2c_invoice\",\"o2c_payment\",\"p2p_supplier\",\"p2p_requisition\",\"p2p_requisition_line\",\"p2p_purchase_order\",\"p2p_purchase_order_line\",\"p2p_goods_receipt\",\"p2p_supplier_invoice\",\"p2p_ap_payment\",\"r2r_account\",\"r2r_fiscal_year\",\"r2r_fiscal_period\",\"r2r_journal\",\"r2r_journal_line\",\"r2r_ledger_entry\",\"r2r_trial_balance_row\",\"h2r_employee\",\"h2r_position\",\"h2r_assignment\",\"h2r_credential\",\"h2r_authority_rule\"];",
                   "var body = pm.response.json();",
                   "pm.test(\"Table catalog contains all expected tables\", function () {",
                   "  pm.expect(body.data).to.be.an(\"array\");",
@@ -3955,6 +3955,385 @@
                   "  pm.expect(body.data).to.be.an(\"array\");",
                   "  pm.expect(body.paging.limit).to.eql(5);",
                   "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "60 - H2R Flow",
+      "item": [
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"H2R Employee\",\n  \"email\": \"employee+{{$timestamp}}@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"employeeId\", body.employee_id);",
+                  "pm.test(\"Employee ID captured\", function () { pm.expect(body.employee_id).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/positions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "positions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Finance Controller\",\n  \"department\": \"Finance\",\n  \"authorityDomain\": \"R2R\",\n  \"authorityTier\": 3\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"positionId\", body.position_id);",
+                  "pm.test(\"Position ID captured\", function () { pm.expect(body.position_id).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "assignments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"positionId\": \"{{positionId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"assignmentId\", body.assignment_id);",
+                  "pm.test(\"Assignment active\", function () { pm.expect(body.state).to.eql(\"Active\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Issue Credential",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/credentials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "credentials"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"type\": \"FinancialApproval\",\n  \"expiryDate\": \"2027-12-31\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"credentialId\", body.credential_id);",
+                  "pm.test(\"Credential is Valid\", function () { pm.expect(body.status).to.eql(\"Valid\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Authority Rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/authority-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "authority-rules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"R2R\",\n  \"threshold\": 10000,\n  \"requiredTier\": 3\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Rule created\", function () { pm.expect(pm.response.json().domain).to.eql(\"R2R\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Employee On Leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/employees/{{employeeId}}/leave",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "leave"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Employee OnLeave\", function () { pm.expect(pm.response.json().status).to.eql(\"OnLeave\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Return Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/employees/{{employeeId}}/return",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "return"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Employee Active\", function () { pm.expect(pm.response.json().status).to.eql(\"Active\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Terminate Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/employees/{{employeeId}}/terminate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "terminate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Employee Terminated\", function () { pm.expect(pm.response.json().status).to.eql(\"Terminated\"); });"
                 ]
               }
             }

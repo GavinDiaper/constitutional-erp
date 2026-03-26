@@ -559,6 +559,154 @@ Example request:
 
 - return summarized balances for the fiscal period
 
+## H2R Endpoint Reference
+
+### Employees
+
+#### GET /api/v1/h2r/employees
+
+- list employees
+
+#### GET /api/v1/h2r/employees/:employeeId
+
+- get employee by id
+
+#### POST /api/v1/h2r/employees
+
+- hire employee in Active status
+
+Example request:
+
+```json
+{
+  "name": "Alice Governance",
+  "email": "alice.governance@example.com"
+}
+```
+
+#### POST /api/v1/h2r/employees/:employeeId/leave
+
+- transition Active to OnLeave
+
+#### POST /api/v1/h2r/employees/:employeeId/return
+
+- transition OnLeave to Active
+
+#### POST /api/v1/h2r/employees/:employeeId/terminate
+
+- transition Active or OnLeave to Terminated
+
+### Positions
+
+#### GET /api/v1/h2r/positions
+
+- list positions
+
+#### GET /api/v1/h2r/positions/:positionId
+
+- get position by id
+
+#### POST /api/v1/h2r/positions
+
+- create position and authority tier
+
+Example request:
+
+```json
+{
+  "title": "Finance Controller",
+  "department": "Finance",
+  "authorityDomain": "R2R",
+  "authorityTier": 3
+}
+```
+
+### Assignments
+
+#### GET /api/v1/h2r/assignments
+
+- list assignments
+- optional query parameter: `employeeId`
+
+#### GET /api/v1/h2r/assignments/:assignmentId
+
+- get assignment by id
+
+#### POST /api/v1/h2r/assignments
+
+- create active assignment
+
+Example request:
+
+```json
+{
+  "employeeId": "EMP-123",
+  "positionId": "POS-123"
+}
+```
+
+#### POST /api/v1/h2r/assignments/:assignmentId/end
+
+- transition Active to Ended
+
+### Credentials
+
+#### GET /api/v1/h2r/credentials
+
+- list credentials
+- optional query parameter: `employeeId`
+
+#### GET /api/v1/h2r/credentials/:credentialId
+
+- get credential by id
+
+#### POST /api/v1/h2r/credentials
+
+- issue credential in Valid status
+
+Example request:
+
+```json
+{
+  "employeeId": "EMP-123",
+  "type": "FinancialApproval",
+  "expiryDate": "2027-12-31"
+}
+```
+
+#### POST /api/v1/h2r/credentials/:credentialId/expire
+
+- transition Valid to Expired
+
+#### POST /api/v1/h2r/credentials/:credentialId/revoke
+
+- transition Valid to Revoked
+
+### Authority Rules
+
+#### GET /api/v1/h2r/authority-rules
+
+- list authority rules
+- optional query parameter: `domain`
+
+#### GET /api/v1/h2r/authority-rules/:ruleId
+
+- get authority rule by id
+
+#### POST /api/v1/h2r/authority-rules
+
+- create authority threshold rule
+
+Example request:
+
+```json
+{
+  "domain": "R2R",
+  "threshold": 10000,
+  "requiredTier": 3
+}
+```
+
 ## Events Endpoint Reference
 
 ### GET /api/v1/events

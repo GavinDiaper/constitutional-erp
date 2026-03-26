@@ -1,6 +1,6 @@
 export interface McpFunctionDef {
   name: string;
-  domain: "o2c" | "p2p" | "r2r";
+  domain: "o2c" | "p2p" | "r2r" | "h2r";
   description: string;
 }
 
@@ -42,5 +42,16 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "r2r_create_manual_journal", domain: "r2r", description: "Create journal in Draft state" },
   { name: "r2r_add_journal_line", domain: "r2r", description: "Add a journal line" },
   { name: "r2r_post_journal", domain: "r2r", description: "Post a draft journal" },
-  { name: "r2r_get_trial_balance", domain: "r2r", description: "Get trial balance for a fiscal period" }
+  { name: "r2r_get_trial_balance", domain: "r2r", description: "Get trial balance for a fiscal period" },
+  { name: "h2r_create_employee", domain: "h2r", description: "Create employee in Active status" },
+  { name: "h2r_place_on_leave", domain: "h2r", description: "Transition employee from Active to OnLeave" },
+  { name: "h2r_return_from_leave", domain: "h2r", description: "Transition employee from OnLeave to Active" },
+  { name: "h2r_terminate_employee", domain: "h2r", description: "Transition employee to Terminated" },
+  { name: "h2r_create_position", domain: "h2r", description: "Create position with authority tier" },
+  { name: "h2r_assign_position", domain: "h2r", description: "Create active employee assignment" },
+  { name: "h2r_end_assignment", domain: "h2r", description: "End active assignment" },
+  { name: "h2r_issue_credential", domain: "h2r", description: "Issue credential in Valid status" },
+  { name: "h2r_expire_credential", domain: "h2r", description: "Transition credential to Expired" },
+  { name: "h2r_revoke_credential", domain: "h2r", description: "Transition credential to Revoked" },
+  { name: "h2r_create_authority_rule", domain: "h2r", description: "Create authority rule by domain and threshold" }
 ];
