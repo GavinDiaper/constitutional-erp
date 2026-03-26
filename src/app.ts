@@ -8,6 +8,7 @@ import { p2pRouter } from "./api/hypermedia/p2p.routes";
 import { r2rRouter } from "./api/hypermedia/r2r.routes";
 import { mcpRouter } from "./api/mcp/mcp.routes";
 import { eventRouter } from "./api/events.routes";
+import { queryRouter } from "./api/query.routes";
 import { toProblem } from "./utils/errors";
 
 const config = loadConfig();
@@ -37,6 +38,7 @@ export function createApp() {
   app.use("/api/v1/r2r", r2rRouter);
   app.use("/api/v1/mcp", mcpRouter);
   app.use("/api/v1", eventRouter);
+  app.use("/api/v1", queryRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const problem = toProblem(err);

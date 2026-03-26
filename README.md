@@ -33,6 +33,7 @@ See `.env.example` for defaults.
 - R2R Hypermedia: `/api/v1/r2r/*`
 - MCP: `/api/v1/mcp/functions` and `/api/v1/mcp/invoke`
 - Events feed: `/api/v1/events?limit=100&after=<timestamp>`
+- Table query API: `/api/v1/query/tables`, `/api/v1/query/:table?limit=100&offset=0`, `/api/v1/query/:table/:id`
 
 ## Required Headers for `/api/v1/*`
 

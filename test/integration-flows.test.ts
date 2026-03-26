@@ -193,3 +193,42 @@ test("R2R integration flow enforces period lifecycle and posting rules", async (
 
   assert.equal(createInLockedPeriod.body.title, "invalid_transition");
 });
+
+test("Table query API returns data for all whitelisted tables", async () => {
+  const headers = authHeaders();
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: "Table Query Customer", email: "table.query@example.com" })
+    .expect(201);
+
+  const tablesResponse = await request(app)
+    .get("/api/v1/query/tables")
+    .set(headers)
+    .expect(200);
+
+  assert.ok(Array.isArray(tablesResponse.body.data));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "o2c_customer"));
+
+  const customersResponse = await request(app)
+    .get("/api/v1/query/o2c_customer?limit=5")
+    .set(headers)
+    .expect(200);
+
+  assert.equal(customersResponse.body.table, "o2c_customer");
+  assert.ok(Array.isArray(customersResponse.body.data));
+  assert.ok(
+    customersResponse.body.data.some(
+      (row: { customer_id: string }) => row.customer_id === customer.body.customer_id
+    )
+  );
+
+  const byIdResponse = await request(app)
+    .get(`/api/v1/query/o2c_customer/${customer.body.customer_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(byIdResponse.body.primaryKey, "customer_id");
+  assert.equal(byIdResponse.body.data.customer_id, customer.body.customer_id);
+});
