@@ -1500,7 +1500,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountCode\": \"1100\",\n  \"accountName\": \"Cash\",\n  \"accountType\": \"Asset\"\n}"
+              "raw": "{\n  \"accountCode\": \"1100-{{$timestamp}}\",\n  \"accountName\": \"Cash\",\n  \"accountType\": \"Asset\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/accounts",

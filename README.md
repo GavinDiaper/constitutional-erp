@@ -25,6 +25,8 @@ npm run dev
 
 See `.env.example` for defaults.
 
+Local runs load values from `.env` automatically. Keep `postman/FoundationERP.local.postman_environment.json` aligned with your local `API_KEY`, `INGRESS_ID_VALUE`, and port.
+
 ## API Roots
 
 - Health: `GET /health`
@@ -55,7 +57,7 @@ npm run migrate
 npm start
 ```
 
-`npm start` uses the checked-in Postman environment's `baseUrl` port as its default when `PORT` is not already set in the shell.
+`npm start` loads local settings from `.env`, including `PORT`, `API_KEY`, and `INGRESS_ID_VALUE`.
 
 In a second terminal:
 

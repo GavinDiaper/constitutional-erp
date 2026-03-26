@@ -1,5 +1,9 @@
 const { mkdirSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
+const { resolve } = require("node:path");
+const { config } = require("dotenv");
+
+config({ path: resolve(__dirname, "..", ".env"), override: true });
 
 mkdirSync("reports/newman", { recursive: true });
 
@@ -19,10 +23,12 @@ const args = [
   "--bail"
 ];
 
+const inferredBaseUrl = process.env.PORT ? `http://localhost:${process.env.PORT}` : undefined;
+
 const envOverrides = {
-  baseUrl: process.env.POSTMAN_BASE_URL,
-  apiKey: process.env.POSTMAN_API_KEY,
-  ingressId: process.env.POSTMAN_INGRESS_ID
+  baseUrl: process.env.POSTMAN_BASE_URL ?? inferredBaseUrl,
+  apiKey: process.env.POSTMAN_API_KEY ?? process.env.API_KEY,
+  ingressId: process.env.POSTMAN_INGRESS_ID ?? process.env.INGRESS_ID_VALUE
 };
 
 Object.entries(envOverrides).forEach(([key, value]) => {

@@ -1,39 +1,8 @@
-const { existsSync, readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 const { spawn } = require("node:child_process");
+const { config } = require("dotenv");
 
-function portFromBaseUrl(baseUrl) {
-  const url = new URL(baseUrl);
-  if (url.port) {
-    return url.port;
-  }
-
-  return url.protocol === "https:" ? "443" : "80";
-}
-
-function readPostmanPort() {
-  const envFile = resolve(__dirname, "..", "postman", "FoundationERP.local.postman_environment.json");
-  if (!existsSync(envFile)) {
-    return undefined;
-  }
-
-  try {
-    const environment = JSON.parse(readFileSync(envFile, "utf8"));
-    const baseUrl = environment.values?.find((entry) => entry.key === "baseUrl" && entry.enabled !== false)?.value;
-
-    return typeof baseUrl === "string" && baseUrl ? portFromBaseUrl(baseUrl) : undefined;
-  } catch (error) {
-    console.warn(`Unable to read Postman environment port: ${error.message}`);
-    return undefined;
-  }
-}
-
-if (!process.env.PORT) {
-  const postmanPort = readPostmanPort();
-  if (postmanPort) {
-    process.env.PORT = postmanPort;
-  }
-}
+config({ path: resolve(__dirname, "..", ".env"), override: true });
 
 const server = spawn(process.execPath, [resolve(__dirname, "..", "dist", "server.js")], {
   stdio: "inherit",
