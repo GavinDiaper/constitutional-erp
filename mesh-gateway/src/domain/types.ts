@@ -31,11 +31,13 @@ export interface PendingApprovalTask {
   status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED";
   requestedBy: string;
   domain: AuthorityDomain;
+  resourceType: string;
   resourceId: string;
   action: string;
   requiredTier?: number;
   escalatedToTier?: number;
-  originalRequestPath: string;
+  adapterId: string;
+  meshActionPath: string;
   originalRequestBody: string;
   contextJson: string;
   decisionSnapshotJson: string;

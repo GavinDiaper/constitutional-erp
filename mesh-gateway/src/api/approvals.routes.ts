@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
+import { AdapterRegistry } from "../adapters/registry";
 import { AuthorityClient } from "../clients/authorityClient";
-import { FoundationErpClient } from "../clients/foundationErpClient";
 import { GovernanceClient } from "../clients/governanceClient";
 import {
   getApprovalTask,
@@ -28,7 +28,7 @@ export function createApprovalsRouter(input: {
   actorHeader: string;
   authorityClient: AuthorityClient;
   governanceClient: GovernanceClient;
-  foundationClient: FoundationErpClient;
+  adapterRegistry: AdapterRegistry;
 }) {
   const router = Router();
 
@@ -123,10 +123,14 @@ export function createApprovalsRouter(input: {
         throw new HttpError(403, "recheck_denied", "Recheck denied by Governance Engine");
       }
 
-      const upstream = await input.foundationClient.postAction(task.originalRequestPath, requestBody);
+      const adapter = task.adapterId
+        ? input.adapterRegistry.getById(task.adapterId)
+        : input.adapterRegistry.resolve(task.meshActionPath);
+
+      const upstream = await adapter.executeAction(task.meshActionPath, requestBody, {});
       if (upstream.status >= 400) {
         setTaskRejected(taskId, approverActorId, "ExecutionFailedAfterApproval");
-        throw new HttpError(502, "execution_failed", "Action failed when forwarded to Foundation ERP");
+        throw new HttpError(502, "execution_failed", "Action failed when forwarded to backend adapter");
       }
 
       setTaskExecuted(taskId);

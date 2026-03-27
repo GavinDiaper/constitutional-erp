@@ -6,7 +6,12 @@
 
 # **1. Purpose**
 
-The Mesh Gateway is the **constitutional enforcement point** that sits between all clients (Navigator, UI, Integration Hub) and the Foundation ERP.
+The Mesh Gateway sits between all clients and any backend system that exposes business transitions.
+Foundation ERP is the first backend adapter, but the Mesh is ERP-agnostic by design.
+
+Backend systems are integrated via pluggable adapters.
+Each adapter maps backend hypermedia and actions into the canonical constitutional model.
+
 
 Its job is to ensure that **every read and every write** is:
 
@@ -17,14 +22,14 @@ Its job is to ensure that **every read and every write** is:
 - deterministic  
 - constitutional  
 
-The Mesh is the **only** component that talks directly to Foundation ERP.
+The Mesh is the **only** component that talks directly to backend adapters.
 
 ---
 
 # **2. Responsibilities**
 
-### ✔ Proxy all Foundation ERP requests  
-Clients never call Foundation ERP directly.
+### ✔ ERP-agnostic proxy for business transitions  
+Clients never call backend systems directly.
 
 ### ✔ Filter hypermedia responses  
 Remove forbidden transitions based on:
@@ -37,7 +42,7 @@ Remove forbidden transitions based on:
 - charter rules  
 
 ### ✔ Validate all execution requests  
-Before calling Foundation ERP, the Mesh must:
+Before calling any backend adapter, the Mesh must:
 
 1. Call Authority Engine  
 2. Call Governance Engine  
@@ -81,7 +86,7 @@ Mesh Gateway
         ├── Authority Engine (/authority/check)
         ├── Governance Engine (/governance/evaluate)
         ▼
-Foundation ERP (O2C/P2P/R2R/H2R)
+Backend adapters (Foundation v1, SAP/Oracle/Workday future)
 ```
 
 ---
@@ -95,12 +100,12 @@ Foundation ERP (O2C/P2P/R2R/H2R)
    GET /mesh/p2p/purchase-orders/PO-123
    ```
 
-2. Mesh forwards to Foundation ERP:
+2. Mesh selects an adapter and forwards to the backend:
    ```
    GET /api/v1/p2p/purchase-orders/PO-123
    ```
 
-3. Foundation ERP returns raw hypermedia.
+3. Adapter returns canonical resource hypermedia.
 
 4. Mesh iterates over each `_link`:
    - calls Authority Engine  
@@ -133,7 +138,7 @@ Foundation ERP (O2C/P2P/R2R/H2R)
    - Deny → return 403  
    - RequiresApproval → create approval task  
    - Escalate → route to higher tier approvers  
-   - Allow → call Foundation ERP  
+  - Allow → call adapter executeAction  
 
 6. Mesh emits constitutional events.
 
@@ -143,7 +148,7 @@ Foundation ERP (O2C/P2P/R2R/H2R)
 
 # **5. Mesh API Surface**
 
-The Mesh mirrors Foundation ERP, but under `/mesh/*`.
+The Mesh exposes canonical routes under `/mesh/*`.
 
 ### **Examples**
 
@@ -167,13 +172,13 @@ GET  /mesh/approvals?actorId=EMP-777
 # **6. Hypermedia Filtering Specification**
 
 ### **Input**
-- Raw Foundation ERP response  
+- Canonical resource response from adapter  
 - Actor identity  
 - Authority decision  
 - Governance decision  
 
 ### **Output**
-- Filtered `_links`  
+- Filtered `links`  
 - Annotated transitions  
 
 ### **Filtering Rules**
@@ -222,10 +227,10 @@ POST /governance/evaluate
 1. Deny → return 403  
 2. RequiresApproval → create approval task  
 3. Escalate → create escalated approval task  
-4. Allow → call Foundation ERP  
+4. Allow → call adapter executeAction  
 
 ### **Step 4 — Execute Action**
-Mesh calls Foundation ERP only if allowed.
+Mesh calls the selected adapter only if allowed.
 
 ---
 
@@ -332,7 +337,7 @@ Mesh:
 ### **Mesh MUST NOT start until:**
 - Authority Engine is ready  
 - Governance Engine is ready  
-- Foundation ERP is reachable  
+- At least one adapter is healthy  
 
 ### **Mesh readiness endpoint**
 ```

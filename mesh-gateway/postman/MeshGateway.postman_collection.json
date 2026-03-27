@@ -1,7 +1,355 @@
 {
   "info": {
-    "name": "MeshGateway",
+    "_postman_id": "c3a2b1d0-e456-7890-abcd-ef1234567890",
+    "name": "Mesh Gateway",
+    "description": "Constitutional Mesh Gateway – proxy, hypermedia filtering, action execution, and approval workflow",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "item": []
+  "item": [
+    {
+      "name": "10 – Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Liveness probe – no auth required."
+          }
+        },
+        {
+          "name": "GET /mesh/ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "ready"]
+            },
+            "description": "Readiness probe – returns 200 when Authority Engine and Governance Engine are healthy and at least one registered backend adapter is healthy; 503 otherwise."
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 – Hypermedia Proxy (GET resource)",
+      "item": [
+        {
+          "name": "GET /mesh/P2P/purchase-orders/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+            },
+            "description": "Fetches a canonical resource through the selected backend adapter and returns it with `links` filtered to only transitions the actor is constitutionally permitted to invoke. Denied transitions are removed; approval-required transitions are annotated."
+          }
+        },
+        {
+          "name": "GET /mesh/R2R/journal-entries/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "R2R", "journal-entries", "JE-001"]
+            },
+            "description": "Record-to-Report domain hypermedia proxy."
+          }
+        },
+        {
+          "name": "GET /mesh/H2R/leave-requests/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/H2R/leave-requests/LR-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "H2R", "leave-requests", "LR-001"]
+            },
+            "description": "Hire-to-Retire domain hypermedia proxy."
+          }
+        },
+        {
+          "name": "GET /mesh/O2C/sales-orders/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "O2C", "sales-orders", "SO-001"]
+            },
+            "description": "Order-to-Cash domain hypermedia proxy."
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 – Action Execution (POST action)",
+      "item": [
+        {
+          "name": "POST /mesh/P2P/purchase-orders/:id/approve – Allow (direct execution)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Approved after budget review\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-001", "approve"]
+            },
+            "description": "Executes the `approve` action on a purchase order. If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
+          }
+        },
+        {
+          "name": "POST /mesh/P2P/purchase-orders/:id/approve – Requires Approval (202 + task)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"High-value order – needs senior approval\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-999/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-999", "approve"]
+            },
+            "description": "When governance determines the action requires approval, the gateway returns HTTP 202 with a task ID rather than forwarding immediately. The response body contains `{ taskId, status: 'PENDING', requiredApproverTier }`. Eligible approvers are notified via the assignment table."
+          }
+        },
+        {
+          "name": "POST /mesh/P2P/purchase-orders/:id/submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"SUPP-42\",\n  \"amount\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-001", "submit"]
+            },
+            "description": "Performs the `submit` action on a purchase order. Triggers the full authority → governance decision pipeline."
+          }
+        },
+        {
+          "name": "POST /mesh/R2R/journal-entries/:id/post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"2026-Q1\",\n  \"notes\": \"Period close entry\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001/post",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "R2R", "journal-entries", "JE-001", "post"]
+            },
+            "description": "Posts a journal entry in the Record-to-Report domain."
+          }
+        },
+        {
+          "name": "POST /mesh/O2C/sales-orders/:id/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-001\",\n  \"amount\": 12500\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "O2C", "sales-orders", "SO-001", "confirm"]
+            },
+            "description": "Confirms a sales order in the Order-to-Cash domain."
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 – Approval Workflow",
+      "item": [
+        {
+          "name": "GET /mesh/approvals?actorId=",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals?actorId={{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "approvals"],
+              "query": [
+                { "key": "actorId", "value": "{{actorId}}" }
+              ]
+            },
+            "description": "Lists all PENDING approval tasks assigned to the given actor."
+          }
+        },
+        {
+          "name": "POST /mesh/approvals/:taskId/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Approved – reviewed supporting documents\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals/TASK-XXXXXXXX/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "approvals", "TASK-XXXXXXXX", "approve"]
+            },
+            "description": "Approves a pending task. Mesh re-evaluates authority and governance before forwarding the original action through the stored backend adapter reference. On success the task transitions to EXECUTED. Returns 409 if the task is no longer PENDING, 403 if the actor is not assigned."
+          }
+        },
+        {
+          "name": "POST /mesh/approvals/:taskId/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Insufficient budget justification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals/TASK-XXXXXXXX/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "approvals", "TASK-XXXXXXXX", "reject"]
+            },
+            "description": "Rejects a pending approval task. The task transitions to REJECTED and is logged. Returns 409 if already decided, 403 if actor not assigned."
+          }
+        }
+      ]
+    },
+    {
+      "name": "50 – Error Cases",
+      "item": [
+        {
+          "name": "GET /mesh/P2P/purchase-orders/:id – missing x-api-key (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+            },
+            "description": "Expect 401 – API key absent."
+          }
+        },
+        {
+          "name": "GET /mesh/P2P/purchase-orders/:id – missing x-actor-id (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+            },
+            "description": "Expect 400 missing_actor – actor header absent."
+          }
+        },
+        {
+          "name": "POST /mesh/approvals/:taskId/approve – task not found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals/TASK-NOTEXIST/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["mesh", "approvals", "TASK-NOTEXIST", "approve"]
+            },
+            "description": "Expect 404 task_not_found."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4003"
+    },
+    {
+      "key": "apiKey",
+      "value": "change-me"
+    },
+    {
+      "key": "actorId",
+      "value": "EMP-123"
+    }
+  ]
 }

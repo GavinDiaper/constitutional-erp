@@ -6,10 +6,11 @@ export interface AppConfig {
   apiKey: string;
   actorIdHeader: string;
   databasePath: string;
-  foundationErpUrl: string;
-  foundationErpApiKey: string;
-  foundationErpIngressId: string;
-  foundationErpIngressIdHeader: string;
+  adapterBaseUrl: string;
+  adapterApiKey: string;
+  adapterIngressId: string;
+  adapterIngressIdHeader: string;
+  adapterBackendBasePath: string;
   authorityEngineUrl: string;
   authorityEngineApiKey: string;
   governanceEngineUrl: string;
@@ -32,10 +33,11 @@ export function loadConfig(): AppConfig {
     apiKey: required("API_KEY", "change-me"),
     actorIdHeader: required("ACTOR_ID_HEADER", "x-actor-id").toLowerCase(),
     databasePath: process.env.DATABASE_PATH ?? "mesh-gateway.db",
-    foundationErpUrl: required("FOUNDATION_ERP_URL", "http://localhost:3000"),
-    foundationErpApiKey: required("FOUNDATION_ERP_API_KEY", "change-me"),
-    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress"),
-    foundationErpIngressIdHeader: required("FOUNDATION_ERP_INGRESS_ID_HEADER", "x-ingress-id").toLowerCase(),
+    adapterBaseUrl: required("ADAPTER_BASE_URL", "http://localhost:3000"),
+    adapterApiKey: required("ADAPTER_API_KEY", "change-me"),
+    adapterIngressId: required("ADAPTER_INGRESS_ID", "foundation-ingress"),
+    adapterIngressIdHeader: required("ADAPTER_INGRESS_ID_HEADER", "x-ingress-id").toLowerCase(),
+    adapterBackendBasePath: required("ADAPTER_BACKEND_BASE_PATH", "/api/v1"),
     authorityEngineUrl: required("AUTHORITY_ENGINE_URL", "http://localhost:4001"),
     authorityEngineApiKey: required("AUTHORITY_ENGINE_API_KEY", "change-me"),
     governanceEngineUrl: required("GOVERNANCE_ENGINE_URL", "http://localhost:4002"),

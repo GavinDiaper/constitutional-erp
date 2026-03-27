@@ -1,29 +1,37 @@
+import { BackendAdapter } from "../adapters/types";
 import { AuthorityClient } from "../clients/authorityClient";
-import { FoundationErpClient } from "../clients/foundationErpClient";
 import { GovernanceClient } from "../clients/governanceClient";
 
 export interface DependencyStatus {
   authorityReady: boolean;
   governanceReady: boolean;
-  foundationReachable: boolean;
+  adapters: Array<{ id: string; healthy: boolean }>;
   ready: boolean;
 }
 
 export async function checkDependencies(input: {
   authorityClient: AuthorityClient;
   governanceClient: GovernanceClient;
-  foundationClient: FoundationErpClient;
+  adapters: BackendAdapter[];
 }): Promise<DependencyStatus> {
-  const [authorityReady, governanceReady, foundationReachable] = await Promise.all([
+  const [authorityReady, governanceReady] = await Promise.all([
     input.authorityClient.health(),
-    input.governanceClient.health(),
-    input.foundationClient.health()
+    input.governanceClient.health()
   ]);
+
+  const adapters = await Promise.all(
+    input.adapters.map(async (adapter) => ({
+      id: adapter.id,
+      healthy: await adapter.health()
+    }))
+  );
+
+  const atLeastOneAdapterHealthy = adapters.some((adapter) => adapter.healthy);
 
   return {
     authorityReady,
     governanceReady,
-    foundationReachable,
-    ready: authorityReady && governanceReady && foundationReachable
+    adapters,
+    ready: authorityReady && governanceReady && atLeastOneAdapterHealthy
   };
 }

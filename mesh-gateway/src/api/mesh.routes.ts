@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
+import { AdapterRegistry } from "../adapters/registry";
 import { AuthorityClient } from "../clients/authorityClient";
-import { FoundationErpClient } from "../clients/foundationErpClient";
 import { GovernanceClient } from "../clients/governanceClient";
 import { createApprovalTask } from "../domain/approvals";
 import { buildDomainContext, parseDomainSegment } from "../domain/contextBuilders";
 import { buildRequestFingerprint } from "../domain/fingerprint";
-import { AuthorityDomain, LinkDef } from "../domain/types";
+import { LinkDef } from "../domain/types";
 import { logMeshEvent } from "../events/decisionLog";
 import { requireActorId } from "../middleware/requireActor";
 import { HttpError } from "../utils/errors";
@@ -21,43 +21,11 @@ const actionPathSchema = pathSchema.extend({
   action: z.string().min(1)
 });
 
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function asLinks(value: unknown): Record<string, LinkDef> {
-  const raw = asRecord(value);
-  const links: Record<string, LinkDef> = {};
-
-  for (const [key, candidate] of Object.entries(raw)) {
-    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-      continue;
-    }
-
-    const c = candidate as Record<string, unknown>;
-    const method = String(c.method ?? "GET").toUpperCase();
-    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-      continue;
-    }
-
-    links[key] = {
-      href: String(c.href ?? ""),
-      method: method as LinkDef["method"]
-    };
-  }
-
-  return links;
-}
-
 export function createMeshRouter(input: {
   actorHeader: string;
   authorityClient: AuthorityClient;
   governanceClient: GovernanceClient;
-  foundationClient: FoundationErpClient;
+  adapterRegistry: AdapterRegistry;
 }) {
   const router = Router();
 
@@ -66,12 +34,12 @@ export function createMeshRouter(input: {
       const actorId = requireActorId(req, input.actorHeader);
       const params = pathSchema.parse(req.params);
       const domain = parseDomainSegment(params.domain);
-      const foundationPath = `/api/v1/${params.domain}/${params.resource}/${params.id}`;
+      const meshResourcePath = `/mesh/${params.domain}/${params.resource}/${params.id}`;
+      const adapter = input.adapterRegistry.resolve(meshResourcePath);
 
-      const upstream = await input.foundationClient.getResource(foundationPath);
-      const entity = asRecord(upstream.data);
-      const context = buildDomainContext(domain, entity, actorId);
-      const links = asLinks(entity._links);
+      const upstream = await adapter.fetchResource(meshResourcePath, {});
+      const context = buildDomainContext(domain, upstream.resource.attributes, actorId);
+      const links = upstream.resource.links;
       const filtered: Record<string, LinkDef> = {};
       const removedTransitions: string[] = [];
 
@@ -115,7 +83,7 @@ export function createMeshRouter(input: {
         }
       }
 
-      entity._links = filtered;
+      upstream.resource.links = filtered;
 
       logMeshEvent({
         eventType: "MeshHypermediaFiltered",
@@ -129,7 +97,7 @@ export function createMeshRouter(input: {
         }
       });
 
-      res.status(upstream.status).json(entity);
+      res.status(upstream.status).json(upstream.resource);
     } catch (error) {
       next(error);
     }
@@ -143,12 +111,12 @@ export function createMeshRouter(input: {
       const resourceId = params.id;
       const action = params.action;
       const requestBody = req.body ?? {};
+      const meshResourcePath = `/mesh/${params.domain}/${params.resource}/${params.id}`;
+      const meshActionPath = `${meshResourcePath}/${action}`;
+      const adapter = input.adapterRegistry.resolve(meshActionPath);
 
-      const foundationResourcePath = `/api/v1/${params.domain}/${params.resource}/${params.id}`;
-      const foundationActionPath = `${foundationResourcePath}/${action}`;
-
-      const resourceResponse = await input.foundationClient.getResource(foundationResourcePath);
-      const context = buildDomainContext(domain, asRecord(resourceResponse.data), actorId);
+      const resourceResponse = await adapter.fetchResource(meshResourcePath, {});
+      const context = buildDomainContext(domain, resourceResponse.resource.attributes, actorId);
 
       const authorityDecision = await input.authorityClient.check({
         actorId,
@@ -209,11 +177,13 @@ export function createMeshRouter(input: {
         const created = createApprovalTask({
           actorId,
           domain,
+          resourceType: params.resource,
           resourceId,
           action,
+          adapterId: adapter.id,
+          meshActionPath,
           requiredTier: governanceDecision.requiredApproverTier,
           escalatedToTier: governanceDecision.escalatedToTier,
-          requestPath: foundationActionPath,
           requestBody,
           context,
           decisionSnapshot: { authorityDecision, governanceDecision },
@@ -246,7 +216,7 @@ export function createMeshRouter(input: {
         return;
       }
 
-      const upstream = await input.foundationClient.postAction(foundationActionPath, requestBody);
+      const upstream = await adapter.executeAction(meshActionPath, requestBody, {});
 
       logMeshEvent({
         eventType: "MeshActionAllowed",

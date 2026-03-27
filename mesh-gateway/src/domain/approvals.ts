@@ -7,15 +7,26 @@ interface ApprovalTaskRow {
   status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED";
   requested_by: string;
   domain: AuthorityDomain;
+  resource_type: string | null;
   resource_id: string;
   action: string;
   required_tier: number | null;
   escalated_to_tier: number | null;
+  adapter_id: string | null;
+  mesh_action_path: string | null;
   original_request_path: string;
   original_request_body: string;
   context_json: string;
   decision_snapshot_json: string;
   request_fingerprint: string;
+}
+
+function toMeshPath(originalPath: string): string {
+  if (originalPath.startsWith("/api/v1/")) {
+    return originalPath.replace("/api/v1/", "/mesh/");
+  }
+
+  return originalPath;
 }
 
 function mapTask(row: ApprovalTaskRow): PendingApprovalTask {
@@ -24,11 +35,13 @@ function mapTask(row: ApprovalTaskRow): PendingApprovalTask {
     status: row.status,
     requestedBy: row.requested_by,
     domain: row.domain,
+    resourceType: row.resource_type ?? "",
     resourceId: row.resource_id,
     action: row.action,
     requiredTier: row.required_tier ?? undefined,
     escalatedToTier: row.escalated_to_tier ?? undefined,
-    originalRequestPath: row.original_request_path,
+    adapterId: row.adapter_id ?? "foundation",
+    meshActionPath: row.mesh_action_path ?? toMeshPath(row.original_request_path),
     originalRequestBody: row.original_request_body,
     contextJson: row.context_json,
     decisionSnapshotJson: row.decision_snapshot_json,
@@ -39,11 +52,13 @@ function mapTask(row: ApprovalTaskRow): PendingApprovalTask {
 export function createApprovalTask(input: {
   actorId: string;
   domain: AuthorityDomain;
+  resourceType: string;
   resourceId: string;
   action: string;
+  adapterId: string;
+  meshActionPath: string;
   requiredTier?: number;
   escalatedToTier?: number;
-  requestPath: string;
   requestBody: unknown;
   context: Record<string, unknown>;
   decisionSnapshot: Record<string, unknown>;
@@ -56,19 +71,22 @@ export function createApprovalTask(input: {
   transaction(() => {
     db.prepare(
       `INSERT INTO mesh_approval_task(
-        task_id, status, requested_by, domain, resource_id, action, required_tier, escalated_to_tier,
-        original_request_path, original_request_body, context_json, decision_snapshot_json,
+        task_id, status, requested_by, domain, resource_type, resource_id, action, required_tier, escalated_to_tier,
+        adapter_id, mesh_action_path, original_request_path, original_request_body, context_json, decision_snapshot_json,
         request_fingerprint, created_at, updated_at
-      ) VALUES (?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       taskId,
       input.actorId,
       input.domain,
+      input.resourceType,
       input.resourceId,
       input.action,
       input.requiredTier ?? null,
       input.escalatedToTier ?? null,
-      input.requestPath,
+      input.adapterId,
+      input.meshActionPath,
+      input.meshActionPath,
       JSON.stringify(input.requestBody ?? {}),
       JSON.stringify(input.context),
       JSON.stringify(input.decisionSnapshot),

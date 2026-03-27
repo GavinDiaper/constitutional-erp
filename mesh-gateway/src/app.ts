@@ -1,22 +1,31 @@
 import express from "express";
 import helmet from "helmet";
+import { FoundationAdapter } from "./adapters/foundationAdapter";
+import { AdapterRegistry } from "./adapters/registry";
 import { createApprovalsRouter } from "./api/approvals.routes";
 import { createMeshRouter } from "./api/mesh.routes";
 import { AuthorityClient } from "./clients/authorityClient";
-import { FoundationErpClient } from "./clients/foundationErpClient";
 import { GovernanceClient } from "./clients/governanceClient";
-import { loadConfig } from "./config/env";
+import { AppConfig, loadConfig } from "./config/env";
 import { checkDependencies } from "./domain/dependencyChecks";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { toProblem } from "./utils/errors";
 
-const config = loadConfig();
+const defaultConfig = loadConfig();
 
-const authorityClient = new AuthorityClient(config);
-const governanceClient = new GovernanceClient(config);
-const foundationClient = new FoundationErpClient(config);
+interface AppOverrides {
+  config?: AppConfig;
+  authorityClient?: AuthorityClient;
+  governanceClient?: GovernanceClient;
+  adapterRegistry?: AdapterRegistry;
+}
 
-export function createApp() {
+export function createApp(overrides: AppOverrides = {}) {
+  const config = overrides.config ?? defaultConfig;
+  const authorityClient = overrides.authorityClient ?? new AuthorityClient(config);
+  const governanceClient = overrides.governanceClient ?? new GovernanceClient(config);
+  const adapterRegistry = overrides.adapterRegistry ?? new AdapterRegistry([new FoundationAdapter(config)]);
+
   const app = express();
 
   app.use(helmet());
@@ -31,7 +40,7 @@ export function createApp() {
       const status = await checkDependencies({
         authorityClient,
         governanceClient,
-        foundationClient
+        adapters: adapterRegistry.list()
       });
 
       if (!status.ready) {
@@ -52,7 +61,7 @@ export function createApp() {
       actorHeader: config.actorIdHeader,
       authorityClient,
       governanceClient,
-      foundationClient
+      adapterRegistry
     })
   );
 
@@ -62,7 +71,7 @@ export function createApp() {
       actorHeader: config.actorIdHeader,
       authorityClient,
       governanceClient,
-      foundationClient
+      adapterRegistry
     })
   );
 
