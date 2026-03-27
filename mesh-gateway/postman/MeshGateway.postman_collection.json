@@ -148,7 +148,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["mesh", "P2P", "purchase-orders", "PO-999", "approve"]
             },
-            "description": "When governance determines the action requires approval, the gateway returns HTTP 202 with a task ID rather than forwarding immediately. The response body contains `{ taskId, status: 'PENDING', requiredApproverTier }`. Eligible approvers are notified via the assignment table."
+            "description": "When governance determines the action requires approval, the gateway returns HTTP 202 with a task ID rather than forwarding immediately. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Eligible approvers are notified via the assignment table."
           }
         },
         {
