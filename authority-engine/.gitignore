@@ -6,8 +6,8 @@ governance.db-shm
 test-governance.db
 test-governance.db-wal
 test-governance.db-shm
-mesh-gateway.db
-mesh-gateway.db-wal
-mesh-gateway.db-shm
+authority-engine.db
+authority-engine.db-wal
+authority-engine.db-shm
 reports/
 .env

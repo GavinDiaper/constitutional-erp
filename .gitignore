@@ -1,11 +1,5 @@
 node_modules/
 dist/
-governance.db
-governance.db-wal
-governance.db-shm
-test-governance.db
-test-governance.db-wal
-test-governance.db-shm
 reports/
 .env
 *.db

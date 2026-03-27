@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { FoundationAdapter } from "./adapters/foundationAdapter";
 import { AdapterRegistry } from "./adapters/registry";
 import { createApprovalsRouter } from "./api/approvals.routes";
+import { eventRouter } from "./api/events.routes";
 import { createMeshRouter } from "./api/mesh.routes";
 import { AuthorityClient } from "./clients/authorityClient";
 import { GovernanceClient } from "./clients/governanceClient";
@@ -74,6 +75,8 @@ export function createApp(overrides: AppOverrides = {}) {
       adapterRegistry
     })
   );
+
+  app.use("/api/v1", apiKeyAuth(config.apiKey), eventRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const problem = toProblem(err);
