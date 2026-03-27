@@ -61,15 +61,14 @@ function buildAdapter(input: {
   return {
     id: input.id,
     canHandle: input.canHandle,
-    buildMeshPath: (domain, resource, id, action, explicit = false) =>
+    buildMeshPath: (domain, resource, id, action) =>
       action
-        ? `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}/${action}`
-        : `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}`,
+        ? `/mesh/${input.id}/${domain}/${resource}/${id}/${action}`
+        : `/mesh/${input.id}/${domain}/${resource}/${id}`,
     health: async () => input.health,
     fetchResource: async (meshPath) => {
       input.onFetch?.();
-      const explicit = meshPath.startsWith(`/mesh/${input.id}/`);
-      const base = explicit ? `/mesh/${input.id}` : "/mesh";
+      const base = `/mesh/${input.id}`;
       return {
         status: 200,
         resource: {
@@ -109,23 +108,23 @@ test("GET /health returns mesh service status", async () => {
   assert.equal(response.body.service, "mesh-gateway");
 });
 
-test("GET /mesh/p2p/purchase-orders/PO-1 rejects missing api key", async () => {
-  const response = await request(app).get("/mesh/p2p/purchase-orders/PO-1");
+test("GET /mesh/:adapterId/p2p/purchase-orders/PO-1 rejects missing api key", async () => {
+  const response = await request(app).get("/mesh/foundation/p2p/purchase-orders/PO-1");
 
   assert.equal(response.status, 401);
   assert.equal(response.body.title, "unauthorized");
 });
 
-test("GET /mesh/p2p/purchase-orders/PO-1 rejects missing actor header", async () => {
+test("GET /mesh/:adapterId/p2p/purchase-orders/PO-1 rejects missing actor header", async () => {
   const response = await request(app)
-    .get("/mesh/p2p/purchase-orders/PO-1")
+    .get("/mesh/foundation/p2p/purchase-orders/PO-1")
     .set("x-api-key", config.apiKey);
 
   assert.equal(response.status, 400);
   assert.equal(response.body.title, "missing_actor");
 });
 
-test("GET /mesh uses default adapter and returns canonical links without _links", async () => {
+test("GET /mesh/:adapterId returns canonical links without _links", async () => {
   let firstAdapterFetches = 0;
   let secondAdapterFetches = 0;
 
@@ -150,11 +149,11 @@ test("GET /mesh uses default adapter and returns canonical links without _links"
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient() as unknown as never,
-    adapterRegistry: new AdapterRegistry([firstAdapter, secondAdapter], "foundation")
+    adapterRegistry: new AdapterRegistry([firstAdapter, secondAdapter])
   });
 
   const response = await request(appWithStubs)
-    .get("/mesh/p2p/purchase-orders/PO-1")
+    .get("/mesh/foundation/p2p/purchase-orders/PO-1")
     .set("x-api-key", config.apiKey)
     .set("x-actor-id", "EMP-123");
 
@@ -192,7 +191,7 @@ test("GET /mesh/:adapterId resolves the second stub adapter explicitly", async (
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient() as unknown as never,
-    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter], "foundation")
+    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter])
   });
 
   const response = await request(appWithStubs)
@@ -216,7 +215,7 @@ test("GET /mesh/ready returns 503 when all adapters are unhealthy", async () => 
   const appWithUnhealthyDeps = createApp({
     authorityClient: buildAuthorityClient(true) as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([unhealthyAdapter], "foundation")
+    adapterRegistry: new AdapterRegistry([unhealthyAdapter])
   });
 
   const response = await request(appWithUnhealthyDeps).get("/mesh/ready");
@@ -241,7 +240,7 @@ test("GET /mesh/ready returns 200 when at least one adapter is healthy", async (
   const appWithMixedAdapterHealth = createApp({
     authorityClient: buildAuthorityClient(true) as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([unhealthy, healthy], "foundation")
+    adapterRegistry: new AdapterRegistry([unhealthy, healthy])
   });
 
   const response = await request(appWithMixedAdapterHealth).get("/mesh/ready");
@@ -254,7 +253,7 @@ test("GET /mesh/ready returns 200 when at least one adapter is healthy", async (
   ]);
 });
 
-test("POST /mesh action executes via adapter on allow", async () => {
+test("POST /mesh/:adapterId action executes via adapter on allow", async () => {
   const executedPaths: string[] = [];
   const adapter = buildAdapter({
     id: "foundation",
@@ -268,18 +267,18 @@ test("POST /mesh action executes via adapter on allow", async () => {
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter], "foundation")
+    adapterRegistry: new AdapterRegistry([adapter])
   });
 
   const response = await request(appWithStubs)
-    .post("/mesh/p2p/purchase-orders/PO-1/approve")
+    .post("/mesh/foundation/p2p/purchase-orders/PO-1/approve")
     .set("x-api-key", config.apiKey)
     .set("x-actor-id", "EMP-123")
     .send({ notes: "ok" });
 
   assert.equal(response.status, 200);
   assert.equal(response.body.ok, true);
-  assert.deepEqual(executedPaths, ["/mesh/p2p/purchase-orders/PO-1/approve"]);
+  assert.deepEqual(executedPaths, ["/mesh/foundation/p2p/purchase-orders/PO-1/approve"]);
 });
 
 test("POST /mesh/:adapterId action executes through second stub adapter", async () => {
@@ -307,7 +306,7 @@ test("POST /mesh/:adapterId action executes through second stub adapter", async 
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter], "foundation")
+    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter])
   });
 
   const response = await request(appWithStubs)
@@ -322,7 +321,7 @@ test("POST /mesh/:adapterId action executes through second stub adapter", async 
   assert.deepEqual(sapExecutions, ["/mesh/sap-stub/p2p/purchase-orders/PO-1/approve"]);
 });
 
-test("POST /mesh action returns 403 and does not execute adapter on deny", async () => {
+test("POST /mesh/:adapterId action returns 403 and does not execute adapter on deny", async () => {
   const executedPaths: string[] = [];
   const adapter = buildAdapter({
     id: "foundation",
@@ -336,11 +335,11 @@ test("POST /mesh action returns 403 and does not execute adapter on deny", async
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter], "foundation")
+    adapterRegistry: new AdapterRegistry([adapter])
   });
 
   const response = await request(appWithStubs)
-    .post("/mesh/p2p/purchase-orders/PO-1/cancel")
+    .post("/mesh/foundation/p2p/purchase-orders/PO-1/cancel")
     .set("x-api-key", config.apiKey)
     .set("x-actor-id", "EMP-123")
     .send({ notes: "deny" });
@@ -350,7 +349,7 @@ test("POST /mesh action returns 403 and does not execute adapter on deny", async
   assert.deepEqual(executedPaths, []);
 });
 
-test("POST /mesh action returns 202 with task details when approval is required", async () => {
+test("POST /mesh/:adapterId action returns 202 with task details when approval is required", async () => {
   const authorityStub = {
     ...buildAuthorityClient(),
     getEligibleApprovers: async (domain: string, tier: number) => {
@@ -372,13 +371,11 @@ test("POST /mesh action returns 202 with task details when approval is required"
   const appWithStubs = createApp({
     authorityClient: authorityStub as unknown as never,
     governanceClient: governanceStub as unknown as never,
-    adapterRegistry: new AdapterRegistry([
-      buildAdapter({ id: "foundation", canHandle: () => true, health: true })
-    ], "foundation")
+    adapterRegistry: new AdapterRegistry([buildAdapter({ id: "foundation", canHandle: () => true, health: true })])
   });
 
   const response = await request(appWithStubs)
-    .post("/mesh/p2p/purchase-orders/PO-77/approve")
+    .post("/mesh/foundation/p2p/purchase-orders/PO-77/approve")
     .set("x-api-key", config.apiKey)
     .set("x-actor-id", "EMP-123")
     .send({ notes: "needs review" });
@@ -433,11 +430,11 @@ test("Approval replay uses stored adapter id and meshActionPath for execution", 
       getEligibleApprovers: async () => ["EMP-777"]
     } as unknown as never,
     governanceClient: governanceStub as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter], "foundation")
+    adapterRegistry: new AdapterRegistry([adapter])
   });
 
   const createResponse = await request(appWithStubs)
-    .post("/mesh/p2p/purchase-orders/PO-777/approve")
+    .post("/mesh/foundation/p2p/purchase-orders/PO-777/approve")
     .set("x-api-key", config.apiKey)
     .set("x-actor-id", "EMP-123")
     .send({ notes: "approval needed" });
@@ -456,5 +453,5 @@ test("Approval replay uses stored adapter id and meshActionPath for execution", 
 
   assert.equal(approveResponse.status, 200);
   assert.equal(approveResponse.body.status, "EXECUTED");
-  assert.deepEqual(executedPaths, ["/mesh/p2p/purchase-orders/PO-777/approve"]);
+  assert.deepEqual(executedPaths, ["/mesh/foundation/p2p/purchase-orders/PO-777/approve"]);
 });

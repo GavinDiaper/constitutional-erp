@@ -6,7 +6,6 @@ export interface AppConfig {
   apiKey: string;
   actorIdHeader: string;
   databasePath: string;
-  defaultAdapterId: string;
   foundationAdapterId: string;
   foundationAdapterBaseUrl: string;
   foundationAdapterApiKey: string;
@@ -35,7 +34,6 @@ export function loadConfig(): AppConfig {
     apiKey: required("API_KEY", "change-me"),
     actorIdHeader: required("ACTOR_ID_HEADER", "x-actor-id").toLowerCase(),
     databasePath: process.env.DATABASE_PATH ?? "mesh-gateway.db",
-    defaultAdapterId: required("DEFAULT_ADAPTER_ID", process.env.FOUNDATION_ADAPTER_ID ?? "foundation"),
     foundationAdapterId: required("FOUNDATION_ADAPTER_ID", "foundation"),
     foundationAdapterBaseUrl: required("FOUNDATION_ADAPTER_BASE_URL", process.env.ADAPTER_BASE_URL ?? "http://localhost:3000"),
     foundationAdapterApiKey: required("FOUNDATION_ADAPTER_API_KEY", process.env.ADAPTER_API_KEY ?? "change-me"),

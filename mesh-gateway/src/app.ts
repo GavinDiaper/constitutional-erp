@@ -25,8 +25,7 @@ export function createApp(overrides: AppOverrides = {}) {
   const config = overrides.config ?? defaultConfig;
   const authorityClient = overrides.authorityClient ?? new AuthorityClient(config);
   const governanceClient = overrides.governanceClient ?? new GovernanceClient(config);
-  const adapterRegistry =
-    overrides.adapterRegistry ?? new AdapterRegistry([new FoundationAdapter(config)], config.defaultAdapterId);
+  const adapterRegistry = overrides.adapterRegistry ?? new AdapterRegistry([new FoundationAdapter(config)]);
 
   const app = express();
 

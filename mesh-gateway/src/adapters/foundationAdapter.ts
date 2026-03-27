@@ -6,7 +6,7 @@ import { HttpError } from "../utils/errors";
 import { BackendAdapter, CanonicalResource } from "./types";
 
 interface ParsedMeshPath {
-  adapterId?: string;
+  adapterId: string;
   domain: string;
   resource: string;
   id: string;
@@ -17,23 +17,16 @@ function parseMeshPath(meshPath: string): ParsedMeshPath {
   const clean = meshPath.split("?")[0];
   const parts = clean.split("/").filter(Boolean);
 
-  if (parts.length < 4 || parts[0].toLowerCase() !== "mesh") {
-    throw new HttpError(400, "invalid_mesh_path", `Invalid mesh path: ${meshPath}`);
-  }
-
-  const explicitAdapter = parts.length >= 5 ? parts[1] : undefined;
-  const offset = explicitAdapter ? 2 : 1;
-
-  if (parts.length < offset + 3) {
+  if (parts.length < 5 || parts[0].toLowerCase() !== "mesh") {
     throw new HttpError(400, "invalid_mesh_path", `Invalid mesh path: ${meshPath}`);
   }
 
   return {
-    adapterId: explicitAdapter,
-    domain: parts[offset].toLowerCase(),
-    resource: parts[offset + 1].toLowerCase(),
-    id: parts[offset + 2],
-    action: parts[offset + 3]
+    adapterId: parts[1],
+    domain: parts[2].toLowerCase(),
+    resource: parts[3].toLowerCase(),
+    id: parts[4],
+    action: parts[5]
   };
 }
 
@@ -80,14 +73,14 @@ export class FoundationAdapter implements BackendAdapter {
   canHandle(meshPath: string): boolean {
     try {
       const parsed = parseMeshPath(meshPath);
-      return !parsed.adapterId || parsed.adapterId.toLowerCase() === this.id.toLowerCase();
+      return parsed.adapterId.toLowerCase() === this.id.toLowerCase();
     } catch {
       return false;
     }
   }
 
-  buildMeshPath(domain: string, resource: string, id: string, action?: string, explicit = false): string {
-    const prefix = explicit ? `/mesh/${this.id}` : "/mesh";
+  buildMeshPath(domain: string, resource: string, id: string, action?: string): string {
+    const prefix = `/mesh/${this.id}`;
     return action
       ? `${prefix}/${domain}/${resource}/${id}/${action}`
       : `${prefix}/${domain}/${resource}/${id}`;
@@ -119,7 +112,7 @@ export class FoundationAdapter implements BackendAdapter {
       domain,
       type: route.resource,
       attributes,
-      links: mapLinks(raw._links, route.adapterId ? `/mesh/${this.id}/` : "/mesh/")
+      links: mapLinks(raw._links, `/mesh/${this.id}/`)
     };
 
     return {

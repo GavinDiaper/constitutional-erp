@@ -21,9 +21,9 @@ interface ApprovalTaskRow {
   request_fingerprint: string;
 }
 
-function toMeshPath(originalPath: string): string {
+function toMeshPath(originalPath: string, adapterId = "foundation"): string {
   if (originalPath.startsWith("/api/v1/")) {
-    return originalPath.replace("/api/v1/", "/mesh/");
+    return originalPath.replace("/api/v1/", `/mesh/${adapterId}/`);
   }
 
   return originalPath;
@@ -41,7 +41,7 @@ function mapTask(row: ApprovalTaskRow): PendingApprovalTask {
     requiredTier: row.required_tier ?? undefined,
     escalatedToTier: row.escalated_to_tier ?? undefined,
     adapterId: row.adapter_id ?? "foundation",
-    meshActionPath: row.mesh_action_path ?? toMeshPath(row.original_request_path),
+    meshActionPath: row.mesh_action_path ?? toMeshPath(row.original_request_path, row.adapter_id ?? "foundation"),
     originalRequestBody: row.original_request_body,
     contextJson: row.context_json,
     decisionSnapshotJson: row.decision_snapshot_json,

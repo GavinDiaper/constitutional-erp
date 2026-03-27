@@ -123,9 +123,7 @@ export function createApprovalsRouter(input: {
         throw new HttpError(403, "recheck_denied", "Recheck denied by Governance Engine");
       }
 
-      const adapter = task.adapterId
-        ? input.adapterRegistry.getById(task.adapterId)
-        : input.adapterRegistry.resolve(task.meshActionPath);
+      const adapter = input.adapterRegistry.getById(task.adapterId);
 
       const upstream = await adapter.executeAction(task.meshActionPath, requestBody, {});
       if (upstream.status >= 400) {

@@ -764,7 +764,7 @@
       "name": "20 – Hypermedia Proxy (GET resource)",
       "item": [
         {
-          "name": "GET /mesh/p2p/purchase-orders/:id",
+          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -778,12 +778,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}"
@@ -807,7 +808,7 @@
           ]
         },
         {
-          "name": "GET /mesh/R2R/journal-entries/:id",
+          "name": "GET /mesh/:adapterId/R2R/journal-entries/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -821,12 +822,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/R2R/journal-entries/JE-001",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "R2R",
                 "journal-entries",
                 "JE-001"
@@ -836,7 +838,7 @@
           }
         },
         {
-          "name": "GET /mesh/H2R/leave-requests/:id",
+          "name": "GET /mesh/:adapterId/H2R/leave-requests/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -850,12 +852,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/H2R/leave-requests/LR-001",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/H2R/leave-requests/LR-001",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "H2R",
                 "leave-requests",
                 "LR-001"
@@ -865,7 +868,7 @@
           }
         },
         {
-          "name": "GET /mesh/O2C/sales-orders/:id",
+          "name": "GET /mesh/:adapterId/O2C/sales-orders/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -879,12 +882,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/O2C/sales-orders/SO-001",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "O2C",
                 "sales-orders",
                 "SO-001"
@@ -899,7 +903,7 @@
       "name": "21 – O2C Hypermedia Proxy (GET resource)",
       "item": [
         {
-          "name": "GET /mesh/o2c/orders/:id",
+          "name": "GET /mesh/:adapterId/o2c/orders/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -913,12 +917,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/orders/{{orderId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "orders",
                 "{{orderId}}"
@@ -938,7 +943,7 @@
           ]
         },
         {
-          "name": "GET /mesh/o2c/invoices/:id",
+          "name": "GET /mesh/:adapterId/o2c/invoices/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -952,12 +957,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/invoices/{{invoiceId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/invoices/{{invoiceId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "invoices",
                 "{{invoiceId}}"
@@ -966,7 +972,7 @@
           }
         },
         {
-          "name": "GET /mesh/o2c/payments/:id",
+          "name": "GET /mesh/:adapterId/o2c/payments/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -980,12 +986,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/payments/{{paymentId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "payments",
                 "{{paymentId}}"
@@ -999,7 +1006,7 @@
       "name": "30 – Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/p2p/purchase-orders/:id/issue – Allow (direct execution)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue – Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -1021,12 +1028,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}/issue",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}",
@@ -1069,7 +1077,7 @@
           ]
         },
         {
-          "name": "POST /mesh/p2p/purchase-orders/:id/acknowledge – Allow (direct execution)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/acknowledge – Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -1091,12 +1099,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/acknowledge",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}/acknowledge",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}",
@@ -1134,7 +1143,7 @@
           ]
         },
         {
-          "name": "POST /mesh/p2p/purchase-orders/:id/issue – Requires Approval (202 + task, illustrative)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue – Requires Approval (202 + task, illustrative)",
           "request": {
             "method": "POST",
             "header": [
@@ -1156,12 +1165,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}/issue",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}",
@@ -1189,7 +1199,7 @@
           ]
         },
         {
-          "name": "POST /mesh/R2R/journal-entries/:id/post",
+          "name": "POST /mesh/:adapterId/R2R/journal-entries/:id/post",
           "request": {
             "method": "POST",
             "header": [
@@ -1211,12 +1221,13 @@
               "raw": "{\n  \"period\": \"2026-Q1\",\n  \"notes\": \"Period close entry\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001/post",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/R2R/journal-entries/JE-001/post",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "R2R",
                 "journal-entries",
                 "JE-001",
@@ -1227,7 +1238,7 @@
           }
         },
         {
-          "name": "POST /mesh/O2C/sales-orders/:id/confirm",
+          "name": "POST /mesh/:adapterId/O2C/sales-orders/:id/confirm",
           "request": {
             "method": "POST",
             "header": [
@@ -1249,12 +1260,13 @@
               "raw": "{\n  \"customerId\": \"CUST-001\",\n  \"amount\": 12500\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001/confirm",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/O2C/sales-orders/SO-001/confirm",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "O2C",
                 "sales-orders",
                 "SO-001",
@@ -1270,7 +1282,7 @@
       "name": "31 – O2C Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/o2c/orders/:id/confirm",
+          "name": "POST /mesh/:adapterId/o2c/orders/:id/confirm",
           "request": {
             "method": "POST",
             "header": [
@@ -1292,12 +1304,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/confirm",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/orders/{{orderId}}/confirm",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "orders",
                 "{{orderId}}",
@@ -1320,7 +1333,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/orders/:id/allocate",
+          "name": "POST /mesh/:adapterId/o2c/orders/:id/allocate",
           "request": {
             "method": "POST",
             "header": [
@@ -1342,12 +1355,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/allocate",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/orders/{{orderId}}/allocate",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "orders",
                 "{{orderId}}",
@@ -1370,7 +1384,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/orders/:id/ship",
+          "name": "POST /mesh/:adapterId/o2c/orders/:id/ship",
           "request": {
             "method": "POST",
             "header": [
@@ -1392,12 +1406,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/ship",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/orders/{{orderId}}/ship",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "orders",
                 "{{orderId}}",
@@ -1420,7 +1435,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/orders/:id/generate-invoice",
+          "name": "POST /mesh/:adapterId/o2c/orders/:id/generate-invoice",
           "request": {
             "method": "POST",
             "header": [
@@ -1442,12 +1457,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/generate-invoice",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/orders/{{orderId}}/generate-invoice",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "orders",
                 "{{orderId}}",
@@ -1471,7 +1487,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/invoices/:id/post",
+          "name": "POST /mesh/:adapterId/o2c/invoices/:id/post",
           "request": {
             "method": "POST",
             "header": [
@@ -1493,12 +1509,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/invoices/{{invoiceId}}/post",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/invoices/{{invoiceId}}/post",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "invoices",
                 "{{invoiceId}}",
@@ -1521,7 +1538,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/payments/:id/apply",
+          "name": "POST /mesh/:adapterId/o2c/payments/:id/apply",
           "request": {
             "method": "POST",
             "header": [
@@ -1543,12 +1560,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}/apply",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/payments/{{paymentId}}/apply",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "payments",
                 "{{paymentId}}",
@@ -1571,7 +1589,7 @@
           ]
         },
         {
-          "name": "POST /mesh/o2c/payments/:id/reconcile",
+          "name": "POST /mesh/:adapterId/o2c/payments/:id/reconcile",
           "request": {
             "method": "POST",
             "header": [
@@ -1593,12 +1611,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}/reconcile",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/payments/{{paymentId}}/reconcile",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "o2c",
                 "payments",
                 "{{paymentId}}",
@@ -1886,7 +1905,7 @@
       "name": "22 – R2R Hypermedia Proxy (GET resource)",
       "item": [
         {
-          "name": "GET /mesh/r2r/journals/:id",
+          "name": "GET /mesh/:adapterId/r2r/journals/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -1900,12 +1919,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/r2r/journals/{{journalId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/r2r/journals/{{journalId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "r2r",
                 "journals",
                 "{{journalId}}"
@@ -1925,7 +1945,7 @@
           ]
         },
         {
-          "name": "GET /mesh/r2r/fiscal-periods/:id",
+          "name": "GET /mesh/:adapterId/r2r/fiscal-periods/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -1939,12 +1959,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/r2r/fiscal-periods/{{fiscalPeriodId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/r2r/fiscal-periods/{{fiscalPeriodId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "r2r",
                 "fiscal-periods",
                 "{{fiscalPeriodId}}"
@@ -1958,7 +1979,7 @@
       "name": "32 – R2R Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/r2r/journals/:id/post",
+          "name": "POST /mesh/:adapterId/r2r/journals/:id/post",
           "request": {
             "method": "POST",
             "header": [
@@ -1980,12 +2001,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/r2r/journals/{{journalId}}/post",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/r2r/journals/{{journalId}}/post",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "r2r",
                 "journals",
                 "{{journalId}}",
@@ -2008,7 +2030,7 @@
           ]
         },
         {
-          "name": "POST /mesh/r2r/fiscal-periods/:id/close",
+          "name": "POST /mesh/:adapterId/r2r/fiscal-periods/:id/close",
           "request": {
             "method": "POST",
             "header": [
@@ -2030,12 +2052,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/r2r/fiscal-periods/{{fiscalPeriodId}}/close",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/r2r/fiscal-periods/{{fiscalPeriodId}}/close",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "r2r",
                 "fiscal-periods",
                 "{{fiscalPeriodId}}",
@@ -2274,7 +2297,7 @@
       "name": "23 – H2R Hypermedia Proxy (GET resource)",
       "item": [
         {
-          "name": "GET /mesh/h2r/employees/:id",
+          "name": "GET /mesh/:adapterId/h2r/employees/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -2288,12 +2311,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/h2r/employees/{{employeeId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "h2r",
                 "employees",
                 "{{employeeId}}"
@@ -2313,7 +2337,7 @@
           ]
         },
         {
-          "name": "GET /mesh/h2r/assignments/:id",
+          "name": "GET /mesh/:adapterId/h2r/assignments/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -2327,12 +2351,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/h2r/assignments/{{assignmentId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/h2r/assignments/{{assignmentId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "h2r",
                 "assignments",
                 "{{assignmentId}}"
@@ -2346,7 +2371,7 @@
       "name": "33 – H2R Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/h2r/employees/:id/leave",
+          "name": "POST /mesh/:adapterId/h2r/employees/:id/leave",
           "request": {
             "method": "POST",
             "header": [
@@ -2368,12 +2393,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/leave",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/h2r/employees/{{employeeId}}/leave",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "h2r",
                 "employees",
                 "{{employeeId}}",
@@ -2396,7 +2422,7 @@
           ]
         },
         {
-          "name": "POST /mesh/h2r/employees/:id/return",
+          "name": "POST /mesh/:adapterId/h2r/employees/:id/return",
           "request": {
             "method": "POST",
             "header": [
@@ -2418,12 +2444,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/return",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/h2r/employees/{{employeeId}}/return",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "h2r",
                 "employees",
                 "{{employeeId}}",
@@ -2446,7 +2473,7 @@
           ]
         },
         {
-          "name": "POST /mesh/h2r/employees/:id/terminate",
+          "name": "POST /mesh/:adapterId/h2r/employees/:id/terminate",
           "request": {
             "method": "POST",
             "header": [
@@ -2468,12 +2495,13 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/terminate",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/h2r/employees/{{employeeId}}/terminate",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "h2r",
                 "employees",
                 "{{employeeId}}",
@@ -2656,7 +2684,7 @@
       "name": "50 – Error Cases",
       "item": [
         {
-          "name": "GET /mesh/p2p/purchase-orders/:id – missing x-api-key (401)",
+          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id – missing x-api-key (401)",
           "request": {
             "method": "GET",
             "header": [
@@ -2666,12 +2694,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}"
@@ -2681,7 +2710,7 @@
           }
         },
         {
-          "name": "GET /mesh/p2p/purchase-orders/:id – missing x-actor-id (400)",
+          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id – missing x-actor-id (400)",
           "request": {
             "method": "GET",
             "header": [
@@ -2691,12 +2720,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/p2p/purchase-orders/{{poId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "mesh",
+                "{{meshAdapterId}}",
                 "p2p",
                 "purchase-orders",
                 "{{poId}}"

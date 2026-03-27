@@ -11,25 +11,16 @@ import { logMeshEvent } from "../events/decisionLog";
 import { requireActorId } from "../middleware/requireActor";
 import { HttpError } from "../utils/errors";
 
-type LegacyResourceParams = z.infer<typeof legacyPathSchema>;
 type ExplicitResourceParams = z.infer<typeof explicitPathSchema>;
-type LegacyActionParams = z.infer<typeof legacyActionPathSchema>;
 type ExplicitActionParams = z.infer<typeof explicitActionPathSchema>;
-type ResourceParams = LegacyResourceParams | ExplicitResourceParams;
-type ActionParams = LegacyActionParams | ExplicitActionParams;
+type ResourceParams = ExplicitResourceParams;
+type ActionParams = ExplicitActionParams;
 
-const legacyPathSchema = z.object({
+const explicitPathSchema = z.object({
+  adapterId: z.string().min(1),
   domain: z.string().min(1),
   resource: z.string().min(1),
   id: z.string().min(1)
-});
-
-const explicitPathSchema = legacyPathSchema.extend({
-  adapterId: z.string().min(1)
-});
-
-const legacyActionPathSchema = legacyPathSchema.extend({
-  action: z.string().min(1)
 });
 
 const explicitActionPathSchema = explicitPathSchema.extend({
@@ -37,30 +28,24 @@ const explicitActionPathSchema = explicitPathSchema.extend({
 });
 
 function parseResourceRequest(params: Record<string, string>): ResourceParams {
-  return "adapterId" in params ? explicitPathSchema.parse(params) : legacyPathSchema.parse(params);
+  return explicitPathSchema.parse(params);
 }
 
 function parseActionRequest(params: Record<string, string>): ActionParams {
-  return "adapterId" in params ? explicitActionPathSchema.parse(params) : legacyActionPathSchema.parse(params);
-}
-
-function selectedAdapterId(params: ResourceParams | ActionParams): string | undefined {
-  return "adapterId" in params ? params.adapterId : undefined;
+  return explicitActionPathSchema.parse(params);
 }
 
 function buildMeshResourcePath(input: {
-  adapterId?: string;
+  adapterId: string;
   domain: string;
   resource: string;
   id: string;
 }) {
-  return input.adapterId
-    ? `/mesh/${input.adapterId}/${input.domain}/${input.resource}/${input.id}`
-    : `/mesh/${input.domain}/${input.resource}/${input.id}`;
+  return `/mesh/${input.adapterId}/${input.domain}/${input.resource}/${input.id}`;
 }
 
 function buildMeshActionPath(input: {
-  adapterId?: string;
+  adapterId: string;
   domain: string;
   resource: string;
   id: string;
@@ -84,7 +69,7 @@ export function createMeshRouter(input: {
       const params = parseResourceRequest(req.params as Record<string, string>);
       const domain = parseDomainSegment(params.domain);
       const meshResourcePath = buildMeshResourcePath(params);
-      const adapter = input.adapterRegistry.resolve(meshResourcePath, selectedAdapterId(params));
+      const adapter = input.adapterRegistry.resolve(meshResourcePath, params.adapterId);
 
       const upstream = await adapter.fetchResource(meshResourcePath, {});
       const context = buildDomainContext(domain, upstream.resource.attributes, actorId);
@@ -162,7 +147,7 @@ export function createMeshRouter(input: {
       const requestBody = req.body ?? {};
       const meshResourcePath = buildMeshResourcePath(params);
       const meshActionPath = buildMeshActionPath(params);
-      const adapter = input.adapterRegistry.resolve(meshActionPath, selectedAdapterId(params));
+      const adapter = input.adapterRegistry.resolve(meshActionPath, params.adapterId);
 
       const resourceResponse = await adapter.fetchResource(meshResourcePath, {});
       const context = buildDomainContext(domain, resourceResponse.resource.attributes, actorId);
@@ -288,9 +273,7 @@ export function createMeshRouter(input: {
     }
   };
 
-  router.get("/:domain/:resource/:id", handleGet);
   router.get("/:adapterId/:domain/:resource/:id", handleGet);
-  router.post("/:domain/:resource/:id/:action", handlePost);
   router.post("/:adapterId/:domain/:resource/:id/:action", handlePost);
 
   return router;
