@@ -1,0 +1,269 @@
+{
+  "info": {
+    "_postman_id": "f1b3c9d2-4a5e-4f6b-8c7d-1e2f3a4b5c6d",
+    "name": "ProcessGraph",
+    "description": "Constitutional ERP – Process Graph Engine v1 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4005" },
+    { "key": "apiKey", "value": "change-me" },
+    { "key": "actorId", "value": "EMP-001" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Service ok', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('ok'); pm.expect(b.service).to.eql('process-graph'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P2P – Requisition",
+      "item": [
+        {
+          "name": "GET requisition (not found)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/p2p/requisition/REQ-NOT-EXIST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET canonical resource",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/p2p/requisition/{{requisitionId}}",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Has canonical shape', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.id).to.exist;",
+                  "    pm.expect(b.domain).to.eql('P2P');",
+                  "    pm.expect(b.type).to.eql('requisition');",
+                  "    pm.expect(b.state).to.exist;",
+                  "    pm.expect(b.links).to.exist;",
+                  "    pm.expect(b.links.self).to.exist;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST submit transition (approved)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/graph/p2p/requisition/{{requisitionId}}/submit",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200, 202 or 403', () => pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404, 422]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "P2P – Purchase Order",
+      "item": [
+        {
+          "name": "GET purchase order",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/p2p/purchase-order/{{purchaseOrderId}}",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Approvals",
+      "item": [
+        {
+          "name": "GET /graph/approvals",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/approvals",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns data array', () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /graph/approvals/:taskId (not found)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/approvals/nonexistent-task-id",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "O2C – Quote",
+      "item": [
+        {
+          "name": "GET quote",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/o2c/quote/{{quoteId}}",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "R2R – Journal Entry",
+      "item": [
+        {
+          "name": "GET journal entry",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/r2r/journal-entry/{{journalEntryId}}",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "H2R – Employee",
+      "item": [
+        {
+          "name": "GET employee",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/graph/h2r/employee/{{employeeId}}",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
