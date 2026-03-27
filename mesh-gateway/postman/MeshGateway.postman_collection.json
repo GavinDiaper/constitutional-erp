@@ -2051,6 +2051,435 @@
       ]
     },
     {
+      "name": "03 – H2R Setup (Foundation ERP fixture)",
+      "description": "Creates employee, position, assignment, and credential in Foundation ERP for H2R mesh tests.",
+      "item": [
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mesh H2R Employee\",\n  \"email\": \"mesh.h2r.employee@constitutional.local\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/h2r/employees",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"employeeId\", body.employee_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mesh H2R Position\",\n  \"department\": \"Operations\",\n  \"authorityDomain\": \"H2R\",\n  \"authorityTier\": 2\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/h2r/positions",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "positions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"positionId\", body.position_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"positionId\": \"{{positionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/h2r/assignments",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "assignments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"assignmentId\", body.assignment_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Issue Credential",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"type\": \"OperationalAccess\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/h2r/credentials",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "credentials"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"credentialId\", body.credential_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "23 – H2R Hypermedia Proxy (GET resource)",
+      "item": [
+        {
+          "name": "GET /mesh/h2r/employees/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "h2r",
+                "employees",
+                "{{employeeId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mesh/h2r/assignments/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/h2r/assignments/{{assignmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "h2r",
+                "assignments",
+                "{{assignmentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 – H2R Action Execution (POST action)",
+      "item": [
+        {
+          "name": "POST /mesh/h2r/employees/:id/leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/leave",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "leave"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Employee leave returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/h2r/employees/:id/return",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/return",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "return"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Employee return returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/h2r/employees/:id/terminate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/h2r/employees/{{employeeId}}/terminate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "terminate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Employee terminate returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "40 – Approval Workflow",
       "item": [
         {
@@ -2354,6 +2783,22 @@
     {
       "key": "journalId",
       "value": "JNL-PENDING"
+    },
+    {
+      "key": "employeeId",
+      "value": "EMP-PENDING"
+    },
+    {
+      "key": "positionId",
+      "value": "POS-PENDING"
+    },
+    {
+      "key": "assignmentId",
+      "value": "ASG-PENDING"
+    },
+    {
+      "key": "credentialId",
+      "value": "CRD-PENDING"
     },
     {
       "key": "ingressId",
