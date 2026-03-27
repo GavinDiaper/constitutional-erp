@@ -21,8 +21,8 @@ function parseMeshPath(meshPath: string): ParsedMeshPath {
   }
 
   return {
-    domain: parts[1],
-    resource: parts[2],
+    domain: parts[1].toLowerCase(),
+    resource: parts[2].toLowerCase(),
     id: parts[3],
     action: parts[4]
   };
