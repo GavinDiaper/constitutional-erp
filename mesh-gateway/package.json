@@ -13,7 +13,9 @@
     "test": "npm run test:integration",
     "test:integration": "tsx --test test/**/*.test.ts",
     "test:postman": "node scripts/run-postman.js",
-    "test:p2p:mesh": "node tests/mesh/run-p2p.js"
+    "test:p2p:mesh": "node tests/mesh/run-p2p.js",
+    "test:o2c:mesh": "node tests/mesh/run-o2c.js",
+    "test:r2r:mesh": "node tests/mesh/run-r2r.js"
   },
   "engines": {
     "node": ">=20"

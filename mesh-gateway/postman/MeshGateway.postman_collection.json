@@ -15,9 +15,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-ingress-id", "value": "{{ingressId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -25,8 +34,15 @@
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/suppliers",
-              "host": ["{{foundationBaseUrl}}"],
-              "path": ["api", "v1", "p2p", "suppliers"]
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "suppliers"
+              ]
             }
           },
           "event": [
@@ -49,9 +65,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-ingress-id", "value": "{{ingressId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -59,8 +84,15 @@
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions",
-              "host": ["{{foundationBaseUrl}}"],
-              "path": ["api", "v1", "p2p", "requisitions"]
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "requisitions"
+              ]
             }
           },
           "event": [
@@ -83,13 +115,28 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
             ],
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/submit",
-              "host": ["{{foundationBaseUrl}}"],
-              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "submit"]
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "requisitions",
+                "{{requisitionId}}",
+                "submit"
+              ]
             }
           },
           "event": [
@@ -110,13 +157,28 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
             ],
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/approve",
-              "host": ["{{foundationBaseUrl}}"],
-              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "approve"]
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "requisitions",
+                "{{requisitionId}}",
+                "approve"
+              ]
             }
           },
           "event": [
@@ -137,9 +199,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-ingress-id", "value": "{{ingressId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -147,8 +218,17 @@
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/convert",
-              "host": ["{{foundationBaseUrl}}"],
-              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "convert"]
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "requisitions",
+                "{{requisitionId}}",
+                "convert"
+              ]
             }
           },
           "event": [
@@ -170,6 +250,477 @@
       ]
     },
     {
+      "name": "01 – O2C Setup (Foundation ERP fixture)",
+      "description": "Creates Customer -> Quote -> Order -> Invoice -> Payment directly in Foundation ERP so O2C mesh GET/POST requests can run against real IDs.",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Mesh O2C Customer\",\n  \"email\": \"billing@mesh-o2c.local\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/customers",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "customers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"customerId\", body.customer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/quotes",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "quotes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"quoteId\", body.quote_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Quote Line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"SKU-O2C-001\",\n  \"quantity\": 2,\n  \"unitPrice\": 50\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/quotes/{{quoteId}}/lines",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "quotes",
+                "{{quoteId}}",
+                "lines"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/quotes/{{quoteId}}/send",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "quotes",
+                "{{quoteId}}",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/quotes/{{quoteId}}/accept",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "quotes",
+                "{{quoteId}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Convert Quote To Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/quotes/{{quoteId}}/convert",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "quotes",
+                "{{quoteId}}",
+                "convert"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"orderId\", body.order_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Order (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/orders/{{orderId}}/confirm",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Allocate Order (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/orders/{{orderId}}/allocate",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "allocate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ship Order (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/orders/{{orderId}}/ship",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate Invoice (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/orders/{{orderId}}/generate-invoice",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "generate-invoice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Invoice generated or already exists\", function () { pm.expect([200, 201, 409]).to.include(code); });",
+                  "if (code === 200 || code === 201) {",
+                  "  var body = pm.response.json();",
+                  "  pm.environment.set(\"invoiceId\", body.invoice_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Post Invoice (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/invoices/{{invoiceId}}/post",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "invoices",
+                "{{invoiceId}}",
+                "post"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Payment (fixture)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/o2c/payments",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "o2c",
+                "payments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"paymentId\", body.payment_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "10 – Health",
       "item": [
         {
@@ -179,8 +730,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             },
             "description": "Liveness probe – no auth required."
           }
@@ -192,8 +747,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/mesh/ready",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "ready"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "ready"
+              ]
             },
             "description": "Readiness probe – returns 200 when Authority Engine and Governance Engine are healthy and at least one registered backend adapter is healthy; 503 otherwise."
           }
@@ -208,13 +768,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}"
+              ]
             },
             "description": "Fetches a canonical resource through the selected backend adapter and returns it with `links` filtered to only transitions the actor is constitutionally permitted to invoke. Denied transitions are removed; approval-required transitions are annotated."
           },
@@ -238,13 +811,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "R2R", "journal-entries", "JE-001"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "R2R",
+                "journal-entries",
+                "JE-001"
+              ]
             },
             "description": "Record-to-Report domain hypermedia proxy."
           }
@@ -254,13 +840,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/H2R/leave-requests/LR-001",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "H2R", "leave-requests", "LR-001"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "H2R",
+                "leave-requests",
+                "LR-001"
+              ]
             },
             "description": "Hire-to-Retire domain hypermedia proxy."
           }
@@ -270,15 +869,128 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "O2C", "sales-orders", "SO-001"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "O2C",
+                "sales-orders",
+                "SO-001"
+              ]
             },
             "description": "Order-to-Cash domain hypermedia proxy."
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 – O2C Hypermedia Proxy (GET resource)",
+      "item": [
+        {
+          "name": "GET /mesh/o2c/orders/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mesh/o2c/invoices/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/invoices/{{invoiceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "invoices",
+                "{{invoiceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /mesh/o2c/payments/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "payments",
+                "{{paymentId}}"
+              ]
+            }
           }
         }
       ]
@@ -291,9 +1003,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -301,8 +1022,16 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}",
+                "issue"
+              ]
             },
             "description": "Issues a purchase order (Draft → Issued). If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
           },
@@ -344,9 +1073,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -354,8 +1092,16 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/acknowledge",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "acknowledge"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}",
+                "acknowledge"
+              ]
             },
             "description": "Acknowledges a purchase order (Issued → Acknowledged). Run after the issue step."
           },
@@ -392,9 +1138,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -402,8 +1157,16 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}",
+                "issue"
+              ]
             },
             "description": "Illustrative only – when governance determines the action requires approval, the gateway returns HTTP 202 with a task ID. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Actual outcome (allow vs 202) depends on governance engine configuration for the actor/resource combination."
           },
@@ -430,9 +1193,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -440,8 +1212,16 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001/post",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "R2R", "journal-entries", "JE-001", "post"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "R2R",
+                "journal-entries",
+                "JE-001",
+                "post"
+              ]
             },
             "description": "Posts a journal entry in the Record-to-Report domain."
           }
@@ -451,9 +1231,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -461,11 +1250,803 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001/confirm",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "O2C", "sales-orders", "SO-001", "confirm"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "O2C",
+                "sales-orders",
+                "SO-001",
+                "confirm"
+              ]
             },
             "description": "Confirms a sales order in the Order-to-Cash domain."
           }
+        }
+      ]
+    },
+    {
+      "name": "31 – O2C Action Execution (POST action)",
+      "item": [
+        {
+          "name": "POST /mesh/o2c/orders/:id/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "confirm"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Confirm returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/orders/:id/allocate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/allocate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "allocate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Allocate returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/orders/:id/ship",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "ship"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Ship returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/orders/:id/generate-invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/orders/{{orderId}}/generate-invoice",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "orders",
+                "{{orderId}}",
+                "generate-invoice"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Generate invoice returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }",
+                  "if (code === 200 || code === 201) { var body = pm.response.json(); if (body.invoice_id) { pm.environment.set(\"invoiceId\", body.invoice_id); } }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/invoices/:id/post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/invoices/{{invoiceId}}/post",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "invoices",
+                "{{invoiceId}}",
+                "post"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Post invoice returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/payments/:id/apply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "payments",
+                "{{paymentId}}",
+                "apply"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Apply payment returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/o2c/payments/:id/reconcile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/o2c/payments/{{paymentId}}/reconcile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "o2c",
+                "payments",
+                "{{paymentId}}",
+                "reconcile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Reconcile payment returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 – R2R Setup (Foundation ERP fixture)",
+      "description": "Creates account, fiscal year, fiscal period, and draft journal with lines in Foundation ERP for R2R mesh tests.",
+      "item": [
+        {
+          "name": "Create Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"600100\",\n  \"accountName\": \"Mesh R2R Expense\",\n  \"accountType\": \"Expense\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"accountId\", body.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Fiscal Year",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearLabel\": \"FY-2026-MESH\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-years",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "fiscal-years"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"fiscalYearId\", body.fiscal_year_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Fiscal Period",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\n  \"periodNumber\": 1,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "fiscal-periods"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"fiscalPeriodId\", body.fiscal_period_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Journal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"Mesh R2R test journal\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "journals"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"journalId\", body.journal_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Journal Line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"debitAmount\": 100,\n  \"creditAmount\": 100,\n  \"memo\": \"Balanced line for posting\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "journals",
+                "{{journalId}}",
+                "lines"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "22 – R2R Hypermedia Proxy (GET resource)",
+      "item": [
+        {
+          "name": "GET /mesh/r2r/journals/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/r2r/journals/{{journalId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "r2r",
+                "journals",
+                "{{journalId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mesh/r2r/fiscal-periods/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/r2r/fiscal-periods/{{fiscalPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "r2r",
+                "fiscal-periods",
+                "{{fiscalPeriodId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 – R2R Action Execution (POST action)",
+      "item": [
+        {
+          "name": "POST /mesh/r2r/journals/:id/post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/r2r/journals/{{journalId}}/post",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "r2r",
+                "journals",
+                "{{journalId}}",
+                "post"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Journal post returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /mesh/r2r/fiscal-periods/:id/close",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesh/r2r/fiscal-periods/{{fiscalPeriodId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "r2r",
+                "fiscal-periods",
+                "{{fiscalPeriodId}}",
+                "close"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Fiscal period close returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) { var body = pm.response.json(); pm.environment.set(\"approvalExpected\", \"true\"); pm.environment.set(\"approvalTaskId\", body.taskId); }"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -477,14 +2058,25 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/approvals?actorId={{approverActorId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "approvals"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals"
+              ],
               "query": [
-                { "key": "actorId", "value": "{{approverActorId}}" }
+                {
+                  "key": "actorId",
+                  "value": "{{approverActorId}}"
+                }
               ]
             },
             "description": "Lists all PENDING approval tasks assigned to the given actor."
@@ -542,9 +2134,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{approverActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{approverActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -552,8 +2153,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/approvals/{{approvalTaskId}}/approve",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "approvals", "{{approvalTaskId}}", "approve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals",
+                "{{approvalTaskId}}",
+                "approve"
+              ]
             },
             "description": "Approves a pending task. Mesh re-evaluates authority and governance before forwarding the original action through the stored backend adapter reference. On success the task transitions to EXECUTED. Returns 409 if the task is no longer PENDING, 403 if the actor is not assigned."
           }
@@ -563,9 +2171,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{approverActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{approverActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -573,8 +2190,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/approvals/TASK-XXXXXXXX/reject",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "approvals", "TASK-XXXXXXXX", "reject"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals",
+                "TASK-XXXXXXXX",
+                "reject"
+              ]
             },
             "description": "Rejects a pending approval task. The task transitions to REJECTED and is logged. Returns 409 if already decided, 403 if actor not assigned."
           }
@@ -589,12 +2213,22 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}"
+              ]
             },
             "description": "Expect 401 – API key absent."
           }
@@ -604,12 +2238,22 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "p2p",
+                "purchase-orders",
+                "{{poId}}"
+              ]
             },
             "description": "Expect 400 missing_actor – actor header absent."
           }
@@ -619,9 +2263,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -629,8 +2282,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/approvals/TASK-NOTEXIST/approve",
-              "host": ["{{baseUrl}}"],
-              "path": ["mesh", "approvals", "TASK-NOTEXIST", "approve"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals",
+                "TASK-NOTEXIST",
+                "approve"
+              ]
             },
             "description": "Expect 404 task_not_found."
           }
@@ -658,6 +2318,42 @@
     {
       "key": "approverActorId",
       "value": "EMP-456"
+    },
+    {
+      "key": "customerId",
+      "value": "CUST-PENDING"
+    },
+    {
+      "key": "quoteId",
+      "value": "QTE-PENDING"
+    },
+    {
+      "key": "orderId",
+      "value": "ORD-PENDING"
+    },
+    {
+      "key": "invoiceId",
+      "value": "INV-PENDING"
+    },
+    {
+      "key": "paymentId",
+      "value": "PAY-PENDING"
+    },
+    {
+      "key": "accountId",
+      "value": "ACC-PENDING"
+    },
+    {
+      "key": "fiscalYearId",
+      "value": "FY-PENDING"
+    },
+    {
+      "key": "fiscalPeriodId",
+      "value": "FP-PENDING"
+    },
+    {
+      "key": "journalId",
+      "value": "JNL-PENDING"
     },
     {
       "key": "ingressId",
