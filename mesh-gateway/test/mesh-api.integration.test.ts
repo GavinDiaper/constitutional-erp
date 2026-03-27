@@ -66,8 +66,10 @@ function buildAdapter(input: {
         ? `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}/${action}`
         : `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}`,
     health: async () => input.health,
-    fetchResource: async (_meshPath) => {
+    fetchResource: async (meshPath) => {
       input.onFetch?.();
+      const explicit = meshPath.startsWith(`/mesh/${input.id}/`);
+      const base = explicit ? `/mesh/${input.id}` : "/mesh";
       return {
         status: 200,
         resource: {
@@ -81,11 +83,11 @@ function buildAdapter(input: {
           },
           links: {
             approve: {
-              href: "/mesh/p2p/purchase-orders/PO-1/approve",
+              href: `${base}/p2p/purchase-orders/PO-1/approve`,
               method: "POST"
             },
             cancel: {
-              href: "/mesh/p2p/purchase-orders/PO-1/cancel",
+              href: `${base}/p2p/purchase-orders/PO-1/cancel`,
               method: "POST"
             }
           }
@@ -123,7 +125,7 @@ test("GET /mesh/p2p/purchase-orders/PO-1 rejects missing actor header", async ()
   assert.equal(response.body.title, "missing_actor");
 });
 
-test("GET /mesh uses first matching adapter and returns canonical links without _links", async () => {
+test("GET /mesh uses default adapter and returns canonical links without _links", async () => {
   let firstAdapterFetches = 0;
   let secondAdapterFetches = 0;
 
@@ -163,6 +165,45 @@ test("GET /mesh uses first matching adapter and returns canonical links without 
   assert.equal(response.body._links, undefined);
   assert.ok(response.body.links.approve);
   assert.equal(response.body.links.cancel, undefined);
+});
+
+test("GET /mesh/:adapterId resolves the second stub adapter explicitly", async () => {
+  let foundationFetches = 0;
+  let sapFetches = 0;
+
+  const foundationAdapter = buildAdapter({
+    id: "foundation",
+    canHandle: () => true,
+    health: true,
+    onFetch: () => {
+      foundationFetches += 1;
+    }
+  });
+
+  const sapStubAdapter = buildAdapter({
+    id: "sap-stub",
+    canHandle: (meshPath) => meshPath.startsWith("/mesh/sap-stub/"),
+    health: true,
+    onFetch: () => {
+      sapFetches += 1;
+    }
+  });
+
+  const appWithStubs = createApp({
+    authorityClient: buildAuthorityClient() as unknown as never,
+    governanceClient: buildGovernanceClient() as unknown as never,
+    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter], "foundation")
+  });
+
+  const response = await request(appWithStubs)
+    .get("/mesh/sap-stub/p2p/purchase-orders/PO-1")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "EMP-123");
+
+  assert.equal(response.status, 200);
+  assert.equal(foundationFetches, 0);
+  assert.equal(sapFetches, 1);
+  assert.ok(response.body.links.approve.href.startsWith("/mesh/sap-stub/"));
 });
 
 test("GET /mesh/ready returns 503 when all adapters are unhealthy", async () => {
@@ -239,6 +280,46 @@ test("POST /mesh action executes via adapter on allow", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.ok, true);
   assert.deepEqual(executedPaths, ["/mesh/p2p/purchase-orders/PO-1/approve"]);
+});
+
+test("POST /mesh/:adapterId action executes through second stub adapter", async () => {
+  const foundationExecutions: string[] = [];
+  const sapExecutions: string[] = [];
+
+  const foundationAdapter = buildAdapter({
+    id: "foundation",
+    canHandle: () => true,
+    health: true,
+    onExecute: (meshPath) => {
+      foundationExecutions.push(meshPath);
+    }
+  });
+
+  const sapStubAdapter = buildAdapter({
+    id: "sap-stub",
+    canHandle: (meshPath) => meshPath.startsWith("/mesh/sap-stub/"),
+    health: true,
+    onExecute: (meshPath) => {
+      sapExecutions.push(meshPath);
+    }
+  });
+
+  const appWithStubs = createApp({
+    authorityClient: buildAuthorityClient() as unknown as never,
+    governanceClient: buildGovernanceClient(true) as unknown as never,
+    adapterRegistry: new AdapterRegistry([foundationAdapter, sapStubAdapter], "foundation")
+  });
+
+  const response = await request(appWithStubs)
+    .post("/mesh/sap-stub/p2p/purchase-orders/PO-1/approve")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "EMP-123")
+    .send({ notes: "ok" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+  assert.deepEqual(foundationExecutions, []);
+  assert.deepEqual(sapExecutions, ["/mesh/sap-stub/p2p/purchase-orders/PO-1/approve"]);
 });
 
 test("POST /mesh action returns 403 and does not execute adapter on deny", async () => {
