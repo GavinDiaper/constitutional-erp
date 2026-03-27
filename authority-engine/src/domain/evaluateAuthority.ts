@@ -28,7 +28,30 @@ export function evaluateAuthority(input: AuthorityCheckInput): AuthorityCheckRes
     .get(input.actorId) as { employee_id: string; status: "Active" | "OnLeave" | "Terminated" } | undefined;
 
   if (!subject) {
-    throw new HttpError(404, "not_found", "Authority subject not found");
+    const reasons = [`Authority subject ${input.actorId} not found`];
+
+    appendAuthorityEvent({
+      entityId: input.actorId,
+      entityType: "AuthorityEvaluation",
+      eventType: "AuthorityEvaluationPerformed",
+      version: 1,
+      payload: {
+        actorId: input.actorId,
+        action: input.action,
+        domain: input.domain,
+        allowed: false,
+        effectiveTier: 0,
+        requiredTier: 0,
+        reasons
+      }
+    });
+
+    return {
+      allowed: false,
+      effectiveTier: 0,
+      requiredTier: 0,
+      reasons
+    };
   }
 
   const reasons: string[] = [];

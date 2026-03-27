@@ -480,11 +480,11 @@
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/approvals?actorId={{actorId}}",
+              "raw": "{{baseUrl}}/mesh/approvals?actorId={{approverActorId}}",
               "host": ["{{baseUrl}}"],
               "path": ["mesh", "approvals"],
               "query": [
-                { "key": "actorId", "value": "{{actorId}}" }
+                { "key": "actorId", "value": "{{approverActorId}}" }
               ]
             },
             "description": "Lists all PENDING approval tasks assigned to the given actor."
@@ -543,7 +543,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{approverActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -564,7 +564,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{approverActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -654,6 +654,10 @@
     {
       "key": "actorId",
       "value": "EMP-123"
+    },
+    {
+      "key": "approverActorId",
+      "value": "EMP-456"
     },
     {
       "key": "ingressId",
