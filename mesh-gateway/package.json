@@ -16,7 +16,8 @@
     "test:p2p:mesh": "node tests/mesh/run-p2p.js",
     "test:o2c:mesh": "node tests/mesh/run-o2c.js",
     "test:r2r:mesh": "node tests/mesh/run-r2r.js",
-    "test:h2r:mesh": "node tests/mesh/run-h2r.js"
+    "test:h2r:mesh": "node tests/mesh/run-h2r.js",
+    "test:mesh:all": "node tests/mesh/run-all.js"
   },
   "engines": {
     "node": ">=20"

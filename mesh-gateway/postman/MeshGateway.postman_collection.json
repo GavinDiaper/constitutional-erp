@@ -1646,7 +1646,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountCode\": \"600100\",\n  \"accountName\": \"Mesh R2R Expense\",\n  \"accountType\": \"Expense\"\n}"
+              "raw": "{\n  \"accountCode\": \"{{r2rAccountCode}}\",\n  \"accountName\": \"Mesh R2R Expense {{r2rAccountCode}}\",\n  \"accountType\": \"Expense\"\n}"
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
@@ -1662,6 +1662,15 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"r2rAccountCode\", \"600\" + String(Date.now()).slice(-6));"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -2074,7 +2083,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Mesh H2R Employee\",\n  \"email\": \"mesh.h2r.employee@constitutional.local\"\n}"
+              "raw": "{\n  \"name\": \"Mesh H2R Employee\",\n  \"email\": \"{{h2rEmployeeEmail}}\"\n}"
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/h2r/employees",
@@ -2090,6 +2099,15 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"h2rEmployeeEmail\", \"mesh.h2r.employee+\" + Date.now() + \"@constitutional.local\");"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
