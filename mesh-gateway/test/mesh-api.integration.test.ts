@@ -61,6 +61,10 @@ function buildAdapter(input: {
   return {
     id: input.id,
     canHandle: input.canHandle,
+    buildMeshPath: (domain, resource, id, action, explicit = false) =>
+      action
+        ? `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}/${action}`
+        : `${explicit ? `/mesh/${input.id}` : "/mesh"}/${domain}/${resource}/${id}`,
     health: async () => input.health,
     fetchResource: async (_meshPath) => {
       input.onFetch?.();
@@ -144,7 +148,7 @@ test("GET /mesh uses first matching adapter and returns canonical links without 
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient() as unknown as never,
-    adapterRegistry: new AdapterRegistry([firstAdapter, secondAdapter])
+    adapterRegistry: new AdapterRegistry([firstAdapter, secondAdapter], "foundation")
   });
 
   const response = await request(appWithStubs)
@@ -171,7 +175,7 @@ test("GET /mesh/ready returns 503 when all adapters are unhealthy", async () => 
   const appWithUnhealthyDeps = createApp({
     authorityClient: buildAuthorityClient(true) as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([unhealthyAdapter])
+    adapterRegistry: new AdapterRegistry([unhealthyAdapter], "foundation")
   });
 
   const response = await request(appWithUnhealthyDeps).get("/mesh/ready");
@@ -196,7 +200,7 @@ test("GET /mesh/ready returns 200 when at least one adapter is healthy", async (
   const appWithMixedAdapterHealth = createApp({
     authorityClient: buildAuthorityClient(true) as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([unhealthy, healthy])
+    adapterRegistry: new AdapterRegistry([unhealthy, healthy], "foundation")
   });
 
   const response = await request(appWithMixedAdapterHealth).get("/mesh/ready");
@@ -223,7 +227,7 @@ test("POST /mesh action executes via adapter on allow", async () => {
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter])
+    adapterRegistry: new AdapterRegistry([adapter], "foundation")
   });
 
   const response = await request(appWithStubs)
@@ -251,7 +255,7 @@ test("POST /mesh action returns 403 and does not execute adapter on deny", async
   const appWithStubs = createApp({
     authorityClient: buildAuthorityClient() as unknown as never,
     governanceClient: buildGovernanceClient(true) as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter])
+    adapterRegistry: new AdapterRegistry([adapter], "foundation")
   });
 
   const response = await request(appWithStubs)
@@ -289,7 +293,7 @@ test("POST /mesh action returns 202 with task details when approval is required"
     governanceClient: governanceStub as unknown as never,
     adapterRegistry: new AdapterRegistry([
       buildAdapter({ id: "foundation", canHandle: () => true, health: true })
-    ])
+    ], "foundation")
   });
 
   const response = await request(appWithStubs)
@@ -348,7 +352,7 @@ test("Approval replay uses stored adapter id and meshActionPath for execution", 
       getEligibleApprovers: async () => ["EMP-777"]
     } as unknown as never,
     governanceClient: governanceStub as unknown as never,
-    adapterRegistry: new AdapterRegistry([adapter])
+    adapterRegistry: new AdapterRegistry([adapter], "foundation")
   });
 
   const createResponse = await request(appWithStubs)

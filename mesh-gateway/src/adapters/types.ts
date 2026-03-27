@@ -16,6 +16,7 @@ export interface CanonicalActionResult {
 export interface BackendAdapter {
   id: string;
   canHandle(meshPath: string): boolean;
+  buildMeshPath(domain: string, resource: string, id: string, action?: string, explicit?: boolean): string;
   fetchResource(meshPath: string, headers: Record<string, string>): Promise<{ status: number; resource: CanonicalResource }>;
   executeAction(meshPath: string, body: unknown, headers: Record<string, string>): Promise<CanonicalActionResult>;
   health(): Promise<boolean>;

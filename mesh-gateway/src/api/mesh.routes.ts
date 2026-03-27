@@ -11,15 +11,64 @@ import { logMeshEvent } from "../events/decisionLog";
 import { requireActorId } from "../middleware/requireActor";
 import { HttpError } from "../utils/errors";
 
-const pathSchema = z.object({
+type LegacyResourceParams = z.infer<typeof legacyPathSchema>;
+type ExplicitResourceParams = z.infer<typeof explicitPathSchema>;
+type LegacyActionParams = z.infer<typeof legacyActionPathSchema>;
+type ExplicitActionParams = z.infer<typeof explicitActionPathSchema>;
+type ResourceParams = LegacyResourceParams | ExplicitResourceParams;
+type ActionParams = LegacyActionParams | ExplicitActionParams;
+
+const legacyPathSchema = z.object({
   domain: z.string().min(1),
   resource: z.string().min(1),
   id: z.string().min(1)
 });
 
-const actionPathSchema = pathSchema.extend({
+const explicitPathSchema = legacyPathSchema.extend({
+  adapterId: z.string().min(1)
+});
+
+const legacyActionPathSchema = legacyPathSchema.extend({
   action: z.string().min(1)
 });
+
+const explicitActionPathSchema = explicitPathSchema.extend({
+  action: z.string().min(1)
+});
+
+function parseResourceRequest(params: Record<string, string>): ResourceParams {
+  return "adapterId" in params ? explicitPathSchema.parse(params) : legacyPathSchema.parse(params);
+}
+
+function parseActionRequest(params: Record<string, string>): ActionParams {
+  return "adapterId" in params ? explicitActionPathSchema.parse(params) : legacyActionPathSchema.parse(params);
+}
+
+function selectedAdapterId(params: ResourceParams | ActionParams): string | undefined {
+  return "adapterId" in params ? params.adapterId : undefined;
+}
+
+function buildMeshResourcePath(input: {
+  adapterId?: string;
+  domain: string;
+  resource: string;
+  id: string;
+}) {
+  return input.adapterId
+    ? `/mesh/${input.adapterId}/${input.domain}/${input.resource}/${input.id}`
+    : `/mesh/${input.domain}/${input.resource}/${input.id}`;
+}
+
+function buildMeshActionPath(input: {
+  adapterId?: string;
+  domain: string;
+  resource: string;
+  id: string;
+  action: string;
+}) {
+  const resourcePath = buildMeshResourcePath(input);
+  return `${resourcePath}/${input.action}`;
+}
 
 export function createMeshRouter(input: {
   actorHeader: string;
@@ -29,13 +78,13 @@ export function createMeshRouter(input: {
 }) {
   const router = Router();
 
-  router.get("/:domain/:resource/:id", async (req, res, next) => {
+  const handleGet = async (req: any, res: any, next: any) => {
     try {
       const actorId = requireActorId(req, input.actorHeader);
-      const params = pathSchema.parse(req.params);
+      const params = parseResourceRequest(req.params as Record<string, string>);
       const domain = parseDomainSegment(params.domain);
-      const meshResourcePath = `/mesh/${params.domain}/${params.resource}/${params.id}`;
-      const adapter = input.adapterRegistry.resolve(meshResourcePath);
+      const meshResourcePath = buildMeshResourcePath(params);
+      const adapter = input.adapterRegistry.resolve(meshResourcePath, selectedAdapterId(params));
 
       const upstream = await adapter.fetchResource(meshResourcePath, {});
       const context = buildDomainContext(domain, upstream.resource.attributes, actorId);
@@ -70,9 +119,8 @@ export function createMeshRouter(input: {
             continue;
           }
 
-          const href = link.href.startsWith("/api/v1/") ? link.href.replace("/api/v1/", "/mesh/") : link.href;
           filtered[transition] = {
-            href,
+            href: link.href,
             method: link.method,
             requiresApproval: governanceDecision.requiresApproval,
             requiredApproverTier: governanceDecision.requiredApproverTier,
@@ -93,6 +141,7 @@ export function createMeshRouter(input: {
         resource: `${params.resource}/${params.id}`,
         decision: "Filtered",
         payload: {
+          adapterId: adapter.id,
           removedTransitions
         }
       });
@@ -101,19 +150,19 @@ export function createMeshRouter(input: {
     } catch (error) {
       next(error);
     }
-  });
+  };
 
-  router.post("/:domain/:resource/:id/:action", async (req, res, next) => {
+  const handlePost = async (req: any, res: any, next: any) => {
     try {
       const actorId = requireActorId(req, input.actorHeader);
-      const params = actionPathSchema.parse(req.params);
+      const params = parseActionRequest(req.params as Record<string, string>);
       const domain = parseDomainSegment(params.domain);
       const resourceId = params.id;
       const action = params.action;
       const requestBody = req.body ?? {};
-      const meshResourcePath = `/mesh/${params.domain}/${params.resource}/${params.id}`;
-      const meshActionPath = `${meshResourcePath}/${action}`;
-      const adapter = input.adapterRegistry.resolve(meshActionPath);
+      const meshResourcePath = buildMeshResourcePath(params);
+      const meshActionPath = buildMeshActionPath(params);
+      const adapter = input.adapterRegistry.resolve(meshActionPath, selectedAdapterId(params));
 
       const resourceResponse = await adapter.fetchResource(meshResourcePath, {});
       const context = buildDomainContext(domain, resourceResponse.resource.attributes, actorId);
@@ -134,7 +183,7 @@ export function createMeshRouter(input: {
           resource: `${params.resource}/${resourceId}`,
           decision: "Denied",
           reason: authorityDecision.reasons.join(",") || "AuthorityDenied",
-          payload: { authorityDecision }
+          payload: { adapterId: adapter.id, authorityDecision }
         });
 
         throw new HttpError(403, "action_denied", "Action denied by Authority Engine");
@@ -157,7 +206,7 @@ export function createMeshRouter(input: {
           resource: `${params.resource}/${resourceId}`,
           decision: "Denied",
           reason: governanceDecision.violations.join(",") || "GovernanceDenied",
-          payload: { governanceDecision }
+          payload: { adapterId: adapter.id, governanceDecision }
         });
 
         throw new HttpError(403, "action_denied", "Action denied by Governance Engine");
@@ -199,6 +248,7 @@ export function createMeshRouter(input: {
           resource: `${params.resource}/${resourceId}`,
           decision: "ApprovalRequired",
           payload: {
+            adapterId: adapter.id,
             taskId: created.taskId,
             requiredTier,
             approvers,
@@ -211,7 +261,8 @@ export function createMeshRouter(input: {
           status: "PENDING",
           requiredTier,
           approvers,
-          requestFingerprint
+          requestFingerprint,
+          adapterId: adapter.id
         });
         return;
       }
@@ -226,6 +277,7 @@ export function createMeshRouter(input: {
         resource: `${params.resource}/${resourceId}`,
         decision: upstream.status < 400 ? "Executed" : "ForwardedWithError",
         payload: {
+          adapterId: adapter.id,
           status: upstream.status
         }
       });
@@ -234,7 +286,12 @@ export function createMeshRouter(input: {
     } catch (error) {
       next(error);
     }
-  });
+  };
+
+  router.get("/:domain/:resource/:id", handleGet);
+  router.get("/:adapterId/:domain/:resource/:id", handleGet);
+  router.post("/:domain/:resource/:id/:action", handlePost);
+  router.post("/:adapterId/:domain/:resource/:id/:action", handlePost);
 
   return router;
 }

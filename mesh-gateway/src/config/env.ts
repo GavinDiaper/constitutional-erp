@@ -6,11 +6,13 @@ export interface AppConfig {
   apiKey: string;
   actorIdHeader: string;
   databasePath: string;
-  adapterBaseUrl: string;
-  adapterApiKey: string;
-  adapterIngressId: string;
-  adapterIngressIdHeader: string;
-  adapterBackendBasePath: string;
+  defaultAdapterId: string;
+  foundationAdapterId: string;
+  foundationAdapterBaseUrl: string;
+  foundationAdapterApiKey: string;
+  foundationAdapterIngressId: string;
+  foundationAdapterIngressIdHeader: string;
+  foundationAdapterBackendBasePath: string;
   authorityEngineUrl: string;
   authorityEngineApiKey: string;
   governanceEngineUrl: string;
@@ -33,11 +35,19 @@ export function loadConfig(): AppConfig {
     apiKey: required("API_KEY", "change-me"),
     actorIdHeader: required("ACTOR_ID_HEADER", "x-actor-id").toLowerCase(),
     databasePath: process.env.DATABASE_PATH ?? "mesh-gateway.db",
-    adapterBaseUrl: required("ADAPTER_BASE_URL", "http://localhost:3000"),
-    adapterApiKey: required("ADAPTER_API_KEY", "change-me"),
-    adapterIngressId: required("ADAPTER_INGRESS_ID", "foundation-ingress"),
-    adapterIngressIdHeader: required("ADAPTER_INGRESS_ID_HEADER", "x-ingress-id").toLowerCase(),
-    adapterBackendBasePath: required("ADAPTER_BACKEND_BASE_PATH", "/api/v1"),
+    defaultAdapterId: required("DEFAULT_ADAPTER_ID", process.env.FOUNDATION_ADAPTER_ID ?? "foundation"),
+    foundationAdapterId: required("FOUNDATION_ADAPTER_ID", "foundation"),
+    foundationAdapterBaseUrl: required("FOUNDATION_ADAPTER_BASE_URL", process.env.ADAPTER_BASE_URL ?? "http://localhost:3000"),
+    foundationAdapterApiKey: required("FOUNDATION_ADAPTER_API_KEY", process.env.ADAPTER_API_KEY ?? "change-me"),
+    foundationAdapterIngressId: required("FOUNDATION_ADAPTER_INGRESS_ID", process.env.ADAPTER_INGRESS_ID ?? "foundation-ingress"),
+    foundationAdapterIngressIdHeader: required(
+      "FOUNDATION_ADAPTER_INGRESS_ID_HEADER",
+      process.env.ADAPTER_INGRESS_ID_HEADER ?? "x-ingress-id"
+    ).toLowerCase(),
+    foundationAdapterBackendBasePath: required(
+      "FOUNDATION_ADAPTER_BACKEND_BASE_PATH",
+      process.env.ADAPTER_BACKEND_BASE_PATH ?? "/api/v1"
+    ),
     authorityEngineUrl: required("AUTHORITY_ENGINE_URL", "http://localhost:4001"),
     authorityEngineApiKey: required("AUTHORITY_ENGINE_API_KEY", "change-me"),
     governanceEngineUrl: required("GOVERNANCE_ENGINE_URL", "http://localhost:4002"),
