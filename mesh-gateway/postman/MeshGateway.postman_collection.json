@@ -7,6 +7,169 @@
   },
   "item": [
     {
+      "name": "00 – P2P Setup (Foundation ERP fixture)",
+      "description": "Creates a Supplier → Requisition (submit → approve → convert to PO) directly against Foundation ERP. Captures supplierId, requisitionId, and poId as environment variables for use in the mesh tests below.",
+      "item": [
+        {
+          "name": "Create Supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierName\": \"Mesh Test Supplier\",\n  \"email\": \"ap@mesh-test.local\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/suppliers",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "suppliers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"supplierId\", body.supplier_id);",
+                  "pm.test(\"supplierId captured\", function () { pm.expect(body.supplier_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Requisition",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requester\": \"mesh.test.user\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"requisitionId\", body.requisition_id);",
+                  "pm.test(\"Requisition in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Requisition",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/submit",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "submit"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Submitted\", function () { pm.expect(pm.response.json().state).to.eql(\"Submitted\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Requisition",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+            ],
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/approve",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "approve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Approved\", function () { pm.expect(pm.response.json().state).to.eql(\"Approved\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convert Requisition to PO",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/convert",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions", "{{requisitionId}}", "convert"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"poId\", body.po_id);",
+                  "pm.test(\"PO in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });",
+                  "pm.test(\"poId captured\", function () { pm.expect(body.po_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "10 – Health",
       "item": [
         {
@@ -41,7 +204,7 @@
       "name": "20 – Hypermedia Proxy (GET resource)",
       "item": [
         {
-          "name": "GET /mesh/P2P/purchase-orders/:id",
+          "name": "GET /mesh/p2p/purchase-orders/:id",
           "request": {
             "method": "GET",
             "header": [
@@ -49,9 +212,9 @@
               { "key": "x-actor-id", "value": "{{actorId}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
             },
             "description": "Fetches a canonical resource through the selected backend adapter and returns it with `links` filtered to only transitions the actor is constitutionally permitted to invoke. Denied transitions are removed; approval-required transitions are annotated."
           }
@@ -110,7 +273,7 @@
       "name": "30 – Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/P2P/purchase-orders/:id/approve – Allow (direct execution)",
+          "name": "POST /mesh/p2p/purchase-orders/:id/issue – Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -120,18 +283,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"notes\": \"Approved after budget review\"\n}"
+              "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001/approve",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-001", "approve"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
             },
-            "description": "Executes the `approve` action on a purchase order. If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
+            "description": "Issues a purchase order (Draft → Issued). If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
           }
         },
         {
-          "name": "POST /mesh/P2P/purchase-orders/:id/approve – Requires Approval (202 + task)",
+          "name": "POST /mesh/p2p/purchase-orders/:id/acknowledge – Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -141,18 +304,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"notes\": \"High-value order – needs senior approval\"\n}"
+              "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-999/approve",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/acknowledge",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-999", "approve"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "acknowledge"]
             },
-            "description": "When governance determines the action requires approval, the gateway returns HTTP 202 with a task ID rather than forwarding immediately. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Eligible approvers are notified via the assignment table."
+            "description": "Acknowledges a purchase order (Issued → Acknowledged). Run after the issue step."
           }
         },
         {
-          "name": "POST /mesh/P2P/purchase-orders/:id/submit",
+          "name": "POST /mesh/p2p/purchase-orders/:id/issue – Requires Approval (202 + task, illustrative)",
           "request": {
             "method": "POST",
             "header": [
@@ -162,14 +325,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplierId\": \"SUPP-42\",\n  \"amount\": 5000\n}"
+              "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001/submit",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}/issue",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-001", "submit"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
             },
-            "description": "Performs the `submit` action on a purchase order. Triggers the full authority → governance decision pipeline."
+            "description": "Illustrative only – when governance determines the action requires approval, the gateway returns HTTP 202 with a task ID. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Actual outcome (allow vs 202) depends on governance engine configuration for the actor/resource combination."
           }
         },
         {
@@ -285,31 +448,31 @@
       "name": "50 – Error Cases",
       "item": [
         {
-          "name": "GET /mesh/P2P/purchase-orders/:id – missing x-api-key (401)",
+          "name": "GET /mesh/p2p/purchase-orders/:id – missing x-api-key (401)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "x-actor-id", "value": "{{actorId}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
             },
             "description": "Expect 401 – API key absent."
           }
         },
         {
-          "name": "GET /mesh/P2P/purchase-orders/:id – missing x-actor-id (400)",
+          "name": "GET /mesh/p2p/purchase-orders/:id – missing x-actor-id (400)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/mesh/P2P/purchase-orders/PO-001",
+              "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "P2P", "purchase-orders", "PO-001"]
+              "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
             },
             "description": "Expect 400 missing_actor – actor header absent."
           }
@@ -344,12 +507,20 @@
       "value": "http://localhost:4003"
     },
     {
+      "key": "foundationBaseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
       "key": "apiKey",
       "value": "change-me"
     },
     {
       "key": "actorId",
       "value": "EMP-123"
+    },
+    {
+      "key": "ingressId",
+      "value": "foundation-ingress"
     }
   ]
 }
