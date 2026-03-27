@@ -12,7 +12,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
     "test:integration": "tsx --test test/**/*.test.ts",
-    "test:postman": "node scripts/run-postman.js"
+    "test:postman": "node scripts/run-postman.js",
+    "test:p2p:mesh": "node tests/mesh/run-p2p.js"
   },
   "engines": {
     "node": ">=20"

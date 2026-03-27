@@ -217,7 +217,21 @@
               "path": ["mesh", "p2p", "purchase-orders", "{{poId}}"]
             },
             "description": "Fetches a canonical resource through the selected backend adapter and returns it with `links` filtered to only transitions the actor is constitutionally permitted to invoke. Denied transitions are removed; approval-required transitions are annotated."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Canonical resource contains id\", function () { pm.expect(body.id).to.be.a(\"string\"); });",
+                  "pm.test(\"Canonical resource includes links object\", function () { pm.expect(body.links).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "GET /mesh/R2R/journal-entries/:id",
@@ -291,7 +305,39 @@
               "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
             },
             "description": "Issues a purchase order (Draft → Issued). If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Issue returns supported outcome\", function () { pm.expect([200, 201, 202, 403]).to.include(code); });",
+                  "if (code === 202) {",
+                  "  var body = pm.response.json();",
+                  "  pm.environment.set(\"approvalExpected\", \"true\");",
+                  "  pm.environment.set(\"approvalTaskId\", body.taskId);",
+                  "  pm.test(\"Approval task created\", function () { pm.expect(body.taskId).to.be.a(\"string\"); });",
+                  "  pm.test(\"Approval payload has pending status\", function () { pm.expect(body.status).to.eql(\"PENDING\"); });",
+                  "  pm.test(\"Approval payload has requiredTier\", function () { pm.expect(body.requiredTier).to.not.eql(undefined); });",
+                  "} else {",
+                  "  pm.environment.set(\"approvalExpected\", \"false\");",
+                  "  pm.environment.set(\"approvalTaskId\", \"TASK-NOTEXIST\");",
+                  "}",
+                  "if (code === 200 || code === 201) {",
+                  "  pm.environment.set(\"lastIssueOutcome\", \"executed\");",
+                  "}",
+                  "if (code === 403) {",
+                  "  pm.environment.set(\"lastIssueOutcome\", \"denied\");",
+                  "}",
+                  "if (code === 202) {",
+                  "  pm.environment.set(\"lastIssueOutcome\", \"approval_required\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "POST /mesh/p2p/purchase-orders/:id/acknowledge – Allow (direct execution)",
@@ -312,7 +358,34 @@
               "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "acknowledge"]
             },
             "description": "Acknowledges a purchase order (Issued → Acknowledged). Run after the issue step."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Acknowledge returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) {",
+                  "  var body = pm.response.json();",
+                  "  pm.environment.set(\"approvalExpected\", \"true\");",
+                  "  pm.environment.set(\"approvalTaskId\", body.taskId);",
+                  "  pm.test(\"Approval task created\", function () { pm.expect(body.taskId).to.be.a(\"string\"); });",
+                  "}",
+                  "if (code === 200 || code === 201) {",
+                  "  pm.environment.set(\"lastAcknowledgeOutcome\", \"executed\");",
+                  "}",
+                  "if (code === 403) {",
+                  "  pm.environment.set(\"lastAcknowledgeOutcome\", \"denied\");",
+                  "}",
+                  "if (code === 409) {",
+                  "  pm.environment.set(\"lastAcknowledgeOutcome\", \"invalid_transition\");",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "POST /mesh/p2p/purchase-orders/:id/issue – Requires Approval (202 + task, illustrative)",
@@ -333,7 +406,24 @@
               "path": ["mesh", "p2p", "purchase-orders", "{{poId}}", "issue"]
             },
             "description": "Illustrative only – when governance determines the action requires approval, the gateway returns HTTP 202 with a task ID. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Actual outcome (allow vs 202) depends on governance engine configuration for the actor/resource combination."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var code = pm.response.code;",
+                  "pm.test(\"Issue replay check returns supported outcome\", function () { pm.expect([200, 201, 202, 403, 409]).to.include(code); });",
+                  "if (code === 202) {",
+                  "  var body = pm.response.json();",
+                  "  pm.environment.set(\"approvalExpected\", \"true\");",
+                  "  pm.environment.set(\"approvalTaskId\", body.taskId);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "POST /mesh/R2R/journal-entries/:id/post",
@@ -398,10 +488,57 @@
               ]
             },
             "description": "Lists all PENDING approval tasks assigned to the given actor."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Approvals list returns 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Approvals payload includes data array\", function () { pm.expect(body.data).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "POST /mesh/approvals/:taskId/approve",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var taskId = pm.environment.get(\"approvalTaskId\");",
+                  "if (!taskId) {",
+                  "  pm.environment.set(\"approvalTaskId\", \"TASK-NOTEXIST\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var expected = pm.environment.get(\"approvalExpected\") === \"true\";",
+                  "var code = pm.response.code;",
+                  "if (expected) {",
+                  "  pm.test(\"Approval execution returns valid status\", function () { pm.expect([200, 403, 409, 502]).to.include(code); });",
+                  "  if (code === 200) {",
+                  "    var body = pm.response.json();",
+                  "    pm.test(\"Approval result has EXECUTED status\", function () { pm.expect(body.status).to.eql(\"EXECUTED\"); });",
+                  "  }",
+                  "} else {",
+                  "  pm.test(\"No pending approval task for this run\", function () { pm.expect([404]).to.include(code); });",
+                  "}",
+                  "pm.environment.unset(\"approvalExpected\");"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -414,9 +551,9 @@
               "raw": "{\n  \"notes\": \"Approved – reviewed supporting documents\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/mesh/approvals/TASK-XXXXXXXX/approve",
+              "raw": "{{baseUrl}}/mesh/approvals/{{approvalTaskId}}/approve",
               "host": ["{{baseUrl}}"],
-              "path": ["mesh", "approvals", "TASK-XXXXXXXX", "approve"]
+              "path": ["mesh", "approvals", "{{approvalTaskId}}", "approve"]
             },
             "description": "Approves a pending task. Mesh re-evaluates authority and governance before forwarding the original action through the stored backend adapter reference. On success the task transitions to EXECUTED. Returns 409 if the task is no longer PENDING, 403 if the actor is not assigned."
           }
@@ -521,6 +658,14 @@
     {
       "key": "ingressId",
       "value": "foundation-ingress"
+    },
+    {
+      "key": "approvalTaskId",
+      "value": "TASK-NOTEXIST"
+    },
+    {
+      "key": "approvalExpected",
+      "value": "false"
     }
   ]
 }
