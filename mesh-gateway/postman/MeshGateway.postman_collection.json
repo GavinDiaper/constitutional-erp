@@ -209,7 +209,7 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" }
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
@@ -239,7 +239,7 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" }
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/R2R/journal-entries/JE-001",
@@ -255,7 +255,7 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" }
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/H2R/leave-requests/LR-001",
@@ -271,7 +271,7 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" }
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/O2C/sales-orders/SO-001",
@@ -292,7 +292,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -345,7 +345,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -393,7 +393,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -431,7 +431,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -452,7 +452,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -589,7 +589,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "x-actor-id", "value": "{{actorId}}" }
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" }
             ],
             "url": {
               "raw": "{{baseUrl}}/mesh/p2p/purchase-orders/{{poId}}",
@@ -620,7 +620,7 @@
             "method": "POST",
             "header": [
               { "key": "x-api-key", "value": "{{apiKey}}" },
-              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "x-actor-id", "value": "{{requesterActorId}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -652,7 +652,7 @@
       "value": "change-me"
     },
     {
-      "key": "actorId",
+      "key": "requesterActorId",
       "value": "EMP-123"
     },
     {
