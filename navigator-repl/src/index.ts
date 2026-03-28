@@ -99,9 +99,11 @@ async function main() {
         } else {
           // Interactive menu
           output.write("\n");
-          session.domain = (await selectDomain(rl)) as SessionContext["domain"];
-          session.aggregateType = await selectAggregateType(rl, session.domain);
-          session.aggregateId = await selectAggregateId(rl, session.aggregateType);
+          const domain = (await selectDomain(rl)) as SessionContext["domain"];
+          session.domain = domain;
+          const aggregateType = await selectAggregateType(rl, domain);
+          session.aggregateType = aggregateType;
+          session.aggregateId = await selectAggregateId(rl, aggregateType);
           result = contextString(session);
         }
       } else if (cmd === "show") {
