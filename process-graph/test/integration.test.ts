@@ -537,3 +537,84 @@ test("POST /graph/approvals/:taskId/resolve approves and executes a task", async
   assert.equal(res.body.resource.state, "Approved");
   assert.equal(res.body.task.status, "Approved");
 });
+
+test("POST /graph/approvals/:taskId/resolve returns stale_approval when state changed", async () => {
+  const task = createApprovalTask({
+    domain: "P2P",
+    aggregateType: "requisition",
+    aggregateId: "REQ-STALE-1",
+    action: "approve",
+    actorId: "EMP-7",
+    payload: { amount: 4000 },
+    requiredApproverTier: 2,
+    status: "Pending"
+  });
+
+  const restoreFetch = installExternalFetchMock({
+    ledgerEvents: [
+      makeLedgerEvent({ eventType: "P2P.RequisitionCreated", aggregateId: "REQ-STALE-1", aggregateType: "requisition", domain: "P2P", payload: { requesterId: "EMP-7", amount: 4000 } }),
+      makeLedgerEvent({ eventType: "P2P.RequisitionSubmitted", aggregateId: "REQ-STALE-1", aggregateType: "requisition", domain: "P2P" }),
+      makeLedgerEvent({ eventType: "P2P.RequisitionApproved", aggregateId: "REQ-STALE-1", aggregateType: "requisition", domain: "P2P" })
+    ]
+  });
+
+  const app = createApp();
+  const res = await request(app)
+    .post(`/graph/approvals/${task.id}/resolve`)
+    .set("x-api-key", "test-key")
+    .set("x-actor-id", "EMP-APPROVER-STALE")
+    .send({ resolution: "Approved", note: "stale path" })
+    .expect(409);
+
+  restoreFetch();
+
+  assert.equal(res.body.title, "stale_approval");
+  assert.equal(res.body.task.status, "Approved");
+});
+
+test("POST /graph/approvals/:taskId/resolve rejects already-resolved tasks", async () => {
+  const task = createApprovalTask({
+    domain: "P2P",
+    aggregateType: "requisition",
+    aggregateId: "REQ-DOUBLE-1",
+    action: "approve",
+    actorId: "EMP-8",
+    payload: { amount: 2500 },
+    requiredApproverTier: 2,
+    status: "Pending"
+  });
+
+  const restoreFetch = installExternalFetchMock({
+    ledgerEvents: [
+      makeLedgerEvent({ eventType: "P2P.RequisitionCreated", aggregateId: "REQ-DOUBLE-1", aggregateType: "requisition", domain: "P2P", payload: { requesterId: "EMP-8", amount: 2500 } }),
+      makeLedgerEvent({ eventType: "P2P.RequisitionSubmitted", aggregateId: "REQ-DOUBLE-1", aggregateType: "requisition", domain: "P2P" })
+    ],
+    authorityResponse: { allowed: true, effectiveTier: 4, requiredTier: 2, reasons: [] },
+    governanceResponse: {
+      allowed: true,
+      requiresApproval: false,
+      violations: [],
+      constraints: [],
+      matchedRules: []
+    }
+  });
+
+  const app = createApp();
+  await request(app)
+    .post(`/graph/approvals/${task.id}/resolve`)
+    .set("x-api-key", "test-key")
+    .set("x-actor-id", "EMP-APPROVER-DOUBLE")
+    .send({ resolution: "Approved" })
+    .expect(200);
+
+  const second = await request(app)
+    .post(`/graph/approvals/${task.id}/resolve`)
+    .set("x-api-key", "test-key")
+    .set("x-actor-id", "EMP-APPROVER-DOUBLE")
+    .send({ resolution: "Approved" })
+    .expect(409);
+
+  restoreFetch();
+
+  assert.equal(second.body.title, "approval_task_already_resolved");
+});
