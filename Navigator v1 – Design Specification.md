@@ -1256,33 +1256,56 @@ Navigator should POST canonical events to CEP using the same schema as all other
 
 ### **Endpoint**
 ```
-POST /events
+POST /api/v1/events/ingest
 ```
 
 ### **Payload**
-A canonical event:
+An ingestion envelope containing one or more canonical events:
 
 ```json
 {
-  "eventType": "Navigator.ActionRecommended",
-  "eventVersion": 1,
-  "domain": { "name": "P2P", "aggregateType": "purchase-order", "aggregateId": "PO-123" },
-  "actor": { "id": "USR-001", "role": "navigator" },
-  "timestamp": "2026-03-28T09:15:00Z",
-  "payload": {
-    "rankedActions": [...],
-    "chosenAction": "acknowledge",
-    "score": 0.87,
-    "rationale": "Supplier has already confirmed..."
-  },
-  "metadata": {
-    "correlationId": "...",
-    "causationId": "..."
-  }
+  "events": [
+    {
+      "eventId": "...",
+      "eventType": "Navigator.ActionRecommended",
+      "eventVersion": 1,
+      "occurredAt": "2026-03-28T09:15:00Z",
+      "source": {
+        "system": "navigator-ai",
+        "streamId": "navigator-p2p-purchase-order-PO-123",
+        "sequence": 1
+      },
+      "correlation": {
+        "correlationId": "...",
+        "causationId": "..."
+      },
+      "actor": {
+        "actorId": "USR-001",
+        "ingressId": "navigator-ai",
+        "impersonated": false
+      },
+      "domain": {
+        "domain": "P2P",
+        "aggregateType": "purchase-order",
+        "aggregateId": "PO-123"
+      },
+      "payload": {
+        "rankedActions": []
+      },
+      "metadata": {
+        "schemaVersion": 1,
+        "tags": ["navigator"],
+        "flags": {
+          "isReplay": false,
+          "isSynthetic": false
+        }
+      }
+    }
+  ]
 }
 ```
 
-Navigator should not need a special endpoint — it should use the **same ingestion API** as Mesh Gateway and other producers.
+Navigator should not require a separate storage path of its own for constitutional events; it should push into CEP's authenticated ingestion API and let CEP validate, deduplicate, and append to the ledger.
 
 CEP should simply:
 
@@ -1603,7 +1626,7 @@ This ensures:
 ## 9. Non-goals for REPL v1
 
 - No multi-user sessions.  
-- No persistence of REPL sessions.  
+- No persisted interactive session state beyond transcript and audit storage in Navigator.  
 - No complex scripting language (simple commands only).  
 - No direct ERP calls (always via Navigator).
 
@@ -1620,25 +1643,68 @@ In short:
 ### Directory structure
 
 /navigator-ai
-  /core
-    /reasoning
-    /simulation
-    /decision
-    /execution
-    /events
-    index.ts
-  /client
-    navigator-client.ts
+  package.json
+  .env.example
+  /scripts
+    start-server.js
+  /src
+    /api
+      navigator.routes.ts
+    /clients
+      authorityClient.ts
+      cepClient.ts
+      governanceClient.ts
+      http.ts
+      meshClient.ts
+      pgeClient.ts
+    /config
+      env.ts
+    /contracts
+      navigatorTypes.ts
+    /db
+      connection.ts
+      migrate.ts
+      /migrations
+        001_init.sql
+    /domain
+      runtimeState.ts
+      /stores
+        navigatorStore.ts
+    /llm
+      azureOpenAiClient.ts
+    /middleware
+      apiKeyAuth.ts
+      readinessGate.ts
+    /services
+      decisionEngine.ts
+      executor.ts
+      explainer.ts
+      interpreter.ts
+      navigatorService.ts
+      ranker.ts
+      simulator.ts
+    app.ts
+    server.ts
   /tests
     unit/
     integration/
 
 /navigator-repl
-  /commands
-  /formatters
-  /session
+  package.json
+  .env.example
+  /src
+    /client
+      navigatorClient.ts
+    /config
+      env.ts
+    /format
+      renderer.ts
+    /state
+      session.ts
+    index.ts
   /tests
-  repl.ts
+    unit/
+    integration/
 
 /canvas-ui (future)
 /distributed-fabric (future)
