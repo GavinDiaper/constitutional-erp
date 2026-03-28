@@ -465,3 +465,75 @@ test("GET /graph/approvals returns pending tasks", async () => {
 
   assert.ok(Array.isArray(res.body.data));
 });
+
+test("GET /graph with actorId annotates approval-required links", async () => {
+  const restoreFetch = installExternalFetchMock({
+    ledgerEvents: [
+      makeLedgerEvent({ eventType: "P2P.RequisitionCreated", aggregateId: "REQ-LINK-1", aggregateType: "requisition", domain: "P2P", payload: { requesterId: "EMP-5", amount: 95000 } })
+    ],
+    authorityResponse: { allowed: true, effectiveTier: 2, requiredTier: 1, reasons: [] },
+    governanceResponse: {
+      allowed: true,
+      requiresApproval: true,
+      requiredApproverTier: 5,
+      violations: [],
+      constraints: ["executive approval"],
+      matchedRules: ["RULE-EXEC-1"]
+    }
+  });
+
+  const app = createApp();
+  const res = await request(app)
+    .get("/graph/p2p/requisition/REQ-LINK-1")
+    .set("x-api-key", "test-key")
+    .set("x-actor-id", "EMP-5")
+    .expect(200);
+
+  restoreFetch();
+
+  assert.equal(res.body.links.submit.requiresApproval, true);
+  assert.equal(res.body.links.submit.requiredTier, 5);
+  assert.equal(res.body.links.cancel.requiresApproval, true);
+});
+
+test("POST /graph/approvals/:taskId/resolve approves and executes a task", async () => {
+  const task = createApprovalTask({
+    domain: "P2P",
+    aggregateType: "requisition",
+    aggregateId: "REQ-RESOLVE-1",
+    action: "approve",
+    actorId: "EMP-6",
+    payload: { amount: 1000 },
+    requiredApproverTier: 3,
+    status: "Pending"
+  });
+
+  const restoreFetch = installExternalFetchMock({
+    ledgerEvents: [
+      makeLedgerEvent({ eventType: "P2P.RequisitionCreated", aggregateId: "REQ-RESOLVE-1", aggregateType: "requisition", domain: "P2P", payload: { requesterId: "EMP-6", amount: 1000 } }),
+      makeLedgerEvent({ eventType: "P2P.RequisitionSubmitted", aggregateId: "REQ-RESOLVE-1", aggregateType: "requisition", domain: "P2P" })
+    ],
+    authorityResponse: { allowed: true, effectiveTier: 4, requiredTier: 3, reasons: [] },
+    governanceResponse: {
+      allowed: true,
+      requiresApproval: false,
+      violations: [],
+      constraints: [],
+      matchedRules: []
+    }
+  });
+
+  const app = createApp();
+  const res = await request(app)
+    .post(`/graph/approvals/${task.id}/resolve`)
+    .set("x-api-key", "test-key")
+    .set("x-actor-id", "EMP-APPROVER")
+    .send({ resolution: "Approved", note: "approved in integration test" })
+    .expect(200);
+
+  restoreFetch();
+
+  assert.equal(res.body.status, "approved_and_executed");
+  assert.equal(res.body.resource.state, "Approved");
+  assert.equal(res.body.task.status, "Approved");
+});
