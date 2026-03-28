@@ -28,7 +28,7 @@ export function evaluateAuthority(input: AuthorityCheckInput): AuthorityCheckRes
     .get(input.actorId) as { employee_id: string; status: "Active" | "OnLeave" | "Terminated" } | undefined;
 
   if (!subject) {
-    const reasons = [`Authority subject ${input.actorId} not found`];
+    const reasons = [`Authority principal ${input.actorId} not found`];
 
     appendAuthorityEvent({
       entityId: input.actorId,

@@ -1,18 +1,39 @@
 import { Interface } from "node:readline/promises";
 
-const DOMAIN_MENU = {
+export const DOMAIN_MENU = {
   "P2P": "Procure-to-Pay",
   "O2C": "Order-to-Cash",
   "H2R": "Hire-to-Retire",
   "R2R": "Record-to-Report"
 };
 
-const AGGREGATE_TYPES: Record<string, string[]> = {
+export type DomainKey = keyof typeof DOMAIN_MENU;
+
+export const AGGREGATE_TYPES: Record<DomainKey, string[]> = {
   "P2P": ["requisition", "purchase-order", "supplier-invoice", "ap-payment"],
   "O2C": ["quote", "sales-order", "ar-invoice", "ar-payment"],
   "H2R": ["employee", "leave-request"],
   "R2R": ["journal", "fiscal-period"]
 };
+
+export function normalizeDomain(input: string): DomainKey | undefined {
+  const candidate = input.trim().toUpperCase();
+  if (candidate in DOMAIN_MENU) {
+    return candidate as DomainKey;
+  }
+
+  return undefined;
+}
+
+export function getSupportedAggregateTypes(domain: string): string[] {
+  const normalized = normalizeDomain(domain);
+  return normalized ? AGGREGATE_TYPES[normalized] : [];
+}
+
+export function isSupportedAggregateType(domain: string, aggregateType: string): boolean {
+  const normalizedType = aggregateType.trim().toLowerCase();
+  return getSupportedAggregateTypes(domain).some((item) => item.toLowerCase() === normalizedType);
+}
 
 export async function selectDomain(rl: Interface): Promise<string> {
   const domains = Object.entries(DOMAIN_MENU);
@@ -37,7 +58,7 @@ export async function selectDomain(rl: Interface): Promise<string> {
 }
 
 export async function selectAggregateType(rl: Interface, domain: string): Promise<string> {
-  const types = AGGREGATE_TYPES[domain] || [];
+  const types = getSupportedAggregateTypes(domain);
   
   if (types.length === 0) {
     console.log(`No aggregate types found for domain ${domain}`);
@@ -64,7 +85,14 @@ export async function selectAggregateType(rl: Interface, domain: string): Promis
 }
 
 export async function selectActor(rl: Interface): Promise<string> {
-  const suggestions = ["system", "admin", "user", "procurement-manager", "sales-manager", "hr-admin"];
+  const suggestions = [
+    "principal.system",
+    "principal.p2p-tier1",
+    "principal.p2p-tier3",
+    "principal.o2c-tier2",
+    "principal.h2r-tier2",
+    "principal.r2r-tier3"
+  ];
   
   console.log("\nEnter Actor ID (suggestions: " + suggestions.join(", ") + ")");
   const actor = await rl.question("Actor ID: ");
@@ -94,7 +122,7 @@ export function printDomainInfo(): void {
   console.log("\n=== Domains & Aggregate Types ===\n");
   
   Object.entries(AGGREGATE_TYPES).forEach(([domain, types]) => {
-    const description = DOMAIN_MENU[domain as keyof typeof DOMAIN_MENU];
+    const description = DOMAIN_MENU[domain as DomainKey];
     console.log(`${domain} (${description})`);
     console.log(`  Types: ${types.join(", ")}`);
   });

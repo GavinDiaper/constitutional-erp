@@ -55,7 +55,7 @@ See `.env.example` for all available options.
 
 **`set actor <actorId>`**
 - Sets the current actor/user making decisions
-- Example: `set actor john.doe`, `set actor procurement-manager`
+- Example: `set actor principal.p2p-tier1`, `set actor principal.system`
 
 **`use <domain> <aggregateType> <aggregateId>`**
 - Selects the business context for analysis
@@ -121,7 +121,7 @@ See `.env.example` for all available options.
 ### Order Processing (O2C)
 
 ```
-navigator> set actor sales-manager
+navigator> set actor principal.o2c-tier2
 navigator> use O2C sales-order SO-2024-567
 navigator> propose
 navigator> explain ACT-001
@@ -133,7 +133,7 @@ navigator> execute
 ### Purchase Requisition (P2P)
 
 ```
-navigator> set actor procurement-officer
+navigator> set actor principal.p2p-tier1
 navigator> use P2P requisition REQ-2024-1234
 navigator> propose
 navigator> history
@@ -142,7 +142,7 @@ navigator> history
 ### Employee Onboarding (H2R)
 
 ```
-navigator> set actor hr-admin
+navigator> set actor principal.h2r-tier2
 navigator> use H2R employee EMP-2024-5678
 navigator> propose
 navigator> simulate ACT-002
@@ -211,7 +211,7 @@ navigator> use
 - Ensure correct syntax (space-separated arguments)
 
 ### Actions not proposed
-- Verify you've set an actor: `set actor <name>`
+- Verify you've set an actor principal: `set actor <principalId>`
 - Verify you've selected an aggregate: `use <domain> <type> <id>`
 - Check navigator-ai logs for governance constraint issues
 

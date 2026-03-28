@@ -223,6 +223,29 @@ function riskRank(level: z.infer<typeof riskLevelSchema>): number {
   return 1;
 }
 
+function isCreateOrInitiateAction(action: string): boolean {
+  const normalized = action.trim().toLowerCase();
+  return /(^|[._:-])(create|initiate)($|[._:-])/.test(normalized);
+}
+
+function conditionHasRiskGate(condition: GovernanceCondition): boolean {
+  switch (condition.type) {
+    case "AmountGreaterThan":
+    case "TierLessThan":
+    case "CredentialRequired":
+      return true;
+    case "And":
+    case "Or":
+      return condition.conditions.some((item) => conditionHasRiskGate(item));
+    default:
+      return false;
+  }
+}
+
+function hasExplicitConstitutionalMandate(reason: string): boolean {
+  return /constitutional[_\s-]?mandate/i.test(reason);
+}
+
 function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
   if (!input.authorityDecision.allowed) {
     return {
@@ -271,6 +294,15 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
         violations.push(rule.effect.reason);
         break;
       case "RequireApproval":
+        if (
+          isCreateOrInitiateAction(input.action)
+          && !conditionHasRiskGate(rule.condition)
+          && !hasExplicitConstitutionalMandate(rule.effect.reason)
+        ) {
+          constraints.push("CreateOrInitiateDefaultsNoApproval");
+          break;
+        }
+
         hasRequireApproval = true;
         requiredApproverTier = Math.max(requiredApproverTier ?? 0, rule.effect.approverTier);
         constraints.push(rule.effect.reason);

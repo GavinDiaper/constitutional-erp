@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateAuthority = evaluateAuthority;
 const connection_1 = require("../db/connection");
 const eventStore_1 = require("../events/eventStore");
-const errors_1 = require("../utils/errors");
 const credentialRequirementByAction = {
     approve: "FinancialApproval"
 };
@@ -12,7 +11,28 @@ function evaluateAuthority(input) {
         .prepare("SELECT employee_id, status FROM authority_subject WHERE employee_id = ?")
         .get(input.actorId);
     if (!subject) {
-        throw new errors_1.HttpError(404, "not_found", "Authority subject not found");
+        const reasons = [`Authority principal ${input.actorId} not found`];
+        (0, eventStore_1.appendAuthorityEvent)({
+            entityId: input.actorId,
+            entityType: "AuthorityEvaluation",
+            eventType: "AuthorityEvaluationPerformed",
+            version: 1,
+            payload: {
+                actorId: input.actorId,
+                action: input.action,
+                domain: input.domain,
+                allowed: false,
+                effectiveTier: 0,
+                requiredTier: 0,
+                reasons
+            }
+        });
+        return {
+            allowed: false,
+            effectiveTier: 0,
+            requiredTier: 0,
+            reasons
+        };
     }
     const reasons = [];
     const tierRow = connection_1.db

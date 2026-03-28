@@ -5,6 +5,7 @@ import { createApp } from "../src/app";
 import { loadConfig } from "../src/config/env";
 import { setReplayStatus } from "../src/projection/state";
 import { ensureTestDatabase, resetTestState } from "./testDb";
+import { db } from "../src/db/connection";
 
 const app = createApp();
 const apiKey = loadConfig().apiKey;
@@ -123,6 +124,45 @@ test("POST /governance/evaluate returns governance decision payload", async () =
   assert.equal(response.body.requiresApproval, true);
   assert.equal(response.body.requiredApproverTier, 3);
   assert.ok(response.body.constraints.includes("TierTooLowForThreshold"));
+});
+
+test("POST /governance/evaluate ignores stage-only create approval rule", async () => {
+  db.prepare(
+    `INSERT INTO governance_rule(
+      rule_id, domain, description, condition_json, effect_json, priority, is_active, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
+  ).run(
+    "CREATE-ONLY-APPROVAL-API",
+    "P2P",
+    "Incorrect stage-only approval rule",
+    JSON.stringify({ type: "ActionIs", action: "p2p_requisition_create" }),
+    JSON.stringify({ type: "RequireApproval", approverTier: 2, reason: "StageOnlyApproval" }),
+    5
+  );
+
+  const response = await request(app)
+    .post("/governance/evaluate")
+    .set("x-api-key", apiKey)
+    .send({
+      actorId: "EMP-14",
+      action: "p2p_requisition_create",
+      domain: "P2P",
+      context: {
+        requesterId: "REQ-14",
+        amount: 100,
+        currency: "USD"
+      },
+      authorityDecision: {
+        allowed: true,
+        effectiveTier: 4,
+        reasons: []
+      }
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.allowed, true);
+  assert.equal(response.body.requiresApproval, false);
+  assert.ok(response.body.constraints.includes("CreateOrInitiateDefaultsNoApproval"));
 });
 
 test("GET /api/v1/events returns emitted governance events", async () => {

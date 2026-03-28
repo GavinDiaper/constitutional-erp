@@ -4,7 +4,16 @@ import { NavigatorClient } from "./client/navigatorClient";
 import { loadConfig } from "./config/env";
 import { render } from "./format/renderer";
 import { contextString, SessionContext } from "./state/session";
-import { selectDomain, selectAggregateType, selectActor, selectAggregateId, printDomainInfo } from "./menu";
+import {
+  selectDomain,
+  selectAggregateType,
+  selectActor,
+  selectAggregateId,
+  printDomainInfo,
+  normalizeDomain,
+  isSupportedAggregateType,
+  getSupportedAggregateTypes
+} from "./menu";
 
 type Domain = NonNullable<SessionContext["domain"]>;
 
@@ -98,8 +107,26 @@ async function main() {
       } else if (cmd === "use") {
         if (args.length >= 3) {
           // Manual entry: use domain type id
-          session.domain = args[0].toUpperCase() as Domain;
-          session.aggregateType = args[1];
+          const domain = normalizeDomain(args[0]);
+          if (!domain) {
+            result = "Invalid domain. Supported domains: P2P, O2C, H2R, R2R.";
+            const rendered = render(result);
+            output.write(`${rendered}\n`);
+            await client.transcript(session.actorId, line, rendered);
+            continue;
+          }
+
+          if (!isSupportedAggregateType(domain, args[1])) {
+            const supported = getSupportedAggregateTypes(domain).join(", ");
+            result = `Unsupported aggregate type '${args[1]}' for ${domain}. Supported types: ${supported}`;
+            const rendered = render(result);
+            output.write(`${rendered}\n`);
+            await client.transcript(session.actorId, line, rendered);
+            continue;
+          }
+
+          session.domain = domain as Domain;
+          session.aggregateType = args[1].toLowerCase();
           session.aggregateId = args[2];
           result = contextString(session);
         } else if (args.length > 0) {
