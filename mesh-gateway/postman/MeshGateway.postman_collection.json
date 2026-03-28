@@ -30,7 +30,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplierName\": \"Mesh Test Supplier\",\n  \"email\": \"ap@mesh-test.local\"\n}"
+              "raw": "{\n  \"supplierName\": \"Mesh Test Supplier {{$timestamp}}\",\n  \"email\": \"ap+{{$guid}}@mesh-test.local\"\n}"
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/p2p/suppliers",

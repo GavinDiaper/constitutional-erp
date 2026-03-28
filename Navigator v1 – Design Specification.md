@@ -490,3 +490,5 @@ Navigator cannot execute anything the constitution forbids.
   - Canvas (what‑if UI)  
   - Decision Engine (risk‑aware ranking)  
 
+### 16 LLM details
+- Start with a **small, focused model** (e.g. gpt-5-mini).
