@@ -1,0 +1,25 @@
+{
+  "name": "navigator-repl",
+  "version": "0.1.0",
+  "description": "Constitutional ERP Navigator REPL",
+  "main": "dist/src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/src/index.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"No tests configured yet\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

@@ -3,6 +3,7 @@ export type CanonicalSourceSystem =
   | "mesh-gateway"
   | "authority-engine"
   | "governance-engine"
+  | "navigator-ai"
   | "external-erp";
 
 export interface CanonicalEvent {

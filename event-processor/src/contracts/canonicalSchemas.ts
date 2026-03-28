@@ -5,6 +5,7 @@ export const canonicalSourceSystemSchema = z.enum([
   "mesh-gateway",
   "authority-engine",
   "governance-engine",
+  "navigator-ai",
   "external-erp"
 ]);
 
