@@ -490,5 +490,54 @@ Navigator cannot execute anything the constitution forbids.
   - Canvas (what‑if UI)  
   - Decision Engine (risk‑aware ranking)  
 
-### 16 LLM details
+## 16 LLM details
+
 - Start with a **small, focused model** (e.g. gpt-5-mini).
+  
+### Azure OpenAI settings for gpt-5-mini (adjust as needed for other models):
+
+``` js
+
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_DEPLOYMENT=
+AZURE_OPENAI_API_VERSION=2025-01-01-preview
+# Optional. Leave empty for model defaults (recommended for GPT-5 deployments).
+AZURE_OPENAI_TEMPERATURE=
+AZURE_OPENAI_MAX_TOKENS=
+
+```
+
+Example API call:
+
+```js
+async callAzureOpenAI(messages) {
+        try {
+            const payload = {
+                messages: messages,
+                max_completion_tokens: 16384
+                // temperature removed - model only supports default value of 1
+            };
+
+            console.log('Sending request to Azure OpenAI...');
+            console.log('Endpoint:', `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_MODEL}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION}`);
+
+            const response = await axios.post(
+                `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_MODEL}/chat/completions?api-version=${process.env.AZURE_OPENAI_API_VERSION}`,
+                payload,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'api-key': process.env.AZURE_OPENAI_API_KEY
+                    }
+                }
+            );
+            console.log('Received response from Azure OpenAI:', response.data);
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            console.error('Error calling Azure OpenAI:', error.response ? error.response.data : error.message);
+            throw error;
+        }
+    }
+
+```

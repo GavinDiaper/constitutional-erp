@@ -8,6 +8,7 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const REPORT_DIR = path.join(ROOT, "reports", "newman");
 const COLLECTION = path.join(ROOT, "postman", "MeshGateway.postman_collection.json");
 const ENVIRONMENT = path.join(ROOT, "postman", "MeshGateway.local.postman_environment.json");
+const ENV_EXPORT = path.join(REPORT_DIR, "mesh-o2c-environment.json");
 
 const FOLDERS = [
   "01 – O2C Setup (Foundation ERP fixture)",
@@ -47,6 +48,7 @@ newman.run(
   {
     collection: COLLECTION,
     environment: ENVIRONMENT,
+    exportEnvironment: ENV_EXPORT,
     folder: FOLDERS,
     reporters: ["cli", "json"],
     reporter: {
@@ -76,6 +78,7 @@ newman.run(
       process.exit(1);
     }
 
+    console.log(`- Environment export: ${ENV_EXPORT}`);
     console.log("\nO2C flow completed successfully.\n");
     process.exit(0);
   }

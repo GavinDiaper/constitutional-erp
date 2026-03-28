@@ -273,7 +273,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Mesh O2C Customer\",\n  \"email\": \"billing@mesh-o2c.local\"\n}"
+              "raw": "{\n  \"customerName\": \"Mesh O2C Customer {{$timestamp}}\",\n  \"email\": \"billing+{{$guid}}@mesh-o2c.local\"\n}"
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/o2c/customers",
