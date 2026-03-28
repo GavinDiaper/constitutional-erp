@@ -1,4 +1,22 @@
-import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
+
+function loadLocalEnv() {
+  const candidates = [
+    path.join(process.cwd(), ".env"),
+    path.join(process.cwd(), ".env.example")
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      dotenv.config({ path: candidate, override: true });
+      return;
+    }
+  }
+}
+
+loadLocalEnv();
 
 export interface AppConfig {
   port: number;

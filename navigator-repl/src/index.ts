@@ -4,24 +4,35 @@ import { NavigatorClient } from "./client/navigatorClient";
 import { loadConfig } from "./config/env";
 import { render } from "./format/renderer";
 import { contextString, SessionContext } from "./state/session";
+import { selectDomain, selectAggregateType, selectActor, selectAggregateId, printDomainInfo } from "./menu";
 
 function printHelp() {
   output.write([
-    "Commands:",
-    "  set actor <actorId>",
-    "  use <domain> <aggregateType> <id>",
-    "  show",
-    "  propose",
-    "  explain [actionId]",
-    "  simulate <actionId>",
-    "  decide",
-    "  execute [actionId]",
-    "  history",
-    "  navlog",
-    "  replay",
-    "  context",
-    "  help",
-    "  quit|exit"
+    "=== Navigator REPL Commands ===\n",
+    "Setup Commands:",
+    "  set actor <actorId>          Set the actor/user making decisions",
+    "  use <domain> <type> <id>     Set business context (manual entry)",
+    "  use                          Set business context (interactive menu)",
+    "",
+    "Decision Commands:",
+    "  propose                      Generate ranked action proposals",
+    "  explain [actionId]           Explain reasoning for an action",
+    "  simulate <actionId>          Simulate action outcomes",
+    "  decide                       Recommend optimal decision",
+    "  execute [actionId]           Execute chosen action",
+    "",
+    "History & Learning:",
+    "  history                      Show previous decisions",
+    "  navlog                       Show navigation decision log",
+    "  replay                       Replay navigation sequences",
+    "",
+    "Utilities:",
+    "  show                         Display current context",
+    "  context                      Show detailed context",
+    "  domains                      List available domains & types",
+    "  help                         Print this help",
+    "  quit|exit                    Close REPL",
+    ""
   ].join("\n") + "\n");
 }
 
@@ -31,7 +42,12 @@ async function main() {
   const rl = createInterface({ input, output, terminal: true });
   const session: SessionContext = {};
 
-  output.write("Navigator REPL v1\n");
+  output.write("\n╔════════════════════════════════╗\n");
+  output.write("║    Navigator REPL v1           ║\n");
+  output.write("║  Constitutional ERP Decision   ║\n");
+  output.write("║          Engine                ║\n");
+  output.write("╚════════════════════════════════╝\n\n");
+  
   printHelp();
 
   while (true) {
@@ -56,16 +72,38 @@ async function main() {
         continue;
       }
 
+      if (cmd === "domains") {
+        printDomainInfo();
+        continue;
+      }
+
       if (cmd === "context") {
         result = contextString(session);
-      } else if (cmd === "set" && args[0] === "actor" && args[1]) {
-        session.actorId = args[1];
-        result = `actor set to ${session.actorId}`;
-      } else if (cmd === "use" && args.length >= 3) {
-        session.domain = args[0].toUpperCase() as SessionContext["domain"];
-        session.aggregateType = args[1];
-        session.aggregateId = args[2];
-        result = contextString(session);
+      } else if (cmd === "set" && args[0] === "actor") {
+        if (args[1]) {
+          session.actorId = args[1];
+          result = `actor set to ${session.actorId}`;
+        } else {
+          session.actorId = await selectActor(rl);
+          result = `actor set to ${session.actorId}`;
+        }
+      } else if (cmd === "use") {
+        if (args.length >= 3) {
+          // Manual entry: use domain type id
+          session.domain = args[0].toUpperCase() as SessionContext["domain"];
+          session.aggregateType = args[1];
+          session.aggregateId = args[2];
+          result = contextString(session);
+        } else if (args.length > 0) {
+          result = "Invalid use command. Use 'use domain type id' or just 'use' for interactive menu.";
+        } else {
+          // Interactive menu
+          output.write("\n");
+          session.domain = (await selectDomain(rl)) as SessionContext["domain"];
+          session.aggregateType = await selectAggregateType(rl, session.domain);
+          session.aggregateId = await selectAggregateId(rl, session.aggregateType);
+          result = contextString(session);
+        }
       } else if (cmd === "show") {
         result = await client.show(session);
       } else if (cmd === "propose") {
@@ -85,7 +123,7 @@ async function main() {
       } else if (cmd === "replay") {
         result = await client.history(session);
       } else {
-        result = "Unknown command. Type 'help'.";
+        result = "Unknown command. Type 'help' for available commands.";
       }
 
       const rendered = render(result);
