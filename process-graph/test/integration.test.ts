@@ -100,8 +100,8 @@ test("isKnownAggregateType returns true for all registered P2P aggregates", () =
 test("isKnownAggregateType returns true for O2C, R2R, H2R aggregates", () => {
   assert.equal(isKnownAggregateType("O2C", "quote"), true);
   assert.equal(isKnownAggregateType("O2C", "sales-order"), true);
-  assert.equal(isKnownAggregateType("R2R", "journal-entry"), true);
-  assert.equal(isKnownAggregateType("R2R", "period"), true);
+  assert.equal(isKnownAggregateType("R2R", "journal"), true);
+  assert.equal(isKnownAggregateType("R2R", "fiscal-period"), true);
   assert.equal(isKnownAggregateType("H2R", "employee"), true);
   assert.equal(isKnownAggregateType("H2R", "leave-request"), true);
 });

@@ -51,7 +51,8 @@ test("transition registries expose expected counts and stable ids", () => {
   assert.equal(getTransitionsForAggregate("P2P", "requisition").length, 5);
   assert.equal(getTransitionsForAggregate("P2P", "purchase-order").length, 6);
   assert.equal(getTransitionsForAggregate("O2C", "sales-order").length, 6);
-  assert.equal(getTransitionsForAggregate("R2R", "period").length, 3);
+  assert.equal(getTransitionsForAggregate("R2R", "journal").length, 4);
+  assert.equal(getTransitionsForAggregate("R2R", "fiscal-period").length, 3);
   assert.equal(getTransitionsForAggregate("H2R", "leave-request").length, 5);
 
   const transition = resolveTransitionById("P2P.PurchaseOrder.receive");
@@ -76,10 +77,10 @@ test("replayEvents reconstructs O2C and R2R terminal paths", () => {
   ]);
 
   const periodState = replayEvents("R2R", [
-    makeLedgerEvent({ eventType: "R2R.PeriodOpened", aggregateId: "PER-1", aggregateType: "period", domain: "R2R" }),
-    makeLedgerEvent({ eventType: "R2R.PeriodCloseBegun", aggregateId: "PER-1", aggregateType: "period", domain: "R2R" }),
-    makeLedgerEvent({ eventType: "R2R.PeriodClosed", aggregateId: "PER-1", aggregateType: "period", domain: "R2R" }),
-    makeLedgerEvent({ eventType: "R2R.PeriodReopened", aggregateId: "PER-1", aggregateType: "period", domain: "R2R" })
+    makeLedgerEvent({ eventType: "R2R.PeriodOpened", aggregateId: "PER-1", aggregateType: "fiscal-period", domain: "R2R" }),
+    makeLedgerEvent({ eventType: "R2R.PeriodCloseBegun", aggregateId: "PER-1", aggregateType: "fiscal-period", domain: "R2R" }),
+    makeLedgerEvent({ eventType: "R2R.PeriodClosed", aggregateId: "PER-1", aggregateType: "fiscal-period", domain: "R2R" }),
+    makeLedgerEvent({ eventType: "R2R.PeriodReopened", aggregateId: "PER-1", aggregateType: "fiscal-period", domain: "R2R" })
   ]);
 
   assert.equal(invoiceState?.state, "WrittenOff");

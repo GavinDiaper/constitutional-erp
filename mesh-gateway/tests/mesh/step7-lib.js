@@ -163,35 +163,54 @@ async function assertOptionalPgeReplay(config, context) {
     return { skipped: true, reason: config.pgeSkipReason || "not configured" };
   }
 
-  const aggregateId = String(context.values.get(config.pgeAggregateEnvKey) ?? "");
+  const assertions = [
+    {
+      label: "primary",
+      envKey: config.pgeAggregateEnvKey,
+      aggregateType: config.pgeAggregateType
+    },
+    ...(Array.isArray(config.additionalPgeAssertions) ? config.additionalPgeAssertions : [])
+  ];
 
-  const graphBody = await retryUntil(`${config.domain} PGE graph replay endpoint`, async () => {
-    const { response, body } = await fetchJson(
-      `${PGE_BASE_URL}/graph/${config.domain.toLowerCase()}/${encodeURIComponent(config.pgeAggregateType)}/${encodeURIComponent(aggregateId)}`,
-      context.apiKey,
-      { "x-actor-id": context.requesterActorId }
-    );
+  const results = [];
 
-    if (response.status !== 200) {
-      throw new Error(`Unexpected status from PGE /graph: ${response.status}`);
-    }
+  for (const assertion of assertions) {
+    const aggregateId = String(context.values.get(assertion.envKey) ?? "");
 
-    if (!body || body.id !== aggregateId) {
-      throw new Error("PGE returned unexpected aggregate payload");
-    }
+    const graphBody = await retryUntil(`${config.domain} PGE graph replay endpoint (${assertion.aggregateType}/${aggregateId})`, async () => {
+      const { response, body } = await fetchJson(
+        `${PGE_BASE_URL}/graph/${config.domain.toLowerCase()}/${encodeURIComponent(assertion.aggregateType)}/${encodeURIComponent(aggregateId)}`,
+        context.apiKey,
+        { "x-actor-id": context.requesterActorId }
+      );
 
-    if (!body.links || !body.links.self) {
-      throw new Error("PGE canonical resource missing self link");
-    }
+      if (response.status !== 200) {
+        throw new Error(`Unexpected status from PGE /graph: ${response.status}`);
+      }
 
-    return body;
-  });
+      if (!body || body.id !== aggregateId) {
+        throw new Error("PGE returned unexpected aggregate payload");
+      }
+
+      if (!body.links || !body.links.self) {
+        throw new Error("PGE canonical resource missing self link");
+      }
+
+      return body;
+    });
+
+    results.push({
+      label: assertion.label || assertion.aggregateType,
+      aggregateType: assertion.aggregateType,
+      aggregateId,
+      state: String(graphBody.state || "unknown"),
+      linkCount: Object.keys(graphBody.links || {}).length
+    });
+  }
 
   return {
     skipped: false,
-    state: String(graphBody.state || "unknown"),
-    linkCount: Object.keys(graphBody.links || {}).length,
-    aggregateId
+    results
   };
 }
 
@@ -218,7 +237,9 @@ async function runStep7(config) {
   if (pge.skipped) {
     console.log(`- PGE replay assertion: skipped (${pge.reason || "STEP7_SKIP_PGE=true"})`);
   } else {
-    console.log(`- PGE replay assertion: passed (aggregate=${pge.aggregateId}, state=${pge.state}, links=${pge.linkCount})`);
+    for (const result of pge.results) {
+      console.log(`- PGE replay assertion (${result.label}): passed (aggregateType=${result.aggregateType}, aggregate=${result.aggregateId}, state=${result.state}, links=${result.linkCount})`);
+    }
   }
 
   console.log(`\nStep 7 ${config.domain} completed successfully.\n`);

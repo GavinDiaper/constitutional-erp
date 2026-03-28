@@ -5,7 +5,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.JournalEntry.post",
     domain: "R2R",
-    aggregateType: "journal-entry",
+    aggregateType: "journal",
     fromStates: ["Draft"],
     toStates: ["Posted"],
     action: "post"
@@ -13,7 +13,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.JournalEntry.reverse",
     domain: "R2R",
-    aggregateType: "journal-entry",
+    aggregateType: "journal",
     fromStates: ["Posted"],
     toStates: ["Reversed"],
     action: "reverse"
@@ -21,7 +21,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.JournalEntry.adjust",
     domain: "R2R",
-    aggregateType: "journal-entry",
+    aggregateType: "journal",
     fromStates: ["Posted"],
     toStates: ["Adjusted"],
     action: "adjust"
@@ -29,7 +29,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.JournalEntry.lock",
     domain: "R2R",
-    aggregateType: "journal-entry",
+    aggregateType: "journal",
     fromStates: ["Posted", "Adjusted"],
     toStates: ["Locked"],
     action: "lock"
@@ -39,7 +39,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.Period.beginClose",
     domain: "R2R",
-    aggregateType: "period",
+    aggregateType: "fiscal-period",
     fromStates: ["Open"],
     toStates: ["PendingClose"],
     action: "beginClose"
@@ -47,7 +47,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.Period.close",
     domain: "R2R",
-    aggregateType: "period",
+    aggregateType: "fiscal-period",
     fromStates: ["PendingClose"],
     toStates: ["Closed"],
     action: "close"
@@ -55,7 +55,7 @@ export const r2rTransitions: CanonicalTransition[] = [
   {
     id: "R2R.Period.reopen",
     domain: "R2R",
-    aggregateType: "period",
+    aggregateType: "fiscal-period",
     fromStates: ["Closed"],
     toStates: ["Reopened"],
     action: "reopen"

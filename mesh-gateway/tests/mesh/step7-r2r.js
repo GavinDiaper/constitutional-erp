@@ -11,7 +11,15 @@ runStep7({
   aggregateEnvKeys: ["accountId", "journalId"],
   cepAggregateEnvKey: "journalId",
   cepAggregateType: "journal",
-  pgeSkipReason: "canonical mapping pending for R2R journal -> journal-entry"
+  pgeAggregateEnvKey: "journalId",
+  pgeAggregateType: "journal",
+  additionalPgeAssertions: [
+    {
+      label: "fiscal-period",
+      envKey: "fiscalPeriodId",
+      aggregateType: "fiscal-period"
+    }
+  ]
 }).catch((error) => {
   console.error("\nStep 7 R2R failed:\n", error instanceof Error ? error.message : error);
   process.exit(1);
