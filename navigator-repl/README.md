@@ -21,6 +21,9 @@ npm run build    # Compile TypeScript
 Create a `.env` file in the navigator-repl directory:
 
 ```env
+# Preferred
+NAVIGATOR_URL=http://localhost:4016
+# Backward compatible alias
 NAVIGATOR_API_URL=http://localhost:4016
 ACTOR_ID=system
 ```
@@ -119,7 +122,7 @@ See `.env.example` for all available options.
 
 ```
 navigator> set actor sales-manager
-navigator> use O2C order SO-2024-567
+navigator> use O2C sales-order SO-2024-567
 navigator> propose
 navigator> explain ACT-001
 navigator> simulate ACT-001
@@ -150,30 +153,23 @@ navigator> execute ACT-002
 
 ### P2P (Procure-to-Pay)
 - `requisition` – Purchase requisitions
-- `purchaseOrder` – Purchase orders
-- `receipt` – Goods receipts
-- `invoice` – Vendor invoices
-- `payment` – Payments
-- `supplier` – Supplier master data
+- `purchase-order` – Purchase orders
+- `supplier-invoice` – Vendor invoices
+- `ap-payment` – Accounts payable payments
 
 ### O2C (Order-to-Cash)
 - `quote` – Sales quotes
-- `order` – Sales orders
-- `invoice` – Customer invoices
-- `payment` – Customer payments
-- `customer` – Customer master data
+- `sales-order` – Sales orders
+- `ar-invoice` – Accounts receivable invoices
+- `ar-payment` – Accounts receivable payments
 
 ### H2R (Hire-to-Retire)
 - `employee` – Employee records
-- `position` – Job positions
-- `assignment` – Role assignments
-- `credential` – Certifications/credentials
-- `authorityRule` – Authorization rules
+- `leave-request` – Leave management requests
 
 ### R2R (Record-to-Report)
-- `account` – General ledger accounts
 - `journal` – Journal entries
-- `fiscal` – Fiscal periods and close processes
+- `fiscal-period` – Fiscal periods and close processes
 
 ## Interactive Menu Selection
 
@@ -189,8 +185,8 @@ navigator> use
 
 ? Select aggregate type:
   > requisition
-    purchaseOrder
-    receipt
+      purchase-order
+      supplier-invoice
     ...
 
 ? Enter aggregate ID: REQ-2024-1001

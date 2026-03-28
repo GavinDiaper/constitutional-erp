@@ -6,6 +6,8 @@ import { render } from "./format/renderer";
 import { contextString, SessionContext } from "./state/session";
 import { selectDomain, selectAggregateType, selectActor, selectAggregateId, printDomainInfo } from "./menu";
 
+type Domain = NonNullable<SessionContext["domain"]>;
+
 function printHelp() {
   output.write([
     "=== Navigator REPL Commands ===\n",
@@ -96,7 +98,7 @@ async function main() {
       } else if (cmd === "use") {
         if (args.length >= 3) {
           // Manual entry: use domain type id
-          session.domain = args[0].toUpperCase() as SessionContext["domain"];
+          session.domain = args[0].toUpperCase() as Domain;
           session.aggregateType = args[1];
           session.aggregateId = args[2];
           result = contextString(session);
@@ -105,7 +107,7 @@ async function main() {
         } else {
           // Interactive menu
           output.write("\n");
-          const domain = (await selectDomain(rl)) as SessionContext["domain"];
+          const domain = (await selectDomain(rl)) as Domain;
           session.domain = domain;
           const aggregateType = await selectAggregateType(rl, domain);
           session.aggregateType = aggregateType;

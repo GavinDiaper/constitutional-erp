@@ -8,10 +8,10 @@ const DOMAIN_MENU = {
 };
 
 const AGGREGATE_TYPES: Record<string, string[]> = {
-  "P2P": ["requisition", "purchaseOrder", "receipt", "invoice", "payment", "supplier"],
-  "O2C": ["quote", "order", "invoice", "payment", "customer"],
-  "H2R": ["employee", "position", "assignment", "credential", "authorityRule"],
-  "R2R": ["account", "journal", "fiscal"]
+  "P2P": ["requisition", "purchase-order", "supplier-invoice", "ap-payment"],
+  "O2C": ["quote", "sales-order", "ar-invoice", "ar-payment"],
+  "H2R": ["employee", "leave-request"],
+  "R2R": ["journal", "fiscal-period"]
 };
 
 export async function selectDomain(rl: Interface): Promise<string> {
