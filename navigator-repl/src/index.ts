@@ -79,11 +79,17 @@ async function main() {
 
       if (cmd === "context") {
         result = contextString(session);
-      } else if (cmd === "set" && args[0] === "actor") {
-        if (args[1]) {
-          session.actorId = args[1];
-          result = `actor set to ${session.actorId}`;
+      } else if (cmd === "set") {
+        if (args[0] === "actor") {
+          if (args[1]) {
+            session.actorId = args[1];
+            result = `actor set to ${session.actorId}`;
+          } else {
+            session.actorId = await selectActor(rl);
+            result = `actor set to ${session.actorId}`;
+          }
         } else {
+          // Default to actor if no sub-command specified
           session.actorId = await selectActor(rl);
           result = `actor set to ${session.actorId}`;
         }
