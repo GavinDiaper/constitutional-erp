@@ -321,6 +321,199 @@
           ]
         }
       ]
+    },
+    {
+      "name": "60 – Hub v2 Sessions",
+      "item": [
+        {
+          "name": "GET /api/v1/hub/process/:entityType/:entityId",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('Hub process response has entityType/entityId/links', () => {",
+                  "    pm.expect(json).to.have.property('entityType');",
+                  "    pm.expect(json).to.have.property('entityId');",
+                  "    pm.expect(json.links).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/hub/mcp/functions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hub MCP response is an array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actorId\": \"{{actorId}}\",\n  \"mode\": \"offline\",\n  \"context\": {\n    \"domain\": \"R2R\",\n    \"aggregateType\": \"journal\",\n    \"aggregateId\": \"{{journalId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has sessionId', () => {",
+                  "  pm.expect(json.sessionId).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('sessionId', json.sessionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/navlog",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"proposal\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"entityType\": \"journal\",\n  \"entityId\": \"{{journalId}}\",\n  \"candidates\": [\n    {\n      \"rel\": \"post_journal\",\n      \"riskLevel\": \"High\",\n      \"requiredTier\": 3,\n      \"score\": 0.9,\n      \"reason\": \"Ready to post\",\n      \"executable\": true\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/navlog",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "navlog"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/transcript",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": \"propose\",\n  \"output\": \"receive ranked first\",\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "transcript"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/end",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "end"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -328,6 +521,7 @@
     { "key": "apiKey", "value": "change-me" },
     { "key": "actorId", "value": "principal.system" },
     { "key": "journalId", "value": "JNL-PENDING" },
-    { "key": "mcpFunctionId", "value": "r2r_post_journal" }
+    { "key": "mcpFunctionId", "value": "r2r_post_journal" },
+    { "key": "sessionId", "value": "" }
   ]
 }

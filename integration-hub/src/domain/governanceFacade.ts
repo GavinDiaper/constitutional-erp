@@ -8,7 +8,9 @@ export class GovernanceFacade {
     const fn = this.catalog.getById(functionId);
     return {
       riskLevel: fn?.riskLevel,
-      requiredAuthority: fn?.governanceTag
+      requiredAuthority: fn?.governanceTag,
+      requiredTier: fn?.requiredTier,
+      governanceTag: fn?.governanceTag
     };
   }
 }

@@ -4,8 +4,7 @@ import { createNavigatorRouter } from "./api/navigator.routes";
 import { AuthorityClient } from "./clients/authorityClient";
 import { CepClient } from "./clients/cepClient";
 import { GovernanceClient } from "./clients/governanceClient";
-import { MeshClient } from "./clients/meshClient";
-import { PgeClient } from "./clients/pgeClient";
+import { IntegrationHubClient } from "./clients/integrationHubClient";
 import { loadConfig } from "./config/env";
 import { getStartupError, getStartupStatus } from "./domain/runtimeState";
 import { createLlmClient } from "./llm/providerFactory";
@@ -16,10 +15,9 @@ import { toProblem } from "./utils/errors";
 
 const config = loadConfig();
 
-const pgeClient = new PgeClient(config);
+const integrationHubClient = new IntegrationHubClient(config);
 const authorityClient = new AuthorityClient(config);
 const governanceClient = new GovernanceClient(config);
-const meshClient = new MeshClient(config);
 const cepClient = new CepClient(config);
 const llmClient = createLlmClient(config);
 
@@ -29,7 +27,7 @@ export const navigatorDependencies = {
 
 export function createApp() {
   const app = express();
-  const service = new NavigatorService(pgeClient, authorityClient, governanceClient, meshClient, cepClient, llmClient);
+  const service = new NavigatorService(integrationHubClient, authorityClient, governanceClient, cepClient, llmClient);
 
   app.use(helmet());
   app.use(express.json());

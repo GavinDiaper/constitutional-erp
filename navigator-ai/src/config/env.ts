@@ -25,6 +25,8 @@ export interface AppConfig {
   nodeEnv: string;
   apiKey: string;
   databasePath: string;
+  integrationHubUrl: string;
+  integrationHubApiKey: string;
   pgeUrl: string;
   pgeApiKey: string;
   meshGatewayUrl: string;
@@ -78,6 +80,8 @@ export function loadConfig(): AppConfig {
     nodeEnv: process.env.NODE_ENV ?? "development",
     apiKey: required("API_KEY", "change-me"),
     databasePath: process.env.DATABASE_PATH ?? "navigator-ai.db",
+    integrationHubUrl: required("INTEGRATION_HUB_URL", "http://localhost:4017"),
+    integrationHubApiKey: required("INTEGRATION_HUB_API_KEY", process.env.API_KEY ?? "change-me"),
     pgeUrl: required("PGE_URL", "http://localhost:4005"),
     pgeApiKey: required("PGE_API_KEY", "change-me"),
     meshGatewayUrl: required("MESH_GATEWAY_URL", "http://localhost:4003"),

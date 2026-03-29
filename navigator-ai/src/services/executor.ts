@@ -1,12 +1,12 @@
 import { CepClient } from "../clients/cepClient";
-import { MeshClient } from "../clients/meshClient";
+import { IntegrationHubClient } from "../clients/integrationHubClient";
 import { DecisionOutcome, ExecutionResult, SessionContext } from "../contracts/navigatorTypes";
 import { recordExecution, recordNavigatorEvent } from "../domain/stores/navigatorStore";
 
 export async function executeDecision(input: {
   context: SessionContext;
   decision: DecisionOutcome;
-  meshClient: MeshClient;
+  integrationHubClient: IntegrationHubClient;
   cepClient: CepClient;
 }): Promise<ExecutionResult> {
   const actionId = input.decision.action?.actionId;
@@ -53,8 +53,7 @@ export async function executeDecision(input: {
     return denied;
   }
 
-  const result = await input.meshClient.execute({
-    domain: input.context.domain,
+  const result = await input.integrationHubClient.executeAction({
     aggregateType: input.context.aggregateType,
     aggregateId: input.context.aggregateId,
     actionId,

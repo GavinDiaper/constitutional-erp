@@ -1,6 +1,22 @@
 import { HttpError } from "../utils/errors";
 import { McpFunction } from "./types";
 
+function tierFromRiskLevel(riskLevel?: "Low" | "Medium" | "High"): number | undefined {
+  if (riskLevel === "Low") {
+    return 1;
+  }
+
+  if (riskLevel === "Medium") {
+    return 2;
+  }
+
+  if (riskLevel === "High") {
+    return 3;
+  }
+
+  return undefined;
+}
+
 const FUNCTION_DEFS = [
   { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
   { id: "p2p_submit_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "submit_requisition", operationType: "transition", description: "Transition requisition to Submitted", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
@@ -80,7 +96,8 @@ export class McpCatalog {
       },
       backingRoute: `/mesh/${meshAdapterId}/${fn.domain}/${fn.aggregateType}/{id}/${fn.action}`,
       riskLevel: fn.riskLevel,
-      governanceTag: fn.governanceTag
+      governanceTag: fn.governanceTag,
+      requiredTier: tierFromRiskLevel(fn.riskLevel)
     }));
   }
 

@@ -69,6 +69,8 @@ export class ProcessFacade {
     return {
       entity,
       id,
+      entityType: entity,
+      entityId: id,
       state: resource.state,
       attributes: resource.attributes,
       links: this.hypermediaBuilder.build({ entity, id, resource })

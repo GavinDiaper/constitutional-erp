@@ -1,8 +1,7 @@
 import { AuthorityClient } from "../clients/authorityClient";
 import { CepClient } from "../clients/cepClient";
 import { GovernanceClient } from "../clients/governanceClient";
-import { MeshClient } from "../clients/meshClient";
-import { PgeClient } from "../clients/pgeClient";
+import { IntegrationHubClient } from "../clients/integrationHubClient";
 import { ActionOption, DecisionOutcome, NavigatorContext, RankedAction, SessionContext, SimulationResult } from "../contracts/navigatorTypes";
 import { listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
@@ -15,20 +14,19 @@ import { simulateAction } from "./simulator";
 
 export class NavigatorService {
   constructor(
-    private readonly pgeClient: PgeClient,
+    private readonly integrationHubClient: IntegrationHubClient,
     private readonly authorityClient: AuthorityClient,
     private readonly governanceClient: GovernanceClient,
-    private readonly meshClient: MeshClient,
     private readonly cepClient: CepClient,
     private readonly llmClient: LlmClient
   ) {}
 
   async getResource(ctx: SessionContext) {
-    return this.pgeClient.getResource(ctx);
+    return this.integrationHubClient.getResource(ctx);
   }
 
   async buildContext(ctx: SessionContext): Promise<NavigatorContext> {
-    const resource = await this.pgeClient.getResource(ctx);
+    const resource = await this.integrationHubClient.getResource(ctx);
     const actionOptions = interpretHypermedia(resource, ctx);
     const recentHistory = await this.cepClient.getHistory({
       domain: ctx.domain,
@@ -181,7 +179,7 @@ export class NavigatorService {
     return executeDecision({
       context: ctx,
       decision,
-      meshClient: this.meshClient,
+      integrationHubClient: this.integrationHubClient,
       cepClient: this.cepClient
     });
   }
@@ -200,7 +198,7 @@ export class NavigatorService {
   }
 
   async actions(ctx: SessionContext): Promise<ActionOption[]> {
-    const resource = await this.pgeClient.getResource(ctx);
+    const resource = await this.integrationHubClient.getResource(ctx);
     return interpretHypermedia(resource, ctx);
   }
 }
