@@ -18,6 +18,8 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
+export type LlmProvider = "azure" | "openai";
+
 export interface AppConfig {
   port: number;
   nodeEnv: string;
@@ -34,11 +36,16 @@ export interface AppConfig {
   governanceEngineApiKey: string;
   eventProcessorUrl: string;
   eventProcessorApiKey: string;
+  llmProvider: LlmProvider;
   azureOpenAiEndpoint: string;
   azureOpenAiApiKey: string;
   azureOpenAiDeployment: string;
   azureOpenAiApiVersion: string;
   azureOpenAiMaxTokens: number;
+  openAiApiKey: string;
+  openAiModel: string;
+  openAiBaseUrl: string;
+  openAiMaxTokens: number;
 }
 
 function required(name: string, fallback?: string): string {
@@ -50,7 +57,20 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+function parseLlmProvider(): LlmProvider {
+  const value = (process.env.LLM_PROVIDER ?? "azure").toLowerCase();
+  if (value === "azure" || value === "openai") {
+    return value;
+  }
+
+  throw new Error("Invalid LLM_PROVIDER. Supported values: azure, openai");
+}
+
 export function loadConfig(): AppConfig {
+  const llmProvider = parseLlmProvider();
+  const usingAzure = llmProvider === "azure";
+  const usingOpenAi = llmProvider === "openai";
+
   return {
     port: Number(process.env.PORT ?? 4006),
     nodeEnv: process.env.NODE_ENV ?? "development",
@@ -67,10 +87,17 @@ export function loadConfig(): AppConfig {
     governanceEngineApiKey: required("GOVERNANCE_ENGINE_API_KEY", "change-me"),
     eventProcessorUrl: required("EVENT_PROCESSOR_URL", "http://localhost:4004"),
     eventProcessorApiKey: required("EVENT_PROCESSOR_API_KEY", "change-me"),
-    azureOpenAiEndpoint: required("AZURE_OPENAI_ENDPOINT"),
-    azureOpenAiApiKey: required("AZURE_OPENAI_API_KEY"),
-    azureOpenAiDeployment: required("AZURE_OPENAI_DEPLOYMENT"),
-    azureOpenAiApiVersion: required("AZURE_OPENAI_API_VERSION", "2025-01-01-preview"),
-    azureOpenAiMaxTokens: Number(process.env.AZURE_OPENAI_MAX_TOKENS ?? 4096)
+    llmProvider,
+    azureOpenAiEndpoint: usingAzure ? required("AZURE_OPENAI_ENDPOINT") : process.env.AZURE_OPENAI_ENDPOINT ?? "",
+    azureOpenAiApiKey: usingAzure ? required("AZURE_OPENAI_API_KEY") : process.env.AZURE_OPENAI_API_KEY ?? "",
+    azureOpenAiDeployment: usingAzure ? required("AZURE_OPENAI_DEPLOYMENT") : process.env.AZURE_OPENAI_DEPLOYMENT ?? "",
+    azureOpenAiApiVersion: usingAzure
+      ? required("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
+      : process.env.AZURE_OPENAI_API_VERSION ?? "2025-01-01-preview",
+    azureOpenAiMaxTokens: Number(process.env.AZURE_OPENAI_MAX_TOKENS ?? 4096),
+    openAiApiKey: usingOpenAi ? required("OPENAI_API_KEY") : process.env.OPENAI_API_KEY ?? "",
+    openAiModel: usingOpenAi ? required("OPENAI_MODEL") : process.env.OPENAI_MODEL ?? "",
+    openAiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+    openAiMaxTokens: Number(process.env.OPENAI_MAX_TOKENS ?? 4096)
   };
 }

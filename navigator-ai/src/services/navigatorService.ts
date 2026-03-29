@@ -5,7 +5,7 @@ import { MeshClient } from "../clients/meshClient";
 import { PgeClient } from "../clients/pgeClient";
 import { ActionOption, DecisionOutcome, NavigatorContext, RankedAction, SessionContext, SimulationResult } from "../contracts/navigatorTypes";
 import { listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
-import { AzureOpenAiClient } from "../llm/azureOpenAiClient";
+import { LlmClient } from "../llm/types";
 import { decide } from "./decisionEngine";
 import { executeDecision } from "./executor";
 import { explainDecision } from "./explainer";
@@ -20,7 +20,7 @@ export class NavigatorService {
     private readonly governanceClient: GovernanceClient,
     private readonly meshClient: MeshClient,
     private readonly cepClient: CepClient,
-    private readonly llmClient: AzureOpenAiClient
+    private readonly llmClient: LlmClient
   ) {}
 
   async getResource(ctx: SessionContext) {

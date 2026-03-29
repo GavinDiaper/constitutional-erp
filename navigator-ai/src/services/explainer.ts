@@ -1,11 +1,11 @@
 import { DecisionOutcome, NavigatorContext, RankedAction } from "../contracts/navigatorTypes";
-import { AzureOpenAiClient } from "../llm/azureOpenAiClient";
+import { LlmClient } from "../llm/types";
 
 export async function explainDecision(input: {
   context: NavigatorContext;
   chosenAction: RankedAction;
   governance: DecisionOutcome;
-  llm: AzureOpenAiClient;
+  llm: LlmClient;
 }): Promise<string> {
   const response = await input.llm.chat([
     {

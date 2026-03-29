@@ -1,5 +1,5 @@
 import { ActionOption, NavigatorContext, RankedAction } from "../contracts/navigatorTypes";
-import { AzureOpenAiClient } from "../llm/azureOpenAiClient";
+import { LlmClient } from "../llm/types";
 
 function heuristicScore(action: ActionOption): number {
   const highValue = action.riskSignals["highValue"] === true;
@@ -50,7 +50,7 @@ function parseRankedActions(text: string): RankedAction[] | undefined {
   }
 }
 
-export async function rankActions(context: NavigatorContext, llm: AzureOpenAiClient): Promise<RankedAction[]> {
+export async function rankActions(context: NavigatorContext, llm: LlmClient): Promise<RankedAction[]> {
   const prompt = buildPrompt(context);
 
   const response = await llm.chat([

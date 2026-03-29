@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { AppConfig } from "../config/env";
-import { HttpError } from "../utils/errors";
 import { recordLlmInteraction } from "../domain/stores/navigatorStore";
+import { HttpError } from "../utils/errors";
 import { LlmClient, LlmMessage } from "./types";
 
 function hashContext(messages: LlmMessage[]): string {
@@ -10,13 +10,13 @@ function hashContext(messages: LlmMessage[]): string {
   return digest.digest("hex");
 }
 
-export class AzureOpenAiClient implements LlmClient {
-  readonly provider = "azure" as const;
+export class OpenAiClient implements LlmClient {
+  readonly provider = "openai" as const;
 
   constructor(private readonly config: AppConfig) {}
 
   get model(): string {
-    return this.config.azureOpenAiDeployment;
+    return this.config.openAiModel;
   }
 
   async validateConnectivity(): Promise<void> {
@@ -33,25 +33,25 @@ export class AzureOpenAiClient implements LlmClient {
   }
 
   async chat(messages: LlmMessage[]): Promise<string> {
-    const url = `${this.config.azureOpenAiEndpoint}/openai/deployments/${this.config.azureOpenAiDeployment}/chat/completions?api-version=${this.config.azureOpenAiApiVersion}`;
-
+    const url = `${this.config.openAiBaseUrl}/chat/completions`;
     const payload = {
+      model: this.config.openAiModel,
       messages,
-      max_completion_tokens: this.config.azureOpenAiMaxTokens
+      max_completion_tokens: this.config.openAiMaxTokens
     };
 
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "api-key": this.config.azureOpenAiApiKey
+        authorization: `Bearer ${this.config.openAiApiKey}`
       },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
       const text = await response.text();
-      throw new HttpError(502, "llm_unavailable", `Azure OpenAI call failed: ${text}`);
+      throw new HttpError(502, "llm_unavailable", `OpenAI call failed: ${text}`);
     }
 
     const body = (await response.json()) as {
@@ -60,7 +60,7 @@ export class AzureOpenAiClient implements LlmClient {
 
     const content = body.choices?.[0]?.message?.content;
     if (!content) {
-      throw new HttpError(502, "llm_invalid_response", "Azure OpenAI returned an empty response");
+      throw new HttpError(502, "llm_invalid_response", "OpenAI returned an empty response");
     }
 
     recordLlmInteraction({

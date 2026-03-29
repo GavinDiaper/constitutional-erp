@@ -8,7 +8,7 @@ import { MeshClient } from "./clients/meshClient";
 import { PgeClient } from "./clients/pgeClient";
 import { loadConfig } from "./config/env";
 import { getStartupError, getStartupStatus } from "./domain/runtimeState";
-import { AzureOpenAiClient } from "./llm/azureOpenAiClient";
+import { createLlmClient } from "./llm/providerFactory";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { readinessGate } from "./middleware/readinessGate";
 import { NavigatorService } from "./services/navigatorService";
@@ -21,7 +21,7 @@ const authorityClient = new AuthorityClient(config);
 const governanceClient = new GovernanceClient(config);
 const meshClient = new MeshClient(config);
 const cepClient = new CepClient(config);
-const llmClient = new AzureOpenAiClient(config);
+const llmClient = createLlmClient(config);
 
 export const navigatorDependencies = {
   llmClient

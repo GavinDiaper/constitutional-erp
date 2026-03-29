@@ -1,5 +1,5 @@
 import { ActionOption, NavigatorContext, SimulationResult } from "../contracts/navigatorTypes";
-import { AzureOpenAiClient } from "../llm/azureOpenAiClient";
+import { LlmClient } from "../llm/types";
 
 function predictState(actionId: string, currentState: string): string {
   const map: Record<string, string> = {
@@ -19,7 +19,7 @@ function predictState(actionId: string, currentState: string): string {
 export async function simulateAction(
   context: NavigatorContext,
   action: ActionOption,
-  llm: AzureOpenAiClient
+  llm: LlmClient
 ): Promise<SimulationResult> {
   const predictedState = predictState(action.id, context.resource.state);
   const highValue = action.riskSignals["highValue"] === true;
