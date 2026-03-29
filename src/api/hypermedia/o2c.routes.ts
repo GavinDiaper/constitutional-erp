@@ -93,7 +93,7 @@ const shipShipmentSchema = z.object({
 // ── HATEOAS link builders ────────────────────────────────────────────────────
 
 function customerLinks(customerId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/customers/${customerId}`, method: "GET" }
   };
 
@@ -101,7 +101,8 @@ function customerLinks(customerId: string, state: string) {
     links["activate"] = {
       href: `/api/v1/o2c/customers/${customerId}/activate`,
       method: "POST",
-      mcpFunction: "o2c_activate_customer"
+      mcpFunction: "o2c_activate_customer",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
   }
 
@@ -109,7 +110,7 @@ function customerLinks(customerId: string, state: string) {
 }
 
 function quoteLinks(quoteId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/quotes/${quoteId}`, method: "GET" }
   };
 
@@ -117,12 +118,14 @@ function quoteLinks(quoteId: string, state: string) {
     links["send"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/send`,
       method: "POST",
-      mcpFunction: "o2c_send_quote"
+      mcpFunction: "o2c_send_quote",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["reject"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/reject`,
       method: "POST",
-      mcpFunction: "o2c_reject_quote"
+      mcpFunction: "o2c_reject_quote",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
   }
 
@@ -130,17 +133,20 @@ function quoteLinks(quoteId: string, state: string) {
     links["accept"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/accept`,
       method: "POST",
-      mcpFunction: "o2c_accept_quote"
+      mcpFunction: "o2c_accept_quote",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["reject"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/reject`,
       method: "POST",
-      mcpFunction: "o2c_reject_quote"
+      mcpFunction: "o2c_reject_quote",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["expire"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/expire`,
       method: "POST",
-      mcpFunction: "o2c_expire_quote"
+      mcpFunction: "o2c_expire_quote",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
   }
 
@@ -148,7 +154,8 @@ function quoteLinks(quoteId: string, state: string) {
     links["convert-to-order"] = {
       href: `/api/v1/o2c/quotes/${quoteId}/convert`,
       method: "POST",
-      mcpFunction: "o2c_convert_quote_to_order"
+      mcpFunction: "o2c_convert_quote_to_order",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -156,7 +163,7 @@ function quoteLinks(quoteId: string, state: string) {
 }
 
 function orderLinks(orderId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/orders/${orderId}`, method: "GET" }
   };
 
@@ -164,12 +171,14 @@ function orderLinks(orderId: string, state: string) {
     links["confirm"] = {
       href: `/api/v1/o2c/orders/${orderId}/confirm`,
       method: "POST",
-      mcpFunction: "o2c_confirm_order"
+      mcpFunction: "o2c_confirm_order",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/orders/${orderId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_order"
+      mcpFunction: "o2c_cancel_order",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -177,12 +186,14 @@ function orderLinks(orderId: string, state: string) {
     links["allocate"] = {
       href: `/api/v1/o2c/orders/${orderId}/allocate`,
       method: "POST",
-      mcpFunction: "o2c_allocate_order"
+      mcpFunction: "o2c_allocate_order",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/orders/${orderId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_order"
+      mcpFunction: "o2c_cancel_order",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -190,12 +201,14 @@ function orderLinks(orderId: string, state: string) {
     links["ship"] = {
       href: `/api/v1/o2c/orders/${orderId}/ship`,
       method: "POST",
-      mcpFunction: "o2c_ship_order"
+      mcpFunction: "o2c_ship_order",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/orders/${orderId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_order"
+      mcpFunction: "o2c_cancel_order",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -203,17 +216,20 @@ function orderLinks(orderId: string, state: string) {
     links["generate-invoice"] = {
       href: `/api/v1/o2c/orders/${orderId}/generate-invoice`,
       method: "POST",
-      mcpFunction: "o2c_generate_invoice"
+      mcpFunction: "o2c_generate_invoice",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["close"] = {
       href: `/api/v1/o2c/orders/${orderId}/close`,
       method: "POST",
-      mcpFunction: "o2c_close_order"
+      mcpFunction: "o2c_close_order",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/orders/${orderId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_order"
+      mcpFunction: "o2c_cancel_order",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -221,7 +237,7 @@ function orderLinks(orderId: string, state: string) {
 }
 
 function shipmentLinks(shipmentId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/shipments/${shipmentId}`, method: "GET" }
   };
 
@@ -229,12 +245,14 @@ function shipmentLinks(shipmentId: string, state: string) {
     links["ship"] = {
       href: `/api/v1/o2c/shipments/${shipmentId}/ship`,
       method: "POST",
-      mcpFunction: "o2c_execute_shipment"
+      mcpFunction: "o2c_execute_shipment",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/shipments/${shipmentId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_shipment"
+      mcpFunction: "o2c_cancel_shipment",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -242,12 +260,14 @@ function shipmentLinks(shipmentId: string, state: string) {
     links["deliver"] = {
       href: `/api/v1/o2c/shipments/${shipmentId}/deliver`,
       method: "POST",
-      mcpFunction: "o2c_deliver_shipment"
+      mcpFunction: "o2c_deliver_shipment",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/shipments/${shipmentId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_shipment"
+      mcpFunction: "o2c_cancel_shipment",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -255,7 +275,7 @@ function shipmentLinks(shipmentId: string, state: string) {
 }
 
 function invoiceLinks(invoiceId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/invoices/${invoiceId}`, method: "GET" }
   };
 
@@ -263,12 +283,14 @@ function invoiceLinks(invoiceId: string, state: string) {
     links["post"] = {
       href: `/api/v1/o2c/invoices/${invoiceId}/post`,
       method: "POST",
-      mcpFunction: "o2c_post_ar_invoice"
+      mcpFunction: "o2c_post_ar_invoice",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["cancel"] = {
       href: `/api/v1/o2c/invoices/${invoiceId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_ar_invoice"
+      mcpFunction: "o2c_cancel_ar_invoice",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -276,7 +298,8 @@ function invoiceLinks(invoiceId: string, state: string) {
     links["cancel"] = {
       href: `/api/v1/o2c/invoices/${invoiceId}/cancel`,
       method: "POST",
-      mcpFunction: "o2c_cancel_ar_invoice"
+      mcpFunction: "o2c_cancel_ar_invoice",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -284,7 +307,7 @@ function invoiceLinks(invoiceId: string, state: string) {
 }
 
 function paymentLinks(paymentId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/payments/${paymentId}`, method: "GET" }
   };
 

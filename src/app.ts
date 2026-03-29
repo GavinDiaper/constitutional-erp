@@ -11,6 +11,7 @@ import { h2rRouter } from "./api/hypermedia/h2r.routes";
 import { mcpRouter } from "./api/mcp/mcp.routes";
 import { eventRouter } from "./api/events.routes";
 import { queryRouter } from "./api/query.routes";
+import { navlogRouter } from "./api/navlog/navlog.routes";
 import { toProblem } from "./utils/errors";
 
 const config = loadConfig();
@@ -41,6 +42,7 @@ export function createApp() {
   app.use("/api/v1/r2r", r2rRouter);
   app.use("/api/v1/h2r", h2rRouter);
   app.use("/api/v1/mcp", mcpRouter);
+  app.use("/api/v1/hub", navlogRouter);
   app.use("/api/v1", eventRouter);
   app.use("/api/v1", queryRouter);
 

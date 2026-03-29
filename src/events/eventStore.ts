@@ -8,6 +8,14 @@ export interface EventActor {
   authorityTier?: string;
 }
 
+export interface GovernanceContext {
+  riskLevel?: "Low" | "Medium" | "High";
+  requiredTier?: 1 | 2 | 3 | 4 | 5;
+  governanceTag?: string;
+  requiredApproval?: boolean;
+  approverTier?: 1 | 2 | 3 | 4 | 5;
+}
+
 export interface DomainEvent {
   eventId?: string;
   entityId: string;
@@ -18,6 +26,7 @@ export interface DomainEvent {
   correlationId?: string;
   causationId?: string;
   actor?: EventActor;
+  governance?: GovernanceContext; // NEW: Governance decisioning context
 }
 
 export function appendEvent(event: DomainEvent): string {
@@ -25,8 +34,8 @@ export function appendEvent(event: DomainEvent): string {
   try {
     db.prepare(
       `INSERT INTO event (
-        event_id, entity_id, entity_type, event_type, version, timestamp, payload, correlation_id, causation_id, actor
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        event_id, entity_id, entity_type, event_type, version, timestamp, payload, correlation_id, causation_id, actor, governance_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       eventId,
       event.entityId,
@@ -37,7 +46,8 @@ export function appendEvent(event: DomainEvent): string {
       JSON.stringify(event.payload),
       event.correlationId ?? null,
       event.causationId ?? null,
-      event.actor ? JSON.stringify(event.actor) : null
+      event.actor ? JSON.stringify(event.actor) : null,
+      event.governance ? JSON.stringify(event.governance) : null
     );
   } catch (err: unknown) {
     const e = err as { code?: string };

@@ -75,12 +75,13 @@ const createLedgerSchema = z.object({
 // ── HATEOAS link builders ────────────────────────────────────────────────────
 
 function journalLinks(journalId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/r2r/journals/${journalId}`, method: "GET" },
     "add-line": {
       href: `/api/v1/r2r/journals/${journalId}/lines`,
       method: "POST",
-      mcpFunction: "r2r_add_journal_line"
+      mcpFunction: "r2r_add_journal_line",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     }
   };
 
@@ -88,12 +89,14 @@ function journalLinks(journalId: string, state: string) {
     links["post"] = {
       href: `/api/v1/r2r/journals/${journalId}/post`,
       method: "POST",
-      mcpFunction: "r2r_post_journal"
+      mcpFunction: "r2r_post_journal",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
     links["cancel"] = {
       href: `/api/v1/r2r/journals/${journalId}/cancel`,
       method: "POST",
-      mcpFunction: "r2r_cancel_journal"
+      mcpFunction: "r2r_cancel_journal",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -101,7 +104,8 @@ function journalLinks(journalId: string, state: string) {
     links["reverse"] = {
       href: `/api/v1/r2r/journals/${journalId}/reverse`,
       method: "POST",
-      mcpFunction: "r2r_reverse_journal"
+      mcpFunction: "r2r_reverse_journal",
+      governance: { riskLevel: "High", requiredTier: 4 }
     };
   }
 
@@ -109,7 +113,7 @@ function journalLinks(journalId: string, state: string) {
 }
 
 function fiscalYearLinks(fiscalYearId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/r2r/fiscal-years/${fiscalYearId}`, method: "GET" }
   };
 
@@ -117,12 +121,14 @@ function fiscalYearLinks(fiscalYearId: string, state: string) {
     links["start-close"] = {
       href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/start-close`,
       method: "POST",
-      mcpFunction: "r2r_start_year_close"
+      mcpFunction: "r2r_start_year_close",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
     links["close"] = {
       href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/close`,
       method: "POST",
-      mcpFunction: "r2r_close_fiscal_year"
+      mcpFunction: "r2r_close_fiscal_year",
+      governance: { riskLevel: "High", requiredTier: 4 }
     };
   }
 
@@ -130,7 +136,8 @@ function fiscalYearLinks(fiscalYearId: string, state: string) {
     links["close"] = {
       href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/close`,
       method: "POST",
-      mcpFunction: "r2r_close_fiscal_year"
+      mcpFunction: "r2r_close_fiscal_year",
+      governance: { riskLevel: "High", requiredTier: 4 }
     };
   }
 
@@ -138,7 +145,7 @@ function fiscalYearLinks(fiscalYearId: string, state: string) {
 }
 
 function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}`, method: "GET" }
   };
 
@@ -146,12 +153,14 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
     links["start-close"] = {
       href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/start-close`,
       method: "POST",
-      mcpFunction: "r2r_start_period_close"
+      mcpFunction: "r2r_start_period_close",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
     links["close"] = {
       href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/close`,
       method: "POST",
-      mcpFunction: "r2r_close_fiscal_period"
+      mcpFunction: "r2r_close_fiscal_period",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -159,7 +168,8 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
     links["close"] = {
       href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/close`,
       method: "POST",
-      mcpFunction: "r2r_close_fiscal_period"
+      mcpFunction: "r2r_close_fiscal_period",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -167,7 +177,8 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
     links["lock"] = {
       href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/lock`,
       method: "POST",
-      mcpFunction: "r2r_lock_fiscal_period"
+      mcpFunction: "r2r_lock_fiscal_period",
+      governance: { riskLevel: "High", requiredTier: 4 }
     };
   }
 

@@ -107,105 +107,105 @@ const convertRequisitionSchema = z.object({
 // ── HATEOAS link builders ─────────────────────────────────────────────────────
 
 function supplierLinks(supplierId: string, status: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/suppliers/${supplierId}`, method: "GET" }
   };
   if (status === "Draft") {
-    links["activate"] = { href: `/api/v1/p2p/suppliers/${supplierId}/activate`, method: "POST", mcpFunction: "p2p_activate_supplier" };
+    links["activate"] = { href: `/api/v1/p2p/suppliers/${supplierId}/activate`, method: "POST", mcpFunction: "p2p_activate_supplier", governance: { riskLevel: "Medium", requiredTier: 2 } };
   }
   if (status === "Active") {
-    links["suspend"] = { href: `/api/v1/p2p/suppliers/${supplierId}/suspend`, method: "POST", mcpFunction: "p2p_suspend_supplier" };
+    links["suspend"] = { href: `/api/v1/p2p/suppliers/${supplierId}/suspend`, method: "POST", mcpFunction: "p2p_suspend_supplier", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   return links;
 }
 
 function requisitionLinks(requisitionId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/requisitions/${requisitionId}`, method: "GET" }
   };
   if (state === "Draft") {
-    links["submit"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/submit`, method: "POST", mcpFunction: "p2p_submit_requisition" };
-    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition" };
+    links["submit"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/submit`, method: "POST", mcpFunction: "p2p_submit_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
+    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
   if (state === "Submitted") {
-    links["approve"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/approve`, method: "POST", mcpFunction: "p2p_approve_requisition" };
-    links["reject"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/reject`, method: "POST", mcpFunction: "p2p_reject_requisition" };
-    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition" };
+    links["approve"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/approve`, method: "POST", mcpFunction: "p2p_approve_requisition", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["reject"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/reject`, method: "POST", mcpFunction: "p2p_reject_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
+    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
   if (state === "Approved") {
-    links["convert-to-po"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/convert`, method: "POST", mcpFunction: "p2p_convert_requisition_to_po" };
-    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition" };
+    links["convert-to-po"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/convert`, method: "POST", mcpFunction: "p2p_convert_requisition_to_po", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
   return links;
 }
 
 function purchaseOrderLinks(poId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/purchase-orders/${poId}`, method: "GET" }
   };
   if (state === "Draft") {
-    links["approve"] = { href: `/api/v1/p2p/purchase-orders/${poId}/approve`, method: "POST", mcpFunction: "p2p_approve_po" };
-    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po" };
+    links["approve"] = { href: `/api/v1/p2p/purchase-orders/${poId}/approve`, method: "POST", mcpFunction: "p2p_approve_po", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Approved") {
-    links["send"] = { href: `/api/v1/p2p/purchase-orders/${poId}/send`, method: "POST", mcpFunction: "p2p_send_po" };
-    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po" };
+    links["send"] = { href: `/api/v1/p2p/purchase-orders/${poId}/send`, method: "POST", mcpFunction: "p2p_send_po", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Sent" || state === "PartiallyReceived") {
-    links["receive-goods"] = { href: `/api/v1/p2p/purchase-orders/${poId}/receive-goods`, method: "POST", mcpFunction: "p2p_receive_goods_on_po" };
-    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po" };
+    links["receive-goods"] = { href: `/api/v1/p2p/purchase-orders/${poId}/receive-goods`, method: "POST", mcpFunction: "p2p_receive_goods_on_po", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "PartiallyReceived" || state === "FullyReceived") {
-    links["close"] = { href: `/api/v1/p2p/purchase-orders/${poId}/close`, method: "POST", mcpFunction: "p2p_close_po" };
+    links["close"] = { href: `/api/v1/p2p/purchase-orders/${poId}/close`, method: "POST", mcpFunction: "p2p_close_po", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
   return links;
 }
 
 function goodsReceiptLinks(receiptId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/goods-receipts/${receiptId}`, method: "GET" }
   };
   if (state === "Draft") {
-    links["receive"] = { href: `/api/v1/p2p/goods-receipts/${receiptId}/receive`, method: "POST", mcpFunction: "p2p_goods_receipt_receive" };
+    links["receive"] = { href: `/api/v1/p2p/goods-receipts/${receiptId}/receive`, method: "POST", mcpFunction: "p2p_goods_receipt_receive", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
   if (state === "Received") {
-    links["accept"] = { href: `/api/v1/p2p/goods-receipts/${receiptId}/accept`, method: "POST", mcpFunction: "p2p_goods_receipt_accept" };
+    links["accept"] = { href: `/api/v1/p2p/goods-receipts/${receiptId}/accept`, method: "POST", mcpFunction: "p2p_goods_receipt_accept", governance: { riskLevel: "Medium", requiredTier: 2 } };
   }
   if (state === "Accepted") {
-    links["create-supplier-invoice"] = { href: "/api/v1/p2p/supplier-invoices", method: "POST", mcpFunction: "p2p_create_supplier_invoice" };
+    links["create-supplier-invoice"] = { href: "/api/v1/p2p/supplier-invoices", method: "POST", mcpFunction: "p2p_create_supplier_invoice", governance: { riskLevel: "Medium", requiredTier: 2 } };
   }
   return links;
 }
 
 function supplierInvoiceLinks(supplierInvoiceId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}`, method: "GET" }
   };
   if (state === "Draft") {
-    links["validate"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/validate`, method: "POST", mcpFunction: "p2p_validate_invoice" };
-    links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice" };
+    links["validate"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/validate`, method: "POST", mcpFunction: "p2p_validate_invoice", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Validated") {
-    links["post"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/post`, method: "POST", mcpFunction: "p2p_post_supplier_invoice" };
-    links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice" };
+    links["post"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/post`, method: "POST", mcpFunction: "p2p_post_supplier_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   return links;
 }
 
 function apPaymentLinks(apPaymentId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/p2p/ap-payments/${apPaymentId}`, method: "GET" }
   };
   if (state === "Draft") {
-    links["receive"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/receive`, method: "POST", mcpFunction: "p2p_receive_ap_payment" };
-    links["cancel"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_ap_payment" };
+    links["receive"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/receive`, method: "POST", mcpFunction: "p2p_receive_ap_payment", governance: { riskLevel: "Medium", requiredTier: 2 } };
+    links["cancel"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_ap_payment", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Received") {
-    links["apply"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/apply`, method: "POST", mcpFunction: "p2p_apply_ap_payment" };
-    links["cancel"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_ap_payment" };
+    links["apply"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/apply`, method: "POST", mcpFunction: "p2p_apply_ap_payment", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["cancel"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_ap_payment", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Applied") {
-    links["reconcile"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/reconcile`, method: "POST", mcpFunction: "p2p_reconcile_ap_payment" };
+    links["reconcile"] = { href: `/api/v1/p2p/ap-payments/${apPaymentId}/reconcile`, method: "POST", mcpFunction: "p2p_reconcile_ap_payment", governance: { riskLevel: "Medium", requiredTier: 2 } };
   }
   return links;
 }

@@ -72,7 +72,7 @@ const createAuthorityRuleSchema = z.object({
 // ── HATEOAS link builders ────────────────────────────────────────────────────
 
 function employeeLinks(employeeId: string, status: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/h2r/employees/${employeeId}`, method: "GET" }
   };
 
@@ -80,7 +80,8 @@ function employeeLinks(employeeId: string, status: string) {
     links["activate"] = {
       href: `/api/v1/h2r/employees/${employeeId}/activate`,
       method: "POST",
-      mcpFunction: "h2r_activate_employee"
+      mcpFunction: "h2r_activate_employee",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -88,12 +89,14 @@ function employeeLinks(employeeId: string, status: string) {
     links["place-on-leave"] = {
       href: `/api/v1/h2r/employees/${employeeId}/leave`,
       method: "POST",
-      mcpFunction: "h2r_place_on_leave"
+      mcpFunction: "h2r_place_on_leave",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["terminate"] = {
       href: `/api/v1/h2r/employees/${employeeId}/terminate`,
       method: "POST",
-      mcpFunction: "h2r_terminate_employee"
+      mcpFunction: "h2r_terminate_employee",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -101,12 +104,14 @@ function employeeLinks(employeeId: string, status: string) {
     links["return-from-leave"] = {
       href: `/api/v1/h2r/employees/${employeeId}/return`,
       method: "POST",
-      mcpFunction: "h2r_return_from_leave"
+      mcpFunction: "h2r_return_from_leave",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["terminate"] = {
       href: `/api/v1/h2r/employees/${employeeId}/terminate`,
       method: "POST",
-      mcpFunction: "h2r_terminate_employee"
+      mcpFunction: "h2r_terminate_employee",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
@@ -114,7 +119,7 @@ function employeeLinks(employeeId: string, status: string) {
 }
 
 function assignmentLinks(assignmentId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/h2r/assignments/${assignmentId}`, method: "GET" }
   };
 
@@ -122,12 +127,14 @@ function assignmentLinks(assignmentId: string, state: string) {
     links["activate"] = {
       href: `/api/v1/h2r/assignments/${assignmentId}/activate`,
       method: "POST",
-      mcpFunction: "h2r_activate_assignment"
+      mcpFunction: "h2r_activate_assignment",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["cancel"] = {
       href: `/api/v1/h2r/assignments/${assignmentId}/cancel`,
       method: "POST",
-      mcpFunction: "h2r_cancel_assignment"
+      mcpFunction: "h2r_cancel_assignment",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -135,12 +142,14 @@ function assignmentLinks(assignmentId: string, state: string) {
     links["complete"] = {
       href: `/api/v1/h2r/assignments/${assignmentId}/complete`,
       method: "POST",
-      mcpFunction: "h2r_complete_assignment"
+      mcpFunction: "h2r_complete_assignment",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
     links["cancel"] = {
       href: `/api/v1/h2r/assignments/${assignmentId}/cancel`,
       method: "POST",
-      mcpFunction: "h2r_cancel_assignment"
+      mcpFunction: "h2r_cancel_assignment",
+      governance: { riskLevel: "Medium", requiredTier: 2 }
     };
   }
 
@@ -148,7 +157,7 @@ function assignmentLinks(assignmentId: string, state: string) {
 }
 
 function credentialLinks(credentialId: string, status: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
+  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/h2r/credentials/${credentialId}`, method: "GET" }
   };
 
@@ -156,12 +165,14 @@ function credentialLinks(credentialId: string, status: string) {
     links["expire"] = {
       href: `/api/v1/h2r/credentials/${credentialId}/expire`,
       method: "POST",
-      mcpFunction: "h2r_expire_credential"
+      mcpFunction: "h2r_expire_credential",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
     links["revoke"] = {
       href: `/api/v1/h2r/credentials/${credentialId}/revoke`,
       method: "POST",
-      mcpFunction: "h2r_revoke_credential"
+      mcpFunction: "h2r_revoke_credential",
+      governance: { riskLevel: "High", requiredTier: 3 }
     };
   }
 
