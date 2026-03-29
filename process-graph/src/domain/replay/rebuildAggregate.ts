@@ -9,7 +9,7 @@ import { HttpError } from "../../utils/errors";
  * Event Processor and replaying events through the domain reducers.
  *
  * Throws HttpError 404 when no events are found (aggregate does not exist).
- * Throws HttpError 400 when the domain/aggregateType combination is unknown.
+ * Throws HttpError 404 when the domain/aggregateType combination is unknown.
  */
 export async function rebuildAggregate(
   domain: CanonicalDomain,
@@ -18,7 +18,7 @@ export async function rebuildAggregate(
 ): Promise<AggregateState> {
   if (!isKnownAggregateType(domain, aggregateType)) {
     throw new HttpError(
-      400,
+      404,
       "unknown_aggregate_type",
       `Unknown aggregate type '${aggregateType}' for domain '${domain}'`
     );
