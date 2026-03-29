@@ -11,7 +11,8 @@
     "migrate": "node -e \"process.exit(0)\"",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
-    "test:integration": "tsx --test test/**/*.test.ts"
+    "test:integration": "tsx --test test/**/*.test.ts",
+    "test:postman": "node scripts/run-postman.js"
   },
   "engines": {
     "node": ">=20"
@@ -27,6 +28,7 @@
     "@types/node": "^22.13.10",
     "@types/supertest": "^7.2.0",
     "supertest": "^7.2.2",
+    "newman": "^6.2.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

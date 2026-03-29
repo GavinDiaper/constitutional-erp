@@ -1,0 +1,333 @@
+{
+  "info": {
+    "_postman_id": "b2e4a1c7-3f9d-4e8a-a6b5-1d0c2e3f4a5b",
+    "name": "Integration Hub",
+    "description": "Constitutional ERP Integration Hub – MCP function discovery and governed hypermedia process execution",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "10 – Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Body has status ok', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20 – MCP Discovery",
+      "item": [
+        {
+          "name": "GET /mcp/functions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has version and functions array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('version');",
+                  "  pm.expect(json.functions).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('Each function has id, name, description, domain', () => {",
+                  "  const json = pm.response.json();",
+                  "  json.functions.forEach(fn => {",
+                  "    pm.expect(fn).to.include.keys('id', 'name', 'description', 'domain', 'aggregateType', 'action', 'operationType', 'inputSchema', 'backingRoute');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mcp/functions/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions/{{mcpFunctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions", "{{mcpFunctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Function id matches request', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.eql(pm.environment.get('mcpFunctionId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mcp/functions/:id – unknown (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions/unknown_function_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions", "unknown_function_id"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "30 – Process Navigation",
+      "item": [
+        {
+          "name": "GET /process/journal/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Response has entity, id, state, links', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('entity');",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json).to.have.property('state');",
+                  "    pm.expect(json).to.have.property('links').that.is.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /process/:entity/:id – unknown entity (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/unknownentity/ID-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "unknownentity", "ID-001"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "40 – Process Action",
+      "item": [
+        {
+          "name": "POST /process/journal/:id/actions/post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}/actions/post",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}", "actions", "post"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns supported outcome', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /process/:entity/:id/actions/:action – unknown action (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}/actions/unknownaction",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}", "actions", "unknownaction"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "50 – Error Cases",
+      "item": [
+        {
+          "name": "GET /mcp/functions – missing API key (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /process/:entity/:id – missing API key (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4017" },
+    { "key": "apiKey", "value": "change-me" },
+    { "key": "actorId", "value": "principal.system" },
+    { "key": "journalId", "value": "JNL-PENDING" },
+    { "key": "mcpFunctionId", "value": "r2r_post_journal" }
+  ]
+}
