@@ -19,7 +19,7 @@ const p2pContextSchema = z
     currency: z.string().length(3).optional(),
     credentialType: z.string().min(1).optional()
   })
-  .strict();
+  .passthrough();
 
 const o2cContextSchema = z
   .object({
@@ -28,7 +28,7 @@ const o2cContextSchema = z
     customerRisk: z.union([z.literal("Low"), z.literal("Medium"), z.literal("High")]).optional(),
     credentialType: z.string().min(1).optional()
   })
-  .strict();
+  .passthrough();
 
 const r2rContextSchema = z
   .object({
@@ -37,7 +37,7 @@ const r2rContextSchema = z
     journalType: z.string().min(1),
     credentialType: z.string().min(1).optional()
   })
-  .strict();
+  .passthrough();
 
 const h2rContextSchema = z
   .object({
@@ -45,7 +45,7 @@ const h2rContextSchema = z
     employeeId: z.string().min(1).optional(),
     credentialType: z.string().min(1).optional()
   })
-  .strict();
+  .passthrough();
 
 export const governanceCheckInputSchema = z.discriminatedUnion("domain", [
   z.object({
