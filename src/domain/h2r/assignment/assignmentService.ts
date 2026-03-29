@@ -1,15 +1,15 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
-import { ensureEmployeeExists } from "../employee/employeeService";
-import { ensurePositionExists } from "../position/positionService";
 
-type AssignmentState = "Active" | "Ended";
+type AssignmentState = "Planned" | "Active" | "Completed" | "Cancelled";
 
 const assignmentTransitions: Record<AssignmentState, AssignmentState[]> = {
-  Active: ["Ended"],
-  Ended: []
+  Planned: ["Active", "Cancelled"],
+  Active: ["Completed", "Cancelled"],
+  Completed: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -17,7 +17,9 @@ function now(): string {
 }
 
 export function getAssignmentById(assignmentId: string) {
-  const row = db.prepare("SELECT * FROM h2r_assignment WHERE assignment_id = ?").get(assignmentId) as
+  const row = db
+    .prepare("SELECT * FROM h2r_assignment WHERE assignment_id = ?")
+    .get(assignmentId) as
     | { assignment_id: string; state: AssignmentState }
     | undefined;
 
@@ -31,66 +33,128 @@ export function getAssignmentById(assignmentId: string) {
 export function listAssignments(employeeId?: string) {
   if (employeeId) {
     return db
-      .prepare("SELECT * FROM h2r_assignment WHERE employee_id = ? ORDER BY created_at DESC LIMIT 200")
+      .prepare("SELECT * FROM h2r_assignment WHERE employee_id = ?")
       .all(employeeId);
   }
-
-  return db.prepare("SELECT * FROM h2r_assignment ORDER BY created_at DESC LIMIT 200").all();
+  return db.prepare("SELECT * FROM h2r_assignment").all();
 }
 
-export function createAssignment(input: { employeeId: string; positionId: string }) {
-  ensureEmployeeExists(input.employeeId);
-  ensurePositionExists(input.positionId);
+export function createAssignment(
+  input: {
+    employeeId: string;
+    positionId: string;
+    startDate?: string;
+    endDate?: string;
+    department?: string;
+    role?: string;
+  },
+  actor?: EventActor
+) {
+  return transaction(() => {
+    const existing = db
+      .prepare(
+        "SELECT assignment_id FROM h2r_assignment WHERE employee_id = ? AND state IN ('Planned','Active')"
+      )
+      .get(input.employeeId);
 
-  const activeAssignment = db
-    .prepare("SELECT assignment_id FROM h2r_assignment WHERE employee_id = ? AND state = 'Active'")
-    .get(input.employeeId);
+    if (existing) {
+      throw new HttpError(
+        409,
+        "conflict",
+        "Employee already has a Planned or Active assignment"
+      );
+    }
 
-  if (activeAssignment) {
-    throw new HttpError(409, "invalid_transition", "Employee already has an active assignment");
-  }
+    const assignmentId = newId("ASGN-");
+    const ts = now();
 
-  const assignmentId = newId("ASG-");
-  const timestamp = now();
-
-  transaction(() => {
     db.prepare(
-      `INSERT INTO h2r_assignment(assignment_id, employee_id, position_id, state, start_date, end_date, created_at, updated_at)
-       VALUES (?, ?, ?, 'Active', ?, NULL, ?, ?)`
-    ).run(assignmentId, input.employeeId, input.positionId, timestamp, timestamp, timestamp);
+      `INSERT INTO h2r_assignment
+         (assignment_id, employee_id, position_id, state, department, role,
+          start_date, end_date, created_at, updated_at)
+       VALUES (?, ?, ?, 'Planned', ?, ?, ?, ?, ?, ?)`
+    ).run(
+      assignmentId,
+      input.employeeId,
+      input.positionId,
+      input.department ?? null,
+      input.role ?? null,
+      input.startDate ?? null,
+      input.endDate ?? null,
+      ts,
+      ts
+    );
 
     appendEvent({
       entityId: assignmentId,
       entityType: "Assignment",
-      eventType: "AssignmentCreated",
+      eventType: "assignment.created",
       version: 1,
-      payload: input
+      payload: {
+        employeeId: input.employeeId,
+        positionId: input.positionId,
+        department: input.department,
+        role: input.role,
+        startDate: input.startDate,
+        endDate: input.endDate
+      },
+      actor
     });
-  });
 
-  return getAssignmentById(assignmentId);
+    return getAssignmentById(assignmentId);
+  });
 }
 
-export function endAssignment(assignmentId: string) {
-  const assignment = getAssignmentById(assignmentId);
-  if (!assignmentTransitions[assignment.state].includes("Ended")) {
-    throw new HttpError(409, "invalid_transition", `Cannot transition assignment from ${assignment.state} to Ended`);
-  }
+function transitionAssignment(
+  assignmentId: string,
+  toState: AssignmentState,
+  eventType: string,
+  actor?: EventActor
+) {
+  return transaction(() => {
+    const row = getAssignmentById(assignmentId);
+    const allowed = assignmentTransitions[row.state as AssignmentState];
 
-  const timestamp = now();
+    if (!allowed.includes(toState)) {
+      throw new HttpError(
+        409,
+        "invalid_transition",
+        `Cannot transition assignment from ${row.state} to ${toState}`
+      );
+    }
 
-  transaction(() => {
-    db.prepare("UPDATE h2r_assignment SET state = 'Ended', end_date = ?, updated_at = ? WHERE assignment_id = ?")
-      .run(timestamp, timestamp, assignmentId);
+    const ts = now();
+
+    db.prepare(
+      "UPDATE h2r_assignment SET state = ?, updated_at = ? WHERE assignment_id = ?"
+    ).run(toState, ts, assignmentId);
 
     appendEvent({
       entityId: assignmentId,
       entityType: "Assignment",
-      eventType: "AssignmentEnded",
+      eventType,
       version: 1,
-      payload: { from: assignment.state, to: "Ended" }
+      payload: { from: row.state, to: toState },
+      actor
     });
-  });
 
-  return getAssignmentById(assignmentId);
+    return getAssignmentById(assignmentId);
+  });
+}
+
+export function activateAssignment(assignmentId: string, actor?: EventActor) {
+  return transitionAssignment(assignmentId, "Active", "assignment.activated", actor);
+}
+
+export function completeAssignment(assignmentId: string, actor?: EventActor) {
+  return transitionAssignment(assignmentId, "Completed", "assignment.completed", actor);
+}
+
+export function cancelAssignment(assignmentId: string, actor?: EventActor) {
+  return transitionAssignment(assignmentId, "Cancelled", "assignment.cancelled", actor);
+}
+
+/** @deprecated Use completeAssignment instead */
+export function endAssignment(assignmentId: string, actor?: EventActor) {
+  return completeAssignment(assignmentId, actor);
 }

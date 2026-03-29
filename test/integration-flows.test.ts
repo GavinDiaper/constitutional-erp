@@ -78,8 +78,8 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .send({ supplierId: supplier.body.supplier_id })
     .expect(201);
 
-  await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/issue`).set(headers).expect(200);
-  await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/acknowledge`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/approve`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/send`).set(headers).expect(200);
 
   const receipt = await request(app)
     .post("/api/v1/p2p/goods-receipts")
@@ -97,6 +97,11 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .expect(201);
 
   await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/validate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
     .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/post`)
     .set(headers)
     .expect(200);
@@ -107,8 +112,13 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .send({ supplierInvoiceId: supplierInvoice.body.supplier_invoice_id, amount: 0.01 })
     .expect(201);
 
-  const executedPayment = await request(app)
-    .post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/execute`)
+  await request(app)
+    .post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/receive`)
+    .set(headers)
+    .expect(200);
+
+  const appliedPayment = await request(app)
+    .post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/apply`)
     .set(headers)
     .expect(200);
 
@@ -117,7 +127,7 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .set(headers)
     .expect(200);
 
-  assert.equal(executedPayment.body.state, "Executed");
+  assert.equal(appliedPayment.body.state, "Applied");
   assert.equal(reconciledPayment.body.state, "Reconciled");
 
   const invoiceAfterPayment = await request(app)
@@ -231,6 +241,11 @@ test("H2R integration flow transitions through workforce lifecycle", async () =>
     .send({ domain: "R2R", threshold: 10000, requiredTier: 3 })
     .expect(201);
 
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/activate`)
+    .set(headers)
+    .expect(200);
+
   const onLeave = await request(app)
     .post(`/api/v1/h2r/employees/${employee.body.employee_id}/leave`)
     .set(headers)
@@ -246,6 +261,11 @@ test("H2R integration flow transitions through workforce lifecycle", async () =>
     .set(headers)
     .expect(200);
 
+  await request(app)
+    .post(`/api/v1/h2r/assignments/${assignment.body.assignment_id}/activate`)
+    .set(headers)
+    .expect(200);
+
   const endedAssignment = await request(app)
     .post(`/api/v1/h2r/assignments/${assignment.body.assignment_id}/end`)
     .set(headers)
@@ -256,15 +276,15 @@ test("H2R integration flow transitions through workforce lifecycle", async () =>
     .set(headers)
     .expect(200);
 
-  assert.equal(employee.body.status, "Active");
+  assert.equal(employee.body.status, "Candidate");
   assert.equal(position.body.authority_domain, "R2R");
-  assert.equal(assignment.body.state, "Active");
+  assert.equal(assignment.body.state, "Planned");
   assert.equal(credential.body.status, "Valid");
   assert.equal(authorityRule.body.domain, "R2R");
   assert.equal(onLeave.body.status, "OnLeave");
   assert.equal(returned.body.status, "Active");
   assert.equal(terminated.body.status, "Terminated");
-  assert.equal(endedAssignment.body.state, "Ended");
+  assert.equal(endedAssignment.body.state, "Completed");
   assert.equal(expiredCredential.body.status, "Expired");
 });
 

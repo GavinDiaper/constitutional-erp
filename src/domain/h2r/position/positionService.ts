@@ -1,5 +1,5 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
@@ -22,12 +22,15 @@ export function listPositions() {
   return db.prepare("SELECT * FROM h2r_position ORDER BY created_at DESC LIMIT 200").all();
 }
 
-export function createPosition(input: {
+export function createPosition(
+  input: {
   title: string;
   department: string;
   authorityDomain: AuthorityDomain;
   authorityTier: number;
-}) {
+  },
+  actor?: EventActor
+) {
   if (!Number.isInteger(input.authorityTier) || input.authorityTier < 1 || input.authorityTier > 5) {
     throw new HttpError(400, "invalid_request", "authorityTier must be an integer between 1 and 5");
   }
@@ -44,9 +47,10 @@ export function createPosition(input: {
     appendEvent({
       entityId: positionId,
       entityType: "Position",
-      eventType: "PositionCreated",
+      eventType: "position.created",
       version: 1,
-      payload: input
+      payload: input as Record<string, unknown>,
+      actor
     });
   });
 

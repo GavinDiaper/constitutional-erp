@@ -1,14 +1,15 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type PaymentState = "Received" | "Applied" | "Reconciled";
+type PaymentState = "Received" | "Applied" | "Reconciled" | "Cancelled";
 
 const transitions: Record<PaymentState, PaymentState[]> = {
-  Received: ["Applied"],
-  Applied: ["Reconciled"],
-  Reconciled: []
+  Received: ["Applied", "Cancelled"],
+  Applied: ["Reconciled", "Cancelled"],
+  Reconciled: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -37,21 +38,23 @@ export function listPayments() {
   return db.prepare("SELECT * FROM o2c_payment ORDER BY created_at DESC LIMIT 100").all();
 }
 
-export function registerPayment(input: { invoiceId: string; amount: number }) {
+export function registerPayment(input: { invoiceId: string; amount: number; currencyCode?: string; method?: string; paymentDate?: string }, actor?: EventActor) {
   const paymentId = newId("PAY-");
   const timestamp = now();
+  const paymentDate = input.paymentDate ?? timestamp;
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO o2c_payment(payment_id, invoice_id, state, amount, received_at, version, created_at, updated_at)
-       VALUES (?, ?, 'Received', ?, ?, 1, ?, ?)`
-    ).run(paymentId, input.invoiceId, input.amount, timestamp, timestamp, timestamp);
+      `INSERT INTO o2c_payment(payment_id, invoice_id, state, amount, received_at, currency_code, method, payment_date, version, created_at, updated_at)
+       VALUES (?, ?, 'Received', ?, ?, ?, ?, ?, 1, ?, ?)`
+    ).run(paymentId, input.invoiceId, input.amount, timestamp, input.currencyCode ?? null, input.method ?? null, paymentDate, timestamp, timestamp);
 
     appendEvent({
       entityId: paymentId,
       entityType: "Payment",
-      eventType: "PaymentReceived",
+      eventType: "ar-payment.received",
       version: 1,
+      actor,
       payload: { invoiceId: input.invoiceId, amount: input.amount }
     });
   });
@@ -65,7 +68,11 @@ function assertTransition(fromState: PaymentState, toState: PaymentState) {
   }
 }
 
-export function updatePaymentState(paymentId: string, toState: PaymentState) {
+export function updatePaymentState(paymentId: string, toState: PaymentState, actor?: EventActor) {
+  return _doPaymentTransition(paymentId, toState, actor);
+}
+
+function _doPaymentTransition(paymentId: string, toState: PaymentState, actor?: EventActor) {
   const payment = getPaymentById(paymentId);
   assertTransition(payment.state, toState);
 
@@ -95,8 +102,9 @@ export function updatePaymentState(paymentId: string, toState: PaymentState) {
       appendEvent({
         entityId: payment.invoice_id,
         entityType: "Invoice",
-        eventType: "InvoicePaymentApplied",
+        eventType: "ar-invoice.payment_applied",
         version: invoiceNextVersion,
+        actor,
         payload: { amount: payment.amount, amountPaid: invoiceAmountPaid, amountDue: invoice.amount_due }
       });
     }
@@ -104,11 +112,24 @@ export function updatePaymentState(paymentId: string, toState: PaymentState) {
     appendEvent({
       entityId: paymentId,
       entityType: "Payment",
-      eventType: `Payment${toState}`,
+      eventType: `ar-payment.${toState.toLowerCase()}`,
       version: nextVersion,
+      actor,
       payload: { from: payment.state, to: toState }
     });
   });
 
   return getPaymentById(paymentId);
+}
+
+export function applyARPayment(paymentId: string, actor?: EventActor) {
+  return _doPaymentTransition(paymentId, "Applied", actor);
+}
+
+export function reconcileARPayment(paymentId: string, actor?: EventActor) {
+  return _doPaymentTransition(paymentId, "Reconciled", actor);
+}
+
+export function cancelARPayment(paymentId: string, actor?: EventActor) {
+  return _doPaymentTransition(paymentId, "Cancelled", actor);
 }

@@ -1,18 +1,19 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureSupplierExists } from "../supplier/supplierService";
 
-type PurchaseOrderState = "Draft" | "Issued" | "Acknowledged" | "Received" | "Invoiced" | "Closed";
+type PurchaseOrderState = "Draft" | "Approved" | "Sent" | "PartiallyReceived" | "FullyReceived" | "Closed" | "Cancelled";
 
 const transitions: Record<PurchaseOrderState, PurchaseOrderState[]> = {
-  Draft: ["Issued"],
-  Issued: ["Acknowledged"],
-  Acknowledged: ["Received"],
-  Received: ["Invoiced"],
-  Invoiced: ["Closed"],
-  Closed: []
+  Draft: ["Approved", "Cancelled"],
+  Approved: ["Sent", "Cancelled"],
+  Sent: ["PartiallyReceived", "FullyReceived", "Cancelled"],
+  PartiallyReceived: ["FullyReceived", "Closed"],
+  FullyReceived: ["Closed"],
+  Closed: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -27,6 +28,8 @@ export function getPurchaseOrderById(poId: string) {
         supplier_id: string;
         state: PurchaseOrderState;
         total_amount: number;
+        currency_code: string | null;
+        delivery_address: string | null;
         version: number;
       }
     | undefined;
@@ -48,7 +51,10 @@ function assertTransition(fromState: PurchaseOrderState, toState: PurchaseOrderS
   }
 }
 
-export function createPurchaseOrder(input: { supplierId: string; requisitionId?: string; totalAmount?: number }) {
+export function createPurchaseOrder(
+  input: { supplierId: string; requisitionId?: string; totalAmount?: number; currencyCode?: string; deliveryAddress?: string },
+  actor?: EventActor
+) {
   ensureSupplierExists(input.supplierId);
 
   const poId = newId("PO-");
@@ -56,27 +62,41 @@ export function createPurchaseOrder(input: { supplierId: string; requisitionId?:
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, state, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', ?, 1, ?, ?)`
-    ).run(poId, input.requisitionId ?? null, input.supplierId, input.totalAmount ?? 0, timestamp, timestamp);
+      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, state, total_amount, currency_code, delivery_address, version, created_at, updated_at)
+       VALUES (?, ?, ?, 'Draft', ?, ?, ?, 1, ?, ?)`
+    ).run(
+      poId,
+      input.requisitionId ?? null,
+      input.supplierId,
+      input.totalAmount ?? 0,
+      input.currencyCode ?? null,
+      input.deliveryAddress ?? null,
+      timestamp,
+      timestamp
+    );
 
     appendEvent({
       entityId: poId,
       entityType: "PurchaseOrder",
-      eventType: "PurchaseOrderCreated",
+      eventType: "po.created",
       version: 1,
       payload: {
         requisitionId: input.requisitionId ?? null,
         supplierId: input.supplierId,
-        totalAmount: input.totalAmount ?? 0
-      }
+        totalAmount: input.totalAmount ?? 0,
+        currencyCode: input.currencyCode ?? null
+      },
+      actor
     });
   });
 
   return getPurchaseOrderById(poId);
 }
 
-export function createPurchaseOrderFromRequisition(input: { requisitionId: string; supplierId: string }) {
+export function createPurchaseOrderFromRequisition(
+  input: { requisitionId: string; supplierId: string },
+  actor?: EventActor
+) {
   const requisition = db.prepare("SELECT * FROM p2p_requisition WHERE requisition_id = ?").get(input.requisitionId) as
     | { requisition_id: string; state: string; total_amount: number; version: number }
     | undefined;
@@ -106,28 +126,30 @@ export function createPurchaseOrderFromRequisition(input: { requisitionId: strin
     appendEvent({
       entityId: input.requisitionId,
       entityType: "Requisition",
-      eventType: "RequisitionConvertedToPO",
+      eventType: "requisition.converted",
       version: requisition.version + 1,
-      payload: { poId, supplierId: input.supplierId }
+      payload: { poId, supplierId: input.supplierId },
+      actor
     });
 
     appendEvent({
       entityId: poId,
       entityType: "PurchaseOrder",
-      eventType: "PurchaseOrderCreated",
+      eventType: "po.created",
       version: 1,
       payload: {
         requisitionId: input.requisitionId,
         supplierId: input.supplierId,
         totalAmount: requisition.total_amount
-      }
+      },
+      actor
     });
   });
 
   return getPurchaseOrderById(poId);
 }
 
-export function updatePurchaseOrderState(poId: string, toState: PurchaseOrderState) {
+function updatePOState(poId: string, toState: PurchaseOrderState, eventType: string, actor?: EventActor) {
   const po = getPurchaseOrderById(poId);
   assertTransition(po.state, toState);
 
@@ -141,11 +163,47 @@ export function updatePurchaseOrderState(poId: string, toState: PurchaseOrderSta
     appendEvent({
       entityId: poId,
       entityType: "PurchaseOrder",
-      eventType: `PurchaseOrder${toState}`,
+      eventType,
       version: nextVersion,
-      payload: { from: po.state, to: toState }
+      payload: { from: po.state, to: toState },
+      actor
     });
   });
 
   return getPurchaseOrderById(poId);
+}
+
+export function approvePurchaseOrder(poId: string, actor?: EventActor) {
+  return updatePOState(poId, "Approved", "po.approved", actor);
+}
+
+export function sendPurchaseOrder(poId: string, actor?: EventActor) {
+  return updatePOState(poId, "Sent", "po.sent", actor);
+}
+
+export function receiveGoods(poId: string, isPartial: boolean, actor?: EventActor) {
+  const toState: PurchaseOrderState = isPartial ? "PartiallyReceived" : "FullyReceived";
+  const eventType = isPartial ? "po.received.partial" : "po.received.full";
+  return updatePOState(poId, toState, eventType, actor);
+}
+
+export function closePurchaseOrder(poId: string, actor?: EventActor) {
+  return updatePOState(poId, "Closed", "po.closed", actor);
+}
+
+export function cancelPurchaseOrder(poId: string, actor?: EventActor) {
+  return updatePOState(poId, "Cancelled", "po.cancelled", actor);
+}
+
+/** @deprecated use approvePurchaseOrder / sendPurchaseOrder */
+export function updatePurchaseOrderState(poId: string, toState: PurchaseOrderState, actor?: EventActor) {
+  const eventTypeMap: Partial<Record<PurchaseOrderState, string>> = {
+    Approved: "po.approved",
+    Sent: "po.sent",
+    PartiallyReceived: "po.received.partial",
+    FullyReceived: "po.received.full",
+    Closed: "po.closed",
+    Cancelled: "po.cancelled"
+  };
+  return updatePOState(poId, toState, eventTypeMap[toState] ?? `po.${toState.toLowerCase()}`, actor);
 }

@@ -1,15 +1,17 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureCustomerExists } from "../customer/customerService";
 
-type QuoteState = "Draft" | "Sent" | "Accepted" | "ConvertedToOrder";
+type QuoteState = "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired" | "ConvertedToOrder";
 
 const transitions: Record<QuoteState, QuoteState[]> = {
-  Draft: ["Sent"],
-  Sent: ["Accepted"],
+  Draft: ["Sent", "Rejected"],
+  Sent: ["Accepted", "Rejected", "Expired"],
   Accepted: ["ConvertedToOrder"],
+  Rejected: [],
+  Expired: [],
   ConvertedToOrder: []
 };
 
@@ -69,7 +71,7 @@ export function createQuote(input: QuoteInput) {
     appendEvent({
       entityId: quoteId,
       entityType: "Quote",
-      eventType: "QuoteCreated",
+      eventType: "quote.created",
       version: 1,
       payload: {
         customerId: input.customerId,
@@ -104,7 +106,7 @@ export function addQuoteLine(input: QuoteLineInput) {
     appendEvent({
       entityId: input.quoteId,
       entityType: "Quote",
-      eventType: "QuoteLineAdded",
+      eventType: "quote.line_added",
       version: nextVersion,
       payload: {
         quoteLineId,
@@ -127,7 +129,11 @@ export function getQuoteById(quoteId: string) {
   return getQuote(quoteId);
 }
 
-export function updateQuoteState(quoteId: string, toState: QuoteState) {
+export function updateQuoteState(quoteId: string, toState: QuoteState, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, toState, actor);
+}
+
+function _doQuoteTransition(quoteId: string, toState: QuoteState, actor?: EventActor) {
   const quote = getQuote(quoteId);
   assertTransition(quote.state, toState);
 
@@ -141,11 +147,32 @@ export function updateQuoteState(quoteId: string, toState: QuoteState) {
     appendEvent({
       entityId: quoteId,
       entityType: "Quote",
-      eventType: `Quote${toState}`,
+      eventType: `quote.${toState.toLowerCase()}`,
       version: nextVersion,
+      actor,
       payload: { from: quote.state, to: toState }
     });
   });
 
   return getQuote(quoteId);
+}
+
+export function sendQuote(quoteId: string, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, "Sent", actor);
+}
+
+export function acceptQuote(quoteId: string, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, "Accepted", actor);
+}
+
+export function rejectQuote(quoteId: string, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, "Rejected", actor);
+}
+
+export function expireQuote(quoteId: string, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, "Expired", actor);
+}
+
+export function convertQuoteToOrder(quoteId: string, actor?: EventActor) {
+  return _doQuoteTransition(quoteId, "ConvertedToOrder", actor);
 }

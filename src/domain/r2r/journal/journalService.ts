@@ -1,16 +1,17 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureAccountExists } from "../account/accountService";
 import { getFiscalPeriodById } from "../fiscal/fiscalService";
 
-type JournalState = "Draft" | "Posted" | "Reversed";
+type JournalState = "Draft" | "Posted" | "Reversed" | "Cancelled";
 
 const transitions: Record<JournalState, JournalState[]> = {
-  Draft: ["Posted"],
+  Draft: ["Posted", "Cancelled"],
   Posted: ["Reversed"],
-  Reversed: []
+  Reversed: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -59,7 +60,7 @@ export function createJournal(input: { fiscalPeriodId: string; description?: str
     appendEvent({
       entityId: journalId,
       entityType: "Journal",
-      eventType: "JournalCreated",
+      eventType: "journal.created",
       version: 1,
       payload: input
     });
@@ -102,7 +103,7 @@ export function addJournalLine(input: {
     appendEvent({
       entityId: input.journalId,
       entityType: "Journal",
-      eventType: "JournalLineAdded",
+      eventType: "journal.line_added",
       version: 1,
       payload: { ...input, journalLineId }
     });
@@ -119,7 +120,7 @@ export function getJournalById(journalId: string) {
   return getJournal(journalId);
 }
 
-export function updateJournalState(journalId: string, toState: JournalState) {
+export function updateJournalState(journalId: string, toState: JournalState, actor?: EventActor) {
   const journal = getJournal(journalId);
   assertTransition(journal.state, toState);
 
@@ -158,13 +159,26 @@ export function updateJournalState(journalId: string, toState: JournalState) {
     appendEvent({
       entityId: journalId,
       entityType: "Journal",
-      eventType: `Journal${toState}`,
+      eventType: `journal.${toState.toLowerCase()}`,
       version: nextVersion,
+      actor,
       payload: { from: journal.state, to: toState }
     });
   });
 
   return getJournal(journalId);
+}
+
+export function postJournal(journalId: string, actor?: EventActor) {
+  return updateJournalState(journalId, "Posted", actor);
+}
+
+export function reverseJournal(journalId: string, actor?: EventActor) {
+  return updateJournalState(journalId, "Reversed", actor);
+}
+
+export function cancelJournal(journalId: string, actor?: EventActor) {
+  return updateJournalState(journalId, "Cancelled", actor);
 }
 
 export function getTrialBalance(fiscalPeriodId: string) {

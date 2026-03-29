@@ -1,14 +1,16 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type ApPaymentState = "Initiated" | "Executed" | "Reconciled";
+type ApPaymentState = "Draft" | "Received" | "Applied" | "Reconciled" | "Cancelled";
 
 const transitions: Record<ApPaymentState, ApPaymentState[]> = {
-  Initiated: ["Executed"],
-  Executed: ["Reconciled"],
-  Reconciled: []
+  Draft: ["Received", "Cancelled"],
+  Received: ["Applied", "Cancelled"],
+  Applied: ["Reconciled"],
+  Reconciled: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -22,6 +24,9 @@ export function getApPaymentById(apPaymentId: string) {
         supplier_invoice_id: string;
         state: ApPaymentState;
         amount: number;
+        currency_code: string | null;
+        payment_date: string | null;
+        method: string | null;
         version: number;
       }
     | undefined;
@@ -43,29 +48,46 @@ function assertTransition(fromState: ApPaymentState, toState: ApPaymentState) {
   }
 }
 
-export function createApPayment(input: { supplierInvoiceId: string; amount: number }) {
+export function createApPayment(
+  input: { supplierInvoiceId: string; amount: number; currencyCode?: string; method?: string },
+  actor?: EventActor
+) {
   const apPaymentId = newId("APPAY-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_ap_payment(ap_payment_id, supplier_invoice_id, state, amount, executed_at, version, created_at, updated_at)
-       VALUES (?, ?, 'Initiated', ?, NULL, 1, ?, ?)`
-    ).run(apPaymentId, input.supplierInvoiceId, input.amount, timestamp, timestamp);
+      `INSERT INTO p2p_ap_payment(ap_payment_id, supplier_invoice_id, state, amount, currency_code, method, executed_at, version, created_at, updated_at)
+       VALUES (?, ?, 'Draft', ?, ?, ?, NULL, 1, ?, ?)`
+    ).run(
+      apPaymentId,
+      input.supplierInvoiceId,
+      input.amount,
+      input.currencyCode ?? null,
+      input.method ?? null,
+      timestamp,
+      timestamp
+    );
 
     appendEvent({
       entityId: apPaymentId,
       entityType: "ApPayment",
-      eventType: "ApPaymentInitiated",
+      eventType: "payment.registered",
       version: 1,
-      payload: { supplierInvoiceId: input.supplierInvoiceId, amount: input.amount }
+      payload: {
+        supplierInvoiceId: input.supplierInvoiceId,
+        amount: input.amount,
+        currencyCode: input.currencyCode ?? null,
+        method: input.method ?? null
+      },
+      actor
     });
   });
 
   return getApPaymentById(apPaymentId);
 }
 
-export function updateApPaymentState(apPaymentId: string, toState: ApPaymentState) {
+function updateApState(apPaymentId: string, toState: ApPaymentState, eventType: string, actor?: EventActor) {
   const apPayment = getApPaymentById(apPaymentId);
   assertTransition(apPayment.state, toState);
 
@@ -73,10 +95,10 @@ export function updateApPaymentState(apPaymentId: string, toState: ApPaymentStat
   const timestamp = now();
 
   transaction(() => {
-    db.prepare("UPDATE p2p_ap_payment SET state = ?, version = ?, executed_at = ?, updated_at = ? WHERE ap_payment_id = ?")
-      .run(toState, nextVersion, toState === "Executed" ? timestamp : null, timestamp, apPaymentId);
+    db.prepare("UPDATE p2p_ap_payment SET state = ?, version = ?, payment_date = ?, updated_at = ? WHERE ap_payment_id = ?")
+      .run(toState, nextVersion, toState === "Applied" ? timestamp : null, timestamp, apPaymentId);
 
-    if (toState === "Executed") {
+    if (toState === "Applied") {
       const supplierInvoice = db
         .prepare("SELECT amount_due, amount_paid, version FROM p2p_supplier_invoice WHERE supplier_invoice_id = ?")
         .get(apPayment.supplier_invoice_id) as
@@ -97,24 +119,53 @@ export function updateApPaymentState(apPaymentId: string, toState: ApPaymentStat
       appendEvent({
         entityId: apPayment.supplier_invoice_id,
         entityType: "SupplierInvoice",
-        eventType: "SupplierInvoicePaymentApplied",
+        eventType: "invoice.payment-applied",
         version: supplierInvoice.version + 1,
         payload: {
           amount: apPayment.amount,
           amountPaid: nextAmountPaid,
           amountDue: supplierInvoice.amount_due
-        }
+        },
+        actor
       });
     }
 
     appendEvent({
       entityId: apPaymentId,
       entityType: "ApPayment",
-      eventType: `ApPayment${toState}`,
+      eventType,
       version: nextVersion,
-      payload: { from: apPayment.state, to: toState }
+      payload: { from: apPayment.state, to: toState },
+      actor
     });
   });
 
   return getApPaymentById(apPaymentId);
+}
+
+export function receiveApPayment(apPaymentId: string, actor?: EventActor) {
+  return updateApState(apPaymentId, "Received", "payment.received", actor);
+}
+
+export function applyApPayment(apPaymentId: string, actor?: EventActor) {
+  return updateApState(apPaymentId, "Applied", "payment.applied", actor);
+}
+
+export function reconcileApPayment(apPaymentId: string, actor?: EventActor) {
+  return updateApState(apPaymentId, "Reconciled", "payment.reconciled", actor);
+}
+
+export function cancelApPayment(apPaymentId: string, actor?: EventActor) {
+  return updateApState(apPaymentId, "Cancelled", "payment.cancelled", actor);
+}
+
+/** @deprecated use named command functions */
+export function updateApPaymentState(apPaymentId: string, toState: ApPaymentState, actor?: EventActor) {
+  const eventTypeMap: Partial<Record<ApPaymentState, string>> = {
+    Received: "payment.received",
+    Applied: "payment.applied",
+    Reconciled: "payment.reconciled",
+    Cancelled: "payment.cancelled"
+  };
+  return updateApState(apPaymentId, toState, eventTypeMap[toState] ?? `payment.${toState.toLowerCase()}`, actor);
 }

@@ -1,18 +1,19 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type SalesOrderState = "Draft" | "Confirmed" | "Allocated" | "Shipped" | "Invoiced" | "Paid" | "Closed";
+type SalesOrderState = "Draft" | "Confirmed" | "Allocated" | "Shipped" | "Invoiced" | "Paid" | "Closed" | "Cancelled";
 
 const transitions: Record<SalesOrderState, SalesOrderState[]> = {
-  Draft: ["Confirmed"],
-  Confirmed: ["Allocated"],
-  Allocated: ["Shipped"],
-  Shipped: ["Invoiced"],
+  Draft: ["Confirmed", "Cancelled"],
+  Confirmed: ["Allocated", "Cancelled"],
+  Allocated: ["Shipped", "Cancelled"],
+  Shipped: ["Invoiced", "Cancelled"],
   Invoiced: ["Paid"],
   Paid: ["Closed"],
-  Closed: []
+  Closed: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -106,7 +107,7 @@ export function createOrderFromQuote(quoteId: string) {
     appendEvent({
       entityId: orderId,
       entityType: "SalesOrder",
-      eventType: "SalesOrderCreated",
+      eventType: "order.created",
       version: 1,
       payload: { quoteId, customerId: quote.customer_id }
     });
@@ -115,7 +116,11 @@ export function createOrderFromQuote(quoteId: string) {
   return getOrderById(orderId);
 }
 
-export function updateOrderState(orderId: string, toState: SalesOrderState) {
+export function updateOrderState(orderId: string, toState: SalesOrderState, actor?: EventActor) {
+  return _doOrderTransition(orderId, toState, actor);
+}
+
+function _doOrderTransition(orderId: string, toState: SalesOrderState, actor?: EventActor) {
   const order = getOrderById(orderId);
   assertTransition(order.state, toState);
 
@@ -129,11 +134,32 @@ export function updateOrderState(orderId: string, toState: SalesOrderState) {
     appendEvent({
       entityId: orderId,
       entityType: "SalesOrder",
-      eventType: `Order${toState}`,
+      eventType: `order.${toState.toLowerCase()}`,
       version: nextVersion,
+      actor,
       payload: { from: order.state, to: toState }
     });
   });
 
   return getOrderById(orderId);
+}
+
+export function confirmOrder(orderId: string, actor?: EventActor) {
+  return _doOrderTransition(orderId, "Confirmed", actor);
+}
+
+export function allocateOrder(orderId: string, actor?: EventActor) {
+  return _doOrderTransition(orderId, "Allocated", actor);
+}
+
+export function shipOrder(orderId: string, actor?: EventActor) {
+  return _doOrderTransition(orderId, "Shipped", actor);
+}
+
+export function closeOrder(orderId: string, actor?: EventActor) {
+  return _doOrderTransition(orderId, "Closed", actor);
+}
+
+export function cancelOrder(orderId: string, actor?: EventActor) {
+  return _doOrderTransition(orderId, "Cancelled", actor);
 }

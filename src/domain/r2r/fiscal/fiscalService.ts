@@ -1,18 +1,20 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type FiscalYearState = "Open" | "Closed";
-type FiscalPeriodState = "Open" | "Closed" | "Locked";
+type FiscalYearState = "Open" | "Closing" | "Closed";
+type FiscalPeriodState = "Open" | "Closing" | "Closed" | "Locked";
 
 const fiscalYearTransitions: Record<FiscalYearState, FiscalYearState[]> = {
-  Open: ["Closed"],
+  Open: ["Closing", "Closed"],
+  Closing: ["Closed"],
   Closed: []
 };
 
 const fiscalPeriodTransitions: Record<FiscalPeriodState, FiscalPeriodState[]> = {
-  Open: ["Closed"],
+  Open: ["Closing", "Closed"],
+  Closing: ["Closed"],
   Closed: ["Locked"],
   Locked: []
 };
@@ -20,6 +22,8 @@ const fiscalPeriodTransitions: Record<FiscalPeriodState, FiscalPeriodState[]> = 
 function now(): string {
   return new Date().toISOString();
 }
+
+// ── Fiscal Year ───────────────────────────────────────────────────────────────
 
 export function getFiscalYearById(fiscalYearId: string) {
   const row = db.prepare("SELECT * FROM r2r_fiscal_year WHERE fiscal_year_id = ?").get(fiscalYearId) as
@@ -37,7 +41,7 @@ export function listFiscalYears() {
   return db.prepare("SELECT * FROM r2r_fiscal_year ORDER BY year_label DESC LIMIT 50").all();
 }
 
-export function createFiscalYear(input: { yearLabel: string; startDate: string; endDate: string }) {
+export function createFiscalYear(input: { yearLabel: string; startDate: string; endDate: string }, actor?: EventActor) {
   const fiscalYearId = newId("FY-");
   const timestamp = now();
 
@@ -50,8 +54,9 @@ export function createFiscalYear(input: { yearLabel: string; startDate: string; 
     appendEvent({
       entityId: fiscalYearId,
       entityType: "FiscalYear",
-      eventType: "FiscalYearCreated",
+      eventType: "fiscal-year.created",
       version: 1,
+      actor,
       payload: input
     });
   });
@@ -59,7 +64,7 @@ export function createFiscalYear(input: { yearLabel: string; startDate: string; 
   return getFiscalYearById(fiscalYearId);
 }
 
-export function updateFiscalYearState(fiscalYearId: string, toState: FiscalYearState) {
+export function updateFiscalYearState(fiscalYearId: string, toState: FiscalYearState, actor?: EventActor) {
   const fiscalYear = getFiscalYearById(fiscalYearId);
   if (!fiscalYearTransitions[fiscalYear.state].includes(toState)) {
     throw new HttpError(409, "invalid_transition", `Cannot transition fiscal year from ${fiscalYear.state} to ${toState}`);
@@ -74,14 +79,25 @@ export function updateFiscalYearState(fiscalYearId: string, toState: FiscalYearS
     appendEvent({
       entityId: fiscalYearId,
       entityType: "FiscalYear",
-      eventType: `FiscalYear${toState}`,
+      eventType: `fiscal-year.${toState.toLowerCase()}`,
       version: 1,
+      actor,
       payload: { from: fiscalYear.state, to: toState }
     });
   });
 
   return getFiscalYearById(fiscalYearId);
 }
+
+export function startYearClose(fiscalYearId: string, actor?: EventActor) {
+  return updateFiscalYearState(fiscalYearId, "Closing", actor);
+}
+
+export function closeFiscalYear(fiscalYearId: string, actor?: EventActor) {
+  return updateFiscalYearState(fiscalYearId, "Closed", actor);
+}
+
+// ── Fiscal Period ─────────────────────────────────────────────────────────────
 
 export function getFiscalPeriodById(fiscalPeriodId: string) {
   const row = db.prepare("SELECT * FROM r2r_fiscal_period WHERE fiscal_period_id = ?").get(fiscalPeriodId) as
@@ -110,7 +126,7 @@ export function createFiscalPeriod(input: {
   periodNumber: number;
   startDate: string;
   endDate: string;
-}) {
+}, actor?: EventActor) {
   getFiscalYearById(input.fiscalYearId);
 
   const fiscalPeriodId = newId("FP-");
@@ -133,8 +149,9 @@ export function createFiscalPeriod(input: {
     appendEvent({
       entityId: fiscalPeriodId,
       entityType: "FiscalPeriod",
-      eventType: "FiscalPeriodCreated",
+      eventType: "fiscal-period.created",
       version: 1,
+      actor,
       payload: input
     });
   });
@@ -142,7 +159,7 @@ export function createFiscalPeriod(input: {
   return getFiscalPeriodById(fiscalPeriodId);
 }
 
-export function updateFiscalPeriodState(fiscalPeriodId: string, toState: FiscalPeriodState) {
+export function updateFiscalPeriodState(fiscalPeriodId: string, toState: FiscalPeriodState, actor?: EventActor) {
   const fiscalPeriod = getFiscalPeriodById(fiscalPeriodId);
   if (!fiscalPeriodTransitions[fiscalPeriod.state].includes(toState)) {
     throw new HttpError(
@@ -161,11 +178,24 @@ export function updateFiscalPeriodState(fiscalPeriodId: string, toState: FiscalP
     appendEvent({
       entityId: fiscalPeriodId,
       entityType: "FiscalPeriod",
-      eventType: `FiscalPeriod${toState}`,
+      eventType: `fiscal-period.${toState.toLowerCase()}`,
       version: 1,
+      actor,
       payload: { from: fiscalPeriod.state, to: toState }
     });
   });
 
   return getFiscalPeriodById(fiscalPeriodId);
+}
+
+export function startPeriodClose(fiscalPeriodId: string, actor?: EventActor) {
+  return updateFiscalPeriodState(fiscalPeriodId, "Closing", actor);
+}
+
+export function closePeriod(fiscalPeriodId: string, actor?: EventActor) {
+  return updateFiscalPeriodState(fiscalPeriodId, "Closed", actor);
+}
+
+export function lockPeriod(fiscalPeriodId: string, actor?: EventActor) {
+  return updateFiscalPeriodState(fiscalPeriodId, "Locked", actor);
 }

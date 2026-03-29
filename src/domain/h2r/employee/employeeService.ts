@@ -1,11 +1,12 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type EmployeeStatus = "Active" | "OnLeave" | "Terminated";
+type EmployeeStatus = "Candidate" | "Active" | "OnLeave" | "Terminated";
 
 const employeeTransitions: Record<EmployeeStatus, EmployeeStatus[]> = {
+  Candidate: ["Active"],
   Active: ["OnLeave", "Terminated"],
   OnLeave: ["Active", "Terminated"],
   Terminated: []
@@ -31,21 +32,22 @@ export function listEmployees() {
   return db.prepare("SELECT * FROM h2r_employee ORDER BY created_at DESC LIMIT 200").all();
 }
 
-export function createEmployee(input: { name: string; email: string }) {
+export function createEmployee(input: { name: string; email: string }, actor?: EventActor) {
   const employeeId = newId("EMP-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
       `INSERT INTO h2r_employee(employee_id, name, email, status, hire_date, termination_date, created_at, updated_at)
-       VALUES (?, ?, ?, 'Active', ?, NULL, ?, ?)`
+       VALUES (?, ?, ?, 'Candidate', ?, NULL, ?, ?)`
     ).run(employeeId, input.name, input.email, timestamp, timestamp, timestamp);
 
     appendEvent({
       entityId: employeeId,
       entityType: "Employee",
-      eventType: "EmployeeHired",
+      eventType: "employee.created",
       version: 1,
+      actor,
       payload: { name: input.name, email: input.email }
     });
   });
@@ -53,7 +55,32 @@ export function createEmployee(input: { name: string; email: string }) {
   return getEmployeeById(employeeId);
 }
 
-function updateEmployeeStatus(employeeId: string, toStatus: EmployeeStatus, eventType: string) {
+export function activateEmployee(employeeId: string, actor?: EventActor) {
+  const employee = getEmployeeById(employeeId);
+  if (employee.status !== "Candidate") {
+    throw new HttpError(409, "invalid_transition", `Cannot activate employee in status ${employee.status}`);
+  }
+
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare("UPDATE h2r_employee SET status = 'Active', hire_date = ?, updated_at = ? WHERE employee_id = ?")
+      .run(timestamp, timestamp, employeeId);
+
+    appendEvent({
+      entityId: employeeId,
+      entityType: "Employee",
+      eventType: "employee.activated",
+      version: 1,
+      actor,
+      payload: {}
+    });
+  });
+
+  return getEmployeeById(employeeId);
+}
+
+function updateEmployeeStatus(employeeId: string, toStatus: EmployeeStatus, eventType: string, actor?: EventActor) {
   const employee = getEmployeeById(employeeId);
   if (!employeeTransitions[employee.status].includes(toStatus)) {
     throw new HttpError(409, "invalid_transition", `Cannot transition employee from ${employee.status} to ${toStatus}`);
@@ -75,6 +102,7 @@ function updateEmployeeStatus(employeeId: string, toStatus: EmployeeStatus, even
       entityType: "Employee",
       eventType,
       version: 1,
+      actor,
       payload: { from: employee.status, to: toStatus }
     });
   });
@@ -82,16 +110,16 @@ function updateEmployeeStatus(employeeId: string, toStatus: EmployeeStatus, even
   return getEmployeeById(employeeId);
 }
 
-export function placeEmployeeOnLeave(employeeId: string) {
-  return updateEmployeeStatus(employeeId, "OnLeave", "EmployeeOnLeave");
+export function placeEmployeeOnLeave(employeeId: string, actor?: EventActor) {
+  return updateEmployeeStatus(employeeId, "OnLeave", "employee.on_leave", actor);
 }
 
-export function returnEmployeeFromLeave(employeeId: string) {
-  return updateEmployeeStatus(employeeId, "Active", "EmployeeReturned");
+export function returnEmployeeFromLeave(employeeId: string, actor?: EventActor) {
+  return updateEmployeeStatus(employeeId, "Active", "employee.returned", actor);
 }
 
-export function terminateEmployee(employeeId: string) {
-  return updateEmployeeStatus(employeeId, "Terminated", "EmployeeTerminated");
+export function terminateEmployee(employeeId: string, actor?: EventActor) {
+  return updateEmployeeStatus(employeeId, "Terminated", "employee.terminated", actor);
 }
 
 export function ensureEmployeeExists(employeeId: string) {

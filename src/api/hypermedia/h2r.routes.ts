@@ -6,12 +6,21 @@ import {
   createEmployee,
   getEmployeeById,
   listEmployees,
+  activateEmployee,
   placeEmployeeOnLeave,
   returnEmployeeFromLeave,
   terminateEmployee
 } from "../../domain/h2r/employee/employeeService";
 import { createPosition, getPositionById, listPositions } from "../../domain/h2r/position/positionService";
-import { createAssignment, endAssignment, getAssignmentById, listAssignments } from "../../domain/h2r/assignment/assignmentService";
+import {
+  createAssignment,
+  endAssignment,
+  getAssignmentById,
+  listAssignments,
+  activateAssignment,
+  completeAssignment,
+  cancelAssignment
+} from "../../domain/h2r/assignment/assignmentService";
 import {
   expireCredential,
   getCredentialById,
@@ -24,6 +33,8 @@ import {
   getAuthorityRuleById,
   listAuthorityRules
 } from "../../domain/h2r/authorityRule/authorityRuleService";
+
+// ── Zod schemas ──────────────────────────────────────────────────────────────
 
 const createEmployeeSchema = z.object({
   name: z.string().min(1),
@@ -39,7 +50,11 @@ const createPositionSchema = z.object({
 
 const createAssignmentSchema = z.object({
   employeeId: z.string().min(1),
-  positionId: z.string().min(1)
+  positionId: z.string().min(1),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  department: z.string().optional(),
+  role: z.string().optional()
 });
 
 const issueCredentialSchema = z.object({
@@ -54,10 +69,20 @@ const createAuthorityRuleSchema = z.object({
   requiredTier: z.number().int().min(1).max(5)
 });
 
+// ── HATEOAS link builders ────────────────────────────────────────────────────
+
 function employeeLinks(employeeId: string, status: string) {
   const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
     self: { href: `/api/v1/h2r/employees/${employeeId}`, method: "GET" }
   };
+
+  if (status === "Candidate") {
+    links["activate"] = {
+      href: `/api/v1/h2r/employees/${employeeId}/activate`,
+      method: "POST",
+      mcpFunction: "h2r_activate_employee"
+    };
+  }
 
   if (status === "Active") {
     links["place-on-leave"] = {
@@ -93,11 +118,29 @@ function assignmentLinks(assignmentId: string, state: string) {
     self: { href: `/api/v1/h2r/assignments/${assignmentId}`, method: "GET" }
   };
 
-  if (state === "Active") {
-    links["end-assignment"] = {
-      href: `/api/v1/h2r/assignments/${assignmentId}/end`,
+  if (state === "Planned") {
+    links["activate"] = {
+      href: `/api/v1/h2r/assignments/${assignmentId}/activate`,
       method: "POST",
-      mcpFunction: "h2r_end_assignment"
+      mcpFunction: "h2r_activate_assignment"
+    };
+    links["cancel"] = {
+      href: `/api/v1/h2r/assignments/${assignmentId}/cancel`,
+      method: "POST",
+      mcpFunction: "h2r_cancel_assignment"
+    };
+  }
+
+  if (state === "Active") {
+    links["complete"] = {
+      href: `/api/v1/h2r/assignments/${assignmentId}/complete`,
+      method: "POST",
+      mcpFunction: "h2r_complete_assignment"
+    };
+    links["cancel"] = {
+      href: `/api/v1/h2r/assignments/${assignmentId}/cancel`,
+      method: "POST",
+      mcpFunction: "h2r_cancel_assignment"
     };
   }
 
@@ -125,7 +168,11 @@ function credentialLinks(credentialId: string, status: string) {
   return links;
 }
 
+// ── Router ───────────────────────────────────────────────────────────────────
+
 export const h2rRouter = Router();
+
+// -- Employees --
 
 h2rRouter.get("/employees", (_req, res) => {
   const employees = listEmployees().map((row: any) =>
@@ -141,24 +188,31 @@ h2rRouter.get("/employees/:employeeId", (req, res) => {
 });
 
 h2rRouter.post("/employees", validateBody(createEmployeeSchema), (req, res) => {
-  const employee = createEmployee(req.body);
+  const employee = createEmployee(req.body, req.actor);
   res.status(201).json(entityWithLinks(employee as any, employeeLinks((employee as any).employee_id, (employee as any).status)));
 });
 
+h2rRouter.post("/employees/:employeeId/activate", (req, res) => {
+  const employee = activateEmployee(req.params.employeeId, req.actor);
+  res.json(entityWithLinks(employee as any, employeeLinks(req.params.employeeId, (employee as any).status)));
+});
+
 h2rRouter.post("/employees/:employeeId/leave", (req, res) => {
-  const employee = placeEmployeeOnLeave(req.params.employeeId);
+  const employee = placeEmployeeOnLeave(req.params.employeeId, req.actor);
   res.json(entityWithLinks(employee as any, employeeLinks(req.params.employeeId, (employee as any).status)));
 });
 
 h2rRouter.post("/employees/:employeeId/return", (req, res) => {
-  const employee = returnEmployeeFromLeave(req.params.employeeId);
+  const employee = returnEmployeeFromLeave(req.params.employeeId, req.actor);
   res.json(entityWithLinks(employee as any, employeeLinks(req.params.employeeId, (employee as any).status)));
 });
 
 h2rRouter.post("/employees/:employeeId/terminate", (req, res) => {
-  const employee = terminateEmployee(req.params.employeeId);
+  const employee = terminateEmployee(req.params.employeeId, req.actor);
   res.json(entityWithLinks(employee as any, employeeLinks(req.params.employeeId, (employee as any).status)));
 });
+
+// -- Positions --
 
 h2rRouter.get("/positions", (_req, res) => {
   const positions = listPositions().map((row: any) =>
@@ -174,9 +228,11 @@ h2rRouter.get("/positions/:positionId", (req, res) => {
 });
 
 h2rRouter.post("/positions", validateBody(createPositionSchema), (req, res) => {
-  const position = createPosition(req.body);
+  const position = createPosition(req.body, req.actor);
   res.status(201).json(entityWithLinks(position as any, { self: { href: `/api/v1/h2r/positions/${(position as any).position_id}`, method: "GET" } }));
 });
+
+// -- Assignments --
 
 h2rRouter.get("/assignments", (req, res) => {
   const employeeId = typeof req.query.employeeId === "string" ? req.query.employeeId : undefined;
@@ -193,14 +249,31 @@ h2rRouter.get("/assignments/:assignmentId", (req, res) => {
 });
 
 h2rRouter.post("/assignments", validateBody(createAssignmentSchema), (req, res) => {
-  const assignment = createAssignment(req.body);
+  const assignment = createAssignment(req.body, req.actor);
   res.status(201).json(entityWithLinks(assignment as any, assignmentLinks((assignment as any).assignment_id, (assignment as any).state)));
 });
 
-h2rRouter.post("/assignments/:assignmentId/end", (req, res) => {
-  const assignment = endAssignment(req.params.assignmentId);
+h2rRouter.post("/assignments/:assignmentId/activate", (req, res) => {
+  const assignment = activateAssignment(req.params.assignmentId, req.actor);
   res.json(entityWithLinks(assignment as any, assignmentLinks(req.params.assignmentId, (assignment as any).state)));
 });
+
+h2rRouter.post("/assignments/:assignmentId/complete", (req, res) => {
+  const assignment = completeAssignment(req.params.assignmentId, req.actor);
+  res.json(entityWithLinks(assignment as any, assignmentLinks(req.params.assignmentId, (assignment as any).state)));
+});
+
+h2rRouter.post("/assignments/:assignmentId/cancel", (req, res) => {
+  const assignment = cancelAssignment(req.params.assignmentId, req.actor);
+  res.json(entityWithLinks(assignment as any, assignmentLinks(req.params.assignmentId, (assignment as any).state)));
+});
+
+h2rRouter.post("/assignments/:assignmentId/end", (req, res) => {
+  const assignment = endAssignment(req.params.assignmentId, req.actor);
+  res.json(entityWithLinks(assignment as any, assignmentLinks(req.params.assignmentId, (assignment as any).state)));
+});
+
+// -- Credentials --
 
 h2rRouter.get("/credentials", (req, res) => {
   const employeeId = typeof req.query.employeeId === "string" ? req.query.employeeId : undefined;
@@ -217,19 +290,21 @@ h2rRouter.get("/credentials/:credentialId", (req, res) => {
 });
 
 h2rRouter.post("/credentials", validateBody(issueCredentialSchema), (req, res) => {
-  const credential = issueCredential(req.body);
+  const credential = issueCredential(req.body, req.actor);
   res.status(201).json(entityWithLinks(credential as any, credentialLinks((credential as any).credential_id, (credential as any).status)));
 });
 
 h2rRouter.post("/credentials/:credentialId/expire", (req, res) => {
-  const credential = expireCredential(req.params.credentialId);
+  const credential = expireCredential(req.params.credentialId, req.actor);
   res.json(entityWithLinks(credential as any, credentialLinks(req.params.credentialId, (credential as any).status)));
 });
 
 h2rRouter.post("/credentials/:credentialId/revoke", (req, res) => {
-  const credential = revokeCredential(req.params.credentialId);
+  const credential = revokeCredential(req.params.credentialId, req.actor);
   res.json(entityWithLinks(credential as any, credentialLinks(req.params.credentialId, (credential as any).status)));
 });
+
+// -- Authority Rules --
 
 h2rRouter.get("/authority-rules", (req, res) => {
   const domain = typeof req.query.domain === "string" ? req.query.domain : undefined;
@@ -246,6 +321,6 @@ h2rRouter.get("/authority-rules/:ruleId", (req, res) => {
 });
 
 h2rRouter.post("/authority-rules", validateBody(createAuthorityRuleSchema), (req, res) => {
-  const rule = createAuthorityRule(req.body);
+  const rule = createAuthorityRule(req.body, req.actor);
   res.status(201).json(entityWithLinks(rule as any, { self: { href: `/api/v1/h2r/authority-rules/${(rule as any).rule_id}`, method: "GET" } }));
 });

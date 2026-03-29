@@ -8,7 +8,9 @@ import {
   getJournalById,
   getTrialBalance,
   listJournals,
-  updateJournalState
+  postJournal,
+  reverseJournal,
+  cancelJournal
 } from "../../domain/r2r/journal/journalService";
 import { createAccount, getAccountById, listAccounts } from "../../domain/r2r/account/accountService";
 import {
@@ -18,9 +20,19 @@ import {
   getFiscalYearById,
   listFiscalPeriods,
   listFiscalYears,
-  updateFiscalPeriodState,
-  updateFiscalYearState
+  startYearClose,
+  closeFiscalYear,
+  startPeriodClose,
+  closePeriod,
+  lockPeriod
 } from "../../domain/r2r/fiscal/fiscalService";
+import {
+  createLedger,
+  getLedgerById,
+  listLedgers
+} from "../../domain/r2r/ledger/ledgerService";
+
+// ── Zod schemas ──────────────────────────────────────────────────────────────
 
 const createAccountSchema = z.object({
   accountCode: z.string().min(1),
@@ -53,6 +65,15 @@ const addJournalLineSchema = z.object({
   memo: z.string().optional()
 });
 
+const createLedgerSchema = z.object({
+  name: z.string().min(1),
+  currencyCode: z.string().min(3).max(3),
+  calendar: z.string().optional(),
+  chartOfAccountsRef: z.string().optional()
+});
+
+// ── HATEOAS link builders ────────────────────────────────────────────────────
+
 function journalLinks(journalId: string, state: string) {
   const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string }> = {
     self: { href: `/api/v1/r2r/journals/${journalId}`, method: "GET" },
@@ -69,6 +90,19 @@ function journalLinks(journalId: string, state: string) {
       method: "POST",
       mcpFunction: "r2r_post_journal"
     };
+    links["cancel"] = {
+      href: `/api/v1/r2r/journals/${journalId}/cancel`,
+      method: "POST",
+      mcpFunction: "r2r_cancel_journal"
+    };
+  }
+
+  if (state === "Posted") {
+    links["reverse"] = {
+      href: `/api/v1/r2r/journals/${journalId}/reverse`,
+      method: "POST",
+      mcpFunction: "r2r_reverse_journal"
+    };
   }
 
   return links;
@@ -80,6 +114,19 @@ function fiscalYearLinks(fiscalYearId: string, state: string) {
   };
 
   if (state === "Open") {
+    links["start-close"] = {
+      href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/start-close`,
+      method: "POST",
+      mcpFunction: "r2r_start_year_close"
+    };
+    links["close"] = {
+      href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/close`,
+      method: "POST",
+      mcpFunction: "r2r_close_fiscal_year"
+    };
+  }
+
+  if (state === "Closing") {
     links["close"] = {
       href: `/api/v1/r2r/fiscal-years/${fiscalYearId}/close`,
       method: "POST",
@@ -96,6 +143,19 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
   };
 
   if (state === "Open") {
+    links["start-close"] = {
+      href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/start-close`,
+      method: "POST",
+      mcpFunction: "r2r_start_period_close"
+    };
+    links["close"] = {
+      href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/close`,
+      method: "POST",
+      mcpFunction: "r2r_close_fiscal_period"
+    };
+  }
+
+  if (state === "Closing") {
     links["close"] = {
       href: `/api/v1/r2r/fiscal-periods/${fiscalPeriodId}/close`,
       method: "POST",
@@ -114,7 +174,30 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
   return links;
 }
 
+// ── Router ───────────────────────────────────────────────────────────────────
+
 export const r2rRouter = Router();
+
+// -- Ledgers --
+
+r2rRouter.get("/ledgers", (_req, res) => {
+  const ledgers = listLedgers().map((row: any) =>
+    entityWithLinks(row, { self: { href: `/api/v1/r2r/ledgers/${row.ledger_id}`, method: "GET" } })
+  );
+  res.json({ data: ledgers });
+});
+
+r2rRouter.get("/ledgers/:ledgerId", (req, res) => {
+  const ledger = getLedgerById(req.params.ledgerId);
+  res.json(entityWithLinks(ledger as any, { self: { href: `/api/v1/r2r/ledgers/${req.params.ledgerId}`, method: "GET" } }));
+});
+
+r2rRouter.post("/ledgers", validateBody(createLedgerSchema), (req, res) => {
+  const ledger = createLedger(req.body, req.actor);
+  res.status(201).json(entityWithLinks(ledger as any, { self: { href: `/api/v1/r2r/ledgers/${(ledger as any).ledger_id}`, method: "GET" } }));
+});
+
+// -- Accounts --
 
 r2rRouter.get("/accounts", (_req, res) => {
   const accounts = listAccounts().map((row: any) =>
@@ -133,6 +216,8 @@ r2rRouter.post("/accounts", validateBody(createAccountSchema), (req, res) => {
   res.status(201).json(entityWithLinks(account as any, { self: { href: `/api/v1/r2r/accounts/${(account as any).account_id}`, method: "GET" } }));
 });
 
+// -- Fiscal Years --
+
 r2rRouter.get("/fiscal-years", (_req, res) => {
   const fiscalYears = listFiscalYears().map((row: any) =>
     entityWithLinks(row, fiscalYearLinks(row.fiscal_year_id, row.state))
@@ -146,14 +231,21 @@ r2rRouter.get("/fiscal-years/:fiscalYearId", (req, res) => {
 });
 
 r2rRouter.post("/fiscal-years", validateBody(createFiscalYearSchema), (req, res) => {
-  const fiscalYear = createFiscalYear(req.body);
+  const fiscalYear = createFiscalYear(req.body, req.actor);
   res.status(201).json(entityWithLinks(fiscalYear as any, fiscalYearLinks((fiscalYear as any).fiscal_year_id, (fiscalYear as any).state)));
 });
 
-r2rRouter.post("/fiscal-years/:fiscalYearId/close", (req, res) => {
-  const fiscalYear = updateFiscalYearState(req.params.fiscalYearId, "Closed");
+r2rRouter.post("/fiscal-years/:fiscalYearId/start-close", (req, res) => {
+  const fiscalYear = startYearClose(req.params.fiscalYearId, req.actor);
   res.json(entityWithLinks(fiscalYear as any, fiscalYearLinks(req.params.fiscalYearId, (fiscalYear as any).state)));
 });
+
+r2rRouter.post("/fiscal-years/:fiscalYearId/close", (req, res) => {
+  const fiscalYear = closeFiscalYear(req.params.fiscalYearId, req.actor);
+  res.json(entityWithLinks(fiscalYear as any, fiscalYearLinks(req.params.fiscalYearId, (fiscalYear as any).state)));
+});
+
+// -- Fiscal Periods --
 
 r2rRouter.get("/fiscal-periods", (req, res) => {
   const fiscalYearId = typeof req.query.fiscalYearId === "string" ? req.query.fiscalYearId : undefined;
@@ -169,21 +261,28 @@ r2rRouter.get("/fiscal-periods/:fiscalPeriodId", (req, res) => {
 });
 
 r2rRouter.post("/fiscal-periods", validateBody(createFiscalPeriodSchema), (req, res) => {
-  const fiscalPeriod = createFiscalPeriod(req.body);
+  const fiscalPeriod = createFiscalPeriod(req.body, req.actor);
   res
     .status(201)
     .json(entityWithLinks(fiscalPeriod as any, fiscalPeriodLinks((fiscalPeriod as any).fiscal_period_id, (fiscalPeriod as any).state)));
 });
 
+r2rRouter.post("/fiscal-periods/:fiscalPeriodId/start-close", (req, res) => {
+  const fiscalPeriod = startPeriodClose(req.params.fiscalPeriodId, req.actor);
+  res.json(entityWithLinks(fiscalPeriod as any, fiscalPeriodLinks(req.params.fiscalPeriodId, (fiscalPeriod as any).state)));
+});
+
 r2rRouter.post("/fiscal-periods/:fiscalPeriodId/close", (req, res) => {
-  const fiscalPeriod = updateFiscalPeriodState(req.params.fiscalPeriodId, "Closed");
+  const fiscalPeriod = closePeriod(req.params.fiscalPeriodId, req.actor);
   res.json(entityWithLinks(fiscalPeriod as any, fiscalPeriodLinks(req.params.fiscalPeriodId, (fiscalPeriod as any).state)));
 });
 
 r2rRouter.post("/fiscal-periods/:fiscalPeriodId/lock", (req, res) => {
-  const fiscalPeriod = updateFiscalPeriodState(req.params.fiscalPeriodId, "Locked");
+  const fiscalPeriod = lockPeriod(req.params.fiscalPeriodId, req.actor);
   res.json(entityWithLinks(fiscalPeriod as any, fiscalPeriodLinks(req.params.fiscalPeriodId, (fiscalPeriod as any).state)));
 });
+
+// -- Journals --
 
 r2rRouter.get("/journals", (_req, res) => {
   const journals = listJournals().map((row: any) => entityWithLinks(row, journalLinks(row.journal_id, row.state)));
@@ -213,7 +312,17 @@ r2rRouter.post("/journals/:journalId/lines", validateBody(addJournalLineSchema),
 });
 
 r2rRouter.post("/journals/:journalId/post", (req, res) => {
-  const journal = updateJournalState(req.params.journalId, "Posted");
+  const journal = postJournal(req.params.journalId, req.actor);
+  res.json(entityWithLinks(journal as any, journalLinks(req.params.journalId, (journal as any).state)));
+});
+
+r2rRouter.post("/journals/:journalId/reverse", (req, res) => {
+  const journal = reverseJournal(req.params.journalId, req.actor);
+  res.json(entityWithLinks(journal as any, journalLinks(req.params.journalId, (journal as any).state)));
+});
+
+r2rRouter.post("/journals/:journalId/cancel", (req, res) => {
+  const journal = cancelJournal(req.params.journalId, req.actor);
   res.json(entityWithLinks(journal as any, journalLinks(req.params.journalId, (journal as any).state)));
 });
 

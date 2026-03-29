@@ -1,5 +1,5 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureEmployeeExists } from "../employee/employeeService";
@@ -38,7 +38,10 @@ export function listCredentials(employeeId?: string) {
   return db.prepare("SELECT * FROM h2r_credential ORDER BY created_at DESC LIMIT 200").all();
 }
 
-export function issueCredential(input: { employeeId: string; type: string; expiryDate?: string }) {
+export function issueCredential(
+  input: { employeeId: string; type: string; expiryDate?: string },
+  actor?: EventActor
+) {
   ensureEmployeeExists(input.employeeId);
 
   const credentialId = newId("CRED-");
@@ -53,16 +56,22 @@ export function issueCredential(input: { employeeId: string; type: string; expir
     appendEvent({
       entityId: credentialId,
       entityType: "Credential",
-      eventType: "CredentialIssued",
+      eventType: "credential.issued",
       version: 1,
-      payload: input
+      payload: input as Record<string, unknown>,
+      actor
     });
   });
 
   return getCredentialById(credentialId);
 }
 
-function updateCredentialStatus(credentialId: string, toStatus: CredentialStatus, eventType: string) {
+function updateCredentialStatus(
+  credentialId: string,
+  toStatus: CredentialStatus,
+  eventType: string,
+  actor?: EventActor
+) {
   const credential = getCredentialById(credentialId);
   if (!credentialTransitions[credential.status].includes(toStatus)) {
     throw new HttpError(
@@ -83,17 +92,18 @@ function updateCredentialStatus(credentialId: string, toStatus: CredentialStatus
       entityType: "Credential",
       eventType,
       version: 1,
-      payload: { from: credential.status, to: toStatus }
+      payload: { from: credential.status, to: toStatus },
+      actor
     });
   });
 
   return getCredentialById(credentialId);
 }
 
-export function expireCredential(credentialId: string) {
-  return updateCredentialStatus(credentialId, "Expired", "CredentialExpired");
+export function expireCredential(credentialId: string, actor?: EventActor) {
+  return updateCredentialStatus(credentialId, "Expired", "credential.expired", actor);
 }
 
-export function revokeCredential(credentialId: string) {
-  return updateCredentialStatus(credentialId, "Revoked", "CredentialRevoked");
+export function revokeCredential(credentialId: string, actor?: EventActor) {
+  return updateCredentialStatus(credentialId, "Revoked", "credential.revoked", actor);
 }

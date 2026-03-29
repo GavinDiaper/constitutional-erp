@@ -1,16 +1,17 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type RequisitionState = "Draft" | "Submitted" | "Approved" | "ConvertedToPO" | "Rejected";
+type RequisitionState = "Draft" | "Submitted" | "Approved" | "ConvertedToPO" | "Rejected" | "Cancelled";
 
 const transitions: Record<RequisitionState, RequisitionState[]> = {
-  Draft: ["Submitted", "Rejected"],
-  Submitted: ["Approved", "Rejected"],
-  Approved: ["ConvertedToPO"],
+  Draft: ["Submitted", "Cancelled"],
+  Submitted: ["Approved", "Rejected", "Cancelled"],
+  Approved: ["ConvertedToPO", "Cancelled"],
   ConvertedToPO: [],
-  Rejected: []
+  Rejected: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -45,22 +46,39 @@ function assertTransition(fromState: RequisitionState, toState: RequisitionState
   }
 }
 
-export function createRequisition(requester: string) {
+export function createRequisition(
+  input: { requester: string; department?: string; currencyCode?: string; neededByDate?: string },
+  actor?: EventActor
+) {
   const requisitionId = newId("REQ-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_requisition(requisition_id, requester, state, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, 'Draft', 0, 1, ?, ?)`
-    ).run(requisitionId, requester, timestamp, timestamp);
+      `INSERT INTO p2p_requisition(requisition_id, requester, state, total_amount, department, currency_code, needed_by_date, version, created_at, updated_at)
+       VALUES (?, ?, 'Draft', 0, ?, ?, ?, 1, ?, ?)`
+    ).run(
+      requisitionId,
+      input.requester,
+      input.department ?? null,
+      input.currencyCode ?? null,
+      input.neededByDate ?? null,
+      timestamp,
+      timestamp
+    );
 
     appendEvent({
       entityId: requisitionId,
       entityType: "Requisition",
-      eventType: "RequisitionCreated",
+      eventType: "requisition.created",
       version: 1,
-      payload: { requester }
+      payload: {
+        requester: input.requester,
+        department: input.department ?? null,
+        currencyCode: input.currencyCode ?? null,
+        neededByDate: input.neededByDate ?? null
+      },
+      actor
     });
   });
 
@@ -75,7 +93,16 @@ export function getRequisitionById(requisitionId: string) {
   return getRequisition(requisitionId);
 }
 
-export function updateRequisitionState(requisitionId: string, toState: RequisitionState) {
+const eventTypeMap: Record<RequisitionState, string> = {
+  Draft: "requisition.created",
+  Submitted: "requisition.submitted",
+  Approved: "requisition.approved",
+  Rejected: "requisition.rejected",
+  Cancelled: "requisition.cancelled",
+  ConvertedToPO: "requisition.converted"
+};
+
+export function updateRequisitionState(requisitionId: string, toState: RequisitionState, actor?: EventActor) {
   const requisition = getRequisition(requisitionId);
   assertTransition(requisition.state, toState);
 
@@ -89,11 +116,28 @@ export function updateRequisitionState(requisitionId: string, toState: Requisiti
     appendEvent({
       entityId: requisitionId,
       entityType: "Requisition",
-      eventType: `Requisition${toState}`,
+      eventType: eventTypeMap[toState],
       version: nextVersion,
-      payload: { from: requisition.state, to: toState }
+      payload: { from: requisition.state, to: toState },
+      actor
     });
   });
 
   return getRequisition(requisitionId);
+}
+
+export function submitRequisition(requisitionId: string, actor?: EventActor) {
+  return updateRequisitionState(requisitionId, "Submitted", actor);
+}
+
+export function approveRequisition(requisitionId: string, actor?: EventActor) {
+  return updateRequisitionState(requisitionId, "Approved", actor);
+}
+
+export function rejectRequisition(requisitionId: string, actor?: EventActor) {
+  return updateRequisitionState(requisitionId, "Rejected", actor);
+}
+
+export function cancelRequisition(requisitionId: string, actor?: EventActor) {
+  return updateRequisitionState(requisitionId, "Cancelled", actor);
 }

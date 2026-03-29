@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { internalTrafficGuard } from "./middleware/internalTraffic";
+import { actorContext } from "./middleware/actorContext";
 import { loadConfig } from "./config/env";
 import { o2cRouter } from "./api/hypermedia/o2c.routes";
 import { p2pRouter } from "./api/hypermedia/p2p.routes";
@@ -31,7 +32,8 @@ export function createApp() {
       ingressIdHeader: config.ingressIdHeader,
       ingressIdValue: config.ingressIdValue
     }),
-    apiKeyAuth(config.apiKey)
+    apiKeyAuth(config.apiKey),
+    actorContext
   );
 
   app.use("/api/v1/o2c", o2cRouter);

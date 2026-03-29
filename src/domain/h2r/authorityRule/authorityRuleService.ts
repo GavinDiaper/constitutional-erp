@@ -1,5 +1,5 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
@@ -28,11 +28,14 @@ export function listAuthorityRules(domain?: AuthorityDomain) {
   return db.prepare("SELECT * FROM h2r_authority_rule ORDER BY domain ASC, threshold ASC, required_tier ASC").all();
 }
 
-export function createAuthorityRule(input: {
+export function createAuthorityRule(
+  input: {
   domain: AuthorityDomain;
   threshold: number;
   requiredTier: number;
-}) {
+  },
+  actor?: EventActor
+) {
   if (!Number.isFinite(input.threshold) || input.threshold < 0) {
     throw new HttpError(400, "invalid_request", "threshold must be a non-negative number");
   }
@@ -53,9 +56,10 @@ export function createAuthorityRule(input: {
     appendEvent({
       entityId: ruleId,
       entityType: "AuthorityRule",
-      eventType: "AuthorityRuleCreated",
+      eventType: "authority-rule.created",
       version: 1,
-      payload: input
+      payload: input as Record<string, unknown>,
+      actor
     });
   });
 

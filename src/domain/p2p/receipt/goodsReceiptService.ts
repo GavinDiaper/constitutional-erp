@@ -1,5 +1,5 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
@@ -37,7 +37,7 @@ function assertTransition(fromState: GoodsReceiptState, toState: GoodsReceiptSta
   }
 }
 
-export function createGoodsReceipt(poId: string) {
+export function createGoodsReceipt(poId: string, actor?: EventActor) {
   const po = db.prepare("SELECT * FROM p2p_purchase_order WHERE po_id = ?").get(poId) as
     | { po_id: string; state: string; version: number }
     | undefined;
@@ -46,8 +46,8 @@ export function createGoodsReceipt(poId: string) {
     throw new HttpError(404, "not_found", "Purchase order not found");
   }
 
-  if (po.state !== "Acknowledged") {
-    throw new HttpError(409, "invalid_transition", "Purchase order must be Acknowledged before receiving goods");
+  if (!(["Sent", "PartiallyReceived"] as string[]).includes(po.state)) {
+    throw new HttpError(409, "invalid_transition", "Purchase order must be in Sent or PartiallyReceived state");
   }
 
   const receiptId = newId("GR-");
@@ -62,16 +62,22 @@ export function createGoodsReceipt(poId: string) {
     appendEvent({
       entityId: receiptId,
       entityType: "GoodsReceipt",
-      eventType: "GoodsReceiptCreated",
+      eventType: "goods-receipt.created",
       version: 1,
-      payload: { poId }
+      payload: { poId },
+      actor
     });
   });
 
   return getGoodsReceiptById(receiptId);
 }
 
-export function updateGoodsReceiptState(receiptId: string, toState: GoodsReceiptState) {
+export function updateGoodsReceiptState(
+  receiptId: string,
+  toState: GoodsReceiptState,
+  options: { isPartial?: boolean } = {},
+  actor?: EventActor
+) {
   const receipt = getGoodsReceiptById(receiptId);
   assertTransition(receipt.state, toState);
 
@@ -83,6 +89,10 @@ export function updateGoodsReceiptState(receiptId: string, toState: GoodsReceipt
       .run(toState, nextVersion, toState === "Received" ? timestamp : null, timestamp, receiptId);
 
     if (toState === "Accepted") {
+      const isPartial = options.isPartial ?? false;
+      const poState = isPartial ? "PartiallyReceived" : "FullyReceived";
+      const poEventType = isPartial ? "po.received.partial" : "po.received.full";
+
       const po = db.prepare("SELECT version FROM p2p_purchase_order WHERE po_id = ?").get(receipt.po_id) as
         | { version: number }
         | undefined;
@@ -91,24 +101,26 @@ export function updateGoodsReceiptState(receiptId: string, toState: GoodsReceipt
         throw new HttpError(404, "not_found", "Purchase order not found");
       }
 
-      db.prepare("UPDATE p2p_purchase_order SET state = 'Received', version = version + 1, updated_at = ? WHERE po_id = ?")
-        .run(timestamp, receipt.po_id);
+      db.prepare("UPDATE p2p_purchase_order SET state = ?, version = version + 1, updated_at = ? WHERE po_id = ?")
+        .run(poState, timestamp, receipt.po_id);
 
       appendEvent({
         entityId: receipt.po_id,
         entityType: "PurchaseOrder",
-        eventType: "PurchaseOrderReceived",
+        eventType: poEventType,
         version: po.version + 1,
-        payload: { receiptId }
+        payload: { receiptId, isPartial },
+        actor
       });
     }
 
     appendEvent({
       entityId: receiptId,
       entityType: "GoodsReceipt",
-      eventType: `GoodsReceipt${toState}`,
+      eventType: `goods-receipt.${toState.toLowerCase()}`,
       version: nextVersion,
-      payload: { from: receipt.state, to: toState }
+      payload: { from: receipt.state, to: toState },
+      actor
     });
   });
 

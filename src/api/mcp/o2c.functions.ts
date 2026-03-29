@@ -1,16 +1,29 @@
 import { McpFunctionDef } from "./catalog";
 
 export const o2cFunctions: McpFunctionDef[] = [
+  { name: "o2c_create_customer", domain: "o2c", description: "Create a customer in Draft state" },
+  { name: "o2c_activate_customer", domain: "o2c", description: "Activate a Draft customer" },
   { name: "o2c_create_quote", domain: "o2c", description: "Create a sales quote" },
   { name: "o2c_add_quote_line", domain: "o2c", description: "Add a quote line" },
   { name: "o2c_send_quote", domain: "o2c", description: "Send a quote" },
   { name: "o2c_accept_quote", domain: "o2c", description: "Accept a quote" },
+  { name: "o2c_reject_quote", domain: "o2c", description: "Reject a quote" },
+  { name: "o2c_expire_quote", domain: "o2c", description: "Expire a sent quote" },
   { name: "o2c_convert_quote_to_order", domain: "o2c", description: "Convert a quote to order" },
-  { name: "o2c_confirm_order", domain: "o2c", description: "Confirm order" },
-  { name: "o2c_allocate_stock", domain: "o2c", description: "Allocate stock" },
-  { name: "o2c_ship_order", domain: "o2c", description: "Ship order" },
-  { name: "o2c_generate_invoice", domain: "o2c", description: "Generate invoice" },
-  { name: "o2c_post_invoice", domain: "o2c", description: "Post invoice" },
-  { name: "o2c_register_payment", domain: "o2c", description: "Register payment" },
-  { name: "o2c_apply_payment_to_invoice", domain: "o2c", description: "Apply payment to invoice" }
+  { name: "o2c_confirm_order", domain: "o2c", description: "Confirm a sales order" },
+  { name: "o2c_allocate_order", domain: "o2c", description: "Allocate stock for order" },
+  { name: "o2c_ship_order", domain: "o2c", description: "Ship an order" },
+  { name: "o2c_close_order", domain: "o2c", description: "Close a shipped order" },
+  { name: "o2c_cancel_order", domain: "o2c", description: "Cancel an order" },
+  { name: "o2c_generate_invoice", domain: "o2c", description: "Generate invoice from order" },
+  { name: "o2c_create_shipment", domain: "o2c", description: "Create a shipment" },
+  { name: "o2c_execute_shipment", domain: "o2c", description: "Mark shipment as shipped" },
+  { name: "o2c_deliver_shipment", domain: "o2c", description: "Mark shipment as delivered" },
+  { name: "o2c_cancel_shipment", domain: "o2c", description: "Cancel a shipment" },
+  { name: "o2c_post_ar_invoice", domain: "o2c", description: "Post an AR invoice" },
+  { name: "o2c_cancel_ar_invoice", domain: "o2c", description: "Cancel an AR invoice" },
+  { name: "o2c_register_payment", domain: "o2c", description: "Register a payment" },
+  { name: "o2c_apply_ar_payment", domain: "o2c", description: "Apply payment to invoice" },
+  { name: "o2c_reconcile_ar_payment", domain: "o2c", description: "Reconcile a payment" },
+  { name: "o2c_cancel_ar_payment", domain: "o2c", description: "Cancel a payment" }
 ];

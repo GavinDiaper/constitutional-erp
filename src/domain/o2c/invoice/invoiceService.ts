@@ -1,15 +1,16 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled";
+type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled" | "Cancelled";
 
 const transitions: Record<InvoiceState, InvoiceState[]> = {
-  Draft: ["Posted"],
-  Posted: ["Paid"],
+  Draft: ["Posted", "Cancelled"],
+  Posted: ["Paid", "Cancelled"],
   Paid: ["Reconciled"],
-  Reconciled: []
+  Reconciled: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -73,7 +74,7 @@ export function generateInvoice(orderId: string) {
     appendEvent({
       entityId: invoiceId,
       entityType: "Invoice",
-      eventType: "InvoiceGenerated",
+      eventType: "ar-invoice.generated",
       version: 1,
       payload: { orderId, amountDue: order.total_amount }
     });
@@ -82,7 +83,11 @@ export function generateInvoice(orderId: string) {
   return getInvoiceById(invoiceId);
 }
 
-export function updateInvoiceState(invoiceId: string, toState: InvoiceState) {
+export function updateInvoiceState(invoiceId: string, toState: InvoiceState, actor?: EventActor) {
+  return _doInvoiceTransition(invoiceId, toState, actor);
+}
+
+function _doInvoiceTransition(invoiceId: string, toState: InvoiceState, actor?: EventActor) {
   const invoice = getInvoiceById(invoiceId);
   assertTransition(invoice.state, toState);
 
@@ -96,13 +101,22 @@ export function updateInvoiceState(invoiceId: string, toState: InvoiceState) {
     appendEvent({
       entityId: invoiceId,
       entityType: "Invoice",
-      eventType: `Invoice${toState}`,
+      eventType: `ar-invoice.${toState.toLowerCase()}`,
       version: nextVersion,
+      actor,
       payload: { from: invoice.state, to: toState }
     });
   });
 
   return getInvoiceById(invoiceId);
+}
+
+export function postARInvoice(invoiceId: string, actor?: EventActor) {
+  return _doInvoiceTransition(invoiceId, "Posted", actor);
+}
+
+export function cancelARInvoice(invoiceId: string, actor?: EventActor) {
+  return _doInvoiceTransition(invoiceId, "Cancelled", actor);
 }
 
 export function addInvoicePayment(invoiceId: string, amount: number) {
@@ -120,7 +134,7 @@ export function addInvoicePayment(invoiceId: string, amount: number) {
     appendEvent({
       entityId: invoiceId,
       entityType: "Invoice",
-      eventType: "InvoicePaymentApplied",
+      eventType: "ar-invoice.payment_applied",
       version: nextVersion,
       payload: { amount, amountPaid: nextPaidAmount, amountDue: invoice.amount_due }
     });

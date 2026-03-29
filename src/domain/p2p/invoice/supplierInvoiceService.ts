@@ -1,15 +1,16 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent } from "../../../events/eventStore";
+import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 
-type SupplierInvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled";
+type SupplierInvoiceState = "Draft" | "Validated" | "Posted" | "Paid" | "Cancelled";
 
 const transitions: Record<SupplierInvoiceState, SupplierInvoiceState[]> = {
-  Draft: ["Posted"],
+  Draft: ["Validated", "Cancelled"],
+  Validated: ["Posted", "Cancelled"],
   Posted: ["Paid"],
-  Paid: ["Reconciled"],
-  Reconciled: []
+  Paid: [],
+  Cancelled: []
 };
 
 function now(): string {
@@ -21,9 +22,13 @@ export function getSupplierInvoiceById(supplierInvoiceId: string) {
     | {
         supplier_invoice_id: string;
         po_id: string;
+        supplier_id: string | null;
         state: SupplierInvoiceState;
         amount_due: number;
         amount_paid: number;
+        invoice_date: string | null;
+        due_date: string | null;
+        currency_code: string | null;
         version: number;
       }
     | undefined;
@@ -45,7 +50,11 @@ function assertTransition(fromState: SupplierInvoiceState, toState: SupplierInvo
   }
 }
 
-export function createSupplierInvoiceFromReceipt(receiptId: string) {
+export function createSupplierInvoiceFromReceipt(
+  receiptId: string,
+  options: { invoiceDate?: string; dueDate?: string; currencyCode?: string } = {},
+  actor?: EventActor
+) {
   const receipt = db.prepare("SELECT * FROM p2p_goods_receipt WHERE receipt_id = ?").get(receiptId) as
     | { receipt_id: string; po_id: string; state: string; version: number }
     | undefined;
@@ -59,7 +68,7 @@ export function createSupplierInvoiceFromReceipt(receiptId: string) {
   }
 
   const po = db.prepare("SELECT * FROM p2p_purchase_order WHERE po_id = ?").get(receipt.po_id) as
-    | { po_id: string; total_amount: number; version: number }
+    | { po_id: string; supplier_id: string; total_amount: number; currency_code: string | null; version: number }
     | undefined;
 
   if (!po) {
@@ -68,29 +77,38 @@ export function createSupplierInvoiceFromReceipt(receiptId: string) {
 
   const supplierInvoiceId = newId("APINV-");
   const timestamp = now();
+  const invoiceDate = options.invoiceDate ?? timestamp;
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_supplier_invoice(supplier_invoice_id, po_id, state, amount_due, amount_paid, version, created_at, updated_at)
-       VALUES (?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(supplierInvoiceId, receipt.po_id, po.total_amount, timestamp, timestamp);
-
-    db.prepare("UPDATE p2p_purchase_order SET state = 'Invoiced', version = version + 1, updated_at = ? WHERE po_id = ?")
-      .run(timestamp, receipt.po_id);
+      `INSERT INTO p2p_supplier_invoice(supplier_invoice_id, po_id, supplier_id, state, amount_due, amount_paid, invoice_date, due_date, currency_code, version, created_at, updated_at)
+       VALUES (?, ?, ?, 'Draft', ?, 0, ?, ?, ?, 1, ?, ?)`
+    ).run(
+      supplierInvoiceId,
+      receipt.po_id,
+      po.supplier_id,
+      po.total_amount,
+      invoiceDate,
+      options.dueDate ?? null,
+      options.currencyCode ?? po.currency_code ?? null,
+      timestamp,
+      timestamp
+    );
 
     appendEvent({
       entityId: supplierInvoiceId,
       entityType: "SupplierInvoice",
-      eventType: "SupplierInvoiceCreated",
+      eventType: "invoice.created",
       version: 1,
-      payload: { receiptId, poId: receipt.po_id, amountDue: po.total_amount }
+      payload: { receiptId, poId: receipt.po_id, supplierId: po.supplier_id, amountDue: po.total_amount },
+      actor
     });
   });
 
   return getSupplierInvoiceById(supplierInvoiceId);
 }
 
-export function updateSupplierInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceState) {
+function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceState, eventType: string, actor?: EventActor) {
   const supplierInvoice = getSupplierInvoiceById(supplierInvoiceId);
   assertTransition(supplierInvoice.state, toState);
 
@@ -104,11 +122,34 @@ export function updateSupplierInvoiceState(supplierInvoiceId: string, toState: S
     appendEvent({
       entityId: supplierInvoiceId,
       entityType: "SupplierInvoice",
-      eventType: `SupplierInvoice${toState}`,
+      eventType,
       version: nextVersion,
-      payload: { from: supplierInvoice.state, to: toState }
+      payload: { from: supplierInvoice.state, to: toState },
+      actor
     });
   });
 
   return getSupplierInvoiceById(supplierInvoiceId);
+}
+
+export function validateInvoice(supplierInvoiceId: string, actor?: EventActor) {
+  return updateInvoiceState(supplierInvoiceId, "Validated", "invoice.validated", actor);
+}
+
+export function postInvoice(supplierInvoiceId: string, actor?: EventActor) {
+  return updateInvoiceState(supplierInvoiceId, "Posted", "invoice.posted", actor);
+}
+
+export function cancelInvoice(supplierInvoiceId: string, actor?: EventActor) {
+  return updateInvoiceState(supplierInvoiceId, "Cancelled", "invoice.cancelled", actor);
+}
+
+/** @deprecated use postInvoice */
+export function updateSupplierInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceState, actor?: EventActor) {
+  const eventTypeMap: Partial<Record<SupplierInvoiceState, string>> = {
+    Validated: "invoice.validated",
+    Posted: "invoice.posted",
+    Cancelled: "invoice.cancelled"
+  };
+  return updateInvoiceState(supplierInvoiceId, toState, eventTypeMap[toState] ?? `invoice.${toState.toLowerCase()}`, actor);
 }
