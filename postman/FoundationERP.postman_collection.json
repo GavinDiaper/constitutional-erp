@@ -4650,6 +4650,48 @@
           ]
         },
         {
+          "name": "Activate Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/employees/{{employeeId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "employees",
+                "{{employeeId}}",
+                "activate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Employee active\", function () { pm.expect(pm.response.json().status).to.eql(\"Active\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Position",
           "request": {
             "method": "POST",
