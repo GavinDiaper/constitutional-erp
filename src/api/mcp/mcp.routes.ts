@@ -167,7 +167,7 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = expireQuote(input.quoteId, actor);
         break;
       case "o2c_convert_quote_to_order":
-        result = createOrderFromQuote(input.quoteId, actor);
+        result = createOrderFromQuote(input.quoteId);
         break;
       case "o2c_confirm_order":
         result = confirmOrder(input.orderId, actor);
