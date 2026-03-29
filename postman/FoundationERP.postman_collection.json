@@ -1259,6 +1259,48 @@
           ]
         },
         {
+          "name": "Validate Supplier Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/p2p/supplier-invoices/{{supplierInvoiceId}}/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "supplier-invoices",
+                "{{supplierInvoiceId}}",
+                "validate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Supplier invoice validated\", function () { pm.expect(pm.response.json().state).to.eql(\"Validated\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Post Supplier Invoice",
           "request": {
             "method": "POST",
