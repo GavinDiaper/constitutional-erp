@@ -4743,7 +4743,49 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"assignmentId\", body.assignment_id);",
-                  "pm.test(\"Assignment active\", function () { pm.expect(body.state).to.eql(\"Active\"); });"
+                  "pm.test(\"Assignment planned\", function () { pm.expect(body.state).to.eql(\"Planned\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activate Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/h2r/assignments/{{assignmentId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "h2r",
+                "assignments",
+                "{{assignmentId}}",
+                "activate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Assignment active\", function () { pm.expect(pm.response.json().state).to.eql(\"Active\"); });"
                 ]
               }
             }
