@@ -1751,6 +1751,18 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var fiscalPeriodId = pm.environment.get(\"fiscalPeriodId\");",
+                  "if (!fiscalPeriodId || !String(fiscalPeriodId).trim()) {",
+                  "  throw new Error(\"Missing fiscalPeriodId. Run 'Create Fiscal Period' first, or set fiscalPeriodId in the active environment.\");",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
