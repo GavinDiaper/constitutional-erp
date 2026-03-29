@@ -1386,14 +1386,14 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"apPaymentId\", body.ap_payment_id);",
-                  "pm.test(\"AP payment initiated\", function () { pm.expect(body.state).to.eql(\"Initiated\"); });"
+                  "pm.test(\"AP payment in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Execute AP Payment",
+          "name": "Receive AP Payment",
           "request": {
             "method": "POST",
             "header": [
@@ -1407,7 +1407,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/p2p/ap-payments/{{apPaymentId}}/execute",
+              "raw": "{{baseUrl}}/api/v1/p2p/ap-payments/{{apPaymentId}}/receive",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1417,7 +1417,7 @@
                 "p2p",
                 "ap-payments",
                 "{{apPaymentId}}",
-                "execute"
+                "receive"
               ]
             }
           },
@@ -1428,7 +1428,49 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"AP payment executed\", function () { pm.expect(pm.response.json().state).to.eql(\"Executed\"); });"
+                  "pm.test(\"AP payment received\", function () { pm.expect(pm.response.json().state).to.eql(\"Received\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply AP Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/p2p/ap-payments/{{apPaymentId}}/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "ap-payments",
+                "{{apPaymentId}}",
+                "apply"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"AP payment applied\", function () { pm.expect(pm.response.json().state).to.eql(\"Applied\"); });"
                 ]
               }
             }
