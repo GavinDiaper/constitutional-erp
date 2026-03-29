@@ -393,7 +393,7 @@ o2cRouter.post("/quotes/:quoteId/expire", (req, res) => {
 });
 
 o2cRouter.post("/quotes/:quoteId/convert", (req, res) => {
-  const order = convertQuoteToOrder(req.params.quoteId, req.actor);
+  const order = createOrderFromQuote(req.params.quoteId, req.actor);
   res.status(201).json(entityWithLinks(order as any, orderLinks((order as any).order_id, (order as any).state)));
 });
 

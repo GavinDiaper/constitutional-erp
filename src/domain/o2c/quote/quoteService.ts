@@ -174,5 +174,7 @@ export function expireQuote(quoteId: string, actor?: EventActor) {
 }
 
 export function convertQuoteToOrder(quoteId: string, actor?: EventActor) {
+  // This function is now deprecated - use createOrderFromQuote from salesOrderService instead
+  // Kept for backwards compatibility with existing code paths
   return _doQuoteTransition(quoteId, "ConvertedToOrder", actor);
 }
