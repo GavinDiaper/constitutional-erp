@@ -27,6 +27,7 @@ export interface AppConfig {
   pgeApiKey: string;
   meshGatewayUrl: string;
   meshGatewayApiKey: string;
+  meshAdapterId: string;
   authorityEngineUrl: string;
   authorityEngineApiKey: string;
   governanceEngineUrl: string;
@@ -59,6 +60,7 @@ export function loadConfig(): AppConfig {
     pgeApiKey: required("PGE_API_KEY", "change-me"),
     meshGatewayUrl: required("MESH_GATEWAY_URL", "http://localhost:4003"),
     meshGatewayApiKey: required("MESH_GATEWAY_API_KEY", "change-me"),
+    meshAdapterId: required("MESH_ADAPTER_ID", "foundation"),
     authorityEngineUrl: required("AUTHORITY_ENGINE_URL", "http://localhost:4001"),
     authorityEngineApiKey: required("AUTHORITY_ENGINE_API_KEY", "change-me"),
     governanceEngineUrl: required("GOVERNANCE_ENGINE_URL", "http://localhost:4002"),

@@ -12,7 +12,7 @@ export class MeshClient {
     actorId: string;
     payload: Record<string, unknown>;
   }): Promise<{ status: number; data: Record<string, unknown> }> {
-    const url = `${this.config.meshGatewayUrl}/mesh/${input.domain.toLowerCase()}/${input.aggregateType}/${input.aggregateId}/${input.actionId}`;
+    const url = `${this.config.meshGatewayUrl}/mesh/${this.config.meshAdapterId}/${input.domain.toLowerCase()}/${input.aggregateType}/${input.aggregateId}/${input.actionId}`;
     return requestJsonAllowError<Record<string, unknown>>(url, {
       method: "POST",
       headers: {
