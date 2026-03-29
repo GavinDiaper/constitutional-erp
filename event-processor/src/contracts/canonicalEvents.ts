@@ -39,6 +39,13 @@ export interface CanonicalEvent {
       isReplay: boolean;
       isSynthetic: boolean;
     };
+    governance?: {
+      riskLevel?: "Low" | "Medium" | "High";
+      requiredTier?: 1 | 2 | 3 | 4 | 5;
+      governanceTag?: string;
+      requiredApproval?: boolean;
+      approverTier?: 1 | 2 | 3 | 4 | 5;
+    };
   };
 }
 
