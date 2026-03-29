@@ -30,6 +30,15 @@ ACTOR_ID=system
 
 See `.env.example` for all available options.
 
+For zero-cost and offline operation, run `navigator-ai` with:
+
+```env
+LLM_PROVIDER=deterministic
+LLM_DETERMINISTIC_SEED=constitutional-erp
+```
+
+When enabled, REPL commands (`propose`, `explain`, `simulate`, `decide`) remain constitutional and deterministic without calling external LLM providers.
+
 ## Quick Start
 
 1. Start the navigator-ai service on port 4016

@@ -39,6 +39,10 @@ export function createApp() {
     res.json({
       status: startupStatus === "Ready" ? "ok" : "degraded",
       service: "navigator-ai",
+      llm: {
+        provider: llmClient.provider,
+        model: llmClient.model
+      },
       startupStatus,
       startupError: startupStatus === "Failed" ? getStartupError() : undefined
     });

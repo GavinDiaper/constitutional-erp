@@ -10,7 +10,7 @@ function loadLocalEnv() {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      dotenv.config({ path: candidate, override: true });
+      dotenv.config({ path: candidate, override: false });
       return;
     }
   }
@@ -18,7 +18,7 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
-export type LlmProvider = "azure" | "openai";
+export type LlmProvider = "azure" | "openai" | "deterministic";
 
 export interface AppConfig {
   port: number;
@@ -46,6 +46,7 @@ export interface AppConfig {
   openAiModel: string;
   openAiBaseUrl: string;
   openAiMaxTokens: number;
+  deterministicSeed: string;
 }
 
 function required(name: string, fallback?: string): string {
@@ -58,12 +59,13 @@ function required(name: string, fallback?: string): string {
 }
 
 function parseLlmProvider(): LlmProvider {
-  const value = (process.env.LLM_PROVIDER ?? "azure").toLowerCase();
-  if (value === "azure" || value === "openai") {
+  const defaultProvider = process.env.CI === "true" ? "deterministic" : "azure";
+  const value = (process.env.LLM_PROVIDER ?? defaultProvider).toLowerCase();
+  if (value === "azure" || value === "openai" || value === "deterministic") {
     return value;
   }
 
-  throw new Error("Invalid LLM_PROVIDER. Supported values: azure, openai");
+  throw new Error("Invalid LLM_PROVIDER. Supported values: azure, openai, deterministic");
 }
 
 export function loadConfig(): AppConfig {
@@ -98,6 +100,7 @@ export function loadConfig(): AppConfig {
     openAiApiKey: usingOpenAi ? required("OPENAI_API_KEY") : process.env.OPENAI_API_KEY ?? "",
     openAiModel: usingOpenAi ? required("OPENAI_MODEL") : process.env.OPENAI_MODEL ?? "",
     openAiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-    openAiMaxTokens: Number(process.env.OPENAI_MAX_TOKENS ?? 4096)
+    openAiMaxTokens: Number(process.env.OPENAI_MAX_TOKENS ?? 4096),
+    deterministicSeed: process.env.LLM_DETERMINISTIC_SEED ?? "constitutional-erp"
   };
 }

@@ -4,7 +4,7 @@ export interface LlmMessage {
 }
 
 export interface LlmClient {
-  readonly provider: "azure" | "openai";
+  readonly provider: "azure" | "openai" | "deterministic";
   readonly model: string;
   validateConnectivity(): Promise<void>;
   chat(messages: LlmMessage[]): Promise<string>;
