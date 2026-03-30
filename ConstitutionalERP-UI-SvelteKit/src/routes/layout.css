@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+	--racing-red: #e00000;
+	--deep-space-blue: #19304d;
+	--midnight-blue: #10253f;
+	--slate-tint: #d9e3ee;
+	--white: #ffffff;
+	--black: #000000;
+	--panel-border: rgba(255, 255, 255, 0.12);
+	--panel-overlay: rgba(255, 255, 255, 0.06);
+	--shadow-strong: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+	background:
+		radial-gradient(circle at 20% -10%, rgba(224, 0, 0, 0.35), transparent 40%),
+		radial-gradient(circle at 85% 10%, rgba(68, 114, 160, 0.35), transparent 34%),
+		linear-gradient(165deg, var(--deep-space-blue), var(--midnight-blue));
+	color: var(--white);
+	font-family: 'Public Sans', 'Segoe UI', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+	letter-spacing: 0.02em;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+.page-shell {
+	min-height: 100dvh;
+	padding: 1.25rem;
+}
+
+.glass-panel {
+	background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+	border: 1px solid var(--panel-border);
+	backdrop-filter: blur(10px);
+	border-radius: 1rem;
+	box-shadow: var(--shadow-strong);
+}
+
+.muted {
+	color: var(--slate-tint);
+}
+
+.accent {
+	color: var(--racing-red);
+}
+
+.grid-auto-fit {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 1rem;
+}
+
+@media (max-width: 860px) {
+	.page-shell {
+		padding: 0.75rem;
+	}
+}
