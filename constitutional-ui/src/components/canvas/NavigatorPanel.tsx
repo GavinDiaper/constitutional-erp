@@ -27,6 +27,7 @@ export default function NavigatorPanel({
   const [result, setResult] = useState<ExecuteProcessActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [attemptTrace, setAttemptTrace] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const recommendedAction = useMemo(() => pickRecommendedAction(links), [links]);
 
@@ -55,21 +56,34 @@ export default function NavigatorPanel({
     setError(null);
     setResult(null);
     setMessage(null);
+    setAttemptTrace([]);
 
     try {
       const payload = autoPayload;
+      const trace: string[] = [];
       if (selectedLink?.href) {
         try {
+          trace.push(`POST ${selectedLink.href}`);
           const byHref = await executeProcessActionByHref(selectedLink.href, payload);
           if (byHref) {
             setResult(byHref);
           }
-          setMessage("Action submitted. Refreshing process state...");
+          if (byHref.previousState === byHref.newState) {
+            setMessage(
+              `Action executed but state remained '${byHref.newState}'. Check transition preconditions.`
+            );
+          } else {
+            setMessage(
+              `Action executed: ${byHref.previousState} -> ${byHref.newState}. Refreshing process state...`
+            );
+          }
+          setAttemptTrace(trace);
           await onExecuted();
           await sleep(500);
           await onExecuted();
           return;
-        } catch {
+        } catch (err) {
+          trace.push(`FAILED href execution: ${errorText(err)}`);
           // Fall through to candidate-based execution for compatibility.
         }
       }
@@ -80,10 +94,12 @@ export default function NavigatorPanel({
 
       for (const candidate of candidates) {
         try {
+          trace.push(`POST /process/${entityType}/${entityId}/actions/${candidate}`);
           res = await executeProcessAction(entityType, entityId, candidate, payload);
           break;
         } catch (err) {
           lastError = err;
+          trace.push(`FAILED candidate '${candidate}': ${errorText(err)}`);
         }
       }
 
@@ -94,7 +110,16 @@ export default function NavigatorPanel({
       }
 
       setResult(res);
-      setMessage("Action submitted. Refreshing process state...");
+      if (res.previousState === res.newState) {
+        setMessage(
+          `Action executed but state remained '${res.newState}'. Check transition preconditions.`
+        );
+      } else {
+        setMessage(
+          `Action executed: ${res.previousState} -> ${res.newState}. Refreshing process state...`
+        );
+      }
+      setAttemptTrace(trace);
       await onExecuted();
       await sleep(500);
       await onExecuted();
@@ -199,9 +224,18 @@ export default function NavigatorPanel({
           {error && <p className="text-sm text-red-600">{error}</p>}
           {message && <p className="text-sm text-emerald-700">{message}</p>}
 
+          {attemptTrace.length > 0 && (
+            <div className="rounded-lg border border-slate-200 p-3">
+              <div className="text-xs uppercase tracking-wide text-slate-500">Execution trace</div>
+              <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-600">
+                {attemptTrace.join("\n")}
+              </pre>
+            </div>
+          )}
+
           {result && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-              Executed <span className="font-mono">{result.action}</span>: {result.previousState} -&gt; {result.newState}
+              Executed <span className="font-mono">{result.action ?? selectedAction}</span>: {result.previousState} -&gt; {result.newState}
             </div>
           )}
         </div>
@@ -230,6 +264,13 @@ function pickRecommendedAction(links: ProcessLink[]): string | null {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function errorText(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err);
 }
 
 function buildDefaultPayload(schema?: InputSchema): Record<string, unknown> {

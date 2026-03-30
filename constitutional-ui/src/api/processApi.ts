@@ -30,11 +30,13 @@ export interface ProcessState {
 }
 
 export interface ExecuteProcessActionResult {
-  action: string;
+  action?: string;
   previousState: string;
   newState: string;
-  output: unknown;
-  links: ProcessLink[];
+  output?: unknown;
+  links?: ProcessLink[];
+  eventId?: string;
+  timestamp?: string;
 }
 
 export async function getProcessState(
