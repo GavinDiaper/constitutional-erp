@@ -17,6 +17,10 @@ function tierFromRiskLevel(riskLevel?: "Low" | "Medium" | "High"): number | unde
   return undefined;
 }
 
+function normalizeKey(value: string): string {
+  return value.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
 const FUNCTION_DEFS = [
   { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
   { id: "p2p_submit_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "submit_requisition", operationType: "transition", description: "Transition requisition to Submitted", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
@@ -110,7 +114,12 @@ export class McpCatalog {
   }
 
   getByEntityAndAction(entity: string, action: string): McpFunction | undefined {
-    return this.functions.find((fn) => fn.entity.toLowerCase() === entity.toLowerCase() && fn.action === action);
+    const entityKey = normalizeKey(entity);
+    return this.functions.find(
+      (fn) =>
+        fn.action === action &&
+        (normalizeKey(fn.entity) === entityKey || normalizeKey(fn.aggregateType) === entityKey)
+    );
   }
 
   getByDomainAggregateAction(domain: string, aggregateType: string, action: string): McpFunction | undefined {
