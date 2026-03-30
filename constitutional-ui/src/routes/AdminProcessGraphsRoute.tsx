@@ -1,14 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCanvasEntityLinks, type CanvasEntityLink } from "../api/canvasEntityApi";
 import { getProcessState, type ProcessState } from "../api/processApi";
 
 export default function AdminProcessGraphsRoute() {
-  const [entityType, setEntityType] = useState("quotes");
-  const [entityId, setEntityId] = useState("sample-quotes");
+  const [entityType, setEntityType] = useState("");
+  const [entityId, setEntityId] = useState("");
+  const [targets, setTargets] = useState<CanvasEntityLink[]>([]);
   const [result, setResult] = useState<ProcessState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    getCanvasEntityLinks()
+      .then((rows) => rows.filter((r) => r.processEntityType && r.entityId))
+      .then((rows) => {
+        setTargets(rows);
+        const firstReady = rows.find((r) => r.processReady);
+        const first = firstReady ?? rows[0];
+        if (first?.processEntityType && first.entityId) {
+          setEntityType(first.processEntityType);
+          setEntityId(first.entityId);
+        }
+      })
+      .catch(() => setTargets([]));
+  }, []);
+
   async function handleLoad() {
+    if (!entityType || !entityId) {
+      setError("Please select a valid process entity and id");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -29,11 +50,30 @@ export default function AdminProcessGraphsRoute() {
       </div>
 
       <div className="grid gap-3 rounded-xl border border-slate-200 p-4 md:grid-cols-3">
+        <select
+          value={entityType && entityId ? `${entityType}|${entityId}` : ""}
+          onChange={(e) => {
+            const [nextType, nextId] = e.target.value.split("|");
+            setEntityType(nextType ?? "");
+            setEntityId(nextId ?? "");
+          }}
+          className="rounded-lg border border-slate-300 p-2 text-sm md:col-span-3"
+        >
+          <option value="">Select live process entity</option>
+          {targets.map((t) => (
+            <option
+              key={`${t.entityType}-${t.entityId}`}
+              value={`${t.processEntityType}|${t.entityId}`}
+            >
+              {t.label} / {t.entityId} {t.processReady ? "" : "(may be unavailable)"}
+            </option>
+          ))}
+        </select>
         <input
           value={entityType}
           onChange={(e) => setEntityType(e.target.value)}
           className="rounded-lg border border-slate-300 p-2 text-sm"
-          placeholder="entityType"
+          placeholder="process entityType (e.g. quote)"
         />
         <input
           value={entityId}
