@@ -12,6 +12,7 @@ import { mcpRouter } from "./api/mcp/mcp.routes";
 import { eventRouter } from "./api/events.routes";
 import { queryRouter } from "./api/query.routes";
 import { navlogRouter } from "./api/navlog/navlog.routes";
+import { authRouter } from "./api/auth.routes";
 import { toProblem } from "./utils/errors";
 
 const config = loadConfig();
@@ -25,6 +26,8 @@ export function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "foundation-erp" });
   });
+
+  app.use(authRouter);
 
   app.use(
     "/api/v1",
