@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { getMcpFunctions, type McpFunction } from "../api/mcpApi";
 import { getProcessState } from "../api/processApi";
 import { getInitialActionById } from "../api/initialActionsApi";
+import {
+  getCanvasEntityLinks,
+  type CanvasEntityLink,
+} from "../api/canvasEntityApi";
 
 const STARTER_ACTIONS: Record<string, string> = {
   create_supplier: "create-supplier",
@@ -14,6 +18,7 @@ const STARTER_ACTIONS: Record<string, string> = {
 
 export default function AdminMcpCatalogRoute() {
   const [rows, setRows] = useState<McpFunction[]>([]);
+  const [entityLinks, setEntityLinks] = useState<CanvasEntityLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -23,7 +28,42 @@ export default function AdminMcpCatalogRoute() {
     getMcpFunctions()
       .then(setRows)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load MCP catalog"));
+
+    getCanvasEntityLinks()
+      .then(setEntityLinks)
+      .catch(() => setEntityLinks([]));
   }, []);
+
+  function toProcessEntityType(entity: string): string {
+    const normalized = entity.trim().toLowerCase().replace(/\s+/g, "-");
+    if (normalized === "sales-order") return "sales-order";
+    if (normalized === "purchase-order") return "purchase-order";
+    if (normalized === "invoice" || normalized === "ar-invoice") return "ar-invoice";
+    if (normalized === "payment" || normalized === "ar-payment") return "ar-payment";
+    return normalized;
+  }
+
+  function openLiveEntity(fn: McpFunction) {
+    setError(null);
+    setMessage(null);
+
+    const processEntityType = toProcessEntityType(fn.entity);
+    const candidate = entityLinks.find(
+      (x) =>
+        x.processEntityType === processEntityType &&
+        x.entityId &&
+        x.processReady
+    );
+
+    if (!candidate?.entityId) {
+      setMessage(`No live process-ready '${processEntityType}' entity available to open.`);
+      return;
+    }
+
+    navigate(
+      `/canvas/${processEntityType}/${encodeURIComponent(candidate.entityId)}`
+    );
+  }
 
   async function runAction(fn: McpFunction) {
     setError(null);
@@ -87,7 +127,7 @@ export default function AdminMcpCatalogRoute() {
                 <td className="px-3 py-2 font-mono text-xs">
                   <button
                     type="button"
-                    onClick={() => runAction(fn)}
+                    onClick={() => openLiveEntity(fn)}
                     className="rounded px-1 py-0.5 hover:bg-slate-100"
                   >
                     {fn.action}
@@ -97,6 +137,7 @@ export default function AdminMcpCatalogRoute() {
                 <td className="px-3 py-2 text-xs">{fn.requiredTier ?? "-"}</td>
                 <td className="px-3 py-2 text-xs text-slate-500">{fn.governanceTag ?? "-"}</td>
                 <td className="px-3 py-2 text-xs">
+                  {STARTER_ACTIONS[fn.action] ? (
                   <button
                     type="button"
                     onClick={() => runAction(fn)}
@@ -105,6 +146,11 @@ export default function AdminMcpCatalogRoute() {
                   >
                     {busyId === fn.id ? "Starting..." : "Start"}
                   </button>
+                  ) : (
+                    <span className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-400">
+                      Not startable
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
