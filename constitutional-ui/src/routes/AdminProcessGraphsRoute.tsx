@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCanvasEntityLinks, type CanvasEntityLink } from "../api/canvasEntityApi";
 import { getProcessState, type ProcessState } from "../api/processApi";
+import ProcessGraphPanel from "../components/canvas/ProcessGraphPanel";
 
 export default function AdminProcessGraphsRoute() {
   const [entityType, setEntityType] = useState("");
@@ -98,16 +99,14 @@ export default function AdminProcessGraphsRoute() {
           <div className="text-sm">
             State: <span className="font-medium">{result.state}</span>
           </div>
-          <div>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Transitions</h2>
-            <div className="flex flex-wrap gap-2">
-              {result.links.map((link) => (
-                <span key={link.rel} className="rounded-lg border border-slate-200 px-3 py-1 text-xs">
-                  {link.rel}
-                </span>
-              ))}
-            </div>
-          </div>
+          <ProcessGraphPanel
+            entityType={entityType}
+            currentState={result.state}
+            links={result.links}
+            onSelectAction={() => {
+              // Admin graph supports click affordance, execution stays in Canvas Navigator.
+            }}
+          />
         </div>
       )}
     </div>
