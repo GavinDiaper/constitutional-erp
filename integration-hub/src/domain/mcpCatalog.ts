@@ -123,7 +123,16 @@ export class McpCatalog {
   }
 
   getByDomainAggregateAction(domain: string, aggregateType: string, action: string): McpFunction | undefined {
-    return this.functions.find((fn) => fn.domain === domain && fn.aggregateType === aggregateType && fn.action === action);
+    const domainKey = normalizeKey(domain);
+    const aggregateTypeKey = normalizeKey(aggregateType);
+    const actionKey = normalizeKey(action);
+
+    return this.functions.find(
+      (fn) =>
+        normalizeKey(fn.domain) === domainKey &&
+        normalizeKey(fn.aggregateType) === aggregateTypeKey &&
+        normalizeKey(fn.action) === actionKey
+    );
   }
 
   requireById(id: string): McpFunction {

@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 
 export default function AppLayout() {
   const location = useLocation();
-  const showSidebar = location.pathname.startsWith("/canvas") || location.pathname.startsWith("/admin");
+  const showSidebar = location.pathname.startsWith("/admin/") || location.pathname.startsWith("/canvas/");
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
