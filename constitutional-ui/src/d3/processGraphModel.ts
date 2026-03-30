@@ -108,6 +108,18 @@ const ACTION_ALIASES: Record<string, string[]> = {
   terminate_employee: ["terminate"],
 };
 
+const ALIAS_TO_CANONICAL = Object.entries(ACTION_ALIASES).reduce<Record<string, string>>(
+  (acc, [canonical, aliases]) => {
+    for (const alias of aliases) {
+      if (!acc[alias]) {
+        acc[alias] = canonical;
+      }
+    }
+    return acc;
+  },
+  {}
+);
+
 function resolveInvokeAction(templateAction: string, availableRels: Set<string>): string | null {
   if (availableRels.has(templateAction)) {
     return templateAction;
@@ -124,8 +136,30 @@ function resolveInvokeAction(templateAction: string, availableRels: Set<string>)
 }
 
 function defaultInvokeAction(templateAction: string): string {
-  const aliases = ACTION_ALIASES[templateAction] ?? [];
-  return aliases[0] ?? templateAction;
+  return templateAction;
+}
+
+export function getActionCandidates(action: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (value: string) => {
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    out.push(value);
+  };
+
+  push(action);
+
+  const aliases = ACTION_ALIASES[action] ?? [];
+  aliases.forEach(push);
+
+  const canonical = ALIAS_TO_CANONICAL[action];
+  if (canonical) {
+    push(canonical);
+    (ACTION_ALIASES[canonical] ?? []).forEach(push);
+  }
+
+  return out;
 }
 
 export function getFallbackActions(

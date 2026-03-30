@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   executeProcessAction,
   type ExecuteProcessActionResult,
+  type InputSchema,
   type ProcessLink,
 } from "../../api/processApi";
+import { getActionCandidates } from "../../d3/processGraphModel";
 
 interface Props {
   entityType: string;
@@ -21,7 +23,6 @@ export default function NavigatorPanel({
   preselectedAction,
 }: Props) {
   const [selectedAction, setSelectedAction] = useState<string>(links[0]?.rel ?? "");
-  const [payloadText, setPayloadText] = useState("{}");
   const [result, setResult] = useState<ExecuteProcessActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,6 +30,10 @@ export default function NavigatorPanel({
   const selectedLink = useMemo(
     () => links.find((x) => x.rel === selectedAction),
     [links, selectedAction]
+  );
+  const autoPayload = useMemo(
+    () => buildDefaultPayload(selectedLink?.requiredInput),
+    [selectedLink]
   );
 
   useEffect(() => {
@@ -44,8 +49,26 @@ export default function NavigatorPanel({
     setResult(null);
 
     try {
-      const parsedPayload = payloadText.trim() ? (JSON.parse(payloadText) as Record<string, unknown>) : {};
-      const res = await executeProcessAction(entityType, entityId, selectedAction, parsedPayload);
+      const payload = autoPayload;
+      const candidates = getActionCandidates(selectedAction);
+      let res: ExecuteProcessActionResult | null = null;
+      let lastError: unknown = null;
+
+      for (const candidate of candidates) {
+        try {
+          res = await executeProcessAction(entityType, entityId, candidate, payload);
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!res) {
+        throw lastError instanceof Error
+          ? lastError
+          : new Error("Execution failed");
+      }
+
       setResult(res);
       await onExecuted();
     } catch (err) {
@@ -65,7 +88,7 @@ export default function NavigatorPanel({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
           Proposed Actions
         </h2>
-        <p className="text-xs text-slate-500">Select an action and execute with optional JSON payload.</p>
+        <p className="text-xs text-slate-500">Select an action and execute with auto-filled payload.</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -115,16 +138,12 @@ export default function NavigatorPanel({
             )}
           </div>
 
-          <label className="block text-xs font-medium text-slate-600" htmlFor="nav-payload">
-            Payload (JSON)
-          </label>
-          <textarea
-            id="nav-payload"
-            value={payloadText}
-            onChange={(e) => setPayloadText(e.target.value)}
-            rows={8}
-            className="w-full rounded-lg border border-slate-300 p-2 font-mono text-xs"
-          />
+          <div className="rounded-lg border border-slate-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Auto payload</div>
+            <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-600">
+              {JSON.stringify(autoPayload, null, 2)}
+            </pre>
+          </div>
 
           <button
             type="button"
@@ -146,4 +165,44 @@ export default function NavigatorPanel({
       </div>
     </div>
   );
+}
+
+function buildDefaultPayload(schema?: InputSchema): Record<string, unknown> {
+  if (!schema || schema.type !== "object") {
+    return {};
+  }
+
+  const required = new Set(schema.required ?? []);
+  const properties = schema.properties ?? {};
+  const payload: Record<string, unknown> = {};
+
+  for (const [key, prop] of Object.entries(properties)) {
+    if (!required.has(key)) {
+      continue;
+    }
+    payload[key] = defaultValueForProperty(prop);
+  }
+
+  return payload;
+}
+
+function defaultValueForProperty(prop: unknown): unknown {
+  if (!prop || typeof prop !== "object") {
+    return "";
+  }
+
+  const typed = prop as { type?: unknown; items?: unknown };
+  const type = typeof typed.type === "string" ? typed.type : "";
+
+  if (type === "string") return "";
+  if (type === "integer" || type === "number") return 0;
+  if (type === "boolean") return false;
+  if (type === "array") return [];
+  if (type === "object") return {};
+
+  if (Array.isArray(typed.items)) {
+    return [];
+  }
+
+  return "";
 }
