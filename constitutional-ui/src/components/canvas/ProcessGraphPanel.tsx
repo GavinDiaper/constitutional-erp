@@ -47,7 +47,7 @@ export default function ProcessGraphPanel({
 
       <svg ref={svgRef} className="h-[340px] w-full rounded-lg bg-slate-50" />
       <p className="text-xs text-slate-500">
-        Click an available transition label in the graph to open it in Navigator.
+        Click an available transition label or actionable state node to open it in Navigator.
       </p>
     </section>
   );

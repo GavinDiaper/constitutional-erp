@@ -99,6 +99,13 @@ export function renderProcessFlowGraph(
   const edgeLayer = svg.append("g");
   const nodeLayer = svg.append("g");
   const labelLayer = svg.append("g");
+  const availableOutgoingActionByState = new Map<string, string>();
+
+  for (const edge of edges) {
+    if (edge.available && !availableOutgoingActionByState.has(edge.from)) {
+      availableOutgoingActionByState.set(edge.from, edge.invokeAction ?? edge.action);
+    }
+  }
 
   edgeLayer
     .selectAll("line")
@@ -140,7 +147,14 @@ export function renderProcessFlowGraph(
     .attr("r", 16)
     .attr("stroke", "#0f172a")
     .attr("stroke-width", (s) => (s === currentState ? 3 : 1.5))
-    .attr("fill", (s) => (s === currentState ? "#2563eb" : "#e2e8f0"));
+    .attr("fill", (s) => (s === currentState ? "#2563eb" : "#e2e8f0"))
+    .style("cursor", (s) => (availableOutgoingActionByState.has(s) ? "pointer" : "default"))
+    .on("click", (_evt, s) => {
+      const action = availableOutgoingActionByState.get(s);
+      if (action) {
+        onSelectAction(action);
+      }
+    });
 
   labelLayer
     .selectAll("text")
