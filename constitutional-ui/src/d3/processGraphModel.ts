@@ -108,6 +108,15 @@ const ACTION_ALIASES: Record<string, string[]> = {
   terminate_employee: ["terminate"],
 };
 
+ACTION_ALIASES.convert_quote_to_order = [
+  ...ACTION_ALIASES.convert_quote_to_order,
+  "convert-to-order",
+];
+ACTION_ALIASES.convert_requisition_to_po = [
+  ...ACTION_ALIASES.convert_requisition_to_po,
+  "convert-to-po",
+];
+
 const ALIAS_TO_CANONICAL = Object.entries(ACTION_ALIASES).reduce<Record<string, string>>(
   (acc, [canonical, aliases]) => {
     for (const alias of aliases) {
