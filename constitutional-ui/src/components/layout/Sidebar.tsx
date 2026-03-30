@@ -1,17 +1,6 @@
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-
-const canvasEntities = [
-  "customers",
-  "quotes",
-  "orders",
-  "invoices",
-  "payments",
-  "suppliers",
-  "requisitions",
-  "purchase-orders",
-  "journals",
-  "employees"
-];
+import { getCanvasEntityLinks, type CanvasEntityLink } from "../../api/canvasEntityApi";
 
 const adminLinks = [
   { to: "/admin/entities", label: "Entity Explorer" },
@@ -26,6 +15,12 @@ const adminLinks = [
 export default function Sidebar() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
+  const [canvasEntities, setCanvasEntities] = useState<CanvasEntityLink[]>([]);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    getCanvasEntityLinks().then(setCanvasEntities).catch(() => setCanvasEntities([]));
+  }, [isAdmin]);
 
   return (
     <aside className="hidden w-72 shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
@@ -40,9 +35,19 @@ export default function Sidebar() {
               </NavLink>
             ))
           : canvasEntities.map((entity) => (
-              <NavLink key={entity} to={`/canvas/${entity}/sample-${entity}`} className="sidebar-link">
-                {entity}
-              </NavLink>
+              entity.entityId && entity.processEntityType && entity.processReady ? (
+                <NavLink
+                  key={entity.entityType}
+                  to={`/canvas/${entity.processEntityType}/${encodeURIComponent(entity.entityId)}`}
+                  className="sidebar-link"
+                >
+                  {entity.entityType}
+                </NavLink>
+              ) : (
+                <span key={entity.entityType} className="sidebar-link opacity-50">
+                  {entity.entityType}
+                </span>
+              )
             ))}
       </div>
     </aside>

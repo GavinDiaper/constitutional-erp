@@ -19,6 +19,7 @@ export default function EntityRoute() {
 
   const safeType = entityType ?? "";
   const safeId = entityId ?? "";
+  const isNotFound = (stateError ?? "").toLowerCase().includes("not found");
 
   const refreshProcessState = useCallback(async () => {
     if (!safeType || !safeId) return;
@@ -65,6 +66,12 @@ export default function EntityRoute() {
       </div>
 
       <div className="rounded-xl border border-slate-200 p-4">
+        {isNotFound && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Entity <span className="font-mono">{safeId}</span> was not found for type <span className="font-mono">{safeType}</span>.
+            Select another record from the Canvas list.
+          </div>
+        )}
         {activeTab === "overview" && (
           <EntityOverview
             processState={processState}
