@@ -36,7 +36,7 @@ export function loadConfig(): ReplConfig {
   loadLocalEnv();
 
   return {
-    integrationHubUrl: process.env.INTEGRATION_HUB_URL ?? process.env.NAVIGATOR_URL ?? process.env.NAVIGATOR_API_URL ?? "http://localhost:4017",
+    integrationHubUrl: process.env.INTEGRATION_HUB_URL ?? process.env.HUB_URL ?? "http://localhost:4017",
     integrationHubApiKey: required("INTEGRATION_HUB_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me"),
     eventProcessorUrl: process.env.EVENT_PROCESSOR_URL ?? "http://localhost:4004",
     eventProcessorApiKey: required("EVENT_PROCESSOR_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me")

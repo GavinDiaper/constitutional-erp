@@ -1,6 +1,18 @@
 import { ReplConfig } from "../config/env";
 import { SessionContext } from "../state/session";
 
+function parseBody(text: string): unknown {
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
 function requireContext(ctx: SessionContext): Required<Pick<SessionContext, "domain" | "aggregateType" | "aggregateId" | "actorId">> {
   if (!ctx.domain || !ctx.aggregateType || !ctx.aggregateId || !ctx.actorId) {
     throw new Error("Context not ready. Use: set actor <actorId> and use <domain> <aggregateType> <id>");
@@ -31,10 +43,14 @@ export class IntegrationHubClient {
     });
 
     const text = await response.text();
-    const body = text ? JSON.parse(text) : {};
+    const body = parseBody(text);
 
     if (!response.ok) {
-      const detail = typeof (body as { detail?: unknown })?.detail === "string" ? (body as { detail: string }).detail : text;
+      const detail = typeof (body as { detail?: unknown })?.detail === "string"
+        ? (body as { detail: string }).detail
+        : typeof (body as { raw?: unknown })?.raw === "string"
+          ? (body as { raw: string }).raw
+          : text;
       throw new Error(`Request failed (${response.status}): ${detail}`);
     }
 
