@@ -14,7 +14,7 @@ export interface NavlogEnvelope<T> {
   data: T[];
 }
 
-export async function createSession(actorId: string, mode: "offline" | "online" = "offline") {
+export async function createSession(actorId: string, mode: "offline" | "online" = "online") {
   return http<{ sessionId: string }>("/api/v1/hub/sessions", {
     method: "POST",
     body: JSON.stringify({ actorId, mode }),

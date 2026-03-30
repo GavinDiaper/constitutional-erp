@@ -19,7 +19,7 @@ export default function NavigatorSessionsRoute() {
   async function handleCreate() {
     setError(null);
     try {
-      const created = await createSession(actorId ?? "principal.system", "offline");
+      const created = await createSession(actorId ?? "principal.system", "online");
       setSessionId(created.sessionId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create session");

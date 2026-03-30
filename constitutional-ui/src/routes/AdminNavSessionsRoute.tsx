@@ -18,7 +18,7 @@ export default function AdminNavSessionsRoute() {
   async function handleCreate() {
     setError(null);
     try {
-      const created = await createSession(actorId, "offline");
+      const created = await createSession(actorId, "online");
       setSessionId(created.sessionId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create session");
