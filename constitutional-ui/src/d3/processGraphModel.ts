@@ -75,9 +75,47 @@ const PROCESS_TEMPLATES: Record<string, ProcessTemplate> = {
 
 export interface ProcessGraphViewModel {
   states: string[];
-  transitions: Array<ProcessTransition & { available: boolean }>;
+  transitions: Array<
+    ProcessTransition & { available: boolean; invokeAction: string }
+  >;
   currentState: string;
   currentStateIndex: number;
+}
+
+const ACTION_ALIASES: Record<string, string[]> = {
+  send_quote: ["send"],
+  accept_quote: ["accept"],
+  convert_quote_to_order: ["convertToOrder", "convert"],
+  confirm_order: ["confirm"],
+  allocate_stock: ["allocate"],
+  ship_order: ["ship"],
+  post_invoice: ["post"],
+  apply_payment_to_invoice: ["apply", "applyPayment"],
+  reconcile_payment: ["reconcile", "reconcilePayment"],
+  submit_requisition: ["submit"],
+  approve_requisition: ["approve"],
+  convert_requisition_to_po: ["convertToPO", "convert"],
+  issue_po: ["issue"],
+  acknowledge_po: ["acknowledge"],
+  post_journal: ["post"],
+  place_on_leave: ["goOnLeave", "leave"],
+  return_from_leave: ["returnFromLeave", "return"],
+  terminate_employee: ["terminate"],
+};
+
+function resolveInvokeAction(templateAction: string, availableRels: Set<string>): string | null {
+  if (availableRels.has(templateAction)) {
+    return templateAction;
+  }
+
+  const aliases = ACTION_ALIASES[templateAction] ?? [];
+  for (const alias of aliases) {
+    if (availableRels.has(alias)) {
+      return alias;
+    }
+  }
+
+  return null;
 }
 
 export function buildProcessGraphModel(
@@ -96,6 +134,7 @@ export function buildProcessGraphModel(
         to: currentState,
         action: l.rel,
         available: true,
+        invokeAction: l.rel,
       })),
       currentState,
       currentStateIndex: 0,
@@ -106,10 +145,14 @@ export function buildProcessGraphModel(
 
   return {
     states: tpl.states,
-    transitions: tpl.transitions.map((t) => ({
-      ...t,
-      available: available.has(t.action),
-    })),
+    transitions: tpl.transitions.map((t) => {
+      const invokeAction = resolveInvokeAction(t.action, available);
+      return {
+        ...t,
+        available: Boolean(invokeAction),
+        invokeAction: invokeAction ?? t.action,
+      };
+    }),
     currentState,
     currentStateIndex,
   };

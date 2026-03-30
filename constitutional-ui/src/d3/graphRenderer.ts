@@ -65,6 +65,7 @@ type FlowEdge = {
   from: string;
   to: string;
   action: string;
+  invokeAction?: string;
   available: boolean;
 };
 
@@ -126,7 +127,7 @@ export function renderProcessFlowGraph(
     .text((e) => e.action)
     .on("click", (_evt, e) => {
       if (e.available) {
-        onSelectAction(e.action);
+        onSelectAction(e.invokeAction ?? e.action);
       }
     });
 

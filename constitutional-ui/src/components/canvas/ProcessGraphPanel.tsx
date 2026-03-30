@@ -27,7 +27,11 @@ export default function ProcessGraphPanel({
     const cleanup = renderProcessFlowGraph(
       svgRef.current,
       graph.states,
-      graph.transitions,
+      graph.transitions.map((t) => ({
+        ...t,
+        action: t.action,
+        invokeAction: t.invokeAction,
+      })),
       graph.currentState,
       onSelectAction
     );
