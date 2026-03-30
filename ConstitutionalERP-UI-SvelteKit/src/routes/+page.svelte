@@ -5,10 +5,10 @@
 	import { dashboardStore } from '$lib/stores/dashboardStore';
 
 	const cards = [
-		{ key: 'draftQuotes', label: 'Draft Quotes' },
-		{ key: 'approvedPos', label: 'Approved POs' },
-		{ key: 'pendingJournals', label: 'Pending Journals' },
-		{ key: 'activeEmployees', label: 'Active Employees' }
+		{ key: 'draftQuotes', label: 'Draft Quotes', href: resolve('/canvas/o2c_quote/Q-1001') },
+		{ key: 'approvedPos', label: 'Approved POs', href: resolve('/canvas/p2p_po/PO-9001') },
+		{ key: 'pendingJournals', label: 'Pending Journals', href: resolve('/canvas/r2r_journal/JRN-3001') },
+		{ key: 'activeEmployees', label: 'Active Employees', href: resolve('/canvas/h2r_employee/EMP-101') }
 	] as const;
 </script>
 
@@ -25,7 +25,7 @@
 
 	<div class="grid-auto-fit mt-6">
 		{#each cards as card (card.key)}
-			<Card title={card.label} value={$dashboardStore[card.key]} />
+			<Card title={card.label} value={$dashboardStore[card.key]} href={card.href} />
 		{/each}
 	</div>
 
@@ -33,7 +33,7 @@
 		<a class="rounded-md bg-white px-4 py-2 font-semibold text-slate-900" href={resolve('/canvas')}>
 			Open Canvas
 		</a>
-		<a class="rounded-md border border-white/35 px-4 py-2" href={resolve('/canvas/o2c_quote/Q-1001')}>
+		<a class="rounded-md border border-white/35 px-4 py-2 text-white" href={resolve('/canvas/o2c_quote/Q-1001')}>
 			Open Sample Entity
 		</a>
 	</div>
