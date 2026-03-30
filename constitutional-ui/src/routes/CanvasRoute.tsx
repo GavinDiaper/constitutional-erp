@@ -17,13 +17,14 @@ export default function CanvasRoute() {
     try {
       const links = await getCanvasEntityLinks();
       setEntities(links);
+      return links;
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadEntities();
+    void loadEntities();
   }, []);
 
   async function runInitialAction(actionId: string) {
@@ -36,11 +37,23 @@ export default function CanvasRoute() {
 
     try {
       const result = await action.run();
-      setActionMessage(result.message);
-      await loadEntities();
+      const refreshed = await loadEntities();
 
-      if (result.processEntityType) {
+      const createdEntity = refreshed.find(
+        (e) =>
+          e.entityId === result.entityId &&
+          e.processEntityType === result.processEntityType
+      );
+
+      if (result.processEntityType && createdEntity?.processReady) {
+        setActionMessage(`${result.message}. Opening process view...`);
         navigate(`/canvas/${result.processEntityType}/${encodeURIComponent(result.entityId)}`);
+      } else if (result.processEntityType) {
+        setActionMessage(
+          `${result.message}. Process context is not available yet; stay on Canvas and continue with initial actions.`
+        );
+      } else {
+        setActionMessage(result.message);
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Initial action failed");
