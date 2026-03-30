@@ -1,4 +1,5 @@
 import { http } from "./http";
+import { listTableRows } from "./queryApi";
 
 export interface InitialActionResult {
   entityType: string;
@@ -74,6 +75,61 @@ async function createRequisition(): Promise<InitialActionResult> {
   };
 }
 
+async function createQuote(): Promise<InitialActionResult> {
+  let customerId: string | null = null;
+  try {
+    const customers = await listTableRows("o2c_customer", 1, 0);
+    if (customers.data[0]) {
+      customerId = String(customers.data[0]["customer_id"] ?? "");
+    }
+  } catch {
+    customerId = null;
+  }
+
+  if (!customerId) {
+    const createdCustomer = await createCustomer();
+    customerId = createdCustomer.entityId;
+  }
+
+  const created = await http<{ quote_id: string }>("/api/v1/o2c/quotes", {
+    method: "POST",
+    body: JSON.stringify({ customerId, currencyCode: "USD" }),
+  });
+
+  return {
+    entityType: "quotes",
+    processEntityType: "quote",
+    entityId: created.quote_id,
+    message: `Created quote ${created.quote_id}`,
+  };
+}
+
+async function createJournal(): Promise<InitialActionResult> {
+  const periods = await listTableRows("r2r_fiscal_period", 1, 0);
+  const fiscalPeriodId = periods.data[0]
+    ? String(periods.data[0]["fiscal_period_id"] ?? "")
+    : "";
+
+  if (!fiscalPeriodId) {
+    throw new Error("No fiscal period available to create journal");
+  }
+
+  const created = await http<{ journal_id: string }>("/api/v1/r2r/journals", {
+    method: "POST",
+    body: JSON.stringify({
+      fiscalPeriodId,
+      description: `Canvas Journal ${stamp()}`,
+    }),
+  });
+
+  return {
+    entityType: "journals",
+    processEntityType: "journal",
+    entityId: created.journal_id,
+    message: `Created journal ${created.journal_id}`,
+  };
+}
+
 async function createEmployee(): Promise<InitialActionResult> {
   const id = stamp();
   const payload = {
@@ -102,6 +158,12 @@ export const INITIAL_ACTIONS: InitialActionDefinition[] = [
     run: createCustomer,
   },
   {
+    id: "create-quote",
+    label: "Create Quote",
+    description: "Create O2C quote (auto-creates customer if needed).",
+    run: createQuote,
+  },
+  {
     id: "create-supplier",
     label: "Create Supplier",
     description: "Bootstrap P2P supplier records.",
@@ -119,4 +181,14 @@ export const INITIAL_ACTIONS: InitialActionDefinition[] = [
     description: "Create an Active employee record.",
     run: createEmployee,
   },
+  {
+    id: "create-journal",
+    label: "Create Journal",
+    description: "Create Draft journal in first available fiscal period.",
+    run: createJournal,
+  },
 ];
+
+export function getInitialActionById(id: string): InitialActionDefinition | undefined {
+  return INITIAL_ACTIONS.find((x) => x.id === id);
+}
