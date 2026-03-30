@@ -62,3 +62,13 @@ export async function executeProcessAction(
     }
   );
 }
+
+export async function executeProcessActionByHref(
+  href: string,
+  payload: Record<string, unknown>
+): Promise<ExecuteProcessActionResult> {
+  return http<ExecuteProcessActionResult>(href, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

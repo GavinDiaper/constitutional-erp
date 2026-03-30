@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   executeProcessAction,
+  executeProcessActionByHref,
   type ExecuteProcessActionResult,
   type InputSchema,
   type ProcessLink,
@@ -50,6 +51,17 @@ export default function NavigatorPanel({
 
     try {
       const payload = autoPayload;
+      if (selectedLink?.href) {
+        try {
+          const byHref = await executeProcessActionByHref(selectedLink.href, payload);
+          setResult(byHref);
+          await onExecuted();
+          return;
+        } catch {
+          // Fall through to candidate-based execution for compatibility.
+        }
+      }
+
       const candidates = getActionCandidates(selectedAction);
       let res: ExecuteProcessActionResult | null = null;
       let lastError: unknown = null;
