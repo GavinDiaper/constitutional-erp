@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   executeProcessAction,
   type ExecuteProcessActionResult,
@@ -10,6 +10,7 @@ interface Props {
   entityId: string;
   links: ProcessLink[];
   onExecuted: () => Promise<void>;
+  preselectedAction?: string | null;
 }
 
 export default function NavigatorPanel({
@@ -17,6 +18,7 @@ export default function NavigatorPanel({
   entityId,
   links,
   onExecuted,
+  preselectedAction,
 }: Props) {
   const [selectedAction, setSelectedAction] = useState<string>(links[0]?.rel ?? "");
   const [payloadText, setPayloadText] = useState("{}");
@@ -28,6 +30,12 @@ export default function NavigatorPanel({
     () => links.find((x) => x.rel === selectedAction),
     [links, selectedAction]
   );
+
+  useEffect(() => {
+    if (!preselectedAction) return;
+    if (!links.some((l) => l.rel === preselectedAction)) return;
+    setSelectedAction(preselectedAction);
+  }, [preselectedAction, links]);
 
   async function handleExecute() {
     if (!selectedAction) return;

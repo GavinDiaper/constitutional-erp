@@ -16,6 +16,7 @@ export default function EntityRoute() {
   const [processState, setProcessState] = useState<ProcessState | null>(null);
   const [stateLoading, setStateLoading] = useState(true);
   const [stateError, setStateError] = useState<string | null>(null);
+  const [navigatorSeedAction, setNavigatorSeedAction] = useState<string | null>(null);
 
   const safeType = entityType ?? "";
   const safeId = entityId ?? "";
@@ -79,7 +80,17 @@ export default function EntityRoute() {
             error={stateError}
           />
         )}
-        {activeTab === "process" && <ProcessGraphPanel />}
+        {activeTab === "process" && processState && (
+          <ProcessGraphPanel
+            entityType={safeType}
+            currentState={processState.state}
+            links={processState.links}
+            onSelectAction={(action) => {
+              setNavigatorSeedAction(action);
+              setActiveTab("navigator");
+            }}
+          />
+        )}
         {activeTab === "events" && (
           <EventTimeline entityType={safeType} entityId={safeId} />
         )}
@@ -88,6 +99,7 @@ export default function EntityRoute() {
             entityType={safeType}
             entityId={safeId}
             links={processState.links}
+            preselectedAction={navigatorSeedAction}
             onExecuted={refreshProcessState}
           />
         )}
