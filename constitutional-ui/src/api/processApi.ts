@@ -11,8 +11,14 @@ export interface ProcessLink {
   href: string;
   method: string;
   mcpFunctionId: string;
-  requiredInput: { type: string; required?: string[]; properties?: Record<string, unknown> };
+  requiredInput: InputSchema;
   governance?: GovernanceAnnotation;
+}
+
+export interface InputSchema {
+  type: string;
+  required?: string[];
+  properties?: Record<string, unknown>;
 }
 
 export interface ProcessState {
@@ -23,11 +29,36 @@ export interface ProcessState {
   links: ProcessLink[];
 }
 
+export interface ExecuteProcessActionResult {
+  action: string;
+  previousState: string;
+  newState: string;
+  output: unknown;
+  links: ProcessLink[];
+}
+
 export async function getProcessState(
   entityType: string,
   entityId: string
 ): Promise<ProcessState> {
   return http<ProcessState>(
     `/process/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`
+  );
+}
+
+export async function executeProcessAction(
+  entityType: string,
+  entityId: string,
+  action: string,
+  payload: Record<string, unknown>
+): Promise<ExecuteProcessActionResult> {
+  return http<ExecuteProcessActionResult>(
+    `/process/${encodeURIComponent(entityType)}/${encodeURIComponent(
+      entityId
+    )}/actions/${encodeURIComponent(action)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
   );
 }

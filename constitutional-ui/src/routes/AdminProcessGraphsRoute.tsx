@@ -1,3 +1,75 @@
+import { useState } from "react";
+import { getProcessState, type ProcessState } from "../api/processApi";
+
 export default function AdminProcessGraphsRoute() {
-  return <div className="text-sm">Admin Process Graphs scaffold.</div>;
+  const [entityType, setEntityType] = useState("quotes");
+  const [entityId, setEntityId] = useState("sample-quotes");
+  const [result, setResult] = useState<ProcessState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleLoad() {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await getProcessState(entityType, entityId);
+      setResult(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load process state");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Process Graphs</h1>
+        <p className="text-sm text-slate-600">Inspect process state and available transitions for any entity.</p>
+      </div>
+
+      <div className="grid gap-3 rounded-xl border border-slate-200 p-4 md:grid-cols-3">
+        <input
+          value={entityType}
+          onChange={(e) => setEntityType(e.target.value)}
+          className="rounded-lg border border-slate-300 p-2 text-sm"
+          placeholder="entityType"
+        />
+        <input
+          value={entityId}
+          onChange={(e) => setEntityId(e.target.value)}
+          className="rounded-lg border border-slate-300 p-2 text-sm"
+          placeholder="entityId"
+        />
+        <button
+          type="button"
+          onClick={handleLoad}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
+          disabled={busy}
+        >
+          {busy ? "Loading..." : "Load"}
+        </button>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {result && (
+        <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <div className="text-sm">
+            State: <span className="font-medium">{result.state}</span>
+          </div>
+          <div>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Transitions</h2>
+            <div className="flex flex-wrap gap-2">
+              {result.links.map((link) => (
+                <span key={link.rel} className="rounded-lg border border-slate-200 px-3 py-1 text-xs">
+                  {link.rel}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

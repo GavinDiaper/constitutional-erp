@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import EntityHeader from "../components/canvas/EntityHeader";
 import EntityOverview from "../components/canvas/EntityOverview";
 import EventTimeline from "../components/canvas/EventTimeline";
+import NavigatorPanel from "../components/canvas/NavigatorPanel";
 import ProcessGraphPanel from "../components/canvas/ProcessGraphPanel";
 import { getProcessState, type ProcessState } from "../api/processApi";
 
@@ -19,13 +20,24 @@ export default function EntityRoute() {
   const safeType = entityType ?? "";
   const safeId = entityId ?? "";
 
+  const refreshProcessState = useCallback(async () => {
+    if (!safeType || !safeId) return;
+    setStateLoading(true);
+    setStateError(null);
+    try {
+      const next = await getProcessState(safeType, safeId);
+      setProcessState(next);
+    } catch (err) {
+      setStateError(err instanceof Error ? err.message : "Failed to load process");
+    } finally {
+      setStateLoading(false);
+    }
+  }, [safeType, safeId]);
+
   useEffect(() => {
     if (!safeType || !safeId) return;
-    getProcessState(safeType, safeId)
-      .then(setProcessState)
-      .catch((err: Error) => setStateError(err.message))
-      .finally(() => setStateLoading(false));
-  }, [safeType, safeId]);
+    void refreshProcessState();
+  }, [safeType, safeId, refreshProcessState]);
 
   return (
     <div className="space-y-4">
@@ -64,10 +76,13 @@ export default function EntityRoute() {
         {activeTab === "events" && (
           <EventTimeline entityType={safeType} entityId={safeId} />
         )}
-        {activeTab === "navigator" && (
-          <p className="text-sm text-slate-400">
-            Navigator — component-level integration to follow in next slice.
-          </p>
+        {activeTab === "navigator" && processState && (
+          <NavigatorPanel
+            entityType={safeType}
+            entityId={safeId}
+            links={processState.links}
+            onExecuted={refreshProcessState}
+          />
         )}
       </div>
     </div>
