@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import { ActorProvider } from "./context/ActorContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -34,6 +35,12 @@ function AdminShell() {
   );
 }
 
+/** Forces EntityRoute to remount (resetting all state) when URL params change. */
+function EntityRouteKeyed() {
+  const { entityType = "", entityId = "" } = useParams();
+  return <EntityRoute key={`${entityType}/${entityId}`} />;
+}
+
 export default function App() {
   return (
     <ActorProvider>
@@ -43,7 +50,7 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<HomeRoute />} />
             <Route path="/canvas" element={<CanvasRoute />} />
-            <Route path="/canvas/:entityType/:entityId" element={<EntityRoute />} />
+            <Route path="/canvas/:entityType/:entityId" element={<EntityRouteKeyed />} />
             <Route path="/navigator-sessions" element={<NavigatorSessionsRoute />} />
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<AdminRoute />} />
