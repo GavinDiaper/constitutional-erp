@@ -1,0 +1,26 @@
+.nav-link {
+  border-radius: 999px;
+  color: #475569;
+  padding: 0.35rem 0.7rem;
+  text-decoration: none;
+}
+
+.nav-link.active {
+  background: #0f172a;
+  color: #fff;
+}
+
+.sidebar-link {
+  border-radius: 0.7rem;
+  color: #334155;
+  display: block;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.65rem;
+  text-decoration: none;
+}
+
+.sidebar-link.active {
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 600;
+}

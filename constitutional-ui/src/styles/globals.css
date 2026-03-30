@@ -1,0 +1,27 @@
+:root {
+  --deep-space-blue: #1d3656;
+  --scarlet-fire: #ff3621;
+  --dark-teal: #003939;
+  --wine-plum: #783343;
+  --bg-canvas: #f1f5f9;
+  --text-main: #0f172a;
+  --surface: #ffffff;
+  --surface-border: #dbe3ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top left, #e9f1fb 0%, #f8fafc 45%, #edf2f7 100%);
+  color: var(--text-main);
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
