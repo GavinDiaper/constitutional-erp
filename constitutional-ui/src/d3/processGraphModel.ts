@@ -82,6 +82,11 @@ export interface ProcessGraphViewModel {
   currentStateIndex: number;
 }
 
+export interface FallbackAction {
+  label: string;
+  invokeAction: string;
+}
+
 const ACTION_ALIASES: Record<string, string[]> = {
   send_quote: ["send"],
   accept_quote: ["accept"],
@@ -118,6 +123,28 @@ function resolveInvokeAction(templateAction: string, availableRels: Set<string>)
   return null;
 }
 
+function defaultInvokeAction(templateAction: string): string {
+  const aliases = ACTION_ALIASES[templateAction] ?? [];
+  return aliases[0] ?? templateAction;
+}
+
+export function getFallbackActions(
+  entityType: string,
+  currentState: string
+): FallbackAction[] {
+  const tpl = PROCESS_TEMPLATES[entityType];
+  if (!tpl) {
+    return [];
+  }
+
+  return tpl.transitions
+    .filter((t) => t.from === currentState)
+    .map((t) => ({
+      label: t.action,
+      invokeAction: defaultInvokeAction(t.action),
+    }));
+}
+
 export function buildProcessGraphModel(
   entityType: string,
   currentState: string,
@@ -150,7 +177,7 @@ export function buildProcessGraphModel(
       return {
         ...t,
         available: Boolean(invokeAction),
-        invokeAction: invokeAction ?? t.action,
+        invokeAction: invokeAction ?? defaultInvokeAction(t.action),
       };
     }),
     currentState,

@@ -6,6 +6,7 @@ import EventTimeline from "../components/canvas/EventTimeline";
 import NavigatorPanel from "../components/canvas/NavigatorPanel";
 import ProcessGraphPanel from "../components/canvas/ProcessGraphPanel";
 import { getProcessState, type ProcessState } from "../api/processApi";
+import { getFallbackActions } from "../d3/processGraphModel";
 
 const tabs = ["overview", "process", "events", "navigator"] as const;
 type Tab = (typeof tabs)[number];
@@ -21,6 +22,21 @@ export default function EntityRoute() {
   const safeType = entityType ?? "";
   const safeId = entityId ?? "";
   const isNotFound = (stateError ?? "").toLowerCase().includes("not found");
+  const fallbackActions = processState
+    ? getFallbackActions(safeType, processState.state)
+    : [];
+  const effectiveLinks =
+    processState && processState.links.length > 0
+      ? processState.links
+      : fallbackActions.map((f) => ({
+          rel: f.invokeAction,
+          href: `/process/${encodeURIComponent(safeType)}/${encodeURIComponent(
+            safeId
+          )}/actions/${encodeURIComponent(f.invokeAction)}`,
+          method: "POST",
+          mcpFunctionId: `fallback:${safeType}:${f.invokeAction}`,
+          requiredInput: { type: "object", properties: {} },
+        }));
 
   const refreshProcessState = useCallback(async () => {
     if (!safeType || !safeId) return;
@@ -84,7 +100,7 @@ export default function EntityRoute() {
           <ProcessGraphPanel
             entityType={safeType}
             currentState={processState.state}
-            links={processState.links}
+            links={effectiveLinks}
             onSelectAction={(action) => {
               setNavigatorSeedAction(action);
               setActiveTab("navigator");
@@ -98,7 +114,7 @@ export default function EntityRoute() {
           <NavigatorPanel
             entityType={safeType}
             entityId={safeId}
-            links={processState.links}
+            links={effectiveLinks}
             preselectedAction={navigatorSeedAction}
             onExecuted={refreshProcessState}
           />
