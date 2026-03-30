@@ -26,7 +26,9 @@ export default function NavigatorPanel({
   const [selectedAction, setSelectedAction] = useState<string>(links[0]?.rel ?? "");
   const [result, setResult] = useState<ExecuteProcessActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const recommendedAction = useMemo(() => pickRecommendedAction(links), [links]);
 
   const selectedLink = useMemo(
     () => links.find((x) => x.rel === selectedAction),
@@ -34,6 +36,10 @@ export default function NavigatorPanel({
   );
   const autoPayload = useMemo(
     () => buildDefaultPayload(selectedLink?.requiredInput),
+    [selectedLink]
+  );
+  const noPayloadRequired = useMemo(
+    () => isNoPayloadSchema(selectedLink?.requiredInput),
     [selectedLink]
   );
 
@@ -48,13 +54,19 @@ export default function NavigatorPanel({
     setBusy(true);
     setError(null);
     setResult(null);
+    setMessage(null);
 
     try {
       const payload = autoPayload;
       if (selectedLink?.href) {
         try {
           const byHref = await executeProcessActionByHref(selectedLink.href, payload);
-          setResult(byHref);
+          if (byHref) {
+            setResult(byHref);
+          }
+          setMessage("Action submitted. Refreshing process state...");
+          await onExecuted();
+          await sleep(500);
           await onExecuted();
           return;
         } catch {
@@ -82,6 +94,9 @@ export default function NavigatorPanel({
       }
 
       setResult(res);
+      setMessage("Action submitted. Refreshing process state...");
+      await onExecuted();
+      await sleep(500);
       await onExecuted();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Execution failed");
@@ -101,6 +116,11 @@ export default function NavigatorPanel({
           Proposed Actions
         </h2>
         <p className="text-xs text-slate-500">Select an action and execute with auto-filled payload.</p>
+        {recommendedAction && (
+          <p className="mt-2 text-xs text-slate-700">
+            Recommended next step: <span className="font-mono">{recommendedAction}</span>
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -148,6 +168,11 @@ export default function NavigatorPanel({
                 {JSON.stringify(selectedLink.requiredInput, null, 2)}
               </pre>
             )}
+            {noPayloadRequired && (
+              <p className="mt-2 text-xs text-slate-500">
+                This action does not require request fields.
+              </p>
+            )}
           </div>
 
           <div className="rounded-lg border border-slate-200 p-3">
@@ -155,6 +180,11 @@ export default function NavigatorPanel({
             <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-600">
               {JSON.stringify(autoPayload, null, 2)}
             </pre>
+            {noPayloadRequired && (
+              <p className="mt-2 text-xs text-slate-500">
+                Empty payload is expected for this transition.
+              </p>
+            )}
           </div>
 
           <button
@@ -167,6 +197,7 @@ export default function NavigatorPanel({
           </button>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {message && <p className="text-sm text-emerald-700">{message}</p>}
 
           {result && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
@@ -177,6 +208,28 @@ export default function NavigatorPanel({
       </div>
     </div>
   );
+}
+
+function pickRecommendedAction(links: ProcessLink[]): string | null {
+  if (links.length === 0) {
+    return null;
+  }
+
+  const rank = (link: ProcessLink): number => {
+    const tier = link.governance?.requiredTier ?? 1;
+    const riskScore = link.governance?.riskLevel === "High"
+      ? 3
+      : link.governance?.riskLevel === "Medium"
+        ? 2
+        : 1;
+    return tier * 10 + riskScore;
+  };
+
+  return [...links].sort((a, b) => rank(a) - rank(b))[0]?.rel ?? null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function buildDefaultPayload(schema?: InputSchema): Record<string, unknown> {
@@ -217,4 +270,18 @@ function defaultValueForProperty(prop: unknown): unknown {
   }
 
   return "";
+}
+
+function isNoPayloadSchema(schema?: InputSchema): boolean {
+  if (!schema) {
+    return true;
+  }
+
+  if (schema.type !== "object") {
+    return false;
+  }
+
+  const required = schema.required ?? [];
+  const properties = schema.properties ?? {};
+  return required.length === 0 && Object.keys(properties).length === 0;
 }
