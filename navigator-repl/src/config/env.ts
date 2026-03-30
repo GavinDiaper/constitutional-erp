@@ -3,8 +3,10 @@ import path from "node:path";
 import dotenv from "dotenv";
 
 export interface ReplConfig {
-  navigatorUrl: string;
-  navigatorApiKey: string;
+  integrationHubUrl: string;
+  integrationHubApiKey: string;
+  eventProcessorUrl: string;
+  eventProcessorApiKey: string;
 }
 
 function loadLocalEnv() {
@@ -34,7 +36,9 @@ export function loadConfig(): ReplConfig {
   loadLocalEnv();
 
   return {
-    navigatorUrl: process.env.NAVIGATOR_URL ?? process.env.NAVIGATOR_API_URL ?? "http://localhost:4016",
-    navigatorApiKey: required("NAVIGATOR_API_KEY", "change-me")
+    integrationHubUrl: process.env.INTEGRATION_HUB_URL ?? process.env.NAVIGATOR_URL ?? process.env.NAVIGATOR_API_URL ?? "http://localhost:4017",
+    integrationHubApiKey: required("INTEGRATION_HUB_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me"),
+    eventProcessorUrl: process.env.EVENT_PROCESSOR_URL ?? "http://localhost:4004",
+    eventProcessorApiKey: required("EVENT_PROCESSOR_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me")
   };
 }

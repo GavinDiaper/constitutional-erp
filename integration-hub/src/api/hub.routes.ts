@@ -20,6 +20,10 @@ const processPathSchema = z.object({
   entityId: z.string().min(1)
 });
 
+const processActionPathSchema = processPathSchema.extend({
+  action: z.string().min(1)
+});
+
 const proposalEntrySchema = z.object({
   type: z.literal("proposal"),
   timestamp: z.string().datetime({ offset: true }),
@@ -125,6 +129,25 @@ export function createHubRouter(deps: {
     res.json(functions);
   });
 
+  router.post("/process/:entityType/:entityId/actions/:action", async (req, res, next) => {
+    try {
+      const params = processActionPathSchema.parse(req.params ?? {});
+      const actorId = req.header("x-actor-id") ?? undefined;
+      const payload = (req.body ?? {}) as Record<string, unknown>;
+      const result = await deps.processFacade.executeAction({
+        entity: params.entityType,
+        id: params.entityId,
+        action: params.action,
+        payload,
+        actorId
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post("/sessions", (req, res, next) => {
     try {
       const body = sessionCreateSchema.parse(req.body ?? {});
@@ -151,12 +174,42 @@ export function createHubRouter(deps: {
     }
   });
 
+  router.get("/sessions/:sessionId/navlog", (req, res, next) => {
+    try {
+      const params = sessionPathSchema.parse(req.params ?? {});
+      const data = deps.sessionStore.listNavlog(params.sessionId);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post("/sessions/:sessionId/transcript", (req, res, next) => {
     try {
       const params = sessionPathSchema.parse(req.params ?? {});
       const body = transcriptEntrySchema.parse(req.body ?? {});
       deps.sessionStore.appendTranscript(params.sessionId, body);
       res.status(201).json({ status: "ok" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/sessions/:sessionId/transcript", (req, res, next) => {
+    try {
+      const params = sessionPathSchema.parse(req.params ?? {});
+      const data = deps.sessionStore.listTranscript(params.sessionId);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/sessions/:sessionId", (req, res, next) => {
+    try {
+      const params = sessionPathSchema.parse(req.params ?? {});
+      const session = deps.sessionStore.getSession(params.sessionId);
+      res.json(session);
     } catch (error) {
       next(error);
     }

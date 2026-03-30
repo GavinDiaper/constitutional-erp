@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { NavigatorClient } from "./client/navigatorClient";
+import { IntegrationHubClient } from "./client/integrationHubClient";
 import { loadConfig } from "./config/env";
 import { render } from "./format/renderer";
 import { contextString, SessionContext } from "./state/session";
@@ -19,26 +19,29 @@ type Domain = NonNullable<SessionContext["domain"]>;
 
 function printHelp() {
   output.write([
-    "=== Navigator REPL Commands ===\n",
+    "=== Navigator REPL v2 Commands ===\n",
     "Setup Commands:",
     "  set actor <actorId>          Set the actor/user making decisions",
     "  use <domain> <type> <id>     Set business context (manual entry)",
     "  use                          Set business context (interactive menu)",
+    "  session start [offline|online] Start a hub session",
+    "  session end                  End the active hub session",
     "",
-    "Decision Commands:",
-    "  propose                      Generate ranked action proposals",
-    "  explain [actionId]           Explain reasoning for an action",
-    "  simulate <actionId>          Simulate action outcomes",
-    "  decide                       Recommend optimal decision",
-    "  execute [actionId]           Execute chosen action",
+    "Hub Discovery:",
+    "  mcp                          List MCP functions",
+    "  mcp <functionId>             Show one MCP function",
+    "  process                      Fetch process state + hypermedia links",
+    "  links                        Show available hypermedia actions",
     "",
-    "History & Learning:",
-    "  history                      Show previous decisions",
-    "  navlog                       Show navigation decision log",
-    "  replay                       Replay navigation sequences",
+    "Governed Execution:",
+    "  exec <action> [json]         Execute hypermedia action via Hub",
+    "",
+    "Observability:",
+    "  navlog                       Show hub session navlog",
+    "  events [limit]               Show recent aggregate events",
+    "  transcript                   Show current session transcript",
     "",
     "Utilities:",
-    "  show                         Display current context",
     "  context                      Show detailed context",
     "  domains                      List available domains & types",
     "  help                         Print this help",
@@ -49,17 +52,39 @@ function printHelp() {
 
 async function main() {
   const config = loadConfig();
-  const client = new NavigatorClient(config);
+  const client = new IntegrationHubClient(config);
   const rl = createInterface({ input, output, terminal: true });
   const session: SessionContext = {};
 
   output.write("\n╔════════════════════════════════╗\n");
-  output.write("║    Navigator REPL v1           ║\n");
-  output.write("║  Constitutional ERP Decision   ║\n");
-  output.write("║          Engine                ║\n");
+  output.write("║    Navigator REPL v2           ║\n");
+  output.write("║  Hub-Native Developer Cockpit  ║\n");
+  output.write("║   Constitutional API Surface   ║\n");
   output.write("╚════════════════════════════════╝\n\n");
   
   printHelp();
+
+  async function ensureSession(mode: "offline" | "online" = "offline") {
+    if (session.sessionId) {
+      return session.sessionId;
+    }
+
+    session.sessionId = await client.startSession(session, mode);
+    return session.sessionId;
+  }
+
+  function extractLinks(result: unknown): SessionContext["lastLinks"] {
+    if (!result || typeof result !== "object") {
+      return undefined;
+    }
+
+    const links = (result as { links?: unknown }).links;
+    if (!Array.isArray(links)) {
+      return undefined;
+    }
+
+    return links as SessionContext["lastLinks"];
+  }
 
   while (true) {
     const line = (await rl.question("navigator> ")).trim();
@@ -112,7 +137,9 @@ async function main() {
             result = "Invalid domain. Supported domains: P2P, O2C, H2R, R2R.";
             const rendered = render(result);
             output.write(`${rendered}\n`);
-            await client.transcript(session.actorId, line, rendered);
+            if (session.sessionId) {
+              await client.transcript(session.sessionId, line, rendered);
+            }
             continue;
           }
 
@@ -121,13 +148,17 @@ async function main() {
             result = `Unsupported aggregate type '${args[1]}' for ${domain}. Supported types: ${supported}`;
             const rendered = render(result);
             output.write(`${rendered}\n`);
-            await client.transcript(session.actorId, line, rendered);
+            if (session.sessionId) {
+              await client.transcript(session.sessionId, line, rendered);
+            }
             continue;
           }
 
           session.domain = domain as Domain;
           session.aggregateType = args[1].toLowerCase();
           session.aggregateId = args[2];
+          session.sessionId = undefined;
+          session.lastLinks = undefined;
           result = contextString(session);
         } else if (args.length > 0) {
           result = "Invalid use command. Use 'use domain type id' or just 'use' for interactive menu.";
@@ -139,38 +170,96 @@ async function main() {
           const aggregateType = await selectAggregateType(rl, domain);
           session.aggregateType = aggregateType;
           session.aggregateId = await selectAggregateId(rl, aggregateType);
+          session.sessionId = undefined;
+          session.lastLinks = undefined;
           result = contextString(session);
         }
-      } else if (cmd === "show") {
-        result = await client.show(session);
-      } else if (cmd === "propose") {
-        result = await client.propose(session);
-      } else if (cmd === "explain") {
-        result = await client.explain(session, args[0]);
-      } else if (cmd === "simulate" && args[0]) {
-        result = await client.simulate(session, args[0]);
-      } else if (cmd === "decide") {
-        result = await client.decide(session);
-      } else if (cmd === "execute") {
-        result = await client.execute(session, args[0]);
-      } else if (cmd === "history") {
-        result = await client.history(session);
+      } else if (cmd === "session" && args[0] === "start") {
+        const mode = args[1] === "online" ? "online" : "offline";
+        session.sessionId = await client.startSession(session, mode);
+        result = `session started: ${session.sessionId} (${mode})`;
+      } else if (cmd === "session" && args[0] === "end") {
+        if (!session.sessionId) {
+          result = "No active session.";
+        } else {
+          result = await client.endSession(session.sessionId);
+          session.sessionId = undefined;
+        }
+      } else if (cmd === "mcp") {
+        const data = await client.mcpFunctions() as Array<{ id?: string }>;
+        if (args[0]) {
+          const match = Array.isArray(data) ? data.find((item) => item.id === args[0]) : undefined;
+          result = match ?? `MCP function not found: ${args[0]}`;
+        } else {
+          result = data;
+        }
+      } else if (cmd === "process") {
+        result = await client.process(session);
+        session.lastLinks = extractLinks(result);
+      } else if (cmd === "links") {
+        if (!session.lastLinks || session.lastLinks.length === 0) {
+          const process = await client.process(session);
+          session.lastLinks = extractLinks(process);
+        }
+
+        result = {
+          links: (session.lastLinks ?? []).map((link) => ({
+            rel: link.rel,
+            method: link.method,
+            href: link.href,
+            riskLevel: link.governance?.riskLevel,
+            requiredTier: link.governance?.requiredTier,
+            governanceTag: link.governance?.governanceTag
+          }))
+        };
+      } else if (cmd === "exec" && args[0]) {
+        const action = args[0];
+        let payload: Record<string, unknown> = {};
+        if (args[1]) {
+          payload = JSON.parse(args.slice(1).join(" ")) as Record<string, unknown>;
+        }
+
+        const sessionId = await ensureSession("offline");
+        const execution = await client.execute(session, action, payload);
+        await client.appendNavlog(sessionId, {
+          type: "execution",
+          timestamp: new Date().toISOString(),
+          entityType: session.aggregateType,
+          entityId: session.aggregateId,
+          action,
+          result: "success",
+          httpStatus: 200
+        });
+
+        result = execution;
       } else if (cmd === "navlog") {
-        result = await client.navlog(session);
-      } else if (cmd === "replay") {
-        result = await client.history(session);
+        const sessionId = await ensureSession("offline");
+        result = await client.navlog(sessionId);
+      } else if (cmd === "transcript") {
+        if (!session.sessionId) {
+          result = "No active session.";
+        } else {
+          result = await client.getTranscript(session.sessionId);
+        }
+      } else if (cmd === "events") {
+        const limit = args[0] ? Number(args[0]) : 20;
+        result = await client.events(session, Number.isFinite(limit) && limit > 0 ? limit : 20);
       } else {
         result = "Unknown command. Type 'help' for available commands.";
       }
 
       const rendered = render(result);
       output.write(`${rendered}\n`);
-      await client.transcript(session.actorId, line, rendered);
+      if (session.sessionId) {
+        await client.transcript(session.sessionId, line, rendered);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       output.write(`Error: ${message}\n`);
       try {
-        await client.transcript(session.actorId, line, `Error: ${message}`);
+        if (session.sessionId) {
+          await client.transcript(session.sessionId, line, `Error: ${message}`);
+        }
       } catch {
         // Ignore transcript failures to keep REPL responsive.
       }
