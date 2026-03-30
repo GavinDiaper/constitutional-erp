@@ -38,6 +38,56 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+const BACKEND_RESOURCE_BY_DOMAIN: Record<string, Record<string, string>> = {
+  o2c: {
+    quote: "quotes",
+    "sales-order": "orders",
+    "ar-invoice": "invoices",
+    "ar-payment": "payments"
+  },
+  p2p: {
+    supplier: "suppliers",
+    requisition: "requisitions",
+    "purchase-order": "purchase-orders",
+    "goods-receipt": "goods-receipts",
+    "supplier-invoice": "supplier-invoices",
+    "ap-payment": "ap-payments"
+  },
+  r2r: {
+    account: "accounts",
+    "fiscal-year": "fiscal-years",
+    "fiscal-period": "fiscal-periods",
+    journal: "journals"
+  },
+  h2r: {
+    employee: "employees",
+    position: "positions",
+    assignment: "assignments",
+    credential: "credentials",
+    "authority-rule": "authority-rules"
+  }
+};
+
+function toBackendResourcePath(domain: string, resource: string): string {
+  return BACKEND_RESOURCE_BY_DOMAIN[domain]?.[resource] ?? resource;
+}
+
+function normalizeAction(action: string): string {
+  return action.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
+function toBackendAction(domain: string, resource: string, action: string): string {
+  const actionKey = normalizeAction(action);
+
+  if (domain === "o2c" && resource === "quote") {
+    if (actionKey === "converttoorder") {
+      return "convert";
+    }
+  }
+
+  return action;
+}
+
 function mapLinks(rawValue: unknown, publicBasePath: string): Record<string, LinkDef> {
   const raw = asRecord(rawValue);
   const links: Record<string, LinkDef> = {};
@@ -96,7 +146,8 @@ export class FoundationAdapter implements BackendAdapter {
 
   async fetchResource(meshPath: string, _headers: Record<string, string>) {
     const route = parseMeshPath(meshPath);
-    const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${route.resource}/${route.id}`;
+    const backendResource = toBackendResourcePath(route.domain, route.resource);
+    const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${backendResource}/${route.id}`;
     const upstream = await requestJson<Record<string, unknown>>(`${this.config.foundationAdapterBaseUrl}${backendPath}`, {
       method: "GET",
       headers: this.headers()
@@ -127,7 +178,9 @@ export class FoundationAdapter implements BackendAdapter {
       throw new HttpError(400, "invalid_mesh_action_path", `Expected action segment in path: ${meshPath}`);
     }
 
-    const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${route.resource}/${route.id}/${route.action}`;
+    const backendResource = toBackendResourcePath(route.domain, route.resource);
+    const backendAction = toBackendAction(route.domain, route.resource, route.action);
+    const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${backendResource}/${route.id}/${backendAction}`;
     return requestJsonAllowError<unknown>(`${this.config.foundationAdapterBaseUrl}${backendPath}`, {
       method: "POST",
       headers: this.headers(),

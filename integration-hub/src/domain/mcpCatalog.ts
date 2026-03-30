@@ -115,9 +115,10 @@ export class McpCatalog {
 
   getByEntityAndAction(entity: string, action: string): McpFunction | undefined {
     const entityKey = normalizeKey(entity);
+    const actionKey = normalizeKey(action);
     return this.functions.find(
       (fn) =>
-        fn.action === action &&
+        normalizeKey(fn.action) === actionKey &&
         (normalizeKey(fn.entity) === entityKey || normalizeKey(fn.aggregateType) === entityKey)
     );
   }

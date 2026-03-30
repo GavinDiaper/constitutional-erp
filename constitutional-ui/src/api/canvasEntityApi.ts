@@ -48,9 +48,12 @@ export async function getCanvasEntityLinks(): Promise<CanvasEntityLink[]> {
   const results = await Promise.all(
     CANVAS_ENTITIES.map(async (cfg) => {
       try {
-        const page = await listTableRows(cfg.table, 1, 0);
-        const first = page.data[0];
-        const entityId = first ? String(first[cfg.idField] ?? "") : "";
+        const page = await listTableRows(cfg.table, 25, 0);
+        const candidateIds = [...page.data]
+          .reverse()
+          .map((row) => String(row[cfg.idField] ?? ""))
+          .filter((id) => id.length > 0);
+        const entityId = candidateIds[0] ?? "";
         const processEntityType = toProcessEntityType(cfg.entityType);
         const hasId = Boolean(entityId);
 
@@ -63,26 +66,41 @@ export async function getCanvasEntityLinks(): Promise<CanvasEntityLink[]> {
           };
         }
 
-        try {
-          await getProcessState(processEntityType, entityId);
+        // Query endpoint is unordered; walk recent ids and prefer one with live actions.
+        let firstProcessReadyId: string | null = null;
+
+        for (const id of candidateIds.slice(0, 5)) {
+          try {
+            const state = await getProcessState(processEntityType, id);
+            if (!firstProcessReadyId) {
+              firstProcessReadyId = id;
+            }
+
+            if (state.links.length > 0) {
+              return {
+                ...cfg,
+                entityId: id,
+                processEntityType,
+                processReady: true,
+              };
+            }
+          } catch {
+            // Ignore stale records that do not exist in process state yet.
+          }
+        }
+
+        if (firstProcessReadyId) {
           return {
             ...cfg,
-            entityId,
+            entityId: firstProcessReadyId,
             processEntityType,
             processReady: true,
-          };
-        } catch {
-          return {
-            ...cfg,
-            entityId,
-            processEntityType,
-            processReady: false,
           };
         }
 
         return {
           ...cfg,
-          entityId: entityId || null,
+          entityId,
           processEntityType,
           processReady: false,
         };
