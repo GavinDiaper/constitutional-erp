@@ -5,7 +5,7 @@ export type OperationType = "create" | "update" | "transition" | "query";
 export type JsonSchema = {
   type: string;
   required?: string[];
-  properties?: Record<string, { type?: string; enum?: string[] }>;
+  properties?: Record<string, { type?: string; enum?: string[]; description?: string; 'x-lookup'?: string }>;
 };
 
 export interface McpFunction {

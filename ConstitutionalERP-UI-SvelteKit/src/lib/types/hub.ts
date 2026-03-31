@@ -8,7 +8,7 @@ export interface HubActionLink {
 	};
 	inputSchema?: {
 		required?: string[];
-		properties?: Record<string, { type?: string; description?: string; enum?: string[] }>;
+    properties?: Record<string, { type?: string; description?: string; enum?: string[]; 'x-lookup'?: string }>;
 	};
 }
 

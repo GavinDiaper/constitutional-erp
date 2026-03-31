@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import GovernanceBadge from '$lib/components/canvas/GovernanceBadge.svelte';
 	import type { HubActionLink } from '$lib/types/hub';
 
@@ -7,6 +8,39 @@
 	export let executingActionName = '';
 
 	let inputValues: Record<string, Record<string, string>> = {};
+	let lookupOptions: Record<string, Array<{ value: string; label: string }>> = {};
+
+	onMount(async () => {
+		const seen = new Set<string>();
+		for (const action of actions) {
+			for (const schema of Object.values(action.link.inputSchema?.properties ?? {})) {
+				const lookup = schema['x-lookup'];
+				if (lookup && !seen.has(lookup)) {
+					seen.add(lookup);
+					try {
+						const res = await fetch(`/api/hub/${lookup}`);
+						if (res.ok) {
+							const json = await res.json();
+							const rows: unknown[] = Array.isArray(json.data) ? json.data : [];
+							lookupOptions = {
+								...lookupOptions,
+								[lookup]: (rows as Record<string, string>[])
+									.filter((r) => !r.status || r.status === 'Active')
+									.map((r) => ({
+										value: r.supplier_id ?? r.id ?? String(r),
+										label: r.supplier_name
+											? `${r.supplier_name} (${r.supplier_id ?? r.id})`
+											: String(r.supplier_id ?? r.id ?? r)
+									}))
+							};
+						}
+					} catch {
+						// lookup failed — field will fall back to text input
+					}
+				}
+			}
+		}
+	});
 
 	function getInput(actionName: string, field: string): string {
 		return inputValues[actionName]?.[field] ?? '';
@@ -54,29 +88,68 @@
 							{#if requiredFields.length > 0 || optionalFields.length > 0}
 								<div class="mt-2 space-y-1.5">
 									{#each requiredFields as field}
+										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
+										{@const xLookup = fieldSchema?.['x-lookup']}
+										{@const options = xLookup ? (lookupOptions[xLookup] ?? []) : []}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/80"
 												>{field} <span class="text-red-400">*</span></span
 											>
-											<input
-												type="text"
-												class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
-												placeholder={action.link.inputSchema?.properties?.[field]?.description ?? field}
-												value={getInput(action.name, field)}
-												on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
-											/>
+											{#if xLookup && options.length > 0}
+												<select
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+													value={getInput(action.name, field)}
+													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+												>
+													<option value="" disabled selected>— select —</option>
+													{#each options as opt}
+														<option value={opt.value}>{opt.label}</option>
+													{/each}
+												</select>
+											{:else if xLookup}
+												<input
+													type="text"
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
+													placeholder="Loading…"
+													disabled
+												/>
+											{:else}
+												<input
+													type="text"
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
+													placeholder={fieldSchema?.description ?? field}
+													value={getInput(action.name, field)}
+													on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
+												/>
+											{/if}
 										</label>
 									{/each}
 									{#each optionalFields as field}
+										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
+										{@const xLookup = fieldSchema?.['x-lookup']}
+										{@const options = xLookup ? (lookupOptions[xLookup] ?? []) : []}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>
-											<input
-												type="text"
-												class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
-												placeholder={action.link.inputSchema?.properties?.[field]?.description ?? field}
-												value={getInput(action.name, field)}
-												on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
-											/>
+											{#if xLookup && options.length > 0}
+												<select
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+													value={getInput(action.name, field)}
+													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+												>
+													<option value="">— optional —</option>
+													{#each options as opt}
+														<option value={opt.value}>{opt.label}</option>
+													{/each}
+												</select>
+											{:else}
+												<input
+													type="text"
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
+													placeholder={fieldSchema?.description ?? field}
+													value={getInput(action.name, field)}
+													on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
+												/>
+											{/if}
 										</label>
 									{/each}
 								</div>
