@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { MeshClient } from "../clients/meshClient";
-import { PgeClient } from "../clients/pgeClient";
+import { PgeClient, PgeResource } from "../clients/pgeClient";
 import { HttpError } from "../utils/errors";
 import { HypermediaBuilder } from "./hypermediaBuilder";
 import { McpCatalog } from "./mcpCatalog";
@@ -89,19 +89,57 @@ export class ProcessFacade {
       throw new HttpError(404, "action_not_found", `No MCP function mapped for ${input.entity}.${input.action}`);
     }
 
+    if (!input.actorId) {
+      throw new HttpError(400, "missing_actor", "actorId is required to execute a process action");
+    }
+
+    const resolved = this.resolveEntity(input.entity);
     const before = await this.getProcess(input.entity, input.id, input.actorId);
+
+    // Execute the action via the process graph engine. PGE validates the
+    // transition from current state, records the command and returns an
+    // optimistic projection of the new state with the correct next-step links.
+    // This avoids reading back through the async event-processor ledger, which
+    // would return stale (pre-transition) state and links until the next poll.
+    const pgeResponse = await this.pgeClient.postAction({
+      domain: resolved.domain,
+      aggregateType: resolved.aggregateType,
+      aggregateId: input.id,
+      action: input.action,
+      payload: input.payload,
+      actorId: input.actorId
+    });
+
+    // PGE returns 202 when the action requires approval from a higher tier.
+    // Surface this directly without executing through mesh.
+    if (pgeResponse.status === 202) {
+      return pgeResponse.data as Record<string, unknown>;
+    }
+
+    if (pgeResponse.status >= 400) {
+      const data = pgeResponse.data as Record<string, unknown> | null;
+      const detail = typeof data?.["detail"] === "string" ? data["detail"] : `PGE rejected action ${input.action}`;
+      throw new HttpError(pgeResponse.status, "pge_action_failed", detail);
+    }
+
+    const pgeResult = pgeResponse.data as PgeResource;
+
+    // Also execute through mesh so the backing adapter (Foundation ERP) commits
+    // the transition. We do this after PGE so the state is already projected;
+    // errors here surface as-is to the caller.
     const backingRoute = fn.backingRoute.replace("{id}", encodeURIComponent(input.id));
     const execution = await this.meshClient.execute(backingRoute, input.payload, input.actorId);
-    const after = await this.getProcess(input.entity, input.id, input.actorId);
+
+    const afterLinks = this.hypermediaBuilder.build({ entity: input.entity, id: input.id, resource: pgeResult });
 
     return {
       entity: input.entity,
       id: input.id,
       previousState: before.state,
-      newState: after.state,
+      newState: pgeResult.state,
       timestamp: new Date().toISOString(),
       eventId: typeof execution.eventId === "string" ? execution.eventId : `evt-${randomUUID()}`,
-      links: after.links
+      links: afterLinks
     };
   }
 }

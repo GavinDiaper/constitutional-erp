@@ -25,7 +25,7 @@ const FUNCTION_DEFS = [
   { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
   { id: "p2p_submit_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "submit", operationType: "transition", description: "Transition requisition to Submitted", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
   { id: "p2p_approve_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "approve", operationType: "transition", description: "Transition requisition to Approved", riskLevel: "Medium", governanceTag: "P2P.Requisition.Approve" },
-  { id: "p2p_convert_requisition_to_po", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "convert-to-po", operationType: "transition", description: "Convert requisition to PO", riskLevel: "Medium", governanceTag: "P2P.Requisition.Convert" },
+  { id: "p2p_convert_requisition_to_po", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "convert-to-po", operationType: "transition", description: "Convert approved requisition to a Purchase Order", riskLevel: "Medium", governanceTag: "P2P.Requisition.Convert", inputSchema: { type: "object", required: ["supplierId"], properties: { supplierId: { type: "string", description: "Supplier to raise the PO against" } } } },
   { id: "p2p_create_supplier", entity: "Supplier", domain: "p2p", aggregateType: "supplier", action: "create_supplier", operationType: "create", description: "Create supplier", riskLevel: "Low", governanceTag: "P2P.Supplier.Create" },
   { id: "p2p_create_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "create_po", operationType: "create", description: "Create purchase order", riskLevel: "Medium", governanceTag: "P2P.PO.Create" },
   { id: "p2p_issue_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "issue_po", operationType: "transition", description: "Issue purchase order", riskLevel: "Medium", governanceTag: "P2P.PO.Issue" },
@@ -89,7 +89,7 @@ export class McpCatalog {
       aggregateType: fn.aggregateType,
       action: fn.action,
       operationType: fn.operationType,
-      inputSchema: {
+      inputSchema: (fn as Record<string, unknown>)["inputSchema"] as McpFunction["inputSchema"] ?? {
         type: "object",
         required: [],
         properties: {}

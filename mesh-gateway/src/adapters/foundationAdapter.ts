@@ -85,6 +85,12 @@ function toBackendAction(domain: string, resource: string, action: string): stri
     }
   }
 
+  if (domain === "p2p" && resource === "requisition") {
+    if (actionKey === "converttopo") {
+      return "convert";
+    }
+  }
+
   return action;
 }
 
