@@ -9,6 +9,12 @@ const eventTypeToState: Record<string, string> = {
   "H2R.EmployeeReturnedFromLeave": "Active",
   "H2R.EmployeeTerminated": "Terminated",
   "H2R.EmployeeRetired": "Retired",
+  // Employee – Foundation ERP lowercase format
+  "H2R.employee.created": "Candidate",
+  "H2R.employee.activated": "Active",
+  "H2R.employee.on_leave": "OnLeave",
+  "H2R.employee.returned": "Active",
+  "H2R.employee.terminated": "Terminated",
 
   // Leave Request
   "H2R.LeaveRequestCreated": "Draft",
