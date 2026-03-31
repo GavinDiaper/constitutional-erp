@@ -359,7 +359,7 @@
 						Open Process
 					</a>
 				{/if}
-				<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/')}>
+				<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/dashboard')}>
 					Back to Dashboard
 				</a>
 			</div>
