@@ -4,6 +4,8 @@ import { ProcessFacade } from "../domain/processFacade";
 import { SessionStore } from "../domain/sessionStore";
 import { McpCatalog } from "../domain/mcpCatalog";
 import { HubNavlogEntry, SessionMode } from "../domain/types";
+import { AppConfig } from "../config/env";
+import { requestJson } from "../clients/http";
 
 const sessionCreateSchema = z.object({
   actorId: z.string().min(1),
@@ -94,8 +96,39 @@ export function createHubRouter(deps: {
   processFacade: ProcessFacade;
   catalog: McpCatalog;
   sessionStore: SessionStore;
+  config: AppConfig;
 }) {
   const router = Router();
+
+  router.get("/lookups/p2p/suppliers", async (req, res, next) => {
+    try {
+      const activeOnly = String(req.query.activeOnly ?? "false").toLowerCase() === "true";
+      const actorId = req.header("x-actor-id") ?? "principal.system";
+      const actorTier = req.header("x-actor-tier") ?? "5";
+      const upstream = await requestJson<{ data?: Array<Record<string, unknown>> }>(
+        `${deps.config.foundationErpUrl}/api/v1/p2p/suppliers`,
+        {
+          method: "GET",
+          headers: {
+            "accept": "application/json",
+            "x-api-key": deps.config.foundationErpApiKey,
+            [deps.config.foundationErpIngressIdHeader]: deps.config.foundationErpIngressId,
+            "x-actor-id": actorId,
+            "x-actor-tier": actorTier
+          }
+        }
+      );
+
+      const suppliers = Array.isArray(upstream?.data) ? upstream.data : [];
+      const filtered = activeOnly
+        ? suppliers.filter((row) => String(row.status ?? "").toLowerCase() === "active")
+        : suppliers;
+
+      res.json({ data: filtered });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get("/process/:entityType/:entityId", async (req, res, next) => {
     try {

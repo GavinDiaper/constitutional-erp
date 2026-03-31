@@ -35,7 +35,7 @@ export function createApp(config: AppConfig) {
   app.use(apiKeyAuth(config.apiKey));
   app.use("/mcp", createMcpRouter(catalog));
   app.use("/process", createProcessRouter(catalog, processFacade));
-  app.use("/api/v1/hub", createHubRouter({ processFacade, catalog, sessionStore }));
+  app.use("/api/v1/hub", createHubRouter({ processFacade, catalog, sessionStore, config }));
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const problem = toProblem(err);

@@ -14,20 +14,21 @@
 		for (const action of currentActions) {
 			for (const schema of Object.values(action.link.inputSchema?.properties ?? {})) {
 				const lookup = schema['x-lookup'];
+				const lookupUrl = lookup === 'p2p/suppliers' ? `${lookup}?activeOnly=true` : lookup;
 				// Skip if already fetched (key present in lookupOptions, even as null)
-				if (!lookup || lookup in lookupOptions) {
+				if (!lookup || !lookupUrl || lookupUrl in lookupOptions) {
 					continue;
 				}
 				// Mark as in-flight by setting undefined-equivalent — use a sentinel value
 				// by not setting it yet; concurrent calls are safe because we check above
 				try {
-					const res = await fetch(`/api/hub/${lookup}`);
+					const res = await fetch(`/api/hub/${lookupUrl}`);
 					if (res.ok) {
 						const json = await res.json();
 						const rows: unknown[] = Array.isArray(json.data) ? json.data : [];
 						lookupOptions = {
 							...lookupOptions,
-							[lookup]: (rows as Record<string, string>[])
+							[lookupUrl]: (rows as Record<string, string>[])
 								.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
 								.map((r) => ({
 									value: r.supplier_id ?? r.id ?? String(r),
@@ -37,10 +38,10 @@
 								}))
 						};
 					} else {
-						lookupOptions = { ...lookupOptions, [lookup]: null };
+						lookupOptions = { ...lookupOptions, [lookupUrl]: null };
 					}
 				} catch {
-					lookupOptions = { ...lookupOptions, [lookup]: null };
+					lookupOptions = { ...lookupOptions, [lookupUrl]: null };
 				}
 			}
 		}
@@ -96,7 +97,8 @@
 									{#each requiredFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const fetchedOptions = xLookup ? lookupOptions[xLookup] : undefined}
+										{@const lookupKey = xLookup === 'p2p/suppliers' ? `${xLookup}?activeOnly=true` : xLookup}
+										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/80"
 												>{field} <span class="text-red-400">*</span></span
@@ -110,11 +112,12 @@
 												/>
 											{:else if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
 												<select
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
 													value={getInput(action.name, field)}
 													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+													on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 												>
-													<option value="" disabled selected>— select —</option>
+													<option value="">— select —</option>
 													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
@@ -133,14 +136,16 @@
 									{#each optionalFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const fetchedOptions = xLookup ? lookupOptions[xLookup] : undefined}
+										{@const lookupKey = xLookup === 'p2p/suppliers' ? `${xLookup}?activeOnly=true` : xLookup}
+										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>
 											{#if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
 												<select
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
 													value={getInput(action.name, field)}
 													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+													on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 												>
 													<option value="">— optional —</option>
 													{#each fetchedOptions as opt}

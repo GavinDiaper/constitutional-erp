@@ -27,6 +27,10 @@ export interface AppConfig {
   meshGatewayUrl: string;
   meshGatewayApiKey: string;
   meshAdapterId: string;
+  foundationErpUrl: string;
+  foundationErpApiKey: string;
+  foundationErpIngressIdHeader: string;
+  foundationErpIngressId: string;
 }
 
 function required(name: string, fallback?: string): string {
@@ -47,6 +51,10 @@ export function loadConfig(): AppConfig {
     pgeApiKey: required("PGE_API_KEY", "change-me"),
     meshGatewayUrl: required("MESH_GATEWAY_URL", "http://localhost:4003"),
     meshGatewayApiKey: required("MESH_GATEWAY_API_KEY", "change-me"),
-    meshAdapterId: required("MESH_ADAPTER_ID", "foundation")
+    meshAdapterId: required("MESH_ADAPTER_ID", "foundation"),
+    foundationErpUrl: required("FOUNDATION_ERP_URL", "http://localhost:3000"),
+    foundationErpApiKey: required("FOUNDATION_ERP_API_KEY", "change-me"),
+    foundationErpIngressIdHeader: required("FOUNDATION_ERP_INGRESS_ID_HEADER", "x-ingress-id"),
+    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress")
   };
 }
