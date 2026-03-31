@@ -21,6 +21,21 @@ function normalizeKey(value: string): string {
   return value.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
+function matchesAction(
+  action: string,
+  candidateAction: string,
+  actionAliases?: readonly string[]
+): boolean {
+  const normalizedAction = normalizeKey(action);
+  const normalizedCandidate = normalizeKey(candidateAction);
+
+  if (normalizedAction === normalizedCandidate) {
+    return true;
+  }
+
+  return (actionAliases ?? []).some((alias) => normalizeKey(alias) === normalizedAction);
+}
+
 const FUNCTION_DEFS = [
   { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
   { id: "p2p_submit_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "submit", operationType: "transition", description: "Transition requisition to Submitted", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
@@ -64,7 +79,18 @@ const FUNCTION_DEFS = [
   { id: "r2r_lock_fiscal_period", entity: "FiscalPeriod", domain: "r2r", aggregateType: "fiscal-period", action: "lock_fiscal_period", operationType: "transition", description: "Lock fiscal period", riskLevel: "High", governanceTag: "R2R.FiscalPeriod.Lock" },
   { id: "r2r_create_manual_journal", entity: "Journal", domain: "r2r", aggregateType: "journal", action: "create_manual_journal", operationType: "create", description: "Create manual journal", riskLevel: "Medium", governanceTag: "R2R.Journal.Create" },
   { id: "r2r_add_journal_line", entity: "Journal", domain: "r2r", aggregateType: "journal", action: "add_journal_line", operationType: "update", description: "Add journal line", riskLevel: "Medium", governanceTag: "R2R.Journal.Update" },
-  { id: "r2r_post_journal", entity: "Journal", domain: "r2r", aggregateType: "journal", action: "post_journal", operationType: "transition", description: "Post journal", riskLevel: "High", governanceTag: "R2R.Journal.Post" },
+  {
+    id: "r2r_post_journal",
+    entity: "Journal",
+    domain: "r2r",
+    aggregateType: "journal",
+    action: "post_journal",
+    actionAliases: ["post"],
+    operationType: "transition",
+    description: "Post journal",
+    riskLevel: "High",
+    governanceTag: "R2R.Journal.Post"
+  },
   { id: "r2r_get_trial_balance", entity: "TrialBalance", domain: "r2r", aggregateType: "trial-balance", action: "get_trial_balance", operationType: "query", description: "Get trial balance", riskLevel: "Low", governanceTag: "R2R.TrialBalance.Read" },
 
   { id: "h2r_create_employee", entity: "Employee", domain: "h2r", aggregateType: "employee", action: "create_employee", operationType: "create", description: "Create employee", riskLevel: "Medium", governanceTag: "H2R.Employee.Create" },
@@ -92,6 +118,7 @@ export class McpCatalog {
       domain: fn.domain,
       aggregateType: fn.aggregateType,
       action: fn.action,
+      actionAliases: (fn as Record<string, unknown>)["actionAliases"] as string[] | undefined,
       operationType: fn.operationType,
       inputSchema: (fn as Record<string, unknown>)["inputSchema"] as McpFunction["inputSchema"] ?? {
         type: "object",
@@ -119,10 +146,9 @@ export class McpCatalog {
 
   getByEntityAndAction(entity: string, action: string): McpFunction | undefined {
     const entityKey = normalizeKey(entity);
-    const actionKey = normalizeKey(action);
     return this.functions.find(
       (fn) =>
-        normalizeKey(fn.action) === actionKey &&
+        matchesAction(action, fn.action, fn.actionAliases) &&
         (normalizeKey(fn.entity) === entityKey || normalizeKey(fn.aggregateType) === entityKey)
     );
   }
@@ -130,13 +156,12 @@ export class McpCatalog {
   getByDomainAggregateAction(domain: string, aggregateType: string, action: string): McpFunction | undefined {
     const domainKey = normalizeKey(domain);
     const aggregateTypeKey = normalizeKey(aggregateType);
-    const actionKey = normalizeKey(action);
 
     return this.functions.find(
       (fn) =>
         normalizeKey(fn.domain) === domainKey &&
         normalizeKey(fn.aggregateType) === aggregateTypeKey &&
-        normalizeKey(fn.action) === actionKey
+        matchesAction(action, fn.action, fn.actionAliases)
     );
   }
 

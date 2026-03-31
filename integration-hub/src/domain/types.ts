@@ -16,6 +16,7 @@ export interface McpFunction {
   domain: DomainCode;
   aggregateType: string;
   action: string;
+  actionAliases?: string[];
   operationType: OperationType;
   inputSchema: JsonSchema;
   outputSchema: JsonSchema;
