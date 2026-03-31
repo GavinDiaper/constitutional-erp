@@ -65,23 +65,23 @@
 		}
 	}
 
-	async function runAction(action: { name: string; link: HubActionLink }): Promise<void> {
+	async function runAction(action: { name: string; link: HubActionLink }, payload: Record<string, unknown>): Promise<void> {
 		executingActionName = action.name;
 		actionErrorMessage = '';
 		actionSuccessMessage = '';
 
 		try {
-			const result = await executeProcessAction(action.link, $actorStore) as Record<string, unknown> | null;
+			const result = await executeProcessAction(action.link, $actorStore, payload) as Record<string, unknown> | null;
 			actionSuccessMessage = `Action "${action.name}" completed.`;
 
 			// If the action result carries the projected new state and links, apply them
 			// directly to avoid reading stale event-processor ledger state via loadProcess().
 			if (result && typeof result.newState === 'string' && Array.isArray(result.links)) {
-				const projectedLinks = result.links as Array<{ rel: string; href: string; method?: string; mcpFunction?: string }>;
+				const projectedLinks = result.links as Array<{ rel: string; href: string; method?: string; mcpFunction?: string; requiredInput?: HubActionLink['inputSchema'] }>;
 				const _links: Record<string, HubActionLink> = {};
 				for (const link of projectedLinks) {
 					if (link.rel && link.rel !== 'self') {
-						_links[link.rel] = { href: link.href, method: link.method ?? 'POST', mcpFunction: link.mcpFunction };
+						_links[link.rel] = { href: link.href, method: link.method ?? 'POST', mcpFunction: link.mcpFunction, inputSchema: link.requiredInput };
 					}
 				}
 				processStore.set({

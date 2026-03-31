@@ -18,7 +18,7 @@ export async function getProcess(entityType: string, entityId: string, actor: Ac
 	return normalizeProcessPayload(payload, entityType, entityId);
 }
 
-export async function executeProcessAction(link: HubActionLink, actor: ActorContext): Promise<unknown> {
+export async function executeProcessAction(link: HubActionLink, actor: ActorContext, payload?: Record<string, unknown>): Promise<unknown> {
 	const response = await fetch('/api/hub/process/action', {
 		method: 'POST',
 		headers: {
@@ -28,7 +28,8 @@ export async function executeProcessAction(link: HubActionLink, actor: ActorCont
 		},
 		body: JSON.stringify({
 			href: link.href,
-			method: link.method ?? 'POST'
+			method: link.method ?? 'POST',
+			...(payload && Object.keys(payload).length > 0 ? { body: payload } : {})
 		})
 	});
 
@@ -83,12 +84,12 @@ function normalizeProcessPayload(
 		const ihPayload = payload as {
 			state?: string;
 			attributes: Record<string, unknown>;
-			links: Array<{ rel: string; href: string; method?: string; mcpFunctionId?: string; governance?: unknown }>;
+			links: Array<{ rel: string; href: string; method?: string; mcpFunctionId?: string; governance?: unknown; requiredInput?: { required?: string[]; properties?: Record<string, { type?: string; description?: string; enum?: string[] }> } }>;
 		};
-		const _links: Record<string, { href: string; method?: string }> = {};
+		const _links: Record<string, HubActionLink> = {};
 		for (const link of (ihPayload.links ?? [])) {
 			if (link.rel && link.rel !== 'self') {
-				_links[link.rel] = { href: link.href, method: link.method };
+				_links[link.rel] = { href: link.href, method: link.method, inputSchema: link.requiredInput };
 			}
 		}
 		return {

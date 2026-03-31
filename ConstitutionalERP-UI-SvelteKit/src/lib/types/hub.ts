@@ -6,6 +6,10 @@ export interface HubActionLink {
 		riskLevel?: 'Low' | 'Medium' | 'High' | string;
 		requiredTier?: number;
 	};
+	inputSchema?: {
+		required?: string[];
+		properties?: Record<string, { type?: string; description?: string; enum?: string[] }>;
+	};
 }
 
 export interface ProcessResponse {
