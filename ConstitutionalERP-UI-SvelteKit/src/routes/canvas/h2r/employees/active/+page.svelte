@@ -10,6 +10,11 @@
 		name?: string;
 		email?: string;
 		state?: string;
+		status?: string;
+		employment_status?: string;
+		lifecycle_state?: string;
+		process_state?: string;
+		active?: boolean | number | string;
 	}
 
 	let loading = false;
@@ -40,6 +45,21 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function resolveLifecycleState(employee: EmployeeRow): string {
+		if (employee.active === true || employee.active === 1 || String(employee.active ?? '').toLowerCase() === 'true') {
+			return 'active';
+		}
+
+		return (
+			employee.state ??
+			employee.status ??
+			employee.employment_status ??
+			employee.lifecycle_state ??
+			employee.process_state ??
+			'unknown'
+		);
 	}
 </script>
 
@@ -78,7 +98,7 @@
 							<td class="px-3 py-3 font-semibold">{employee.employee_id}</td>
 							<td class="px-3 py-3">{employee.name ?? 'n/a'}</td>
 							<td class="px-3 py-3">{employee.email ?? 'n/a'}</td>
-							<td class="px-3 py-3">{employee.state ?? 'unknown'}</td>
+							<td class="px-3 py-3">{resolveLifecycleState(employee)}</td>
 							<td class="px-3 py-3">
 								<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white" href={resolve(`/canvas/h2r_employee/${employee.employee_id}`)}>
 									Open Process

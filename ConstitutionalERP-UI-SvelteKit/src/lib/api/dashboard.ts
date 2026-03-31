@@ -16,6 +16,11 @@ interface JournalRow {
 interface EmployeeRow {
 	employee_id: string;
 	state?: string;
+	status?: string;
+	employment_status?: string;
+	lifecycle_state?: string;
+	process_state?: string;
+	active?: boolean | number | string;
 }
 
 export function isDraftQuote(quote: O2CQuote): boolean {
@@ -36,7 +41,21 @@ export function isPendingJournal(journal: JournalRow): boolean {
 }
 
 export function isActiveEmployee(employee: EmployeeRow): boolean {
-	return (employee.state ?? '').toLowerCase() === 'active';
+	if (employee.active === true || employee.active === 1 || String(employee.active ?? '').toLowerCase() === 'true') {
+		return true;
+	}
+
+	const candidateStates = [
+		employee.state,
+		employee.status,
+		employee.employment_status,
+		employee.lifecycle_state,
+		employee.process_state
+	]
+		.filter((value): value is string => Boolean(value))
+		.map((value) => value.trim().toLowerCase());
+
+	return candidateStates.some((value) => ['active', 'activated', 'enabled'].includes(value));
 }
 
 export async function getDashboardSummary(actor: ActorContext): Promise<DashboardSummary> {
