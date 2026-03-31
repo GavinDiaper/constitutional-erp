@@ -2,8 +2,8 @@ export interface McpFunctionDef {
   name: string;
   domain: "o2c" | "p2p" | "r2r" | "h2r";
   description: string;
-  entity: string; // e.g., "Customer", "PurchaseOrder", "Employee"
-  action: string; // e.g., "create", "activate", "approve"
+  entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
+  action?: string; // e.g., "create", "activate", "approve"
   riskLevel?: "Low" | "Medium" | "High";
   governanceTag?: string; // e.g., "O2C.Customer.Create" or "P2P.PO.Approve"
 }
