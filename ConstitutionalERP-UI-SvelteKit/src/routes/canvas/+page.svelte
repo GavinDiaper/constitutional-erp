@@ -61,7 +61,7 @@
 
 	interface SupplierRow {
 		supplier_id: string;
-		state?: string;
+		status?: string;
 		supplier_name?: string;
 		created_at?: string;
 	}
@@ -220,7 +220,7 @@
 	$: supplierItems = buildItems(
 		suppliers,
 		(row) => String(row.supplier_id ?? ''),
-		(row) => String(row.state ?? ''),
+		(row) => String(row.status ?? ''),
 		(row) => String(row.supplier_name ?? ''),
 		'p2p_supplier',
 		(row) => row.created_at as string | undefined
