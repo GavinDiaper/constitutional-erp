@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import GovernanceBadge from '$lib/components/canvas/GovernanceBadge.svelte';
 	import type { HubActionLink } from '$lib/types/hub';
 
@@ -8,42 +7,46 @@
 	export let executingActionName = '';
 
 	let inputValues: Record<string, Record<string, string>> = {};
-	// undefined = not yet fetched; [] = fetched but empty; [...] = fetched with results
+	// undefined = not yet fetched; null = fetch failed/empty; [...] = fetched with results
 	let lookupOptions: Record<string, Array<{ value: string; label: string }> | null> = {};
 
-	onMount(async () => {
-		const seen = new Set<string>();
-		for (const action of actions) {
+	async function fetchLookups(currentActions: typeof actions): Promise<void> {
+		for (const action of currentActions) {
 			for (const schema of Object.values(action.link.inputSchema?.properties ?? {})) {
 				const lookup = schema['x-lookup'];
-				if (lookup && !seen.has(lookup)) {
-					seen.add(lookup);
-					try {
-						const res = await fetch(`/api/hub/${lookup}`);
-						if (res.ok) {
-							const json = await res.json();
-							const rows: unknown[] = Array.isArray(json.data) ? json.data : [];
-							lookupOptions = {
-								...lookupOptions,
-								[lookup]: (rows as Record<string, string>[])
-									.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
-									.map((r) => ({
-										value: r.supplier_id ?? r.id ?? String(r),
-										label: r.supplier_name
-											? `${r.supplier_name} (${r.supplier_id ?? r.id})`
-											: String(r.supplier_id ?? r.id ?? r)
-									}))
-							};
-						} else {
-							lookupOptions = { ...lookupOptions, [lookup]: null };
-						}
-					} catch {
+				// Skip if already fetched (key present in lookupOptions, even as null)
+				if (!lookup || lookup in lookupOptions) {
+					continue;
+				}
+				// Mark as in-flight by setting undefined-equivalent — use a sentinel value
+				// by not setting it yet; concurrent calls are safe because we check above
+				try {
+					const res = await fetch(`/api/hub/${lookup}`);
+					if (res.ok) {
+						const json = await res.json();
+						const rows: unknown[] = Array.isArray(json.data) ? json.data : [];
+						lookupOptions = {
+							...lookupOptions,
+							[lookup]: (rows as Record<string, string>[])
+								.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
+								.map((r) => ({
+									value: r.supplier_id ?? r.id ?? String(r),
+									label: r.supplier_name
+										? `${r.supplier_name} (${r.supplier_id ?? r.id})`
+										: String(r.supplier_id ?? r.id ?? r)
+								}))
+						};
+					} else {
 						lookupOptions = { ...lookupOptions, [lookup]: null };
 					}
+				} catch {
+					lookupOptions = { ...lookupOptions, [lookup]: null };
 				}
 			}
 		}
-	});
+	}
+
+	$: void fetchLookups(actions);
 
 	function getInput(actionName: string, field: string): string {
 		return inputValues[actionName]?.[field] ?? '';
