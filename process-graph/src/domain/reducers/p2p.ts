@@ -52,7 +52,13 @@ const eventTypeToState: Record<string, string> = {
   "P2P.APPaymentApproved": "Approved",
   "P2P.APPaymentExecuted": "Executed",
   "P2P.APPaymentReconciled": "Reconciled",
-  "P2P.APPaymentCancelled": "Cancelled"
+  "P2P.APPaymentCancelled": "Cancelled",
+
+  // Supplier
+  "P2P.supplier.created": "Draft",
+  "P2P.supplier.activated": "Active",
+  "P2P.supplier.suspended": "Suspended",
+  "P2P.supplier.deactivated": "Inactive"
 };
 
 export function applyP2PEvent(state: AggregateState | null, event: LedgerEvent): AggregateState {

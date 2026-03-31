@@ -8,7 +8,8 @@
 	export let executingActionName = '';
 
 	let inputValues: Record<string, Record<string, string>> = {};
-	let lookupOptions: Record<string, Array<{ value: string; label: string }>> = {};
+	// undefined = not yet fetched; [] = fetched but empty; [...] = fetched with results
+	let lookupOptions: Record<string, Array<{ value: string; label: string }> | null> = {};
 
 	onMount(async () => {
 		const seen = new Set<string>();
@@ -25,7 +26,7 @@
 							lookupOptions = {
 								...lookupOptions,
 								[lookup]: (rows as Record<string, string>[])
-									.filter((r) => !r.status || r.status === 'Active')
+									.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
 									.map((r) => ({
 										value: r.supplier_id ?? r.id ?? String(r),
 										label: r.supplier_name
@@ -33,9 +34,11 @@
 											: String(r.supplier_id ?? r.id ?? r)
 									}))
 							};
+						} else {
+							lookupOptions = { ...lookupOptions, [lookup]: null };
 						}
 					} catch {
-						// lookup failed — field will fall back to text input
+						lookupOptions = { ...lookupOptions, [lookup]: null };
 					}
 				}
 			}
@@ -90,29 +93,29 @@
 									{#each requiredFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const options = xLookup ? (lookupOptions[xLookup] ?? []) : []}
+										{@const fetchedOptions = xLookup ? lookupOptions[xLookup] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/80"
 												>{field} <span class="text-red-400">*</span></span
 											>
-											{#if xLookup && options.length > 0}
-												<select
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
-													value={getInput(action.name, field)}
-													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
-												>
-													<option value="" disabled selected>— select —</option>
-													{#each options as opt}
-														<option value={opt.value}>{opt.label}</option>
-													{/each}
-												</select>
-											{:else if xLookup}
+											{#if xLookup && fetchedOptions === undefined}
 												<input
 													type="text"
 													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
 													placeholder="Loading…"
 													disabled
 												/>
+											{:else if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
+												<select
+													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
+													value={getInput(action.name, field)}
+													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+												>
+													<option value="" disabled selected>— select —</option>
+													{#each fetchedOptions as opt}
+														<option value={opt.value}>{opt.label}</option>
+													{/each}
+												</select>
 											{:else}
 												<input
 													type="text"
@@ -127,17 +130,17 @@
 									{#each optionalFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const options = xLookup ? (lookupOptions[xLookup] ?? []) : []}
+										{@const fetchedOptions = xLookup ? lookupOptions[xLookup] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>
-											{#if xLookup && options.length > 0}
+											{#if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
 												<select
 													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-white/40"
 													value={getInput(action.name, field)}
 													on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 												>
 													<option value="">— optional —</option>
-													{#each options as opt}
+													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
 												</select>

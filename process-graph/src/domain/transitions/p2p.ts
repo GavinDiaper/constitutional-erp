@@ -159,5 +159,39 @@ export const p2pTransitions: CanonicalTransition[] = [
     fromStates: ["Initiated", "Approved"],
     toStates: ["Cancelled"],
     action: "cancel"
+  },
+
+  // ── Supplier ───────────────────────────────────────────────────────────────
+  {
+    id: "P2P.Supplier.activate",
+    domain: "P2P",
+    aggregateType: "supplier",
+    fromStates: ["Draft"],
+    toStates: ["Active"],
+    action: "activate"
+  },
+  {
+    id: "P2P.Supplier.suspend",
+    domain: "P2P",
+    aggregateType: "supplier",
+    fromStates: ["Active"],
+    toStates: ["Suspended"],
+    action: "suspend"
+  },
+  {
+    id: "P2P.Supplier.reactivate",
+    domain: "P2P",
+    aggregateType: "supplier",
+    fromStates: ["Suspended"],
+    toStates: ["Active"],
+    action: "reactivate"
+  },
+  {
+    id: "P2P.Supplier.deactivate",
+    domain: "P2P",
+    aggregateType: "supplier",
+    fromStates: ["Active", "Suspended"],
+    toStates: ["Inactive"],
+    action: "deactivate"
   }
 ];

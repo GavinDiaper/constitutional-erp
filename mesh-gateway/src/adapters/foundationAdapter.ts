@@ -91,6 +91,12 @@ function toBackendAction(domain: string, resource: string, action: string): stri
     }
   }
 
+  if (domain === "p2p" && resource === "supplier") {
+    if (actionKey === "reactivate") {
+      return "activate";
+    }
+  }
+
   return action;
 }
 
