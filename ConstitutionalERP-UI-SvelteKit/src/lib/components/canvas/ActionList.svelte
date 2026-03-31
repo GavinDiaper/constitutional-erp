@@ -60,9 +60,12 @@
 		};
 	}
 
-	function isReady(action: { name: string; link: HubActionLink }): boolean {
+	function isReady(
+		action: { name: string; link: HubActionLink },
+		vals: typeof inputValues
+	): boolean {
 		const required = action.link.inputSchema?.required ?? [];
-		return required.every((field) => (inputValues[action.name]?.[field] ?? '').trim() !== '');
+		return required.every((field) => (vals[action.name]?.[field] ?? '').trim() !== '');
 	}
 
 	function handleRun(action: { name: string; link: HubActionLink }): void {
@@ -151,8 +154,9 @@
 													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
-												</select>
-											{:else}
+												</select>											<span class="mt-0.5 inline-block rounded bg-yellow-400/20 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300">
+												DBG val: "{getInput(action.name, field) || '(empty)'}"
+											</span>											{:else}
 												<input
 													type="text"
 													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
@@ -166,19 +170,24 @@
 								</div>
 							{/if}
 						</div>
-						<div class="flex shrink-0 items-center gap-2">
-							<GovernanceBadge
-								riskLevel={action.link.governance?.riskLevel}
-								requiredTier={action.link.governance?.requiredTier}
-							/>
-							<button
-								type="button"
-								class="rounded-md border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white enabled:hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
-								on:click={() => handleRun(action)}
-								disabled={!onExecute || executingActionName === action.name || !isReady(action)}
-							>
-								{executingActionName === action.name ? 'Running...' : 'Run'}
-							</button>
+						<div class="flex shrink-0 flex-col items-end gap-1">
+							<span class="rounded bg-yellow-400/20 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300">
+								DBG ready:{isReady(action, inputValues) ? '✓' : '✗'} · req:[{(action.link.inputSchema?.required ?? []).join(',')}] · vals:{JSON.stringify(inputValues[action.name] ?? {})}
+							</span>
+							<div class="flex items-center gap-2">
+								<GovernanceBadge
+									riskLevel={action.link.governance?.riskLevel}
+									requiredTier={action.link.governance?.requiredTier}
+								/>
+								<button
+									type="button"
+									class="rounded-md border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white enabled:hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+									on:click={() => handleRun(action)}
+									disabled={!onExecute || executingActionName === action.name || !isReady(action, inputValues)}
+								>
+									{executingActionName === action.name ? 'Running...' : 'Run'}
+								</button>
+							</div>
 						</div>
 					</div>
 				</li>
