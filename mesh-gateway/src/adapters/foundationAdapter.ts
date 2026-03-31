@@ -97,6 +97,24 @@ function toBackendAction(domain: string, resource: string, action: string): stri
     }
   }
 
+  if (domain === "h2r" && resource === "employee") {
+    if (actionKey === "placeonleave") {
+      return "leave";
+    }
+
+    if (actionKey === "returnfromleave") {
+      return "return";
+    }
+
+    if (actionKey === "terminateemployee") {
+      return "terminate";
+    }
+
+    if (actionKey === "activateemployee") {
+      return "activate";
+    }
+  }
+
   return action;
 }
 

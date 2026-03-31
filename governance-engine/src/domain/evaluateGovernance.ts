@@ -275,9 +275,9 @@ function buildResult(input: GovernanceCheckInput): GovernanceCheckResult {
       }
     } catch (error) {
       if (error instanceof MissingDataError) {
-        hasDeny = true;
-        violations.push(error.message);
-        matchedRules.push(rule.ruleId);
+        // Missing optional context should not hard-deny unrelated actions.
+        // Skip this rule evaluation and continue with other applicable rules.
+        constraints.push(`SkippedRuleMissingContext:${rule.ruleId}`);
         continue;
       }
 

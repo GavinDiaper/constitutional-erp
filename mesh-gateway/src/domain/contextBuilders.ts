@@ -17,6 +17,15 @@ function asNumber(value: unknown): number {
   return 0;
 }
 
+function asOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 const buildP2PContext: DomainContextBuilder = (resource, actorId) => ({
   requesterId: String(resource.requesterId ?? resource.requester ?? resource.requestedBy ?? actorId),
   amount: asNumber(resource.totalAmount ?? resource.total_amount ?? resource.amount ?? 0),
@@ -30,11 +39,16 @@ const buildR2RContext: DomainContextBuilder = (resource, actorId) => ({
   amount: asNumber(resource.totalDebit ?? resource.total_debit ?? resource.amount ?? 0)
 });
 
-const buildH2RContext: DomainContextBuilder = (resource, actorId) => ({
-  requesterId: String(resource.requesterId ?? actorId),
-  employeeId: String(resource.employeeId ?? resource.employee_id ?? ""),
-  credentialType: String(resource.credentialType ?? resource.type ?? "")
-});
+const buildH2RContext: DomainContextBuilder = (resource, actorId) => {
+  const employeeId = asOptionalString(resource.employeeId) ?? asOptionalString(resource.employee_id);
+  const credentialType = asOptionalString(resource.credentialType) ?? asOptionalString(resource.type);
+
+  return {
+    requesterId: String(resource.requesterId ?? actorId),
+    ...(employeeId ? { employeeId } : {}),
+    ...(credentialType ? { credentialType } : {})
+  };
+};
 
 const buildO2CContext: DomainContextBuilder = (resource, actorId) => ({
   requesterId: String(resource.requesterId ?? resource.requester ?? actorId),
