@@ -30,19 +30,34 @@ export function buildHubHeaders(incomingHeaders: Headers, config: HubConfig): He
 }
 
 export async function proxyHubGet(path: string, incomingHeaders: Headers): Promise<Response> {
+	return proxyHubRequest(path, incomingHeaders, 'GET');
+}
+
+export async function proxyHubRequest(
+	path: string,
+	incomingHeaders: Headers,
+	method: 'GET' | 'POST',
+	body?: unknown
+): Promise<Response> {
 	const config = resolveHubConfig();
 	const baseUrl = config.baseUrl.replace(/\/$/, '');
 	const requestUrl = `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+	const headers = buildHubHeaders(incomingHeaders, config);
+
+	if (method !== 'GET') {
+		headers.set('content-type', 'application/json');
+	}
 
 	const response = await fetch(requestUrl, {
-		method: 'GET',
-		headers: buildHubHeaders(incomingHeaders, config)
+		method,
+		headers,
+		body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
 	});
 
-	const body = await response.text();
+	const responseBody = await response.text();
 	const contentType = response.headers.get('content-type') ?? 'application/json';
 
-	return new Response(body, {
+	return new Response(responseBody, {
 		status: response.status,
 		headers: {
 			'content-type': contentType

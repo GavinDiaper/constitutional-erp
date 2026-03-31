@@ -8,8 +8,8 @@ export interface DashboardSummary {
 }
 
 export const dashboardStore = writable<DashboardSummary>({
-	draftQuotes: 11,
-	approvedPos: 9,
-	pendingJournals: 4,
-	activeEmployees: 57
+	draftQuotes: 0,
+	approvedPos: 0,
+	pendingJournals: 0,
+	activeEmployees: 0
 });
