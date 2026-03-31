@@ -7,10 +7,11 @@ export interface ActorContext {
 
 export const actorOptions: ActorContext[] = [
 	{ actorId: 'principal.system', authorityTier: 5 },
-	{ actorId: 'actor.ap', authorityTier: 3 },
-	{ actorId: 'actor.sales', authorityTier: 2 },
-	{ actorId: 'actor.finance', authorityTier: 4 },
-	{ actorId: 'actor.hr', authorityTier: 3 }
+	{ actorId: 'principal.p2p-tier1', authorityTier: 1 },
+	{ actorId: 'principal.p2p-tier3', authorityTier: 3 },
+	{ actorId: 'principal.o2c-tier2', authorityTier: 2 },
+	{ actorId: 'principal.h2r-tier2', authorityTier: 2 },
+	{ actorId: 'principal.r2r-tier3', authorityTier: 3 }
 ];
 
 export const actorStore = writable<ActorContext>(actorOptions[0]);

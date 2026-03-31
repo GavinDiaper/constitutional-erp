@@ -36,7 +36,7 @@ export async function proxyHubGet(path: string, incomingHeaders: Headers): Promi
 export async function proxyHubRequest(
 	path: string,
 	incomingHeaders: Headers,
-	method: 'GET' | 'POST',
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	body?: unknown
 ): Promise<Response> {
 	const config = resolveHubConfig();

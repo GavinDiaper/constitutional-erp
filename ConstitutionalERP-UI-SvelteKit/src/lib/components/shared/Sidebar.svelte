@@ -8,8 +8,8 @@
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/')}>Dashboard</a></li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/canvas')}>Canvas Home</a></li>
 		<li>
-			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/canvas/o2c_quote/Q-1001')}>
-				Sample Entity
+			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/canvas/create')}>
+				Create Entity
 			</a>
 		</li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Navigator</a></li>

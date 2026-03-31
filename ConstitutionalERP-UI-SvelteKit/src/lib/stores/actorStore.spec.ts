@@ -4,10 +4,10 @@ import { actorStore, setActorById } from '$lib/stores/actorStore';
 
 describe('actorStore', () => {
 	it('selects a configured actor by id', () => {
-		setActorById('actor.ap');
+		setActorById('principal.p2p-tier1');
 
-		expect(get(actorStore).actorId).toBe('actor.ap');
-		expect(get(actorStore).authorityTier).toBe(3);
+		expect(get(actorStore).actorId).toBe('principal.p2p-tier1');
+		expect(get(actorStore).authorityTier).toBe(1);
 	});
 
 	it('falls back to principal.system when actor id is unknown', () => {

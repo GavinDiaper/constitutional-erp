@@ -3,6 +3,8 @@
 	import type { HubActionLink } from '$lib/types/hub';
 
 	export let actions: Array<{ name: string; link: HubActionLink }> = [];
+	export let onExecute: ((action: { name: string; link: HubActionLink }) => Promise<void>) | null = null;
+	export let executingActionName = '';
 </script>
 
 <section class="glass-panel p-4">
@@ -18,10 +20,20 @@
 							<p class="font-semibold">{action.name}</p>
 							<p class="muted mt-1 text-xs">{action.link.method ?? 'GET'} {action.link.href}</p>
 						</div>
-						<GovernanceBadge
-							riskLevel={action.link.governance?.riskLevel}
-							requiredTier={action.link.governance?.requiredTier}
-						/>
+						<div class="flex items-center gap-2">
+							<GovernanceBadge
+								riskLevel={action.link.governance?.riskLevel}
+								requiredTier={action.link.governance?.requiredTier}
+							/>
+							<button
+								type="button"
+								class="rounded-md border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white enabled:hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+								on:click={() => onExecute?.(action)}
+								disabled={!onExecute || executingActionName === action.name}
+							>
+								{executingActionName === action.name ? 'Running...' : 'Run'}
+							</button>
+						</div>
 					</div>
 				</li>
 			{/each}

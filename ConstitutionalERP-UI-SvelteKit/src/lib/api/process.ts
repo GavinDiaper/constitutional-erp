@@ -1,6 +1,6 @@
 import { fetchHubJson } from '$lib/api/hub';
 import type { ActorContext } from '$lib/stores/actorStore';
-import type { ProcessResponse } from '$lib/types/hub';
+import type { HubActionLink, ProcessResponse } from '$lib/types/hub';
 
 interface RawHypermediaEntity {
 	_links?: Record<string, unknown>;
@@ -16,6 +16,38 @@ export async function getProcess(entityType: string, entityId: string, actor: Ac
 	);
 
 	return normalizeProcessPayload(payload, entityType, entityId);
+}
+
+export async function executeProcessAction(link: HubActionLink, actor: ActorContext): Promise<unknown> {
+	const response = await fetch('/api/hub/process/action', {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			'x-actor-id': actor.actorId,
+			'x-actor-tier': String(actor.authorityTier)
+		},
+		body: JSON.stringify({
+			href: link.href,
+			method: link.method ?? 'POST'
+		})
+	});
+
+	if (!response.ok) {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (contentType.includes('application/json')) {
+			const problem = await response.json();
+			throw new Error(problem?.detail ?? problem?.title ?? 'Failed to execute action');
+		}
+
+		throw new Error(await response.text());
+	}
+
+	const resultContentType = response.headers.get('content-type') ?? '';
+	if (resultContentType.includes('application/json')) {
+		return response.json();
+	}
+
+	return response.text();
 }
 
 function normalizeProcessPayload(

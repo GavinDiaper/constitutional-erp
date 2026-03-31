@@ -8,13 +8,16 @@
 	import NavigatorPanel from '$lib/components/canvas/NavigatorPanel.svelte';
 	import ProcessGraph from '$lib/components/canvas/ProcessGraph.svelte';
 	import SimulationPanel from '$lib/components/canvas/SimulationPanel.svelte';
-	import { getProcess } from '$lib/api/process';
+	import { executeProcessAction, getProcess } from '$lib/api/process';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { processStore } from '$lib/stores/processStore';
-	import type { ProcessGraphModel, TimelineEvent } from '$lib/types/hub';
+	import type { HubActionLink, ProcessGraphModel, TimelineEvent } from '$lib/types/hub';
 
 	let loading = false;
 	let errorMessage = '';
+	let executingActionName = '';
+	let actionErrorMessage = '';
+	let actionSuccessMessage = '';
 
 	$: entityType = $page.params.entityType;
 	$: entityId = $page.params.entityId;
@@ -59,6 +62,22 @@
 			errorMessage = error instanceof Error ? error.message : 'Unable to load process data.';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function runAction(action: { name: string; link: HubActionLink }): Promise<void> {
+		executingActionName = action.name;
+		actionErrorMessage = '';
+		actionSuccessMessage = '';
+
+		try {
+			await executeProcessAction(action.link, $actorStore);
+			actionSuccessMessage = `Action "${action.name}" completed.`;
+			await loadProcess();
+		} catch (error) {
+			actionErrorMessage = error instanceof Error ? error.message : `Action "${action.name}" failed.`;
+		} finally {
+			executingActionName = '';
 		}
 	}
 
@@ -126,9 +145,15 @@
 	<div class="space-y-4">
 		<EntityHeader entityType={resolvedEntityType} entityId={resolvedEntityId} state={$processStore.state} />
 
+		{#if actionErrorMessage}
+			<div class="glass-panel border border-red-500/55 p-3 text-sm text-red-200">{actionErrorMessage}</div>
+		{:else if actionSuccessMessage}
+			<div class="glass-panel border border-emerald-500/55 p-3 text-sm text-emerald-200">{actionSuccessMessage}</div>
+		{/if}
+
 		<div class="grid gap-4 xl:grid-cols-2">
 			<EntityOverview attributes={$processStore.attributes} />
-			<ActionList {actions} />
+			<ActionList {actions} onExecute={runAction} {executingActionName} />
 		</div>
 
 		<div class="grid gap-4 xl:grid-cols-2">
