@@ -31,7 +31,7 @@ async function createCustomer(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "customers",
+    entityType: "customer",
     processEntityType: null,
     entityId: created.customer_id,
     message: `Created customer ${created.customer_id}`,
@@ -50,7 +50,7 @@ async function createSupplier(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "suppliers",
+    entityType: "supplier",
     processEntityType: "supplier",
     entityId: created.supplier_id,
     message: `Created supplier ${created.supplier_id}`,
@@ -68,7 +68,7 @@ async function createRequisition(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "requisitions",
+    entityType: "requisition",
     processEntityType: "requisition",
     entityId: created.requisition_id,
     message: `Created requisition ${created.requisition_id}`,
@@ -97,7 +97,7 @@ async function createQuote(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "quotes",
+    entityType: "quote",
     processEntityType: "quote",
     entityId: created.quote_id,
     message: `Created quote ${created.quote_id}`,
@@ -123,7 +123,7 @@ async function createJournal(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "journals",
+    entityType: "journal",
     processEntityType: "journal",
     entityId: created.journal_id,
     message: `Created journal ${created.journal_id}`,
@@ -143,7 +143,7 @@ async function createEmployee(): Promise<InitialActionResult> {
   });
 
   return {
-    entityType: "employees",
+    entityType: "employee",
     processEntityType: "employee",
     entityId: created.employee_id,
     message: `Created employee ${created.employee_id}`,

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { getDashboardSummary } from '$lib/api/dashboard';
+	import { getDashboardSummary, isActiveEmployee } from '$lib/api/dashboard';
+	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
+	import { queryTable } from '$lib/api/query';
 	import Card from '$lib/components/shared/Card.svelte';
 	import Badge from '$lib/components/shared/Badge.svelte';
 	import { actorStore } from '$lib/stores/actorStore';
@@ -14,28 +16,230 @@
 		{ key: 'activeEmployees', label: 'Active Employees', href: resolve('/canvas/h2r/employees/active') }
 	] as const;
 
+	interface PurchaseOrderRow {
+		po_id: string;
+		state?: string;
+		total_amount?: number | string;
+		amount?: number | string;
+		created_at?: string;
+		order_date?: string;
+		document_date?: string;
+	}
+
+	interface JournalRow {
+		journal_id: string;
+		state?: string;
+		fiscal_period_id?: string;
+		period_id?: string;
+		fiscal_period?: string;
+		total_amount?: number | string;
+		amount?: number | string;
+		total_debit?: number | string;
+		debit_total?: number | string;
+	}
+
+	interface EmployeeRow {
+		employee_id: string;
+		state?: string;
+		status?: string;
+		employment_status?: string;
+		lifecycle_state?: string;
+		process_state?: string;
+		active?: boolean | number | string;
+	}
+
+	interface ChartSlice {
+		label: string;
+		value: number;
+		color: string;
+	}
+
 	let loadingSummary = false;
+	let chartErrorMessage = '';
+
+	let quoteStatusData: ChartSlice[] = [];
+	let employeeStatusData: ChartSlice[] = [];
+	let journalsByPeriod: Array<{ label: string; total: number }> = [];
+	let poValueByState: Array<{ label: string; total: number }> = [];
+
+	const palette = ['#22d3ee', '#38bdf8', '#f59e0b', '#34d399', '#f87171', '#a78bfa', '#f472b6', '#60a5fa'];
+
+	$: quoteStatusTotal = quoteStatusData.reduce((sum, item) => sum + item.value, 0);
+	$: employeeStatusTotal = employeeStatusData.reduce((sum, item) => sum + item.value, 0);
+	$: quoteStatusConic = buildConicGradient(quoteStatusData);
+	$: employeeStatusConic = buildConicGradient(employeeStatusData);
+	$: maxJournalValue = journalsByPeriod.reduce((max, item) => Math.max(max, item.total), 0);
+	$: maxPoValue = poValueByState.reduce((max, item) => Math.max(max, item.total), 0);
 
 	onMount(() => {
 		const unsubscribeActor = actorStore.subscribe(() => {
-			void loadSummary();
+			void loadDashboardData();
 		});
 
-		void loadSummary();
+		void loadDashboardData();
 
 		return () => {
 			unsubscribeActor();
 		};
 	});
 
-	async function loadSummary(): Promise<void> {
+	async function loadDashboardData(): Promise<void> {
 		loadingSummary = true;
+		chartErrorMessage = '';
+
 		try {
-			const summary = await getDashboardSummary($actorStore);
+			const [summary, quoteResult, poResult, journalResult, employeeResult] = await Promise.all([
+				getDashboardSummary($actorStore),
+				getO2CQuotes($actorStore),
+				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
+				queryTable<JournalRow>('r2r_journal', $actorStore),
+				queryTable<EmployeeRow>('h2r_employee', $actorStore)
+			]);
+
 			dashboardStore.set(summary);
+
+			quoteStatusData = aggregateStates(
+				(quoteResult.data ?? []).map((quote) => quote.state),
+				'Unknown'
+			);
+			employeeStatusData = aggregateStates((employeeResult.data ?? []).map(resolveEmployeeStatus), 'Unknown');
+			journalsByPeriod = aggregateJournalsByPeriod(journalResult.data ?? []);
+			poValueByState = aggregatePoValueByState(poResult.data ?? []);
+		} catch (error) {
+			chartErrorMessage = error instanceof Error ? error.message : 'Unable to load dashboard analytics.';
 		} finally {
 			loadingSummary = false;
 		}
+	}
+
+	function aggregateStates(values: Array<string | undefined>, fallback: string): ChartSlice[] {
+		const counts = new Map<string, number>();
+
+		for (const value of values) {
+			const label = normalizeLabel(value || fallback);
+			counts.set(label, (counts.get(label) ?? 0) + 1);
+		}
+
+		return Array.from(counts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 8)
+			.map(([label, value], index) => ({ label, value, color: palette[index % palette.length] }));
+	}
+
+	function aggregateJournalsByPeriod(rows: JournalRow[]): Array<{ label: string; total: number }> {
+		const totals = new Map<string, number>();
+
+		for (const row of rows) {
+			const period = normalizeLabel(
+				row.fiscal_period_id || row.period_id || row.fiscal_period || fallbackByState(row.state, 'Unassigned')
+			);
+			const amount =
+				toNumber(row.total_amount) ||
+				toNumber(row.amount) ||
+				toNumber(row.total_debit) ||
+				toNumber(row.debit_total);
+
+			totals.set(period, (totals.get(period) ?? 0) + amount);
+		}
+
+		return Array.from(totals.entries())
+			.map(([label, total]) => ({ label, total }))
+			.sort((a, b) => b.total - a.total)
+			.slice(0, 8);
+	}
+
+	function aggregatePoValueByState(rows: PurchaseOrderRow[]): Array<{ label: string; total: number }> {
+		const currentYear = new Date().getFullYear();
+		const filteredByYear = rows.filter((row) => {
+			const candidateDate = row.created_at || row.order_date || row.document_date;
+			if (!candidateDate) {
+				return true;
+			}
+
+			const parsed = new Date(candidateDate);
+			return Number.isNaN(parsed.getTime()) ? true : parsed.getFullYear() === currentYear;
+		});
+
+		const totals = new Map<string, number>();
+		for (const row of filteredByYear) {
+			const state = normalizeLabel(row.state || 'Unknown');
+			const amount = toNumber(row.total_amount) || toNumber(row.amount);
+			totals.set(state, (totals.get(state) ?? 0) + amount);
+		}
+
+		return Array.from(totals.entries())
+			.map(([label, total]) => ({ label, total }))
+			.sort((a, b) => b.total - a.total)
+			.slice(0, 8);
+	}
+
+	function resolveEmployeeStatus(employee: EmployeeRow): string {
+		if (isActiveEmployee(employee)) {
+			return 'Active';
+		}
+
+		return (
+			employee.state ||
+			employee.status ||
+			employee.employment_status ||
+			employee.lifecycle_state ||
+			employee.process_state ||
+			'Unknown'
+		);
+	}
+
+	function normalizeLabel(value: string): string {
+		return value
+			.trim()
+			.replace(/[_-]+/g, ' ')
+			.toLowerCase()
+			.replace(/\b\w/g, (character) => character.toUpperCase());
+	}
+
+	function fallbackByState(value: string | undefined, fallback: string): string {
+		return value && value.trim() ? value : fallback;
+	}
+
+	function toNumber(value: number | string | undefined): number {
+		if (typeof value === 'number' && Number.isFinite(value)) {
+			return value;
+		}
+
+		if (typeof value === 'string' && value.trim()) {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : 0;
+		}
+
+		return 0;
+	}
+
+	function buildConicGradient(slices: ChartSlice[]): string {
+		const total = slices.reduce((sum, item) => sum + item.value, 0);
+		if (!total) {
+			return '#1e293b';
+		}
+
+		let cursor = 0;
+		const segments = slices.map((slice) => {
+			const start = (cursor / total) * 100;
+			cursor += slice.value;
+			const end = (cursor / total) * 100;
+			return `${slice.color} ${start}% ${end}%`;
+		});
+
+		return `conic-gradient(${segments.join(', ')})`;
+	}
+
+	function percentage(value: number, total: number): string {
+		if (!total) {
+			return '0%';
+		}
+
+		return `${Math.round((value / total) * 100)}%`;
+	}
+
+	function formatCurrency(value: number): string {
+		return value.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 	}
 </script>
 
@@ -59,6 +263,104 @@
 	{#if loadingSummary}
 		<p class="muted mt-3 text-xs">Refreshing live dashboard counts...</p>
 	{/if}
+
+	{#if chartErrorMessage}
+		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{chartErrorMessage}</p>
+	{/if}
+
+	<div class="mt-8 grid gap-4 lg:grid-cols-2">
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<h2 class="text-lg font-semibold">Quotes By Status</h2>
+			<div class="mt-4 flex items-center gap-4">
+				<div class="h-36 w-36 rounded-full border border-white/20" style={`background: ${quoteStatusConic}`}></div>
+				<ul class="space-y-2 text-sm">
+					{#if quoteStatusData.length === 0}
+						<li class="muted">No quote status data available.</li>
+					{:else}
+						{#each quoteStatusData as slice (slice.label)}
+							<li class="flex items-center justify-between gap-3">
+								<span class="inline-flex items-center gap-2">
+									<span class="h-2.5 w-2.5 rounded-full" style={`background:${slice.color}`}></span>
+									{slice.label}
+								</span>
+								<span class="muted text-xs">{slice.value} ({percentage(slice.value, quoteStatusTotal)})</span>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</div>
+		</section>
+
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<h2 class="text-lg font-semibold">Employees By Status</h2>
+			<div class="mt-4 flex items-center gap-4">
+				<div class="h-36 w-36 rounded-full border border-white/20" style={`background: ${employeeStatusConic}`}></div>
+				<ul class="space-y-2 text-sm">
+					{#if employeeStatusData.length === 0}
+						<li class="muted">No employee status data available.</li>
+					{:else}
+						{#each employeeStatusData as slice (slice.label)}
+							<li class="flex items-center justify-between gap-3">
+								<span class="inline-flex items-center gap-2">
+									<span class="h-2.5 w-2.5 rounded-full" style={`background:${slice.color}`}></span>
+									{slice.label}
+								</span>
+								<span class="muted text-xs">{slice.value} ({percentage(slice.value, employeeStatusTotal)})</span>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</div>
+		</section>
+
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<h2 class="text-lg font-semibold">Journals Sum By Period</h2>
+			<div class="mt-4 space-y-2">
+				{#if journalsByPeriod.length === 0}
+					<p class="muted text-sm">No journal period totals available.</p>
+				{:else}
+					{#each journalsByPeriod as item (item.label)}
+						<div class="space-y-1">
+							<div class="flex items-center justify-between text-xs text-white/85">
+								<span>{item.label}</span>
+								<span>{formatCurrency(item.total)}</span>
+							</div>
+							<div class="h-2 rounded bg-white/10">
+								<div
+									class="h-2 rounded bg-gradient-to-r from-cyan-400 to-sky-500"
+									style={`width:${maxJournalValue ? Math.max((item.total / maxJournalValue) * 100, 3) : 0}%`}
+								></div>
+							</div>
+						</div>
+					{/each}
+				{/if}
+			</div>
+		</section>
+
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<h2 class="text-lg font-semibold">PO Value By State (FY)</h2>
+			<div class="mt-4 space-y-2">
+				{#if poValueByState.length === 0}
+					<p class="muted text-sm">No purchase order value data available.</p>
+				{:else}
+					{#each poValueByState as item (item.label)}
+						<div class="space-y-1">
+							<div class="flex items-center justify-between text-xs text-white/85">
+								<span>{item.label}</span>
+								<span>{formatCurrency(item.total)}</span>
+							</div>
+							<div class="h-2 rounded bg-white/10">
+								<div
+									class="h-2 rounded bg-gradient-to-r from-amber-400 to-orange-500"
+									style={`width:${maxPoValue ? Math.max((item.total / maxPoValue) * 100, 3) : 0}%`}
+								></div>
+							</div>
+						</div>
+					{/each}
+				{/if}
+			</div>
+		</section>
+	</div>
 
 	<div class="mt-8 flex flex-wrap gap-3">
 		<a class="rounded-md bg-white px-4 py-2 font-semibold text-slate-900" href={resolve('/canvas')}>

@@ -39,7 +39,8 @@ export async function executeProcessAction(link: HubActionLink, actor: ActorCont
 			throw new Error(problem?.detail ?? problem?.title ?? 'Failed to execute action');
 		}
 
-		throw new Error(await response.text());
+		const rawError = await response.text();
+		throw new Error(sanitizeActionError(rawError));
 	}
 
 	const resultContentType = response.headers.get('content-type') ?? '';
@@ -48,6 +49,24 @@ export async function executeProcessAction(link: HubActionLink, actor: ActorCont
 	}
 
 	return response.text();
+}
+
+function sanitizeActionError(rawError: string): string {
+	const trimmed = rawError.trim();
+	if (!trimmed) {
+		return 'Failed to execute action';
+	}
+
+	if (/<html[\s>]/i.test(trimmed)) {
+		const titleMatch = trimmed.match(/<title>([^<]+)<\/title>/i);
+		const title = titleMatch?.[1]?.trim();
+		return title
+			? `Failed to execute action: upstream returned HTML (${title}).`
+			: 'Failed to execute action: upstream returned HTML.';
+	}
+
+	const singleLine = trimmed.replace(/\s+/g, ' ');
+	return singleLine.length > 240 ? `${singleLine.slice(0, 237)}...` : singleLine;
 }
 
 function normalizeProcessPayload(
