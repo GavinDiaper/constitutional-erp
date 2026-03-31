@@ -11,6 +11,13 @@ const eventTypeToState: Record<string, string> = {
   "P2P.RequisitionRejected": "Rejected",
   "P2P.RequisitionConvertedToPO": "ConvertedToPO",
   "P2P.RequisitionCancelled": "Cancelled",
+  // Requisition – Foundation ERP lowercase format
+  "P2P.requisition.created": "Draft",
+  "P2P.requisition.submitted": "Submitted",
+  "P2P.requisition.approved": "Approved",
+  "P2P.requisition.rejected": "Rejected",
+  "P2P.requisition.converted": "ConvertedToPO",
+  "P2P.requisition.cancelled": "Cancelled",
 
   // Purchase Order
   "P2P.PurchaseOrderCreated": "Draft",
@@ -23,6 +30,14 @@ const eventTypeToState: Record<string, string> = {
   "P2P.PurchaseOrderFullyPaid": "FullyPaid",
   "P2P.PurchaseOrderClosed": "Closed",
   "P2P.PurchaseOrderCancelled": "Cancelled",
+  // Purchase Order – Foundation ERP lowercase format
+  "P2P.po.created": "Draft",
+  "P2P.po.approved": "Approved",
+  "P2P.po.sent": "Issued",
+  "P2P.po.received.partial": "PartiallyReceived",
+  "P2P.po.received.full": "FullyReceived",
+  "P2P.po.closed": "Closed",
+  "P2P.po.cancelled": "Cancelled",
 
   // Supplier Invoice
   "P2P.SupplierInvoiceCreated": "Draft",

@@ -7,12 +7,24 @@ const eventTypeToState: Record<string, string> = {
   "R2R.JournalEntryReversed": "Reversed",
   "R2R.JournalEntryAdjusted": "Adjusted",
   "R2R.JournalEntryLocked": "Locked",
+  // Journal Entry – Foundation ERP lowercase format
+  "R2R.journal.created": "Draft",
+  "R2R.journal.posted": "Posted",
+  "R2R.journal.reversed": "Reversed",
+  "R2R.journal.adjusted": "Adjusted",
+  "R2R.journal.locked": "Locked",
+  "R2R.journal.line_added": "Draft",
 
   // Period
   "R2R.PeriodOpened": "Open",
   "R2R.PeriodCloseBegun": "PendingClose",
   "R2R.PeriodClosed": "Closed",
-  "R2R.PeriodReopened": "Reopened"
+  "R2R.PeriodReopened": "Reopened",
+  // Period – Foundation ERP lowercase format
+  "R2R.fiscal-period.created": "Open",
+  "R2R.fiscal-period.closing": "PendingClose",
+  "R2R.fiscal-period.closed": "Closed",
+  "R2R.fiscal-period.locked": "Locked"
 };
 
 export function applyR2REvent(state: AggregateState | null, event: LedgerEvent): AggregateState {

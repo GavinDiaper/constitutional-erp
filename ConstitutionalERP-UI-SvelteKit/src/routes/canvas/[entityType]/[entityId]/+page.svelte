@@ -71,9 +71,29 @@
 		actionSuccessMessage = '';
 
 		try {
-			await executeProcessAction(action.link, $actorStore);
+			const result = await executeProcessAction(action.link, $actorStore) as Record<string, unknown> | null;
 			actionSuccessMessage = `Action "${action.name}" completed.`;
-			await loadProcess();
+
+			// If the action result carries the projected new state and links, apply them
+			// directly to avoid reading stale event-processor ledger state via loadProcess().
+			if (result && typeof result.newState === 'string' && Array.isArray(result.links)) {
+				const projectedLinks = result.links as Array<{ rel: string; href: string; method?: string; mcpFunction?: string }>;
+				const _links: Record<string, HubActionLink> = {};
+				for (const link of projectedLinks) {
+					if (link.rel && link.rel !== 'self') {
+						_links[link.rel] = { href: link.href, method: link.method ?? 'POST', mcpFunction: link.mcpFunction };
+					}
+				}
+				processStore.set({
+					entityType: resolvedEntityType,
+					entityId: resolvedEntityId,
+					state: result.newState,
+					attributes: $processStore.attributes,
+					_links
+				});
+			} else {
+				await loadProcess();
+			}
 		} catch (error) {
 			actionErrorMessage = error instanceof Error ? error.message : `Action "${action.name}" failed.`;
 		} finally {
