@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { getDashboardSummary, isActiveEmployee } from '$lib/api/dashboard';
+	import {
+		getDashboardSummary,
+		isActiveEmployee,
+		isPendingJournal,
+		isSubmittedRequisition
+	} from '$lib/api/dashboard';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
 	import Card from '$lib/components/shared/Card.svelte';
@@ -11,6 +16,8 @@
 
 	const cards = [
 		{ key: 'draftQuotes', label: 'Draft Quotes', href: resolve('/canvas/o2c/quotes/drafts') },
+		{ key: 'draftRequisitions', label: 'Draft Requisitions', href: resolve('/canvas/p2p/requisitions/drafts') },
+		{ key: 'submittedRequisitions', label: 'Submitted Requisitions', href: resolve('/canvas/p2p/requisitions/submitted') },
 		{ key: 'approvedPos', label: 'Approved POs', href: resolve('/canvas/p2p/purchase-orders/approved') },
 		{ key: 'pendingJournals', label: 'Pending Journals', href: resolve('/canvas/r2r/journals/pending') },
 		{ key: 'activeEmployees', label: 'Active Employees', href: resolve('/canvas/h2r/employees/active') }
@@ -29,6 +36,8 @@
 	interface JournalRow {
 		journal_id: string;
 		state?: string;
+		description?: string;
+		created_at?: string;
 		fiscal_period_id?: string;
 		period_id?: string;
 		fiscal_period?: string;
@@ -36,6 +45,13 @@
 		amount?: number | string;
 		total_debit?: number | string;
 		debit_total?: number | string;
+	}
+
+	interface RequisitionRow {
+		requisition_id: string;
+		state?: string;
+		requester?: string;
+		created_at?: string;
 	}
 
 	interface EmployeeRow {
@@ -54,6 +70,15 @@
 		color: string;
 	}
 
+	interface ApprovalQueueItem {
+		id: string;
+		entityType: 'p2p_requisition' | 'r2r_journal';
+		ownerLabel: string;
+		stateLabel: string;
+		href: string;
+		createdAt: string;
+	}
+
 	let loadingSummary = false;
 	let chartErrorMessage = '';
 
@@ -61,6 +86,7 @@
 	let employeeStatusData: ChartSlice[] = [];
 	let journalsByPeriod: Array<{ label: string; total: number }> = [];
 	let poValueByState: Array<{ label: string; total: number }> = [];
+	let approvalQueueItems: ApprovalQueueItem[] = [];
 
 	const palette = ['#22d3ee', '#38bdf8', '#f59e0b', '#34d399', '#f87171', '#a78bfa', '#f472b6', '#60a5fa'];
 
@@ -88,9 +114,10 @@
 		chartErrorMessage = '';
 
 		try {
-			const [summary, quoteResult, poResult, journalResult, employeeResult] = await Promise.all([
+			const [summary, quoteResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
 				getDashboardSummary($actorStore),
 				getO2CQuotes($actorStore),
+				queryTable<RequisitionRow>('p2p_requisition', $actorStore),
 				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
 				queryTable<JournalRow>('r2r_journal', $actorStore),
 				queryTable<EmployeeRow>('h2r_employee', $actorStore)
@@ -105,11 +132,67 @@
 			employeeStatusData = aggregateStates((employeeResult.data ?? []).map(resolveEmployeeStatus), 'Unknown');
 			journalsByPeriod = aggregateJournalsByPeriod(journalResult.data ?? []);
 			poValueByState = aggregatePoValueByState(poResult.data ?? []);
+			approvalQueueItems = buildApprovalQueue(requisitionResult.data ?? [], journalResult.data ?? []);
 		} catch (error) {
 			chartErrorMessage = error instanceof Error ? error.message : 'Unable to load dashboard analytics.';
 		} finally {
 			loadingSummary = false;
 		}
+	}
+
+	function buildApprovalQueue(
+		requisitions: RequisitionRow[],
+		journals: JournalRow[]
+	): ApprovalQueueItem[] {
+		const submittedRequisitions = requisitions
+			.filter(isSubmittedRequisition)
+			.map((requisition) => ({
+				id: requisition.requisition_id,
+				entityType: 'p2p_requisition' as const,
+				ownerLabel: requisition.requester ?? 'n/a',
+				stateLabel: normalizeLabel(requisition.state || 'Submitted'),
+				href: resolve(`/canvas/p2p_requisition/${requisition.requisition_id}`),
+				createdAt: requisition.created_at ?? ''
+			}));
+
+		const pendingJournals = journals
+			.filter(isPendingJournal)
+			.map((journal) => ({
+				id: journal.journal_id,
+				entityType: 'r2r_journal' as const,
+				ownerLabel:
+					journal.description ||
+					journal.fiscal_period_id ||
+					journal.period_id ||
+					journal.fiscal_period ||
+					'n/a',
+				stateLabel: normalizeLabel(journal.state || 'Pending'),
+				href: resolve(`/canvas/r2r_journal/${journal.journal_id}`),
+				createdAt: journal.created_at ?? ''
+			}));
+
+		return [...submittedRequisitions, ...pendingJournals]
+			.sort((a, b) => sortByCreatedAtDesc(a.createdAt, b.createdAt))
+			.slice(0, 12);
+	}
+
+	function sortByCreatedAtDesc(left: string, right: string): number {
+		const leftTime = Date.parse(left);
+		const rightTime = Date.parse(right);
+
+		if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
+			return 0;
+		}
+
+		if (Number.isNaN(leftTime)) {
+			return 1;
+		}
+
+		if (Number.isNaN(rightTime)) {
+			return -1;
+		}
+
+		return rightTime - leftTime;
 	}
 
 	function aggregateStates(values: Array<string | undefined>, fallback: string): ChartSlice[] {
@@ -267,6 +350,37 @@
 	{#if chartErrorMessage}
 		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{chartErrorMessage}</p>
 	{/if}
+
+	<section class="mt-8 rounded-lg border border-white/15 bg-white/5 p-4">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<div>
+				<h2 class="text-lg font-semibold">Approval Queue</h2>
+				<p class="muted mt-1 text-xs">Submitted requisitions and pending journals requiring operator attention.</p>
+			</div>
+			<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+				{approvalQueueItems.length} items
+			</span>
+		</div>
+
+		{#if approvalQueueItems.length === 0}
+			<p class="muted mt-3 text-sm">No items currently waiting in the approval queue.</p>
+		{:else}
+			<ul class="mt-3 grid gap-2 md:grid-cols-2">
+				{#each approvalQueueItems as item (item.entityType + '-' + item.id)}
+					<li>
+						<a class="block rounded-md border border-white/15 bg-white/5 px-3 py-2 hover:bg-white/10" href={item.href}>
+							<div class="flex items-center justify-between gap-2">
+								<p class="font-semibold">{item.id}</p>
+								<span class="text-[11px] uppercase tracking-[0.12em] text-white/65">{item.entityType === 'p2p_requisition' ? 'Requisition' : 'Journal'}</span>
+							</div>
+							<p class="muted mt-1 text-xs">{item.ownerLabel}</p>
+							<p class="mt-1 text-xs text-white/85">State: {item.stateLabel}</p>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
 
 	<div class="mt-8 grid gap-4 lg:grid-cols-2">
 		<section class="rounded-lg border border-white/15 bg-white/5 p-4">

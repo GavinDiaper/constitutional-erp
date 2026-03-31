@@ -23,12 +23,25 @@ interface EmployeeRow {
 	active?: boolean | number | string;
 }
 
+interface RequisitionRow {
+	requisition_id: string;
+	state?: string;
+}
+
 export function isDraftQuote(quote: O2CQuote): boolean {
 	return (quote.state ?? '').toLowerCase() === 'draft';
 }
 
 export function isApprovedPo(order: PurchaseOrderRow): boolean {
 	return (order.state ?? '').toLowerCase() === 'approved';
+}
+
+export function isDraftRequisition(requisition: RequisitionRow): boolean {
+	return (requisition.state ?? '').toLowerCase() === 'draft';
+}
+
+export function isSubmittedRequisition(requisition: RequisitionRow): boolean {
+	return (requisition.state ?? '').toLowerCase() === 'submitted';
 }
 
 export function isPendingJournal(journal: JournalRow): boolean {
@@ -59,8 +72,9 @@ export function isActiveEmployee(employee: EmployeeRow): boolean {
 }
 
 export async function getDashboardSummary(actor: ActorContext): Promise<DashboardSummary> {
-	const [quoteResult, poResult, journalResult, employeeResult] = await Promise.all([
+	const [quoteResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
 		getO2CQuotes(actor),
+		queryTable<RequisitionRow>('p2p_requisition', actor),
 		queryTable<PurchaseOrderRow>('p2p_purchase_order', actor),
 		queryTable<JournalRow>('r2r_journal', actor),
 		queryTable<EmployeeRow>('h2r_employee', actor)
@@ -68,6 +82,8 @@ export async function getDashboardSummary(actor: ActorContext): Promise<Dashboar
 
 	return {
 		draftQuotes: (quoteResult.data ?? []).filter(isDraftQuote).length,
+		draftRequisitions: (requisitionResult.data ?? []).filter(isDraftRequisition).length,
+		submittedRequisitions: (requisitionResult.data ?? []).filter(isSubmittedRequisition).length,
 		approvedPos: (poResult.data ?? []).filter(isApprovedPo).length,
 		pendingJournals: (journalResult.data ?? []).filter(isPendingJournal).length,
 		activeEmployees: (employeeResult.data ?? []).filter(isActiveEmployee).length

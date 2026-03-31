@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { isActiveEmployee, isApprovedPo, isDraftQuote, isPendingJournal } from '$lib/api/dashboard';
+	import {
+		isActiveEmployee,
+		isApprovedPo,
+		isDraftQuote,
+		isDraftRequisition,
+		isPendingJournal,
+		isSubmittedRequisition
+	} from '$lib/api/dashboard';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
@@ -24,11 +31,19 @@
 		name?: string;
 	}
 
+	interface RequisitionRow {
+		requisition_id: string;
+		state?: string;
+		requester?: string;
+	}
+
 	let loading = false;
 	let errorMessage = '';
 	let filterText = '';
 
 	let draftQuotes: O2CQuote[] = [];
+	let draftRequisitions: RequisitionRow[] = [];
+	let submittedRequisitions: RequisitionRow[] = [];
 	let approvedPurchaseOrders: PurchaseOrderRow[] = [];
 	let pendingJournals: JournalRow[] = [];
 	let activeEmployees: EmployeeRow[] = [];
@@ -50,14 +65,17 @@
 		errorMessage = '';
 
 		try {
-			const [quotesResult, poResult, journalsResult, employeeResult] = await Promise.all([
+			const [quotesResult, requisitionResult, poResult, journalsResult, employeeResult] = await Promise.all([
 				getO2CQuotes($actorStore),
+				queryTable<RequisitionRow>('p2p_requisition', $actorStore),
 				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
 				queryTable<JournalRow>('r2r_journal', $actorStore),
 				queryTable<EmployeeRow>('h2r_employee', $actorStore)
 			]);
 
 			draftQuotes = (quotesResult.data ?? []).filter(isDraftQuote);
+			draftRequisitions = (requisitionResult.data ?? []).filter(isDraftRequisition);
+			submittedRequisitions = (requisitionResult.data ?? []).filter(isSubmittedRequisition);
 			approvedPurchaseOrders = (poResult.data ?? []).filter(isApprovedPo);
 			pendingJournals = (journalsResult.data ?? []).filter(isPendingJournal);
 			activeEmployees = (employeeResult.data ?? []).filter(isActiveEmployee);
@@ -77,6 +95,12 @@
 	}
 
 	$: filteredQuotes = draftQuotes.filter((quote) => match(quote.quote_id) || match(quote.customer_id));
+	$: filteredRequisitions = draftRequisitions.filter(
+		(requisition) => match(requisition.requisition_id) || match(requisition.requester)
+	);
+	$: filteredSubmittedRequisitions = submittedRequisitions.filter(
+		(requisition) => match(requisition.requisition_id) || match(requisition.requester)
+	);
 	$: filteredPurchaseOrders = approvedPurchaseOrders.filter((po) => match(po.po_id) || match(po.supplier_id));
 	$: filteredJournals = pendingJournals.filter((journal) => match(journal.journal_id) || match(journal.description));
 	$: filteredEmployees = activeEmployees.filter((employee) => match(employee.employee_id) || match(employee.name));
@@ -92,7 +116,7 @@
 		<input
 			type="text"
 			class="w-full max-w-md rounded-md border border-white/30 bg-[#112946] px-3 py-2 text-sm text-white"
-			placeholder="Find by ID or name (quote, PO, journal, employee)"
+			placeholder="Find by ID or name (quote, requisition, PO, journal, employee)"
 			bind:value={filterText}
 		/>
 		{#if loading}
@@ -119,6 +143,51 @@
 							<a class="block rounded border border-white/10 px-3 py-2 hover:bg-white/10" href={resolve(`/canvas/o2c_quote/${quote.quote_id}`)}>
 								<span class="font-semibold">{quote.quote_id}</span>
 								<span class="muted ml-2 text-xs">{quote.customer_id ?? 'n/a'}</span>
+							</a>
+						</li>
+					{/each}
+				{/if}
+			</ul>
+		</section>
+
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="mb-3 flex items-center justify-between gap-3">
+				<h3 class="text-lg font-semibold">P2P Draft Requisitions</h3>
+				<div class="flex items-center gap-3 text-xs text-white/80">
+					<a class="underline" href={resolve('/canvas/p2p/requisitions/drafts')}>View drafts</a>
+					<a class="underline" href={resolve('/canvas/p2p/requisitions/submitted')}>View submitted</a>
+				</div>
+			</div>
+			<ul class="space-y-2 text-sm">
+				{#if filteredRequisitions.length === 0}
+					<li class="muted">No matching draft requisitions.</li>
+				{:else}
+					{#each filteredRequisitions.slice(0, 8) as requisition (requisition.requisition_id)}
+						<li>
+							<a class="block rounded border border-white/10 px-3 py-2 hover:bg-white/10" href={resolve(`/canvas/p2p_requisition/${requisition.requisition_id}`)}>
+								<span class="font-semibold">{requisition.requisition_id}</span>
+								<span class="muted ml-2 text-xs">{requisition.requester ?? 'n/a'}</span>
+							</a>
+						</li>
+					{/each}
+				{/if}
+			</ul>
+		</section>
+
+		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="mb-3 flex items-center justify-between gap-3">
+				<h3 class="text-lg font-semibold">P2P Submitted Requisitions</h3>
+				<a class="text-xs text-white/80 underline" href={resolve('/canvas/p2p/requisitions/submitted')}>View all</a>
+			</div>
+			<ul class="space-y-2 text-sm">
+				{#if filteredSubmittedRequisitions.length === 0}
+					<li class="muted">No matching submitted requisitions.</li>
+				{:else}
+					{#each filteredSubmittedRequisitions.slice(0, 8) as requisition (requisition.requisition_id)}
+						<li>
+							<a class="block rounded border border-white/10 px-3 py-2 hover:bg-white/10" href={resolve(`/canvas/p2p_requisition/${requisition.requisition_id}`)}>
+								<span class="font-semibold">{requisition.requisition_id}</span>
+								<span class="muted ml-2 text-xs">{requisition.requester ?? 'n/a'}</span>
 							</a>
 						</li>
 					{/each}
