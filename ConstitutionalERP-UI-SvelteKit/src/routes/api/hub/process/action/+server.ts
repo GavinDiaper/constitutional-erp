@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { proxyHubRequest } from '$lib/server/hubProxy';
+import { proxyHubRequest, proxyIhRequest } from '$lib/server/hubProxy';
 import type { RequestHandler } from './$types';
 
 interface ProcessActionRequestBody {
@@ -25,7 +25,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const method = requestedMethod as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 	const path = normalizeHubPath(href);
-	const upstreamResponse = await proxyHubRequest(path, request.headers, method, payload.body);
+	const upstreamResponse = path.startsWith('/process/')
+		? await proxyIhRequest(path, request.headers, method, payload.body)
+		: await proxyHubRequest(path, request.headers, method, payload.body);
 
 	if (!upstreamResponse.ok) {
 		const contentType = upstreamResponse.headers.get('content-type') ?? '';
@@ -65,10 +67,6 @@ function normalizeHubPath(href: string): string {
 
 	if (!path.startsWith('/')) {
 		path = `/${path}`;
-	}
-
-	if (/^\/process\/[^/]+\/[^/]+\/actions\/[^/?#]+(?:\?.*)?$/i.test(path)) {
-		path = `/hub${path}`;
 	}
 
 	return path;

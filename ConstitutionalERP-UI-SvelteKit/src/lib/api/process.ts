@@ -78,6 +78,28 @@ function normalizeProcessPayload(
 		return payload as ProcessResponse;
 	}
 
+	// Handle Integration Hub format: { state, attributes, links: ProcessLink[] }
+	if (typeof payload === 'object' && payload && 'attributes' in payload && 'links' in payload) {
+		const ihPayload = payload as {
+			state?: string;
+			attributes: Record<string, unknown>;
+			links: Array<{ rel: string; href: string; method?: string; mcpFunctionId?: string; governance?: unknown }>;
+		};
+		const _links: Record<string, { href: string; method?: string }> = {};
+		for (const link of (ihPayload.links ?? [])) {
+			if (link.rel && link.rel !== 'self') {
+				_links[link.rel] = { href: link.href, method: link.method };
+			}
+		}
+		return {
+			entityType,
+			entityId,
+			state: (ihPayload.state ?? 'Unknown') as string,
+			attributes: ihPayload.attributes ?? {},
+			_links
+		};
+	}
+
 	const entity = (payload ?? {}) as RawHypermediaEntity;
 	const state = (entity.state ?? entity.status ?? 'Unknown') as string;
 
