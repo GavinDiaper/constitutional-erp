@@ -51,16 +51,23 @@ function resolveInitialEmployeeStatus(input: CreateEmployeeInput): "Candidate" |
   return "Candidate";
 }
 
-export function createEmployee(input: CreateEmployeeInput, actor?: EventActor) {
-  const employeeId = newId("EMP-");
-  const timestamp = now();
-  const initialStatus = resolveInitialEmployeeStatus(input);
+function isLegacyCandidateConstraintError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("CHECK constraint failed") && message.includes("h2r_employee");
+}
 
+function insertEmployee(
+  employeeId: string,
+  input: CreateEmployeeInput,
+  status: "Candidate" | "Active",
+  actor: EventActor | undefined,
+  timestamp: string
+) {
   transaction(() => {
     db.prepare(
       `INSERT INTO h2r_employee(employee_id, name, email, status, hire_date, termination_date, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`
-    ).run(employeeId, input.name, input.email, initialStatus, timestamp, timestamp, timestamp);
+    ).run(employeeId, input.name, input.email, status, timestamp, timestamp, timestamp);
 
     appendEvent({
       entityId: employeeId,
@@ -68,9 +75,25 @@ export function createEmployee(input: CreateEmployeeInput, actor?: EventActor) {
       eventType: "employee.created",
       version: 1,
       actor,
-      payload: { name: input.name, email: input.email, status: initialStatus }
+      payload: { name: input.name, email: input.email, status }
     });
   });
+}
+
+export function createEmployee(input: CreateEmployeeInput, actor?: EventActor) {
+  const employeeId = newId("EMP-");
+  const timestamp = now();
+  const initialStatus = resolveInitialEmployeeStatus(input);
+
+  try {
+    insertEmployee(employeeId, input, initialStatus, actor, timestamp);
+  } catch (error) {
+    if (initialStatus === "Candidate" && isLegacyCandidateConstraintError(error)) {
+      insertEmployee(employeeId, input, "Active", actor, timestamp);
+    } else {
+      throw error;
+    }
+  }
 
   return getEmployeeById(employeeId);
 }
