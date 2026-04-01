@@ -22,8 +22,10 @@ export class HypermediaBuilder {
         continue;
       }
 
+      const rel = this.displayRel(input.resource, action);
+
       links.push({
-        rel: action,
+        rel,
         href: `/process/${input.entity}/${input.id}/actions/${action}`,
         method: link.method?.toUpperCase?.() === "POST" ? "POST" : "POST",
         mcpFunctionId: functionDef.id,
@@ -33,5 +35,13 @@ export class HypermediaBuilder {
     }
 
     return links;
+  }
+
+  private displayRel(resource: PgeResource, action: string): string {
+    if (resource.domain.toLowerCase() === "p2p" && resource.type === "purchase-order" && action === "issue") {
+      return "approve";
+    }
+
+    return action;
   }
 }

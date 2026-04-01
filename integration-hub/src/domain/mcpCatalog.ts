@@ -94,12 +94,12 @@ const FUNCTION_DEFS = [
     entity: "PurchaseOrder",
     domain: "p2p",
     aggregateType: "purchase-order",
-    action: "issue_po",
-    actionAliases: ["issue"],
+    action: "approve",
+    actionAliases: ["issue", "issue_po"],
     operationType: "transition",
-    description: "Issue purchase order",
-    riskLevel: "Medium",
-    governanceTag: "P2P.PO.Issue"
+    description: "Approve draft purchase order",
+    riskLevel: "High",
+    governanceTag: "P2P.PO.Approve"
   },
   { id: "p2p_acknowledge_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "acknowledge_po", operationType: "transition", description: "Acknowledge purchase order", riskLevel: "Low", governanceTag: "P2P.PO.Acknowledge" },
   { id: "p2p_create_goods_receipt", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "create_goods_receipt", operationType: "create", description: "Create goods receipt", riskLevel: "Low", governanceTag: "P2P.GoodsReceipt.Create" },
