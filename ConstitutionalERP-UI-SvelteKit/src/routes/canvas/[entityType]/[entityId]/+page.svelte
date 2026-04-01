@@ -18,6 +18,7 @@
 	let executingActionName = '';
 	let actionErrorMessage = '';
 	let actionSuccessMessage = '';
+	let entityLines: Array<Record<string, unknown>> = [];
 
 	$: entityType = $page.params.entityType;
 	$: entityId = $page.params.entityId;
@@ -58,6 +59,7 @@
 		try {
 			const process = await getProcess(resolvedEntityType, resolvedEntityId, $actorStore);
 			processStore.set(process);
+			entityLines = await loadEntityLines(resolvedEntityType, resolvedEntityId);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load process data.';
 		} finally {
@@ -78,6 +80,10 @@
 			// directly to avoid reading stale event-processor ledger state via loadProcess().
 			if (result && typeof result.newState === 'string' && Array.isArray(result.links)) {
 				const projectedLinks = result.links as Array<{ rel: string; href: string; method?: string; mcpFunction?: string; requiredInput?: HubActionLink['inputSchema'] }>;
+				const projectedAttributes =
+					typeof result.attributes === 'object' && result.attributes
+						? (result.attributes as Record<string, unknown>)
+						: $processStore.attributes;
 				const _links: Record<string, HubActionLink> = {};
 				for (const link of projectedLinks) {
 					if (link.rel && link.rel !== 'self') {
@@ -88,9 +94,10 @@
 					entityType: resolvedEntityType,
 					entityId: resolvedEntityId,
 					state: result.newState,
-					attributes: $processStore.attributes,
+					attributes: projectedAttributes,
 					_links
 				});
+				entityLines = await loadEntityLines(resolvedEntityType, resolvedEntityId);
 			} else {
 				await loadProcess();
 			}
@@ -155,6 +162,51 @@
 
 		return 'low';
 	}
+
+	function resolveLinesHref(entityTypeValue: string, entityIdValue: string): string | null {
+		const normalized = entityTypeValue.toLowerCase();
+		if (normalized === 'p2p_requisition' || normalized === 'requisition') {
+			return `/api/v1/p2p/requisitions/${entityIdValue}/lines`;
+		}
+		if (normalized === 'p2p_purchase_order' || normalized === 'purchase-order' || normalized === 'purchaseorder') {
+			return `/api/v1/p2p/purchase-orders/${entityIdValue}/lines`;
+		}
+		return null;
+	}
+
+	async function loadEntityLines(entityTypeValue: string, entityIdValue: string): Promise<Array<Record<string, unknown>>> {
+		const href = resolveLinesHref(entityTypeValue, entityIdValue);
+		if (!href) {
+			return [];
+		}
+
+		try {
+			const response = await fetch('/api/hub/process/action', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					'x-actor-id': $actorStore.actorId,
+					'x-actor-tier': String($actorStore.authorityTier)
+				},
+				body: JSON.stringify({ href, method: 'GET' })
+			});
+
+			if (!response.ok) {
+				return [];
+			}
+
+			const payload = await response.json();
+			if (Array.isArray(payload)) {
+				return payload as Array<Record<string, unknown>>;
+			}
+			if (Array.isArray(payload?.data)) {
+				return payload.data as Array<Record<string, unknown>>;
+			}
+			return [];
+		} catch {
+			return [];
+		}
+	}
 </script>
 
 {#if loading}
@@ -172,7 +224,7 @@
 		{/if}
 
 		<div class="grid gap-4 xl:grid-cols-2">
-			<EntityOverview attributes={$processStore.attributes} />
+			<EntityOverview attributes={{ ...$processStore.attributes, __entityType: resolvedEntityType, __lines: entityLines }} />
 			<ActionList {actions} onExecute={runAction} {executingActionName} />
 		</div>
 
