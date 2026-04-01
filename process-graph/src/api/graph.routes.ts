@@ -28,6 +28,26 @@ function buildActionHref(domain: CanonicalDomain, aggregateType: string, id: str
   return `${buildResourceHref(domain, aggregateType, id)}/${action}`;
 }
 
+function addSupplementalLinks(
+  links: Record<string, CanonicalLink>,
+  domain: CanonicalDomain,
+  aggregateType: string,
+  id: string,
+  state: string
+): void {
+  if (domain !== "P2P" || state !== "Draft") {
+    return;
+  }
+
+  if (aggregateType === "requisition" || aggregateType === "purchase-order") {
+    links["add-line"] = {
+      href: buildActionHref(domain, aggregateType, id, "add-line"),
+      method: "POST",
+      rel: "update"
+    };
+  }
+}
+
 /**
  * Produces the canonical resource envelope with unevaluated links
  * (no charter filtering). Used internally before charter annotation.
@@ -112,6 +132,8 @@ graphRouter.get("/:domain/:aggregateType/:id", async (req, res, next) => {
         };
       }
     }
+
+    addSupplementalLinks(links, domain, aggregateType, id, aggregate.state);
 
     res.json(toCanonicalResource(aggregate, links));
   } catch (error) {
@@ -277,6 +299,8 @@ graphRouter.post("/:domain/:aggregateType/:id/:action", async (req, res, next) =
         rel: "transition"
       };
     }
+
+    addSupplementalLinks(links, domain, aggregateType, id, projectedState);
 
     res.json(toCanonicalResource(projectedAggregate, links));
   } catch (error) {

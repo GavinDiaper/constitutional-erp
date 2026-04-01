@@ -8,6 +8,26 @@ import { findTransition, getAvailableTransitions } from "../domain/transitions/r
 import { CanonicalDomain, CanonicalLink } from "../contracts/canonicalTypes";
 import { HttpError } from "../utils/errors";
 
+function addSupplementalLinks(
+  links: Record<string, CanonicalLink>,
+  domain: CanonicalDomain,
+  aggregateType: string,
+  aggregateId: string,
+  state: string
+): void {
+  if (domain !== "P2P" || state !== "Draft") {
+    return;
+  }
+
+  if (aggregateType === "requisition" || aggregateType === "purchase-order") {
+    links["add-line"] = {
+      href: `/graph/${domain.toLowerCase()}/${aggregateType}/${aggregateId}/add-line`,
+      method: "POST",
+      rel: "update"
+    };
+  }
+}
+
 const listQuerySchema = z.object({
   domain: z.union([z.literal("P2P"), z.literal("O2C"), z.literal("R2R"), z.literal("H2R")]).optional(),
   aggregateType: z.string().min(1).optional(),
@@ -146,6 +166,8 @@ approvalsRouter.post("/:taskId/resolve", async (req, res, next) => {
         rel: "transition"
       };
     }
+
+    addSupplementalLinks(nextLinks, domain, aggregateType, aggregateId, projectedState);
 
     res.json({
       status: "approved_and_executed",

@@ -322,6 +322,7 @@ test("GET /graph/:domain/:aggregateType/:id returns canonical resource when even
   assert.equal(res.body.state, "Draft");
   assert.ok(res.body.links["self"]);
   // Both 'submit' and 'cancel' should be available from Draft (no actor = unfiltered)
+  assert.ok(res.body.links["add-line"]);
   assert.ok(res.body.links["submit"]);
   assert.ok(res.body.links["cancel"]);
 
