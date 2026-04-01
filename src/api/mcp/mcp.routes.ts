@@ -412,7 +412,15 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
 
       // ── H2R ─────────────────────────────────────────────────────────────────
       case "h2r_create_employee":
-        result = createEmployee({ name: input.name, email: input.email }, actor);
+        result = createEmployee(
+          {
+            name: input.name,
+            email: input.email,
+            active: typeof input.active === "boolean" ? input.active : undefined,
+            status: input.status === "Candidate" || input.status === "Active" ? input.status : undefined
+          },
+          actor
+        );
         break;
       case "h2r_activate_employee":
         result = activateEmployee(input.employeeId, actor);

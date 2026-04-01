@@ -32,15 +32,35 @@ export function listEmployees() {
   return db.prepare("SELECT * FROM h2r_employee ORDER BY created_at DESC LIMIT 200").all();
 }
 
-export function createEmployee(input: { name: string; email: string }, actor?: EventActor) {
+type CreateEmployeeInput = {
+  name: string;
+  email: string;
+  active?: boolean;
+  status?: "Candidate" | "Active";
+};
+
+function resolveInitialEmployeeStatus(input: CreateEmployeeInput): "Candidate" | "Active" {
+  if (input.status === "Candidate" || input.status === "Active") {
+    return input.status;
+  }
+
+  if (typeof input.active === "boolean") {
+    return input.active ? "Active" : "Candidate";
+  }
+
+  return "Candidate";
+}
+
+export function createEmployee(input: CreateEmployeeInput, actor?: EventActor) {
   const employeeId = newId("EMP-");
   const timestamp = now();
+  const initialStatus = resolveInitialEmployeeStatus(input);
 
   transaction(() => {
     db.prepare(
       `INSERT INTO h2r_employee(employee_id, name, email, status, hire_date, termination_date, created_at, updated_at)
-       VALUES (?, ?, ?, 'Candidate', ?, NULL, ?, ?)`
-    ).run(employeeId, input.name, input.email, timestamp, timestamp, timestamp);
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`
+    ).run(employeeId, input.name, input.email, initialStatus, timestamp, timestamp, timestamp);
 
     appendEvent({
       entityId: employeeId,
@@ -48,7 +68,7 @@ export function createEmployee(input: { name: string; email: string }, actor?: E
       eventType: "employee.created",
       version: 1,
       actor,
-      payload: { name: input.name, email: input.email }
+      payload: { name: input.name, email: input.email, status: initialStatus }
     });
   });
 

@@ -38,7 +38,9 @@ import {
 
 const createEmployeeSchema = z.object({
   name: z.string().min(1),
-  email: z.string().email()
+  email: z.string().email(),
+  active: z.boolean().optional(),
+  status: z.enum(["Candidate", "Active"]).optional()
 });
 
 const createPositionSchema = z.object({

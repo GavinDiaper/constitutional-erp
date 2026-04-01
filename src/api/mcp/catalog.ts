@@ -83,7 +83,7 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "r2r_get_trial_balance", domain: "r2r", entity: "Journal", action: "getTrial Balance", description: "Get trial balance for a fiscal period", riskLevel: "Low", governanceTag: "R2R.Journal.GetTrialBalance" },
 
   // ── H2R ──────────────────────────────────────────────────────────────────
-  { name: "h2r_create_employee", domain: "h2r", entity: "Employee", action: "create", description: "Create an employee in Candidate state", riskLevel: "Low", governanceTag: "H2R.Employee.Create" },
+  { name: "h2r_create_employee", domain: "h2r", entity: "Employee", action: "create", description: "Create an employee (Candidate by default, or Active when requested)", riskLevel: "Low", governanceTag: "H2R.Employee.Create" },
   { name: "h2r_activate_employee", domain: "h2r", entity: "Employee", action: "activate", description: "Activate a Candidate employee", riskLevel: "Medium", governanceTag: "H2R.Employee.Activate" },
   { name: "h2r_place_on_leave", domain: "h2r", entity: "Employee", action: "placeOnLeave", description: "Place an Active employee on leave", riskLevel: "Low", governanceTag: "H2R.Employee.PlaceOnLeave" },
   { name: "h2r_return_from_leave", domain: "h2r", entity: "Employee", action: "returnFromLeave", description: "Return an OnLeave employee to Active", riskLevel: "Low", governanceTag: "H2R.Employee.ReturnFromLeave" },
