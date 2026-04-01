@@ -12,6 +12,12 @@ import {
   cancelRequisition
 } from "../../domain/p2p/requisition/requisitionService";
 import {
+  addRequisitionLine,
+  listRequisitionLines,
+  removeRequisitionLine,
+  updateRequisitionLine
+} from "../../domain/p2p/requisition/requisitionLineService";
+import {
   createSupplier,
   getSupplierById,
   listSuppliers,
@@ -29,6 +35,12 @@ import {
   closePurchaseOrder,
   cancelPurchaseOrder
 } from "../../domain/p2p/purchaseOrder/purchaseOrderService";
+import {
+  addPurchaseOrderLine,
+  listPurchaseOrderLines,
+  removePurchaseOrderLine,
+  updatePurchaseOrderLine
+} from "../../domain/p2p/purchaseOrder/purchaseOrderLineService";
 import {
   createGoodsReceipt,
   getGoodsReceiptById,
@@ -104,10 +116,29 @@ const convertRequisitionSchema = z.object({
   supplierId: z.string().min(1)
 });
 
+const requisitionLineSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative()
+});
+
+const purchaseOrderLineSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative()
+});
+
 // ── HATEOAS link builders ─────────────────────────────────────────────────────
 
+type P2PLink = {
+  href: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  mcpFunction?: string;
+  governance?: any;
+};
+
 function supplierLinks(supplierId: string, status: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/suppliers/${supplierId}`, method: "GET" }
   };
   if (status === "Draft") {
@@ -120,10 +151,12 @@ function supplierLinks(supplierId: string, status: string) {
 }
 
 function requisitionLinks(requisitionId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/requisitions/${requisitionId}`, method: "GET" }
   };
   if (state === "Draft") {
+    links["list-lines"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/lines`, method: "GET" };
+    links["add-line"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/lines`, method: "POST", mcpFunction: "p2p_add_requisition_line", governance: { riskLevel: "Low", requiredTier: 1 } };
     links["submit"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/submit`, method: "POST", mcpFunction: "p2p_submit_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
     links["cancel"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
   }
@@ -140,10 +173,12 @@ function requisitionLinks(requisitionId: string, state: string) {
 }
 
 function purchaseOrderLinks(poId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/purchase-orders/${poId}`, method: "GET" }
   };
   if (state === "Draft") {
+    links["list-lines"] = { href: `/api/v1/p2p/purchase-orders/${poId}/lines`, method: "GET" };
+    links["add-line"] = { href: `/api/v1/p2p/purchase-orders/${poId}/lines`, method: "POST", mcpFunction: "p2p_add_po_line", governance: { riskLevel: "Low", requiredTier: 1 } };
     links["approve"] = { href: `/api/v1/p2p/purchase-orders/${poId}/approve`, method: "POST", mcpFunction: "p2p_approve_po", governance: { riskLevel: "High", requiredTier: 3 } };
     links["cancel"] = { href: `/api/v1/p2p/purchase-orders/${poId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_po", governance: { riskLevel: "High", requiredTier: 3 } };
   }
@@ -162,7 +197,7 @@ function purchaseOrderLinks(poId: string, state: string) {
 }
 
 function goodsReceiptLinks(receiptId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/goods-receipts/${receiptId}`, method: "GET" }
   };
   if (state === "Draft") {
@@ -178,7 +213,7 @@ function goodsReceiptLinks(receiptId: string, state: string) {
 }
 
 function supplierInvoiceLinks(supplierInvoiceId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}`, method: "GET" }
   };
   if (state === "Draft") {
@@ -193,7 +228,7 @@ function supplierInvoiceLinks(supplierInvoiceId: string, state: string) {
 }
 
 function apPaymentLinks(apPaymentId: string, state: string) {
-  const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
+  const links: Record<string, P2PLink> = {
     self: { href: `/api/v1/p2p/ap-payments/${apPaymentId}`, method: "GET" }
   };
   if (state === "Draft") {
@@ -256,6 +291,58 @@ p2pRouter.post("/requisitions", validateBody(createRequisitionSchema), (req, res
   res.status(201).json(entityWithLinks(requisition as any, requisitionLinks((requisition as any).requisition_id, (requisition as any).state)));
 });
 
+p2pRouter.get("/requisitions/:requisitionId/lines", (req, res) => {
+  const lines = listRequisitionLines(req.params.requisitionId);
+  res.json({ data: lines });
+});
+
+p2pRouter.post("/requisitions/:requisitionId/lines", validateBody(requisitionLineSchema), (req, res) => {
+  const result = addRequisitionLine(
+    {
+      requisitionId: req.params.requisitionId,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      unitPrice: req.body.unitPrice
+    },
+    req.actor
+  );
+
+  res.status(201).json({
+    line: result.line,
+    requisition: entityWithLinks(result.requisition as any, requisitionLinks(req.params.requisitionId, result.requisition.state))
+  });
+});
+
+p2pRouter.put("/requisitions/:requisitionId/lines/:requisitionLineId", validateBody(requisitionLineSchema), (req, res) => {
+  const result = updateRequisitionLine(
+    {
+      requisitionId: req.params.requisitionId,
+      requisitionLineId: req.params.requisitionLineId,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      unitPrice: req.body.unitPrice
+    },
+    req.actor
+  );
+
+  res.json({
+    line: result.line,
+    requisition: entityWithLinks(result.requisition as any, requisitionLinks(req.params.requisitionId, result.requisition.state))
+  });
+});
+
+p2pRouter.delete("/requisitions/:requisitionId/lines/:requisitionLineId", (req, res) => {
+  const requisition = removeRequisitionLine(
+    {
+      requisitionId: req.params.requisitionId,
+      requisitionLineId: req.params.requisitionLineId
+    },
+    req.actor
+  );
+
+  res.json(entityWithLinks(requisition as any, requisitionLinks(req.params.requisitionId, requisition.state)));
+});
+
 p2pRouter.post("/requisitions/:requisitionId/submit", (req, res) => {
   const requisition = submitRequisition(req.params.requisitionId, req.actor);
   res.json(entityWithLinks(requisition as any, requisitionLinks(req.params.requisitionId, (requisition as any).state)));
@@ -296,6 +383,58 @@ p2pRouter.get("/purchase-orders/:poId", (req, res) => {
 p2pRouter.post("/purchase-orders", validateBody(createPurchaseOrderSchema), (req, res) => {
   const po = createPurchaseOrder(req.body, req.actor);
   res.status(201).json(entityWithLinks(po as any, purchaseOrderLinks((po as any).po_id, (po as any).state)));
+});
+
+p2pRouter.get("/purchase-orders/:poId/lines", (req, res) => {
+  const lines = listPurchaseOrderLines(req.params.poId);
+  res.json({ data: lines });
+});
+
+p2pRouter.post("/purchase-orders/:poId/lines", validateBody(purchaseOrderLineSchema), (req, res) => {
+  const result = addPurchaseOrderLine(
+    {
+      poId: req.params.poId,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      unitPrice: req.body.unitPrice
+    },
+    req.actor
+  );
+
+  res.status(201).json({
+    line: result.line,
+    purchaseOrder: entityWithLinks(result.purchaseOrder as any, purchaseOrderLinks(req.params.poId, result.purchaseOrder.state))
+  });
+});
+
+p2pRouter.put("/purchase-orders/:poId/lines/:poLineId", validateBody(purchaseOrderLineSchema), (req, res) => {
+  const result = updatePurchaseOrderLine(
+    {
+      poId: req.params.poId,
+      poLineId: req.params.poLineId,
+      description: req.body.description,
+      quantity: req.body.quantity,
+      unitPrice: req.body.unitPrice
+    },
+    req.actor
+  );
+
+  res.json({
+    line: result.line,
+    purchaseOrder: entityWithLinks(result.purchaseOrder as any, purchaseOrderLinks(req.params.poId, result.purchaseOrder.state))
+  });
+});
+
+p2pRouter.delete("/purchase-orders/:poId/lines/:poLineId", (req, res) => {
+  const po = removePurchaseOrderLine(
+    {
+      poId: req.params.poId,
+      poLineId: req.params.poLineId
+    },
+    req.actor
+  );
+
+  res.json(entityWithLinks(po as any, purchaseOrderLinks(req.params.poId, po.state)));
 });
 
 p2pRouter.post("/purchase-orders/:poId/approve", (req, res) => {

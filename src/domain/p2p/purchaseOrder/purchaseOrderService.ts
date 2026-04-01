@@ -111,14 +111,49 @@ export function createPurchaseOrderFromRequisition(
 
   ensureSupplierExists(input.supplierId);
 
+  const requisitionLines = db
+    .prepare(
+      `SELECT description, quantity, unit_price, line_total
+       FROM p2p_requisition_line
+       WHERE requisition_id = ?
+       ORDER BY created_at ASC`
+    )
+    .all(input.requisitionId) as Array<{
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+    }>;
+
   const poId = newId("PO-");
   const timestamp = now();
+  const copiedLineTotal = requisitionLines.reduce((sum, line) => sum + line.line_total, 0);
+  const totalAmount = requisitionLines.length > 0 ? copiedLineTotal : requisition.total_amount;
 
   transaction(() => {
     db.prepare(
       `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, state, total_amount, version, created_at, updated_at)
        VALUES (?, ?, ?, 'Draft', ?, 1, ?, ?)`
-    ).run(poId, input.requisitionId, input.supplierId, requisition.total_amount, timestamp, timestamp);
+    ).run(poId, input.requisitionId, input.supplierId, totalAmount, timestamp, timestamp);
+
+    if (requisitionLines.length > 0) {
+      const insertPOLine = db.prepare(
+        `INSERT INTO p2p_purchase_order_line(po_line_id, po_id, description, quantity, unit_price, line_total, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      );
+
+      for (const line of requisitionLines) {
+        insertPOLine.run(
+          newId("PO-L-"),
+          poId,
+          line.description,
+          line.quantity,
+          line.unit_price,
+          line.line_total,
+          timestamp
+        );
+      }
+    }
 
     db.prepare("UPDATE p2p_requisition SET state = 'ConvertedToPO', version = version + 1, updated_at = ? WHERE requisition_id = ?")
       .run(timestamp, input.requisitionId);
@@ -140,7 +175,8 @@ export function createPurchaseOrderFromRequisition(
       payload: {
         requisitionId: input.requisitionId,
         supplierId: input.supplierId,
-        totalAmount: requisition.total_amount
+        totalAmount,
+        lineCount: requisitionLines.length
       },
       actor
     });

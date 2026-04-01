@@ -2,6 +2,9 @@ import { McpFunctionDef } from "./catalog";
 
 export const p2pFunctions: McpFunctionDef[] = [
   { name: "p2p_create_requisition", domain: "p2p", description: "Create requisition" },
+  { name: "p2p_add_requisition_line", domain: "p2p", description: "Add requisition line" },
+  { name: "p2p_update_requisition_line", domain: "p2p", description: "Update requisition line" },
+  { name: "p2p_remove_requisition_line", domain: "p2p", description: "Remove requisition line" },
   { name: "p2p_submit_requisition", domain: "p2p", description: "Submit requisition" },
   { name: "p2p_approve_requisition", domain: "p2p", description: "Approve requisition" },
   { name: "p2p_reject_requisition", domain: "p2p", description: "Reject requisition" },
@@ -11,6 +14,9 @@ export const p2pFunctions: McpFunctionDef[] = [
   { name: "p2p_activate_supplier", domain: "p2p", description: "Activate supplier" },
   { name: "p2p_suspend_supplier", domain: "p2p", description: "Suspend supplier" },
   { name: "p2p_create_po", domain: "p2p", description: "Create purchase order" },
+  { name: "p2p_add_po_line", domain: "p2p", description: "Add purchase order line" },
+  { name: "p2p_update_po_line", domain: "p2p", description: "Update purchase order line" },
+  { name: "p2p_remove_po_line", domain: "p2p", description: "Remove purchase order line" },
   { name: "p2p_approve_po", domain: "p2p", description: "Approve purchase order" },
   { name: "p2p_send_po", domain: "p2p", description: "Send purchase order to supplier" },
   { name: "p2p_receive_goods_on_po", domain: "p2p", description: "Record goods receipt on PO" },

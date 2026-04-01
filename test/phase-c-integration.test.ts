@@ -63,6 +63,38 @@ test("Phase C Integration Hub v2 - P2P Workflow", async (t) => {
       requiredTier: 1
     });
 
+    // Step 1a: Add requisition lines and verify total recalculation
+    const reqLineOneRes = await request(app)
+      .post(`/api/v1/p2p/requisitions/${requisitionId}/lines`)
+      .set(headers)
+      .send({
+        description: "Laptop",
+        quantity: 2,
+        unitPrice: 1200
+      });
+
+    assert.equal(reqLineOneRes.status, 201);
+    assert.equal(reqLineOneRes.body.requisition.total_amount, 2400);
+
+    const reqLineTwoRes = await request(app)
+      .post(`/api/v1/p2p/requisitions/${requisitionId}/lines`)
+      .set(headers)
+      .send({
+        description: "Docking Station",
+        quantity: 2,
+        unitPrice: 200
+      });
+
+    assert.equal(reqLineTwoRes.status, 201);
+    assert.equal(reqLineTwoRes.body.requisition.total_amount, 2800);
+
+    const reqLinesRes = await request(app)
+      .get(`/api/v1/p2p/requisitions/${requisitionId}/lines`)
+      .set(headers);
+
+    assert.equal(reqLinesRes.status, 200);
+    assert.equal(reqLinesRes.body.data.length, 2);
+
     // Step 2: Submit requisition
     const submitRes = await request(app)
       .post(`/api/v1/p2p/requisitions/${requisitionId}/submit`)
@@ -99,7 +131,17 @@ test("Phase C Integration Hub v2 - P2P Workflow", async (t) => {
 
     assert.equal(poRes.status, 201);
     const poId = poRes.body.po_id;
+    assert.equal(poRes.body.total_amount, 2800);
     assert.equal(poRes.body._links.approve.governance.riskLevel, "High");
+
+    const poLinesRes = await request(app)
+      .get(`/api/v1/p2p/purchase-orders/${poId}/lines`)
+      .set(headers);
+
+    assert.equal(poLinesRes.status, 200);
+    assert.equal(poLinesRes.body.data.length, 2);
+    const poLineTotal = poLinesRes.body.data.reduce((sum: number, line: { line_total: number }) => sum + line.line_total, 0);
+    assert.equal(poLineTotal, 2800);
 
     // Step 5-16: Continue workflow...
     // Approve PO
