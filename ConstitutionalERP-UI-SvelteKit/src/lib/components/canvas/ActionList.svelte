@@ -68,12 +68,30 @@
 		return required.every((field) => (vals[action.name]?.[field] ?? '').trim() !== '');
 	}
 
+	function coerceValue(rawValue: string, schema: { type?: string } | undefined): unknown {
+		if (schema?.type === 'number' || schema?.type === 'integer') {
+			const numeric = Number(rawValue);
+			return Number.isFinite(numeric) ? numeric : rawValue;
+		}
+
+		if (schema?.type === 'boolean') {
+			if (rawValue === 'true') return true;
+			if (rawValue === 'false') return false;
+		}
+
+		return rawValue;
+	}
+
+	function getInputType(schema: { type?: string } | undefined): 'text' | 'number' {
+		return schema?.type === 'number' || schema?.type === 'integer' ? 'number' : 'text';
+	}
+
 	function handleRun(action: { name: string; link: HubActionLink }): void {
 		const payload: Record<string, unknown> = {};
 		for (const field of Object.keys(action.link.inputSchema?.properties ?? {})) {
 			const val = inputValues[action.name]?.[field];
 			if (val !== undefined && val.trim() !== '') {
-				payload[field] = val;
+				payload[field] = coerceValue(val, action.link.inputSchema?.properties?.[field]);
 			}
 		}
 		onExecute?.(action, payload);
@@ -127,7 +145,7 @@
 												</select>
 											{:else}
 												<input
-													type="text"
+													type={getInputType(fieldSchema)}
 													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
 													placeholder={fieldSchema?.description ?? field}
 													value={getInput(action.name, field)}
@@ -154,11 +172,10 @@
 													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
-												</select>											<span class="mt-0.5 inline-block rounded bg-yellow-400/20 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300">
-												DBG val: "{getInput(action.name, field) || '(empty)'}"
-											</span>											{:else}
+												</select>
+											{:else}
 												<input
-													type="text"
+													type={getInputType(fieldSchema)}
 													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
 													placeholder={fieldSchema?.description ?? field}
 													value={getInput(action.name, field)}
@@ -171,9 +188,6 @@
 							{/if}
 						</div>
 						<div class="flex shrink-0 flex-col items-end gap-1">
-							<span class="rounded bg-yellow-400/20 px-1.5 py-0.5 font-mono text-[10px] text-yellow-300">
-								DBG ready:{isReady(action, inputValues) ? '✓' : '✗'} · req:[{(action.link.inputSchema?.required ?? []).join(',')}] · vals:{JSON.stringify(inputValues[action.name] ?? {})}
-							</span>
 							<div class="flex items-center gap-2">
 								<GovernanceBadge
 									riskLevel={action.link.governance?.riskLevel}
