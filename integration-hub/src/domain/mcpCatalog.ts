@@ -38,6 +38,27 @@ function matchesAction(
 
 const FUNCTION_DEFS = [
   { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
+  {
+    id: "p2p_add_requisition_line",
+    entity: "Requisition",
+    domain: "p2p",
+    aggregateType: "requisition",
+    action: "lines",
+    actionAliases: ["add-line"],
+    operationType: "update",
+    description: "Add a line to a draft requisition",
+    riskLevel: "Low",
+    governanceTag: "P2P.Requisition.UpdateLine",
+    inputSchema: {
+      type: "object",
+      required: ["description", "quantity", "unitPrice"],
+      properties: {
+        description: { type: "string", minLength: 1 },
+        quantity: { type: "number", minimum: 0.000001 },
+        unitPrice: { type: "number", minimum: 0 }
+      }
+    }
+  },
   { id: "p2p_submit_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "submit", operationType: "transition", description: "Transition requisition to Submitted", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
   { id: "p2p_approve_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "approve", operationType: "transition", description: "Transition requisition to Approved", riskLevel: "Medium", governanceTag: "P2P.Requisition.Approve" },
   { id: "p2p_convert_requisition_to_po", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "convert-to-po", operationType: "transition", description: "Convert approved requisition to a Purchase Order", riskLevel: "Medium", governanceTag: "P2P.Requisition.Convert", inputSchema: { type: "object", required: ["supplierId"], properties: { supplierId: { type: "string", description: "Supplier to raise the PO against", "x-lookup": "p2p/suppliers" } } } },
@@ -47,6 +68,27 @@ const FUNCTION_DEFS = [
   { id: "p2p_reactivate_supplier", entity: "Supplier", domain: "p2p", aggregateType: "supplier", action: "reactivate", operationType: "transition", description: "Reactivate suspended supplier", riskLevel: "Medium", governanceTag: "P2P.Supplier.Reactivate" },
   { id: "p2p_deactivate_supplier", entity: "Supplier", domain: "p2p", aggregateType: "supplier", action: "deactivate", operationType: "transition", description: "Deactivate supplier", riskLevel: "High", governanceTag: "P2P.Supplier.Deactivate" },
   { id: "p2p_create_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "create_po", operationType: "create", description: "Create purchase order", riskLevel: "Medium", governanceTag: "P2P.PO.Create" },
+  {
+    id: "p2p_add_po_line",
+    entity: "PurchaseOrder",
+    domain: "p2p",
+    aggregateType: "purchase-order",
+    action: "lines",
+    actionAliases: ["add-line"],
+    operationType: "update",
+    description: "Add a line to a draft purchase order",
+    riskLevel: "Low",
+    governanceTag: "P2P.PO.UpdateLine",
+    inputSchema: {
+      type: "object",
+      required: ["description", "quantity", "unitPrice"],
+      properties: {
+        description: { type: "string", minLength: 1 },
+        quantity: { type: "number", minimum: 0.000001 },
+        unitPrice: { type: "number", minimum: 0 }
+      }
+    }
+  },
   { id: "p2p_issue_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "issue_po", operationType: "transition", description: "Issue purchase order", riskLevel: "Medium", governanceTag: "P2P.PO.Issue" },
   { id: "p2p_acknowledge_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "acknowledge_po", operationType: "transition", description: "Acknowledge purchase order", riskLevel: "Low", governanceTag: "P2P.PO.Acknowledge" },
   { id: "p2p_create_goods_receipt", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "create_goods_receipt", operationType: "create", description: "Create goods receipt", riskLevel: "Low", governanceTag: "P2P.GoodsReceipt.Create" },
