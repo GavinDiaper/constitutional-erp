@@ -1,8 +1,0 @@
-node_modules/
-dist/
-reports/
-.env
-*.db
-*.db-wal
-*.db-shm
-*.log
