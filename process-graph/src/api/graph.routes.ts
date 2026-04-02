@@ -48,6 +48,40 @@ function addSupplementalLinks(
   }
 }
 
+const displayStringKeys = new Set([
+  "authorityDecision",
+  "authority_decision",
+  "governanceDecision",
+  "governance_decision",
+  "decisionSnapshot",
+  "decision_snapshot"
+]);
+
+function stringifyDisplayValue(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown serialization error";
+    return `[unserializable object: ${detail}]`;
+  }
+}
+
+function normalizeAttributesForDisplay(attributes: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = { ...attributes };
+
+  for (const [key, value] of Object.entries(normalized)) {
+    if (!displayStringKeys.has(key)) {
+      continue;
+    }
+
+    if (value !== null && typeof value === "object") {
+      normalized[key] = stringifyDisplayValue(value);
+    }
+  }
+
+  return normalized;
+}
+
 /**
  * Produces the canonical resource envelope with unevaluated links
  * (no charter filtering). Used internally before charter annotation.
@@ -58,7 +92,7 @@ function toCanonicalResource(state: AggregateState, links: Record<string, Canoni
     domain: state.domain,
     type: state.aggregateType,
     state: state.state,
-    attributes: state.attributes,
+    attributes: normalizeAttributesForDisplay(state.attributes),
     links
   };
 }

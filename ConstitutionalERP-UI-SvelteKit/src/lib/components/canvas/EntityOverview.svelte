@@ -75,6 +75,23 @@
 		const numeric = asNumber(value);
 		return numeric === null ? String(value ?? '') : numeric.toFixed(2);
 	}
+
+	function formatValue(value: unknown): string {
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		if (typeof value === 'object') {
+			try {
+				return JSON.stringify(value);
+			} catch (error) {
+				const detail = error instanceof Error ? error.message : 'unknown serialization error';
+				return `[unserializable object: ${detail}]`;
+			}
+		}
+
+		return String(value);
+	}
 </script>
 
 <section class="glass-panel p-4">
@@ -92,7 +109,7 @@
 						{#each headerEntries as [key, value] (key)}
 							<div class="rounded-md border border-white/10 bg-white/5 p-3">
 								<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
-								<dd class="mt-1 text-sm">{String(value)}</dd>
+								<dd class="mt-1 text-sm">{formatValue(value)}</dd>
 							</div>
 						{/each}
 					</dl>
@@ -171,7 +188,7 @@
 			{#each Object.entries(attributes).filter(([key]) => !key.startsWith('__')) as [key, value] (key)}
 				<div class="rounded-md border border-white/10 bg-white/5 p-3">
 					<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
-					<dd class="mt-1 text-sm">{String(value)}</dd>
+					<dd class="mt-1 text-sm">{formatValue(value)}</dd>
 				</div>
 			{/each}
 		</dl>
