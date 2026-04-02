@@ -1684,7 +1684,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"COST_CENTER\",\n  \"name\": \"Cost Center\",\n  \"sortOrder\": 1,\n  \"isRequired\": true\n}"
+              "raw": "{\n  \"code\": \"COST_CENTER_{{$timestamp}}\",\n  \"name\": \"Cost Center\",\n  \"sortOrder\": 1,\n  \"isRequired\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/accounts/segment-definitions",
