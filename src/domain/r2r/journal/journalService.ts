@@ -18,6 +18,54 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+function assertValidJournalLine(debitAmount: number, creditAmount: number) {
+  if (!Number.isFinite(debitAmount) || !Number.isFinite(creditAmount)) {
+    throw new HttpError(400, "invalid_journal_line", "Debit and credit amounts must be valid numbers");
+  }
+
+  if (debitAmount < 0 || creditAmount < 0) {
+    throw new HttpError(400, "invalid_journal_line", "Debit and credit amounts must be non-negative");
+  }
+
+  const debitCents = toCents(debitAmount);
+  const creditCents = toCents(creditAmount);
+  const hasDebit = debitCents > 0;
+  const hasCredit = creditCents > 0;
+
+  if ((hasDebit && hasCredit) || (!hasDebit && !hasCredit)) {
+    throw new HttpError(400, "invalid_journal_line", "Each journal line must have either a debit amount or a credit amount");
+  }
+}
+
+function assertBalancedForPosting(
+  lines: Array<{ account_id: string; debit_amount: number; credit_amount: number }>
+) {
+  if (lines.length < 2) {
+    throw new HttpError(409, "unbalanced_journal", "Journal must contain at least two lines before posting");
+  }
+
+  const distinctAccounts = new Set(lines.map((line) => line.account_id));
+  if (distinctAccounts.size < 2) {
+    throw new HttpError(409, "unbalanced_journal", "Journal must affect at least two accounts before posting");
+  }
+
+  let totalDebitCents = 0;
+  let totalCreditCents = 0;
+  for (const line of lines) {
+    assertValidJournalLine(line.debit_amount, line.credit_amount);
+    totalDebitCents += toCents(line.debit_amount);
+    totalCreditCents += toCents(line.credit_amount);
+  }
+
+  if (totalDebitCents !== totalCreditCents) {
+    throw new HttpError(409, "unbalanced_journal", "Journal debits must equal credits before posting");
+  }
+}
+
 function getJournal(journalId: string) {
   const row = db.prepare("SELECT * FROM r2r_journal WHERE journal_id = ?").get(journalId) as
     | {
@@ -81,6 +129,8 @@ export function addJournalLine(input: {
     throw new HttpError(409, "invalid_transition", "Journal lines can only be added in Draft state");
   }
 
+  assertValidJournalLine(input.debitAmount, input.creditAmount);
+
   ensureAccountExists(input.accountId);
 
   const journalLineId = newId("JNL-L-");
@@ -94,8 +144,8 @@ export function addJournalLine(input: {
       journalLineId,
       input.journalId,
       input.accountId,
-      input.debitAmount,
-      input.creditAmount,
+      toCents(input.debitAmount) / 100,
+      toCents(input.creditAmount) / 100,
       input.memo ?? null,
       timestamp
     );
@@ -137,6 +187,8 @@ export function updateJournalState(journalId: string, toState: JournalState, act
           "SELECT account_id, debit_amount, credit_amount FROM r2r_journal_line WHERE journal_id = ?"
         )
         .all(journalId) as Array<{ account_id: string; debit_amount: number; credit_amount: number }>;
+
+      assertBalancedForPosting(lines);
 
       const insertLedger = db.prepare(
         `INSERT INTO r2r_ledger_entry(ledger_entry_id, journal_id, account_id, posting_date, debit_amount, credit_amount, created_at)

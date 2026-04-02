@@ -14,10 +14,13 @@ import { queryRouter } from "./api/query.routes";
 import { navlogRouter } from "./api/navlog/navlog.routes";
 import { authRouter } from "./api/auth.routes";
 import { toProblem } from "./utils/errors";
+import { seedStarterAccounts } from "./domain/r2r/account/accountService";
 
 const config = loadConfig();
 
 export function createApp() {
+  seedStarterAccounts();
+
   const app = express();
 
   app.use(helmet());

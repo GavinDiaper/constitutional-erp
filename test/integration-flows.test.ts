@@ -141,10 +141,16 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
 test("R2R integration flow enforces period lifecycle and posting rules", async () => {
   const headers = authHeaders();
 
-  const account = await request(app)
+  const cashAccount = await request(app)
     .post("/api/v1/r2r/accounts")
     .set(headers)
     .send({ accountCode: "1100", accountName: "Cash on Hand", accountType: "Asset" })
+    .expect(201);
+
+  const equityAccount = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "3100", accountName: "Owner Equity", accountType: "Equity" })
     .expect(201);
 
   const fiscalYear = await request(app)
@@ -173,7 +179,13 @@ test("R2R integration flow enforces period lifecycle and posting rules", async (
   await request(app)
     .post(`/api/v1/r2r/journals/${journal.body.journal_id}/lines`)
     .set(headers)
-    .send({ accountId: account.body.account_id, debitAmount: 10, creditAmount: 0, memo: "opening" })
+    .send({ accountId: cashAccount.body.account_id, debitAmount: 10, creditAmount: 0, memo: "opening debit" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/r2r/journals/${journal.body.journal_id}/lines`)
+    .set(headers)
+    .send({ accountId: equityAccount.body.account_id, debitAmount: 0, creditAmount: 10, memo: "opening credit" })
     .expect(201);
 
   const postedJournal = await request(app)
@@ -202,6 +214,79 @@ test("R2R integration flow enforces period lifecycle and posting rules", async (
     .expect(409);
 
   assert.equal(createInLockedPeriod.body.title, "invalid_transition");
+});
+
+test("R2R rejects unbalanced journals during posting", async () => {
+  const headers = authHeaders();
+
+  const account = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "1200", accountName: "Bank Account", accountType: "Asset" })
+    .expect(201);
+
+  const fiscalYear = await request(app)
+    .post("/api/v1/r2r/fiscal-years")
+    .set(headers)
+    .send({ yearLabel: "FY2028", startDate: "2028-01-01", endDate: "2028-12-31" })
+    .expect(201);
+
+  const fiscalPeriod = await request(app)
+    .post("/api/v1/r2r/fiscal-periods")
+    .set(headers)
+    .send({
+      fiscalYearId: fiscalYear.body.fiscal_year_id,
+      periodNumber: 1,
+      startDate: "2028-01-01",
+      endDate: "2028-01-31"
+    })
+    .expect(201);
+
+  const journal = await request(app)
+    .post("/api/v1/r2r/journals")
+    .set(headers)
+    .send({ fiscalPeriodId: fiscalPeriod.body.fiscal_period_id, description: "Unbalanced entry" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/r2r/journals/${journal.body.journal_id}/lines`)
+    .set(headers)
+    .send({ accountId: account.body.account_id, debitAmount: 25, creditAmount: 0 })
+    .expect(201);
+
+  const postAttempt = await request(app)
+    .post(`/api/v1/r2r/journals/${journal.body.journal_id}/post`)
+    .set(headers)
+    .expect(409);
+
+  assert.equal(postAttempt.body.title, "unbalanced_journal");
+});
+
+test("R2R account type validation and starter COA seeding are enforced", async () => {
+  const headers = authHeaders();
+
+  const invalidTypeResponse = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "9999", accountName: "Invalid", accountType: "Contra" })
+    .expect(400);
+
+  assert.equal(invalidTypeResponse.body.title, "invalid_request");
+
+  const accountsResponse = await request(app)
+    .get("/api/v1/r2r/accounts")
+    .set(headers)
+    .expect(200);
+
+  const accountTypes = new Set(
+    accountsResponse.body.data.map((row: { account_type: string }) => row.account_type)
+  );
+
+  assert.ok(accountTypes.has("Asset"));
+  assert.ok(accountTypes.has("Liability"));
+  assert.ok(accountTypes.has("Equity"));
+  assert.ok(accountTypes.has("Revenue"));
+  assert.ok(accountTypes.has("Expense"));
 });
 
 test("H2R integration flow transitions through workforce lifecycle", async () => {

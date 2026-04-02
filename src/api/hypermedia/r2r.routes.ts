@@ -12,7 +12,7 @@ import {
   reverseJournal,
   cancelJournal
 } from "../../domain/r2r/journal/journalService";
-import { createAccount, getAccountById, listAccounts } from "../../domain/r2r/account/accountService";
+import { ACCOUNT_TYPES, createAccount, getAccountById, listAccounts } from "../../domain/r2r/account/accountService";
 import {
   createFiscalPeriod,
   createFiscalYear,
@@ -37,7 +37,7 @@ import {
 const createAccountSchema = z.object({
   accountCode: z.string().min(1),
   accountName: z.string().min(1),
-  accountType: z.string().min(1)
+  accountType: z.enum(ACCOUNT_TYPES)
 });
 
 const createFiscalYearSchema = z.object({
