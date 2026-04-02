@@ -440,6 +440,7 @@ Example request:
 #### POST /api/v1/r2r/accounts
 
 - create account
+- optional `parentAccountId` for hierarchy
 
 Example request:
 
@@ -447,7 +448,56 @@ Example request:
 {
   "accountCode": "1100-1001",
   "accountName": "Cash",
-  "accountType": "Asset"
+  "accountType": "Asset",
+  "parentAccountId": "ACC-ROOT-001"
+}
+```
+
+#### GET /api/v1/r2r/accounts/hierarchy
+
+- list accounts as a parent-child hierarchy
+
+#### GET /api/v1/r2r/accounts/segment-definitions
+
+- list COA segment definitions
+
+#### GET /api/v1/r2r/accounts/segment-definitions/:segmentDefinitionId
+
+- get segment definition by id
+
+#### POST /api/v1/r2r/accounts/segment-definitions
+
+- create COA segment definition
+
+Example request:
+
+```json
+{
+  "code": "COST_CENTER",
+  "name": "Cost Center",
+  "sortOrder": 1,
+  "isRequired": true
+}
+```
+
+#### GET /api/v1/r2r/accounts/:accountId/segments
+
+- list assigned segment values for an account
+
+#### PUT /api/v1/r2r/accounts/:accountId/segments
+
+- replace segment values for an account
+
+Example request:
+
+```json
+{
+  "values": [
+    {
+      "segmentDefinitionId": "SEG-123",
+      "value": "CC-100"
+    }
+  ]
 }
 ```
 

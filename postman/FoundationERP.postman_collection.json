@@ -1665,6 +1665,254 @@
           ]
         },
         {
+          "name": "Create COA Segment Definition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"COST_CENTER\",\n  \"name\": \"Cost Center\",\n  \"sortOrder\": 1,\n  \"isRequired\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts/segment-definitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts",
+                "segment-definitions"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"segmentDefinitionId\", body.segment_definition_id);",
+                  "pm.test(\"Segment definition captured\", function () { pm.expect(body.segment_definition_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Parent Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"7000-{{$timestamp}}\",\n  \"accountName\": \"Operating Expense Parent\",\n  \"accountType\": \"Expense\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"parentAccountId\", body.account_id);",
+                  "pm.test(\"Parent account created\", function () { pm.expect(body.account_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Child Account With Parent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"7100-{{$timestamp}}\",\n  \"accountName\": \"Operating Expense Child\",\n  \"accountType\": \"Expense\",\n  \"parentAccountId\": \"{{parentAccountId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"childAccountId\", body.account_id);",
+                  "pm.test(\"Child account linked to parent\", function () { pm.expect(body.parent_account_id).to.eql(pm.environment.get(\"parentAccountId\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set Child Account Segments",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"values\": [\n    {\n      \"segmentDefinitionId\": \"{{segmentDefinitionId}}\",\n      \"value\": \"CC-100\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts/{{childAccountId}}/segments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts",
+                "{{childAccountId}}",
+                "segments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Segment assignment saved\", function () { pm.expect(body.data[0].segment_value).to.eql(\"CC-100\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Account Hierarchy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts/hierarchy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts",
+                "hierarchy"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Hierarchy includes parent node\", function () {",
+                  "  var parentId = pm.environment.get(\"parentAccountId\");",
+                  "  var found = body.data.some(function (row) { return row.account_id === parentId; });",
+                  "  pm.expect(found).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Fiscal Year",
           "request": {
             "method": "POST",

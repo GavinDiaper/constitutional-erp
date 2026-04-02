@@ -289,6 +289,81 @@ test("R2R account type validation and starter COA seeding are enforced", async (
   assert.ok(accountTypes.has("Expense"));
 });
 
+test("R2R supports COA segment definitions and account hierarchy", async () => {
+  const headers = authHeaders();
+
+  const segmentDefinition = await request(app)
+    .post("/api/v1/r2r/accounts/segment-definitions")
+    .set(headers)
+    .send({
+      code: "COST_CENTER",
+      name: "Cost Center",
+      sortOrder: 1,
+      isRequired: true
+    })
+    .expect(201);
+
+  const parentAccount = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "2001", accountName: "Operating Expense Parent", accountType: "Expense" })
+    .expect(201);
+
+  const childAccount = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({
+      accountCode: "2002",
+      accountName: "Operating Expense Child",
+      accountType: "Expense",
+      parentAccountId: parentAccount.body.account_id
+    })
+    .expect(201);
+
+  const setSegments = await request(app)
+    .put(`/api/v1/r2r/accounts/${childAccount.body.account_id}/segments`)
+    .set(headers)
+    .send({
+      values: [
+        {
+          segmentDefinitionId: segmentDefinition.body.segment_definition_id,
+          value: "CC-100"
+        }
+      ]
+    })
+    .expect(200);
+
+  assert.equal(setSegments.body.data[0].segment_value, "CC-100");
+
+  const hierarchy = await request(app)
+    .get("/api/v1/r2r/accounts/hierarchy")
+    .set(headers)
+    .expect(200);
+
+  const parentNode = hierarchy.body.data.find(
+    (row: { account_id: string }) => row.account_id === parentAccount.body.account_id
+  );
+
+  assert.ok(parentNode);
+  assert.ok(
+    parentNode.children.some(
+      (row: { account_id: string }) => row.account_id === childAccount.body.account_id
+    )
+  );
+
+  const definitions = await request(app)
+    .get("/api/v1/r2r/accounts/segment-definitions")
+    .set(headers)
+    .expect(200);
+
+  assert.ok(
+    definitions.body.data.some(
+      (row: { segment_definition_id: string }) =>
+        row.segment_definition_id === segmentDefinition.body.segment_definition_id
+    )
+  );
+});
+
 test("R2R legal entities can be created and linked to ledgers", async () => {
   const headers = authHeaders();
 
@@ -470,6 +545,7 @@ test("Table query API returns data for all whitelisted tables", async () => {
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "o2c_customer"));
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_legal_entity"));
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_ledger"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_coa_segment_definition"));
 
   const customersResponse = await request(app)
     .get("/api/v1/query/o2c_customer?limit=5")

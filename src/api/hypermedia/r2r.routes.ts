@@ -12,7 +12,18 @@ import {
   reverseJournal,
   cancelJournal
 } from "../../domain/r2r/journal/journalService";
-import { ACCOUNT_TYPES, createAccount, getAccountById, listAccounts } from "../../domain/r2r/account/accountService";
+import {
+  ACCOUNT_TYPES,
+  createAccount,
+  createSegmentDefinition,
+  getAccountById,
+  getSegmentDefinitionById,
+  listAccountHierarchy,
+  listAccountSegments,
+  listAccounts,
+  listSegmentDefinitions,
+  setAccountSegments
+} from "../../domain/r2r/account/accountService";
 import {
   createFiscalPeriod,
   createFiscalYear,
@@ -49,7 +60,24 @@ import {
 const createAccountSchema = z.object({
   accountCode: z.string().min(1),
   accountName: z.string().min(1),
-  accountType: z.enum(ACCOUNT_TYPES)
+  accountType: z.enum(ACCOUNT_TYPES),
+  parentAccountId: z.string().min(1).optional()
+});
+
+const createSegmentDefinitionSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  sortOrder: z.number().int().min(1),
+  isRequired: z.boolean().optional()
+});
+
+const setAccountSegmentsSchema = z.object({
+  values: z.array(
+    z.object({
+      segmentDefinitionId: z.string().min(1),
+      value: z.string().min(1)
+    })
+  )
 });
 
 const createFiscalYearSchema = z.object({
@@ -324,6 +352,62 @@ r2rRouter.get("/accounts", (_req, res) => {
     entityWithLinks(row, { self: { href: `/api/v1/r2r/accounts/${row.account_id}`, method: "GET" } })
   );
   res.json({ data: accounts });
+});
+
+r2rRouter.get("/accounts/hierarchy", (_req, res) => {
+  const tree = listAccountHierarchy();
+  res.json({ data: tree });
+});
+
+r2rRouter.get("/accounts/segment-definitions", (_req, res) => {
+  const definitions = listSegmentDefinitions().map((row: any) =>
+    entityWithLinks(row, {
+      self: {
+        href: `/api/v1/r2r/accounts/segment-definitions/${row.segment_definition_id}`,
+        method: "GET"
+      }
+    })
+  );
+
+  res.json({ data: definitions });
+});
+
+r2rRouter.post("/accounts/segment-definitions", validateBody(createSegmentDefinitionSchema), (req, res) => {
+  const definition = createSegmentDefinition(req.body);
+  res.status(201).json(
+    entityWithLinks(definition as any, {
+      self: {
+        href: `/api/v1/r2r/accounts/segment-definitions/${(definition as any).segment_definition_id}`,
+        method: "GET"
+      }
+    })
+  );
+});
+
+r2rRouter.get("/accounts/segment-definitions/:segmentDefinitionId", (req, res) => {
+  const definition = getSegmentDefinitionById(req.params.segmentDefinitionId);
+  res.json(
+    entityWithLinks(definition as any, {
+      self: {
+        href: `/api/v1/r2r/accounts/segment-definitions/${req.params.segmentDefinitionId}`,
+        method: "GET"
+      }
+    })
+  );
+});
+
+r2rRouter.get("/accounts/:accountId/segments", (req, res) => {
+  const rows = listAccountSegments(req.params.accountId);
+  res.json({ data: rows });
+});
+
+r2rRouter.put("/accounts/:accountId/segments", validateBody(setAccountSegmentsSchema), (req, res) => {
+  const rows = setAccountSegments({
+    accountId: req.params.accountId,
+    values: req.body.values
+  });
+
+  res.json({ data: rows });
 });
 
 r2rRouter.get("/accounts/:accountId", (req, res) => {

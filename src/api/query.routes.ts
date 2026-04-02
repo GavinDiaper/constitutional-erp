@@ -23,6 +23,7 @@ const tablePrimaryKeys = {
   p2p_supplier_invoice: "supplier_invoice_id",
   p2p_ap_payment: "ap_payment_id",
   r2r_account: "account_id",
+  r2r_coa_segment_definition: "segment_definition_id",
   r2r_fiscal_year: "fiscal_year_id",
   r2r_fiscal_period: "fiscal_period_id",
   r2r_journal: "journal_id",
