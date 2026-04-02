@@ -254,20 +254,49 @@ async function createJournal(headers: Headers, payload: BootstrapPayload): Promi
 		throw new Error('Journal creation succeeded but journal_id was missing.');
 	}
 
-	const accountId = asNonEmptyString(payload.accountId);
-	const debitAmount = asNonNegativeNumber(payload.debitAmount);
-	const creditAmount = asNonNegativeNumber(payload.creditAmount);
-	let line: unknown = null;
+	const lines: unknown[] = [];
+	const memo = asOptionalString(payload.memo);
 
-	if (accountId && debitAmount !== null && creditAmount !== null && (debitAmount > 0 || creditAmount > 0)) {
-		line = await asJson(
+	const debitAccountId = asNonEmptyString(payload.debitAccountId);
+	const creditAccountId = asNonEmptyString(payload.creditAccountId);
+	const amount = asNonNegativeNumber(payload.amount);
+
+	if (debitAccountId && creditAccountId && amount !== null && amount > 0) {
+		const debitLine = await asJson(
 			await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
-				accountId,
-				debitAmount,
-				creditAmount,
-				memo: asOptionalString(payload.memo)
+				accountId: debitAccountId,
+				debitAmount: amount,
+				creditAmount: 0,
+				memo
 			})
 		);
+		lines.push(debitLine);
+
+		const creditLine = await asJson(
+			await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
+				accountId: creditAccountId,
+				debitAmount: 0,
+				creditAmount: amount,
+				memo
+			})
+		);
+		lines.push(creditLine);
+	} else {
+		const accountId = asNonEmptyString(payload.accountId);
+		const debitAmount = asNonNegativeNumber(payload.debitAmount);
+		const creditAmount = asNonNegativeNumber(payload.creditAmount);
+
+		if (accountId && debitAmount !== null && creditAmount !== null && (debitAmount > 0 || creditAmount > 0)) {
+			const legacyLine = await asJson(
+				await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
+					accountId,
+					debitAmount,
+					creditAmount,
+					memo
+				})
+			);
+			lines.push(legacyLine);
+		}
 	}
 
 	const refreshedJournal = await asJson(await proxyHubRequest(`/r2r/journals/${journalId}`, headers, 'GET'));
@@ -276,7 +305,7 @@ async function createJournal(headers: Headers, payload: BootstrapPayload): Promi
 		operation: 'create-journal',
 		entityType: 'r2r_journal',
 		entityId: journalId,
-		data: { journal: refreshedJournal, line }
+		data: { journal: refreshedJournal, lines }
 	};
 }
 

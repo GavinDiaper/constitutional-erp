@@ -21,10 +21,13 @@
 	$: supportsLineLayout =
 		normalizedEntityType === 'p2p_requisition' ||
 		normalizedEntityType === 'p2p_purchase_order' ||
+		normalizedEntityType === 'r2r_journal' ||
 		normalizedEntityType === 'requisition' ||
 		normalizedEntityType === 'purchase-order' ||
-		normalizedEntityType === 'purchaseorder';
+		normalizedEntityType === 'purchaseorder' ||
+		normalizedEntityType === 'journal';
 	$: hasStructuredLines = supportsLineLayout && lineRows.length > 0;
+	$: isJournalLineLayout = normalizedEntityType === 'r2r_journal' || normalizedEntityType === 'journal';
 	$: headerEntries = Object.entries(attributes).filter(([key]) => {
 		if (key.startsWith('__')) return false;
 		if (key === 'total_amount' || key === 'totalAmount') return false;
@@ -33,6 +36,16 @@
 	});
 	$: lineTotals = lineRows.map((line) => asNumber(line.line_total ?? line.lineTotal)).filter((value): value is number => value !== null);
 	$: computedLineTotal = lineTotals.length > 0 ? lineTotals.reduce((sum, value) => sum + value, 0) : null;
+	$: totalDebit =
+		lineRows
+			.map((line) => asNumber(line.debit_amount ?? line.debitAmount))
+			.filter((value): value is number => value !== null)
+			.reduce((sum, value) => sum + value, 0);
+	$: totalCredit =
+		lineRows
+			.map((line) => asNumber(line.credit_amount ?? line.creditAmount))
+			.filter((value): value is number => value !== null)
+			.reduce((sum, value) => sum + value, 0);
 	$: totalAmount =
 		asNumber(attributes.total_amount) ??
 		asNumber(attributes.totalAmount) ??
@@ -89,34 +102,68 @@
 			<div>
 				<p class="text-xs uppercase tracking-[0.16em] text-white/65">Lines</p>
 				<div class="mt-2 overflow-x-auto rounded-md border border-white/15 bg-white/5">
-					<table class="min-w-full text-sm">
-						<thead class="text-left text-white/70">
-							<tr>
-								<th class="px-3 py-2">Description</th>
-								<th class="px-3 py-2 text-right">Quantity</th>
-								<th class="px-3 py-2 text-right">Unit Price</th>
-								<th class="px-3 py-2 text-right">Line Total</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each lineRows as line, index (`${String(line.requisition_line_id ?? line.po_line_id ?? index)}`)}
-								<tr class="border-t border-white/10">
-									<td class="px-3 py-2">{String(line.description ?? '')}</td>
-									<td class="px-3 py-2 text-right">{String(line.quantity ?? '')}</td>
-									<td class="px-3 py-2 text-right">{formatCurrency(line.unit_price ?? line.unitPrice ?? '')}</td>
-									<td class="px-3 py-2 text-right">{formatCurrency(line.line_total ?? line.lineTotal ?? '')}</td>
+					{#if isJournalLineLayout}
+						<table class="min-w-full text-sm">
+							<thead class="text-left text-white/70">
+								<tr>
+									<th class="px-3 py-2">Account</th>
+									<th class="px-3 py-2 text-right">Debit</th>
+									<th class="px-3 py-2 text-right">Credit</th>
+									<th class="px-3 py-2">Memo</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								{#each lineRows as line, index (`${String(line.journal_line_id ?? index)}`)}
+									<tr class="border-t border-white/10">
+										<td class="px-3 py-2">{String(line.account_id ?? line.accountId ?? '')}</td>
+										<td class="px-3 py-2 text-right">{formatCurrency(line.debit_amount ?? line.debitAmount ?? 0)}</td>
+										<td class="px-3 py-2 text-right">{formatCurrency(line.credit_amount ?? line.creditAmount ?? 0)}</td>
+										<td class="px-3 py-2">{String(line.memo ?? '')}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{:else}
+						<table class="min-w-full text-sm">
+							<thead class="text-left text-white/70">
+								<tr>
+									<th class="px-3 py-2">Description</th>
+									<th class="px-3 py-2 text-right">Quantity</th>
+									<th class="px-3 py-2 text-right">Unit Price</th>
+									<th class="px-3 py-2 text-right">Line Total</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each lineRows as line, index (`${String(line.requisition_line_id ?? line.po_line_id ?? index)}`)}
+									<tr class="border-t border-white/10">
+										<td class="px-3 py-2">{String(line.description ?? '')}</td>
+										<td class="px-3 py-2 text-right">{String(line.quantity ?? '')}</td>
+										<td class="px-3 py-2 text-right">{formatCurrency(line.unit_price ?? line.unitPrice ?? '')}</td>
+										<td class="px-3 py-2 text-right">{formatCurrency(line.line_total ?? line.lineTotal ?? '')}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
 				</div>
 			</div>
 
 			<div class="rounded-md border border-white/15 bg-white/5 p-3">
-				<div class="flex items-center justify-between">
-					<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total</span>
-					<span class="text-base font-semibold">{formatCurrency(totalAmount ?? '')}</span>
-				</div>
+				{#if isJournalLineLayout}
+					<div class="flex items-center justify-between">
+						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total Debit</span>
+						<span class="text-base font-semibold">{formatCurrency(totalDebit)}</span>
+					</div>
+					<div class="mt-1 flex items-center justify-between">
+						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total Credit</span>
+						<span class="text-base font-semibold">{formatCurrency(totalCredit)}</span>
+					</div>
+				{:else}
+					<div class="flex items-center justify-between">
+						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total</span>
+						<span class="text-base font-semibold">{formatCurrency(totalAmount ?? '')}</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 	{:else}

@@ -105,9 +105,9 @@
 	let journalForm = {
 		fiscalPeriodId: '',
 		description: '',
-		accountId: '',
-		debitAmount: 0,
-		creditAmount: 0,
+		debitAccountId: '',
+		creditAccountId: '',
+		amount: 0,
 		memo: ''
 	};
 
@@ -147,8 +147,14 @@
 				purchaseOrderForm.supplierId = suppliers[0].supplier_id;
 			}
 
-			if (!journalForm.accountId && accounts.length > 0) {
-				journalForm.accountId = accounts[0].account_id;
+			if (!journalForm.debitAccountId && accounts.length > 0) {
+				journalForm.debitAccountId = accounts[0].account_id;
+			}
+
+			if (!journalForm.creditAccountId && accounts.length > 1) {
+				journalForm.creditAccountId = accounts[1].account_id;
+			} else if (!journalForm.creditAccountId && accounts.length === 1) {
+				journalForm.creditAccountId = accounts[0].account_id;
 			}
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load create-form lookups.';
@@ -316,7 +322,7 @@
 
 		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
 			<h3 class="text-lg font-semibold">Create Journal</h3>
-			<p class="muted mt-1 text-xs">Optional first line lets you set journal amount at creation time.</p>
+			<p class="muted mt-1 text-xs">Provide both sides of the entry: one debit account and one credit account.</p>
 			<div class="mt-3 grid gap-2">
 				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.fiscalPeriodId}>
 					<option value="">Select fiscal period</option>
@@ -325,16 +331,19 @@
 					{/each}
 				</select>
 				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={journalForm.description} />
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.accountId}>
-					<option value="">No opening line</option>
+				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.debitAccountId}>
+					<option value="">Select debit account</option>
 					{#each accounts as account (account.account_id)}
 						<option value={account.account_id}>{accountLabel(account)}</option>
 					{/each}
 				</select>
-				<div class="grid grid-cols-2 gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Debit amount" bind:value={journalForm.debitAmount} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Credit amount" bind:value={journalForm.creditAmount} />
-				</div>
+				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.creditAccountId}>
+					<option value="">Select credit account</option>
+					{#each accounts as account (account.account_id)}
+						<option value={account.account_id}>{accountLabel(account)}</option>
+					{/each}
+				</select>
+				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Amount" bind:value={journalForm.amount} />
 				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Line memo" bind:value={journalForm.memo} />
 			</div>
 			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-journal', journalForm)}>

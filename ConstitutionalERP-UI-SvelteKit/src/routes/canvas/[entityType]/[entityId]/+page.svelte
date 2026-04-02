@@ -171,6 +171,9 @@
 		if (normalized === 'p2p_purchase_order' || normalized === 'purchase-order' || normalized === 'purchaseorder') {
 			return `/api/v1/p2p/purchase-orders/${entityIdValue}/lines`;
 		}
+		if (normalized === 'r2r_journal' || normalized === 'journal') {
+			return '/api/v1/query/r2r_journal_line?limit=500&offset=0';
+		}
 		return null;
 	}
 
@@ -196,13 +199,19 @@
 			}
 
 			const payload = await response.json();
+			let rows: Array<Record<string, unknown>> = [];
 			if (Array.isArray(payload)) {
-				return payload as Array<Record<string, unknown>>;
+				rows = payload as Array<Record<string, unknown>>;
 			}
 			if (Array.isArray(payload?.data)) {
-				return payload.data as Array<Record<string, unknown>>;
+				rows = payload.data as Array<Record<string, unknown>>;
 			}
-			return [];
+
+			if (entityTypeValue.toLowerCase() === 'r2r_journal') {
+				return rows.filter((row) => String(row.journal_id ?? '') === entityIdValue);
+			}
+
+			return rows;
 		} catch {
 			return [];
 		}
