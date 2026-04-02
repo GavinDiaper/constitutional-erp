@@ -1615,6 +1615,56 @@
           ]
         },
         {
+          "name": "Create Offset Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"3100-{{$timestamp}}\",\n  \"accountName\": \"Opening Equity\",\n  \"accountType\": \"Equity\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"accountOffsetId\", body.account_id);",
+                  "pm.test(\"Offset account created\", function () { pm.expect(body.account_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Fiscal Year",
           "request": {
             "method": "POST",
@@ -1777,7 +1827,7 @@
           ]
         },
         {
-          "name": "Add Journal Line",
+          "name": "Add Journal Debit Line",
           "request": {
             "method": "POST",
             "header": [
@@ -1796,7 +1846,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"debitAmount\": 10,\n  \"creditAmount\": 0,\n  \"memo\": \"opening\"\n}"
+              "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"debitAmount\": 10,\n  \"creditAmount\": 0,\n  \"memo\": \"opening debit\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
@@ -1820,7 +1870,57 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                  "pm.test(\"Journal line ID returned\", function () { pm.expect(pm.response.json().journalLineId).to.be.a(\"string\"); });"
+                  "pm.test(\"Journal debit line ID returned\", function () { pm.expect(pm.response.json().journalLineId).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Journal Credit Line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{accountOffsetId}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 10,\n  \"memo\": \"opening credit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "journals",
+                "{{journalId}}",
+                "lines"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Journal credit line ID returned\", function () { pm.expect(pm.response.json().journalLineId).to.be.a(\"string\"); });"
                 ]
               }
             }
