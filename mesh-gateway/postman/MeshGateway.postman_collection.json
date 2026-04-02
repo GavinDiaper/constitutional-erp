@@ -1704,6 +1704,64 @@
           ]
         },
         {
+          "name": "Create Offset Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"{{r2rOffsetAccountCode}}\",\n  \"accountName\": \"Mesh R2R Equity {{r2rOffsetAccountCode}}\",\n  \"accountType\": \"Equity\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"r2rOffsetAccountCode\", \"310\" + String(Date.now()).slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"accountOffsetId\", body.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Fiscal Year",
           "request": {
             "method": "POST",
@@ -1851,7 +1909,7 @@
           ]
         },
         {
-          "name": "Add Journal Line",
+          "name": "Add Journal Debit Line",
           "request": {
             "method": "POST",
             "header": [
@@ -1870,7 +1928,56 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"debitAmount\": 100,\n  \"creditAmount\": 100,\n  \"memo\": \"Balanced line for posting\"\n}"
+              "raw": "{\n  \"accountId\": \"{{accountId}}\",\n  \"debitAmount\": 100,\n  \"creditAmount\": 0,\n  \"memo\": \"Mesh journal debit\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": [
+                "{{foundationBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "journals",
+                "{{journalId}}",
+                "lines"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Journal Credit Line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{accountOffsetId}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 100,\n  \"memo\": \"Mesh journal credit\"\n}"
             },
             "url": {
               "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
