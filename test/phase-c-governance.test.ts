@@ -4,16 +4,32 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import { randomUUID } from "node:crypto";
+import test, { before } from "node:test";
 import request from "supertest";
-import { createApp } from "../src/app";
 
-const app = createApp();
+process.env.NODE_ENV = "test";
+process.env.API_KEY = "test-api-key";
+process.env.INTERNAL_ALLOWLIST = "127.0.0.1,::1";
+process.env.INGRESS_ID_HEADER = "x-ingress-id";
+process.env.INGRESS_ID_VALUE = "foundation-ingress";
+
+let app: any;
+
+before(async () => {
+  const appModule = await import("../src/app");
+  app = appModule.createApp();
+});
 
 const headers = {
   "Content-Type": "application/json",
-  "X-API-Key": "test-key-001"
+  "x-api-key": process.env.API_KEY,
+  "x-ingress-id": process.env.INGRESS_ID_VALUE
 };
+
+function uniqueEmail(prefix: string): string {
+  return `${prefix}.${randomUUID()}@example.com`;
+}
 
 test("Phase C - Governance Annotations", async (t) => {
   await t.test("P2P: Supplier has governance links", async () => {
@@ -22,7 +38,7 @@ test("Phase C - Governance Annotations", async (t) => {
       .set(headers)
       .send({
         supplierName: "Test Supplier",
-        email: "supplier@example.com",
+        email: uniqueEmail("supplier"),
         currencyCode: "USD"
       });
 
@@ -68,7 +84,7 @@ test("Phase C - Governance Annotations", async (t) => {
       .set(headers)
       .send({
         name: "Alice Smith",
-        email: "alice@example.com"
+        email: uniqueEmail("alice")
       });
 
     assert.equal(res.status, 201);
@@ -88,6 +104,7 @@ test("Phase C - Governance Annotations", async (t) => {
         authorityDomain: "H2R",
         authorityTier: 2
       });
+    assert.equal(posRes.status, 201);
 
     const positionId = posRes.body.position_id;
 
@@ -97,8 +114,9 @@ test("Phase C - Governance Annotations", async (t) => {
       .set(headers)
       .send({
         name: "Bob Johnson",
-        email: "bob@example.com"
+        email: uniqueEmail("bob")
       });
+    assert.equal(empRes.status, 201);
 
     const employeeId = empRes.body.employee_id;
 
@@ -126,7 +144,7 @@ test("Phase C - Governance Annotations", async (t) => {
       .set(headers)
       .send({
         supplierName: "Corp Inc",
-        email: "corp@example.com"
+        email: uniqueEmail("corp")
       });
     assert.ok(supplierRes.body._links.activate.governance);
 
@@ -210,7 +228,7 @@ test("Phase C - Governance Annotations", async (t) => {
       .set(headers)
       .send({
         name: "Jane Doe",
-        email: "jane@example.com"
+        email: uniqueEmail("jane")
       });
     assert.ok(empRes.body._links.activate.governance);
 
