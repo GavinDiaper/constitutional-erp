@@ -501,6 +501,156 @@ Example request:
 }
 ```
 
+#### GET /api/v1/r2r/accounts/combination-rules
+
+- list COA combination validation rules
+
+#### GET /api/v1/r2r/accounts/combination-rules/:ruleId
+
+- get COA combination validation rule by id
+
+#### POST /api/v1/r2r/accounts/combination-rules
+
+- create COA combination validation rule
+
+Example request:
+
+```json
+{
+  "name": "AU-FIN-ONLY",
+  "description": "Allow only AU finance pair",
+  "conditions": [
+    {
+      "segmentDefinitionId": "SEG-REGION",
+      "expectedValue": "AU"
+    },
+    {
+      "segmentDefinitionId": "SEG-DEPARTMENT",
+      "expectedValue": "FIN"
+    }
+  ]
+}
+```
+
+#### POST /api/v1/r2r/accounts/combination-rules/validate
+
+- validate a segment combination against active rules
+
+Example request:
+
+```json
+{
+  "values": [
+    {
+      "segmentDefinitionId": "SEG-REGION",
+      "value": "AU"
+    },
+    {
+      "segmentDefinitionId": "SEG-DEPARTMENT",
+      "value": "FIN"
+    }
+  ]
+}
+```
+
+### FX Rates
+
+#### GET /api/v1/r2r/fx/rate-types
+
+- list FX rate types
+
+#### GET /api/v1/r2r/fx/rate-types/:rateTypeId
+
+- get FX rate type by id
+
+#### POST /api/v1/r2r/fx/rate-types
+
+- create FX rate type
+
+Example request:
+
+```json
+{
+  "code": "CORP",
+  "name": "Corporate",
+  "description": "Default corporate planning rates"
+}
+```
+
+#### GET /api/v1/r2r/fx/rates
+
+- list FX rates
+- optional query parameter: `rateTypeId`
+
+#### GET /api/v1/r2r/fx/rates/:rateId
+
+- get FX rate by id
+
+#### POST /api/v1/r2r/fx/rates
+
+- create FX rate
+
+Example request:
+
+```json
+{
+  "rateTypeId": "FXT-123",
+  "fromCurrency": "USD",
+  "toCurrency": "AUD",
+  "rate": 1.53,
+  "validFrom": "2026-04-01T00:00:00.000Z"
+}
+```
+
+#### GET /api/v1/r2r/fx/rates/latest
+
+- resolve latest valid FX rate for requested currency pair
+- required query parameters: `rateTypeId`, `fromCurrency`, `toCurrency`
+- optional query parameter: `asOf`
+
+### SLA Posting Profiles
+
+#### GET /api/v1/r2r/sla/posting-profiles
+
+- list SLA posting profiles
+
+#### GET /api/v1/r2r/sla/posting-profiles/:postingProfileId
+
+- get SLA posting profile by id
+
+#### POST /api/v1/r2r/sla/posting-profiles
+
+- create SLA posting profile starter with accounting lines
+
+Example request:
+
+```json
+{
+  "name": "O2C Invoice Posted",
+  "eventType": "o2c.invoice.posted",
+  "lines": [
+    {
+      "entrySide": "debit",
+      "accountId": "ACC-AR",
+      "amountSource": "grossAmount"
+    },
+    {
+      "entrySide": "credit",
+      "accountId": "ACC-REV",
+      "amountSource": "grossAmount"
+    }
+  ]
+}
+```
+
+#### POST /api/v1/r2r/sla/posting-profiles/:postingProfileId/activate
+
+- activate posting profile
+
+#### POST /api/v1/r2r/sla/posting-profiles/:postingProfileId/deactivate
+
+- deactivate posting profile
+
 ### Fiscal Years
 
 #### GET /api/v1/r2r/fiscal-years

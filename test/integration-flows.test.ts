@@ -364,6 +364,133 @@ test("R2R supports COA segment definitions and account hierarchy", async () => {
   );
 });
 
+test("R2R supports COA combination rule validation", async () => {
+  const headers = authHeaders();
+
+  const regionSegment = await request(app)
+    .post("/api/v1/r2r/accounts/segment-definitions")
+    .set(headers)
+    .send({ code: "REGION", name: "Region", sortOrder: 10, isRequired: true })
+    .expect(201);
+
+  const departmentSegment = await request(app)
+    .post("/api/v1/r2r/accounts/segment-definitions")
+    .set(headers)
+    .send({ code: "DEPARTMENT", name: "Department", sortOrder: 11, isRequired: true })
+    .expect(201);
+
+  const rule = await request(app)
+    .post("/api/v1/r2r/accounts/combination-rules")
+    .set(headers)
+    .send({
+      name: "AU-FIN-ONLY",
+      conditions: [
+        { segmentDefinitionId: regionSegment.body.segment_definition_id, expectedValue: "AU" },
+        { segmentDefinitionId: departmentSegment.body.segment_definition_id, expectedValue: "FIN" }
+      ]
+    })
+    .expect(201);
+
+  const valid = await request(app)
+    .post("/api/v1/r2r/accounts/combination-rules/validate")
+    .set(headers)
+    .send({
+      values: [
+        { segmentDefinitionId: regionSegment.body.segment_definition_id, value: "AU" },
+        { segmentDefinitionId: departmentSegment.body.segment_definition_id, value: "FIN" }
+      ]
+    })
+    .expect(200);
+
+  assert.equal(valid.body.valid, true);
+  assert.equal(valid.body.matchedRuleId, rule.body.rule_id);
+
+  const invalid = await request(app)
+    .post("/api/v1/r2r/accounts/combination-rules/validate")
+    .set(headers)
+    .send({
+      values: [
+        { segmentDefinitionId: regionSegment.body.segment_definition_id, value: "US" },
+        { segmentDefinitionId: departmentSegment.body.segment_definition_id, value: "FIN" }
+      ]
+    })
+    .expect(200);
+
+  assert.equal(invalid.body.valid, false);
+  assert.ok(Array.isArray(invalid.body.violations));
+});
+
+test("R2R supports FX rate type and rate lookup APIs", async () => {
+  const headers = authHeaders();
+
+  const rateType = await request(app)
+    .post("/api/v1/r2r/fx/rate-types")
+    .set(headers)
+    .send({ code: "CORP", name: "Corporate" })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/r2r/fx/rates")
+    .set(headers)
+    .send({
+      rateTypeId: rateType.body.rate_type_id,
+      fromCurrency: "USD",
+      toCurrency: "AUD",
+      rate: 1.53,
+      validFrom: "2026-04-01T00:00:00.000Z"
+    })
+    .expect(201);
+
+  const latest = await request(app)
+    .get(
+      `/api/v1/r2r/fx/rates/latest?rateTypeId=${rateType.body.rate_type_id}&fromCurrency=USD&toCurrency=AUD&asOf=2026-04-02T00:00:00.000Z`
+    )
+    .set(headers)
+    .expect(200);
+
+  assert.equal(latest.body.from_currency, "USD");
+  assert.equal(latest.body.to_currency, "AUD");
+  assert.equal(latest.body.rate, 1.53);
+});
+
+test("R2R supports SLA posting profile starter APIs", async () => {
+  const headers = authHeaders();
+
+  const debitAccount = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "8100", accountName: "Accounts Receivable", accountType: "Asset" })
+    .expect(201);
+
+  const creditAccount = await request(app)
+    .post("/api/v1/r2r/accounts")
+    .set(headers)
+    .send({ accountCode: "9100", accountName: "Revenue", accountType: "Revenue" })
+    .expect(201);
+
+  const profile = await request(app)
+    .post("/api/v1/r2r/sla/posting-profiles")
+    .set(headers)
+    .send({
+      name: "O2C Invoice Posted",
+      eventType: "o2c.invoice.posted",
+      lines: [
+        { entrySide: "debit", accountId: debitAccount.body.account_id, amountSource: "grossAmount" },
+        { entrySide: "credit", accountId: creditAccount.body.account_id, amountSource: "grossAmount" }
+      ]
+    })
+    .expect(201);
+
+  assert.equal(profile.body.lines.length, 2);
+
+  const deactivated = await request(app)
+    .post(`/api/v1/r2r/sla/posting-profiles/${profile.body.posting_profile_id}/deactivate`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(deactivated.body.is_active, 0);
+});
+
 test("R2R legal entities can be created and linked to ledgers", async () => {
   const headers = authHeaders();
 
@@ -546,6 +673,10 @@ test("Table query API returns data for all whitelisted tables", async () => {
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_legal_entity"));
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_ledger"));
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_coa_segment_definition"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_coa_combination_rule"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_fx_rate_type"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_fx_rate"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_sla_posting_profile"));
 
   const customersResponse = await request(app)
     .get("/api/v1/query/o2c_customer?limit=5")

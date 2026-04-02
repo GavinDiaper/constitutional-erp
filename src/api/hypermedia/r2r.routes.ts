@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
+import { HttpError } from "../../utils/errors";
 import {
   addJournalLine,
   createJournal,
@@ -54,6 +55,27 @@ import {
   listLedgerSetMembers,
   listLedgerSets
 } from "../../domain/r2r/ledgerSet/ledgerSetService";
+import {
+  createCombinationRule,
+  getCombinationRuleById,
+  listCombinationRules,
+  validateCombination
+} from "../../domain/r2r/coaRule/coaCombinationRuleService";
+import {
+  createFxRate,
+  createFxRateType,
+  getFxRateById,
+  getFxRateTypeById,
+  getLatestFxRate,
+  listFxRates,
+  listFxRateTypes
+} from "../../domain/r2r/fx/fxService";
+import {
+  createPostingProfile,
+  getPostingProfileById,
+  listPostingProfiles,
+  setPostingProfileActiveState
+} from "../../domain/r2r/sla/postingProfileService";
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -126,6 +148,61 @@ const createLedgerSetSchema = z.object({
 
 const addLedgerSetMemberSchema = z.object({
   ledgerId: z.string().min(1)
+});
+
+const createCombinationRuleSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  isActive: z.boolean().optional(),
+  conditions: z
+    .array(
+      z.object({
+        segmentDefinitionId: z.string().min(1),
+        expectedValue: z.string().min(1)
+      })
+    )
+    .min(1)
+});
+
+const validateCombinationSchema = z.object({
+  values: z.array(
+    z.object({
+      segmentDefinitionId: z.string().min(1),
+      value: z.string().min(1)
+    })
+  )
+});
+
+const createFxRateTypeSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().optional()
+});
+
+const createFxRateSchema = z.object({
+  rateTypeId: z.string().min(1),
+  fromCurrency: z.string().min(3).max(3),
+  toCurrency: z.string().min(3).max(3),
+  rate: z.number().positive(),
+  validFrom: z.string().min(1),
+  validTo: z.string().min(1).optional()
+});
+
+const createPostingProfileSchema = z.object({
+  name: z.string().min(1),
+  eventType: z.string().min(1),
+  description: z.string().optional(),
+  isActive: z.boolean().optional(),
+  lines: z
+    .array(
+      z.object({
+        entrySide: z.enum(["debit", "credit"]),
+        accountId: z.string().min(1),
+        amountSource: z.string().min(1),
+        memoTemplate: z.string().optional()
+      })
+    )
+    .min(1)
 });
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
@@ -345,6 +422,124 @@ r2rRouter.post("/ledgers", validateBody(createLedgerSchema), (req, res) => {
   res.status(201).json(entityWithLinks(ledger as any, { self: { href: `/api/v1/r2r/ledgers/${(ledger as any).ledger_id}`, method: "GET" } }));
 });
 
+// -- FX --
+
+r2rRouter.get("/fx/rate-types", (_req, res) => {
+  const rows = listFxRateTypes().map((row: any) =>
+    entityWithLinks(row, {
+      self: { href: `/api/v1/r2r/fx/rate-types/${row.rate_type_id}`, method: "GET" }
+    })
+  );
+  res.json({ data: rows });
+});
+
+r2rRouter.get("/fx/rate-types/:rateTypeId", (req, res) => {
+  const row = getFxRateTypeById(req.params.rateTypeId);
+  res.json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/fx/rate-types/${req.params.rateTypeId}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/fx/rate-types", validateBody(createFxRateTypeSchema), (req, res) => {
+  const row = createFxRateType(req.body);
+  res.status(201).json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/fx/rate-types/${(row as any).rate_type_id}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.get("/fx/rates", (req, res) => {
+  const rateTypeId = typeof req.query.rateTypeId === "string" ? req.query.rateTypeId : undefined;
+  const rows = listFxRates(rateTypeId).map((row: any) =>
+    entityWithLinks(row, {
+      self: { href: `/api/v1/r2r/fx/rates/${row.rate_id}`, method: "GET" }
+    })
+  );
+  res.json({ data: rows });
+});
+
+r2rRouter.post("/fx/rates", validateBody(createFxRateSchema), (req, res) => {
+  const row = createFxRate(req.body);
+  res.status(201).json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/fx/rates/${(row as any).rate_id}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.get("/fx/rates/latest", (req, res) => {
+  const rateTypeId = typeof req.query.rateTypeId === "string" ? req.query.rateTypeId : undefined;
+  const fromCurrency = typeof req.query.fromCurrency === "string" ? req.query.fromCurrency : undefined;
+  const toCurrency = typeof req.query.toCurrency === "string" ? req.query.toCurrency : undefined;
+  const asOf = typeof req.query.asOf === "string" ? req.query.asOf : undefined;
+
+  if (!rateTypeId || !fromCurrency || !toCurrency) {
+    throw new HttpError(400, "invalid_request", "rateTypeId, fromCurrency, and toCurrency query params are required");
+  }
+
+  const row = getLatestFxRate({ rateTypeId, fromCurrency, toCurrency, asOf });
+  res.json(row);
+});
+
+r2rRouter.get("/fx/rates/:rateId", (req, res) => {
+  const row = getFxRateById(req.params.rateId);
+  res.json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/fx/rates/${req.params.rateId}`, method: "GET" }
+    })
+  );
+});
+
+// -- SLA Posting Profiles --
+
+r2rRouter.get("/sla/posting-profiles", (_req, res) => {
+  const rows = listPostingProfiles().map((row: any) =>
+    entityWithLinks(row, {
+      self: { href: `/api/v1/r2r/sla/posting-profiles/${row.posting_profile_id}`, method: "GET" }
+    })
+  );
+  res.json({ data: rows });
+});
+
+r2rRouter.get("/sla/posting-profiles/:postingProfileId", (req, res) => {
+  const row = getPostingProfileById(req.params.postingProfileId);
+  res.json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/sla/posting-profiles/${req.params.postingProfileId}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/sla/posting-profiles", validateBody(createPostingProfileSchema), (req, res) => {
+  const row = createPostingProfile(req.body);
+  res.status(201).json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/sla/posting-profiles/${(row as any).posting_profile_id}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/sla/posting-profiles/:postingProfileId/activate", (req, res) => {
+  const row = setPostingProfileActiveState(req.params.postingProfileId, true);
+  res.json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/sla/posting-profiles/${req.params.postingProfileId}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/sla/posting-profiles/:postingProfileId/deactivate", (req, res) => {
+  const row = setPostingProfileActiveState(req.params.postingProfileId, false);
+  res.json(
+    entityWithLinks(row as any, {
+      self: { href: `/api/v1/r2r/sla/posting-profiles/${req.params.postingProfileId}`, method: "GET" }
+    })
+  );
+});
+
 // -- Accounts --
 
 r2rRouter.get("/accounts", (_req, res) => {
@@ -408,6 +603,39 @@ r2rRouter.put("/accounts/:accountId/segments", validateBody(setAccountSegmentsSc
   });
 
   res.json({ data: rows });
+});
+
+r2rRouter.get("/accounts/combination-rules", (_req, res) => {
+  const rules = listCombinationRules().map((row: any) =>
+    entityWithLinks(row, {
+      self: { href: `/api/v1/r2r/accounts/combination-rules/${row.rule_id}`, method: "GET" }
+    })
+  );
+
+  res.json({ data: rules });
+});
+
+r2rRouter.get("/accounts/combination-rules/:ruleId", (req, res) => {
+  const rule = getCombinationRuleById(req.params.ruleId);
+  res.json(
+    entityWithLinks(rule as any, {
+      self: { href: `/api/v1/r2r/accounts/combination-rules/${req.params.ruleId}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/accounts/combination-rules", validateBody(createCombinationRuleSchema), (req, res) => {
+  const rule = createCombinationRule(req.body);
+  res.status(201).json(
+    entityWithLinks(rule as any, {
+      self: { href: `/api/v1/r2r/accounts/combination-rules/${(rule as any).rule_id}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/accounts/combination-rules/validate", validateBody(validateCombinationSchema), (req, res) => {
+  const result = validateCombination(req.body);
+  res.json(result);
 });
 
 r2rRouter.get("/accounts/:accountId", (req, res) => {

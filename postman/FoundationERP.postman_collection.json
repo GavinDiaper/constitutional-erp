@@ -1913,6 +1913,365 @@
           ]
         },
         {
+          "name": "Create COA Combination Rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CC-100 only\",\n  \"conditions\": [\n    {\n      \"segmentDefinitionId\": \"{{segmentDefinitionId}}\",\n      \"expectedValue\": \"CC-100\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts/combination-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts",
+                "combination-rules"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"combinationRuleId\", body.rule_id);",
+                  "pm.test(\"Combination rule created\", function () { pm.expect(body.rule_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate COA Combination (valid)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"values\": [\n    {\n      \"segmentDefinitionId\": \"{{segmentDefinitionId}}\",\n      \"value\": \"CC-100\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts/combination-rules/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts",
+                "combination-rules",
+                "validate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Combination is valid\", function () { pm.expect(pm.response.json().valid).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create FX Rate Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CORP_{{$timestamp}}\",\n  \"name\": \"Corporate\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/fx/rate-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "fx",
+                "rate-types"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"fxRateTypeId\", body.rate_type_id);",
+                  "pm.test(\"FX rate type created\", function () { pm.expect(body.rate_type_id).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create FX Rate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rateTypeId\": \"{{fxRateTypeId}}\",\n  \"fromCurrency\": \"USD\",\n  \"toCurrency\": \"AUD\",\n  \"rate\": 1.53,\n  \"validFrom\": \"2026-04-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/fx/rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "fx",
+                "rates"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"FX rate created\", function () { pm.expect(pm.response.json().rate).to.eql(1.53); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Latest FX Rate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/fx/rates/latest?rateTypeId={{fxRateTypeId}}&fromCurrency=USD&toCurrency=AUD&asOf=2026-04-02T00:00:00.000Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "fx",
+                "rates",
+                "latest"
+              ],
+              "query": [
+                {
+                  "key": "rateTypeId",
+                  "value": "{{fxRateTypeId}}"
+                },
+                {
+                  "key": "fromCurrency",
+                  "value": "USD"
+                },
+                {
+                  "key": "toCurrency",
+                  "value": "AUD"
+                },
+                {
+                  "key": "asOf",
+                  "value": "2026-04-02T00:00:00.000Z"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"FX lookup returned USD/AUD\", function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.from_currency).to.eql(\"USD\");",
+                  "  pm.expect(body.to_currency).to.eql(\"AUD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create SLA Posting Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"O2C Invoice Posted\",\n  \"eventType\": \"o2c.invoice.posted\",\n  \"lines\": [\n    {\n      \"entrySide\": \"debit\",\n      \"accountId\": \"{{accountId}}\",\n      \"amountSource\": \"grossAmount\"\n    },\n    {\n      \"entrySide\": \"credit\",\n      \"accountId\": \"{{accountOffsetId}}\",\n      \"amountSource\": \"grossAmount\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/sla/posting-profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "sla",
+                "posting-profiles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.environment.set(\"postingProfileId\", body.posting_profile_id);",
+                  "pm.test(\"SLA profile created with lines\", function () { pm.expect(body.lines.length).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate SLA Posting Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/sla/posting-profiles/{{postingProfileId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "sla",
+                "posting-profiles",
+                "{{postingProfileId}}",
+                "deactivate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"SLA profile deactivated\", function () { pm.expect(pm.response.json().is_active).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Fiscal Year",
           "request": {
             "method": "POST",
