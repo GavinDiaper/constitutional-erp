@@ -289,6 +289,85 @@ test("R2R account type validation and starter COA seeding are enforced", async (
   assert.ok(accountTypes.has("Expense"));
 });
 
+test("R2R legal entities can be created and linked to ledgers", async () => {
+  const headers = authHeaders();
+
+  const legalEntity = await request(app)
+    .post("/api/v1/r2r/legal-entities")
+    .set(headers)
+    .send({
+      name: "Constitutional Holdings AU",
+      currencyCode: "AUD",
+      locale: "en-AU"
+    })
+    .expect(201);
+
+  const ledger = await request(app)
+    .post("/api/v1/r2r/ledgers")
+    .set(headers)
+    .send({
+      name: "Primary AU Ledger",
+      currencyCode: "AUD",
+      legalEntityId: legalEntity.body.legal_entity_id
+    })
+    .expect(201);
+
+  assert.equal(ledger.body.legal_entity_id, legalEntity.body.legal_entity_id);
+
+  const fetched = await request(app)
+    .get(`/api/v1/r2r/legal-entities/${legalEntity.body.legal_entity_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(fetched.body.name, "Constitutional Holdings AU");
+});
+
+test("R2R ledger sets can group ledgers", async () => {
+  const headers = authHeaders();
+
+  const legalEntity = await request(app)
+    .post("/api/v1/r2r/legal-entities")
+    .set(headers)
+    .send({
+      name: "Constitutional Services NZ",
+      currencyCode: "NZD"
+    })
+    .expect(201);
+
+  const ledger = await request(app)
+    .post("/api/v1/r2r/ledgers")
+    .set(headers)
+    .send({
+      name: "Primary NZ Ledger",
+      currencyCode: "NZD",
+      legalEntityId: legalEntity.body.legal_entity_id
+    })
+    .expect(201);
+
+  const ledgerSet = await request(app)
+    .post("/api/v1/r2r/ledger-sets")
+    .set(headers)
+    .send({ name: "ANZ Group Ledger Set" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/r2r/ledger-sets/${ledgerSet.body.ledger_set_id}/members`)
+    .set(headers)
+    .send({ ledgerId: ledger.body.ledger_id })
+    .expect(201);
+
+  const members = await request(app)
+    .get(`/api/v1/r2r/ledger-sets/${ledgerSet.body.ledger_set_id}/members`)
+    .set(headers)
+    .expect(200);
+
+  assert.ok(
+    members.body.data.some(
+      (row: { ledger_id: string }) => row.ledger_id === ledger.body.ledger_id
+    )
+  );
+});
+
 test("H2R integration flow transitions through workforce lifecycle", async () => {
   const headers = authHeaders();
 
@@ -389,6 +468,8 @@ test("Table query API returns data for all whitelisted tables", async () => {
 
   assert.ok(Array.isArray(tablesResponse.body.data));
   assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "o2c_customer"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_legal_entity"));
+  assert.ok(tablesResponse.body.data.some((row: { name: string }) => row.name === "r2r_ledger"));
 
   const customersResponse = await request(app)
     .get("/api/v1/query/o2c_customer?limit=5")

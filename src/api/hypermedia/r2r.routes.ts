@@ -31,6 +31,18 @@ import {
   getLedgerById,
   listLedgers
 } from "../../domain/r2r/ledger/ledgerService";
+import {
+  createLegalEntity,
+  getLegalEntityById,
+  listLegalEntities
+} from "../../domain/r2r/legalEntity/legalEntityService";
+import {
+  addLedgerToSet,
+  createLedgerSet,
+  getLedgerSetById,
+  listLedgerSetMembers,
+  listLedgerSets
+} from "../../domain/r2r/ledgerSet/ledgerSetService";
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -69,7 +81,23 @@ const createLedgerSchema = z.object({
   name: z.string().min(1),
   currencyCode: z.string().min(3).max(3),
   calendar: z.string().optional(),
-  chartOfAccountsRef: z.string().optional()
+  chartOfAccountsRef: z.string().optional(),
+  legalEntityId: z.string().min(1).optional()
+});
+
+const createLegalEntitySchema = z.object({
+  name: z.string().min(1),
+  currencyCode: z.string().min(3).max(3),
+  locale: z.string().optional(),
+  parentLegalEntityId: z.string().min(1).optional()
+});
+
+const createLedgerSetSchema = z.object({
+  name: z.string().min(1)
+});
+
+const addLedgerSetMemberSchema = z.object({
+  ledgerId: z.string().min(1)
 });
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
@@ -188,6 +216,87 @@ function fiscalPeriodLinks(fiscalPeriodId: string, state: string) {
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export const r2rRouter = Router();
+
+// -- Legal Entities --
+
+r2rRouter.get("/legal-entities", (_req, res) => {
+  const legalEntities = listLegalEntities().map((row: any) =>
+    entityWithLinks(row, { self: { href: `/api/v1/r2r/legal-entities/${row.legal_entity_id}`, method: "GET" } })
+  );
+
+  res.json({ data: legalEntities });
+});
+
+r2rRouter.get("/legal-entities/:legalEntityId", (req, res) => {
+  const legalEntity = getLegalEntityById(req.params.legalEntityId);
+  res.json(
+    entityWithLinks(legalEntity as any, {
+      self: { href: `/api/v1/r2r/legal-entities/${req.params.legalEntityId}`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/legal-entities", validateBody(createLegalEntitySchema), (req, res) => {
+  const legalEntity = createLegalEntity(req.body, req.actor);
+  res.status(201).json(
+    entityWithLinks(legalEntity as any, {
+      self: { href: `/api/v1/r2r/legal-entities/${(legalEntity as any).legal_entity_id}`, method: "GET" }
+    })
+  );
+});
+
+// -- Ledger Sets --
+
+r2rRouter.get("/ledger-sets", (_req, res) => {
+  const ledgerSets = listLedgerSets().map((row: any) =>
+    entityWithLinks(row, {
+      self: { href: `/api/v1/r2r/ledger-sets/${row.ledger_set_id}`, method: "GET" },
+      members: { href: `/api/v1/r2r/ledger-sets/${row.ledger_set_id}/members`, method: "GET" }
+    })
+  );
+
+  res.json({ data: ledgerSets });
+});
+
+r2rRouter.get("/ledger-sets/:ledgerSetId", (req, res) => {
+  const ledgerSet = getLedgerSetById(req.params.ledgerSetId);
+  res.json(
+    entityWithLinks(ledgerSet as any, {
+      self: { href: `/api/v1/r2r/ledger-sets/${req.params.ledgerSetId}`, method: "GET" },
+      members: { href: `/api/v1/r2r/ledger-sets/${req.params.ledgerSetId}/members`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.post("/ledger-sets", validateBody(createLedgerSetSchema), (req, res) => {
+  const ledgerSet = createLedgerSet(req.body, req.actor);
+  res.status(201).json(
+    entityWithLinks(ledgerSet as any, {
+      self: { href: `/api/v1/r2r/ledger-sets/${(ledgerSet as any).ledger_set_id}`, method: "GET" },
+      members: { href: `/api/v1/r2r/ledger-sets/${(ledgerSet as any).ledger_set_id}/members`, method: "GET" }
+    })
+  );
+});
+
+r2rRouter.get("/ledger-sets/:ledgerSetId/members", (req, res) => {
+  const members = listLedgerSetMembers(req.params.ledgerSetId).map((row: any) =>
+    entityWithLinks(row, { self: { href: `/api/v1/r2r/ledgers/${row.ledger_id}`, method: "GET" } })
+  );
+
+  res.json({ data: members });
+});
+
+r2rRouter.post("/ledger-sets/:ledgerSetId/members", validateBody(addLedgerSetMemberSchema), (req, res) => {
+  const result = addLedgerToSet(
+    {
+      ledgerSetId: req.params.ledgerSetId,
+      ledgerId: req.body.ledgerId
+    },
+    req.actor
+  );
+
+  res.status(201).json(result);
+});
 
 // -- Ledgers --
 

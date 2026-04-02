@@ -2,28 +2,40 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
+import { ensureLegalEntityExists } from "../legalEntity/legalEntityService";
 
 function now(): string {
   return new Date().toISOString();
 }
 
 export function createLedger(
-  input: { name: string; currencyCode: string; calendar?: string; chartOfAccountsRef?: string },
+  input: {
+    name: string;
+    currencyCode: string;
+    calendar?: string;
+    chartOfAccountsRef?: string;
+    legalEntityId?: string;
+  },
   actor?: EventActor
 ) {
+  if (input.legalEntityId) {
+    ensureLegalEntityExists(input.legalEntityId);
+  }
+
   const ledgerId = newId("LGR-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO r2r_ledger(ledger_id, name, currency_code, calendar, chart_of_accounts_ref, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO r2r_ledger(ledger_id, name, currency_code, calendar, chart_of_accounts_ref, legal_entity_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       ledgerId,
       input.name,
       input.currencyCode,
       input.calendar ?? null,
       input.chartOfAccountsRef ?? null,
+      input.legalEntityId ?? null,
       timestamp,
       timestamp
     );
@@ -34,7 +46,11 @@ export function createLedger(
       eventType: "ledger.created",
       version: 1,
       actor,
-      payload: { name: input.name, currencyCode: input.currencyCode }
+      payload: {
+        name: input.name,
+        currencyCode: input.currencyCode,
+        legalEntityId: input.legalEntityId ?? null
+      }
     });
   });
 
