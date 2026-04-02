@@ -18,8 +18,22 @@ export class MeshClient {
     });
 
     if (result.status >= 400) {
-      const detail = typeof result.data?.["detail"] === "string" ? (result.data["detail"] as string) : `Mesh route failed: ${backingRoute}`;
-      throw new HttpError(result.status, "mesh_execution_failed", detail);
+      const rawDetail = result.data?.["detail"];
+
+      let detail = "";
+      if (typeof rawDetail === "string") {
+        detail = rawDetail;
+      } else if (rawDetail !== undefined) {
+        detail = JSON.stringify(rawDetail);
+      } else if (result.data && typeof result.data === "object") {
+        detail = JSON.stringify(result.data);
+      }
+
+      const message = detail
+        ? `Mesh route failed: ${backingRoute} Detail ${detail} Status ${result.status}`
+        : `Mesh route failed: ${backingRoute} Status ${result.status}`;
+
+      throw new HttpError(result.status, "mesh_execution_failed", message);
     }
 
     return result.data ?? {};

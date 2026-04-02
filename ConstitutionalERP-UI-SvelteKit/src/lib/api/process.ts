@@ -37,7 +37,7 @@ export async function executeProcessAction(link: HubActionLink, actor: ActorCont
 		const contentType = response.headers.get('content-type') ?? '';
 		if (contentType.includes('application/json')) {
 			const problem = await response.json();
-			throw new Error(problem?.detail ?? problem?.title ?? 'Failed to execute action');
+			throw new Error(formatProblemMessage(problem, 'Failed to execute action'));
 		}
 
 		const rawError = await response.text();
@@ -50,6 +50,37 @@ export async function executeProcessAction(link: HubActionLink, actor: ActorCont
 	}
 
 	return response.text();
+}
+
+function formatProblemMessage(problem: unknown, fallback: string): string {
+	if (!problem || typeof problem !== 'object') {
+		return fallback;
+	}
+
+	const record = problem as Record<string, unknown>;
+	const detail = formatProblemField(record.detail);
+	if (detail) {
+		return detail;
+	}
+
+	const title = formatProblemField(record.title);
+	return title || fallback;
+}
+
+function formatProblemField(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (value === undefined || value === null) {
+		return '';
+	}
+
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
 }
 
 function sanitizeActionError(rawError: string): string {

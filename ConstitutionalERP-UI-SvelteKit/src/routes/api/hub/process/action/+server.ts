@@ -44,6 +44,21 @@ export const POST: RequestHandler = async ({ request }) => {
 				{ status: 502 }
 			);
 		}
+
+		if (contentType.toLowerCase().includes('application/json')) {
+			const raw = await upstreamResponse.json().catch(() => null);
+			const problem = asRecord(raw);
+			const detail = formatProblemField(problem.detail);
+			const title = formatProblemField(problem.title);
+
+			return json(
+				{
+					title: title || 'Action Execution Failed',
+					detail: detail || title || `Action endpoint returned status ${upstreamResponse.status}.`
+				},
+				{ status: upstreamResponse.status }
+			);
+		}
 	}
 
 	return upstreamResponse;
@@ -79,4 +94,28 @@ function isHtmlContentType(contentType: string): boolean {
 function extractHtmlTitle(html: string): string | null {
 	const match = html.match(/<title>([^<]+)<\/title>/i);
 	return match?.[1]?.trim() || null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return {};
+	}
+
+	return value as Record<string, unknown>;
+}
+
+function formatProblemField(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (value === undefined || value === null) {
+		return '';
+	}
+
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
 }

@@ -79,6 +79,20 @@ function normalizeAction(action: string): string {
 function toBackendAction(domain: string, resource: string, action: string): string {
   const actionKey = normalizeAction(action);
 
+  if (domain === "r2r" && resource === "journal") {
+    if (actionKey === "postjournal") {
+      return "post";
+    }
+
+    if (actionKey === "reversejournal") {
+      return "reverse";
+    }
+
+    if (actionKey === "canceljournal") {
+      return "cancel";
+    }
+  }
+
   if (domain === "o2c" && resource === "quote") {
     if (actionKey === "converttoorder") {
       return "convert";
