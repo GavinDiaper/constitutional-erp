@@ -72,6 +72,14 @@ export function generateInvoice(orderId: string) {
       .run(timestamp, orderId);
 
     appendEvent({
+		entityId: orderId,
+		entityType: "SalesOrder",
+		eventType: "order.invoiced",
+		version: order.version + 1,
+		payload: { invoiceId }
+	});
+
+    appendEvent({
       entityId: invoiceId,
       entityType: "Invoice",
       eventType: "ar-invoice.generated",

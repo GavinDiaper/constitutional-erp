@@ -85,8 +85,8 @@ function _doPaymentTransition(paymentId: string, toState: PaymentState, actor?: 
 
     if (toState === "Applied") {
       const invoice = db
-        .prepare("SELECT amount_due, amount_paid, version FROM o2c_invoice WHERE invoice_id = ?")
-        .get(payment.invoice_id) as { amount_due: number; amount_paid: number; version: number } | undefined;
+        .prepare("SELECT order_id, amount_due, amount_paid, version FROM o2c_invoice WHERE invoice_id = ?")
+        .get(payment.invoice_id) as { order_id: string; amount_due: number; amount_paid: number; version: number } | undefined;
 
       if (!invoice) {
         throw new HttpError(404, "not_found", "Invoice not found");
@@ -102,11 +102,31 @@ function _doPaymentTransition(paymentId: string, toState: PaymentState, actor?: 
       appendEvent({
         entityId: payment.invoice_id,
         entityType: "Invoice",
-        eventType: "ar-invoice.payment_applied",
+        eventType: invoiceAmountPaid >= invoice.amount_due ? "ar-invoice.fullypaid" : "ar-invoice.partiallypaid",
         version: invoiceNextVersion,
         actor,
         payload: { amount: payment.amount, amountPaid: invoiceAmountPaid, amountDue: invoice.amount_due }
       });
+
+    if (invoiceAmountPaid >= invoice.amount_due) {
+    const order = db
+      .prepare("SELECT version FROM o2c_sales_order WHERE order_id = ?")
+      .get(invoice.order_id) as { version: number } | undefined;
+
+    if (order) {
+      db.prepare("UPDATE o2c_sales_order SET state = 'Paid', version = version + 1, updated_at = ? WHERE order_id = ?")
+        .run(timestamp, invoice.order_id);
+
+      appendEvent({
+        entityId: invoice.order_id,
+        entityType: "SalesOrder",
+        eventType: "order.paid",
+        version: order.version + 1,
+        actor,
+        payload: { invoiceId: payment.invoice_id, paymentId }
+      });
+    }
+    }
     }
 
     appendEvent({
