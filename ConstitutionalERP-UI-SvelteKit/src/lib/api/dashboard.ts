@@ -1,4 +1,5 @@
 import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
+import { getO2CInvoices, type O2CInvoice } from '$lib/api/invoices';
 import { queryTable } from '$lib/api/query';
 import type { ActorContext } from '$lib/stores/actorStore';
 import type { DashboardSummary } from '$lib/stores/dashboardStore';
@@ -26,13 +27,6 @@ interface EmployeeRow {
 interface RequisitionRow {
 	requisition_id: string;
 	state?: string;
-}
-
-interface InvoiceRow {
-	invoice_id: string;
-	state?: string;
-	amount_due?: number | string;
-	amount_paid?: number | string;
 }
 
 export function isDraftQuote(quote: O2CQuote): boolean {
@@ -78,25 +72,14 @@ export function isActiveEmployee(employee: EmployeeRow): boolean {
 	return candidateStates.some((value) => ['active', 'activated', 'enabled'].includes(value));
 }
 
-export function isOpenInvoice(invoice: InvoiceRow): boolean {
-	const state = (invoice.state ?? '').trim().toLowerCase();
-	if (['cancelled', 'paid', 'reconciled', 'writtenoff', 'fullypaid'].includes(state)) {
-		return false;
-	}
-
-	const amountDue = toNumber(invoice.amount_due);
-	const amountPaid = toNumber(invoice.amount_paid);
-	if (amountDue > 0) {
-		return amountPaid < amountDue;
-	}
-
-	return true;
+export function isOpenInvoice(invoice: O2CInvoice): boolean {
+	return (invoice.state ?? '').trim().toLowerCase() !== 'paid';
 }
 
 export async function getDashboardSummary(actor: ActorContext): Promise<DashboardSummary> {
 	const [quoteResult, invoiceResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
 		getO2CQuotes(actor),
-		queryTable<InvoiceRow>('o2c_invoice', actor),
+		getO2CInvoices(actor),
 		queryTable<RequisitionRow>('p2p_requisition', actor),
 		queryTable<PurchaseOrderRow>('p2p_purchase_order', actor),
 		queryTable<JournalRow>('r2r_journal', actor),
@@ -112,17 +95,4 @@ export async function getDashboardSummary(actor: ActorContext): Promise<Dashboar
 		pendingJournals: (journalResult.data ?? []).filter(isPendingJournal).length,
 		activeEmployees: (employeeResult.data ?? []).filter(isActiveEmployee).length
 	};
-}
-
-function toNumber(value: number | string | undefined): number {
-	if (typeof value === 'number' && Number.isFinite(value)) {
-		return value;
-	}
-
-	if (typeof value === 'string' && value.trim()) {
-		const parsed = Number(value);
-		return Number.isFinite(parsed) ? parsed : 0;
-	}
-
-	return 0;
 }

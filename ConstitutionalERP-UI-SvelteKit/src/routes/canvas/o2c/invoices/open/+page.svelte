@@ -1,22 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { isOpenInvoice } from '$lib/api/dashboard';
-	import { queryTable } from '$lib/api/query';
+	import { getO2CInvoices, type O2CInvoice } from '$lib/api/invoices';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { onMount } from 'svelte';
 
-	interface InvoiceRow {
-		invoice_id: string;
-		state?: string;
-		order_id?: string;
-		amount_due?: number | string;
-		amount_paid?: number | string;
-		created_at?: string;
-	}
-
 	let loading = false;
 	let errorMessage = '';
-	let openInvoices: InvoiceRow[] = [];
+	let openInvoices: O2CInvoice[] = [];
 
 	onMount(() => {
 		const unsubscribeActor = actorStore.subscribe(() => {
@@ -37,7 +28,7 @@
 		errorMessage = '';
 
 		try {
-			const result = await queryTable<InvoiceRow>('o2c_invoice', $actorStore);
+			const result = await getO2CInvoices($actorStore);
 			openInvoices = (result.data ?? []).filter(isOpenInvoice);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load open invoices.';
