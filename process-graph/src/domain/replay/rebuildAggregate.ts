@@ -4,6 +4,13 @@ import { replayEvents } from "../reducers/registry";
 import { isKnownAggregateType } from "../transitions/registry";
 import { HttpError } from "../../utils/errors";
 
+const legacyAggregateAliases: Record<string, Partial<Record<string, string[]>>> = {
+  O2C: {
+    "ar-invoice": ["invoice"],
+    "ar-payment": ["payment"]
+  }
+};
+
 /**
  * Rebuilds canonical aggregate state by fetching the event stream from the
  * Event Processor and replaying events through the domain reducers.
@@ -24,7 +31,18 @@ export async function rebuildAggregate(
     );
   }
 
-  const events = await fetchAggregateEvents(domain, aggregateType, aggregateId);
+  let events = await fetchAggregateEvents(domain, aggregateType, aggregateId);
+
+  if (events.length === 0) {
+    const aliases = legacyAggregateAliases[domain]?.[aggregateType] ?? [];
+    for (const alias of aliases) {
+      const aliasEvents = await fetchAggregateEvents(domain, alias, aggregateId);
+      if (aliasEvents.length > 0) {
+        events = aliasEvents;
+        break;
+      }
+    }
+  }
 
   if (events.length === 0) {
     throw new HttpError(

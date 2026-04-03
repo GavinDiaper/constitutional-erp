@@ -2,7 +2,7 @@ import { canonicalEventSchema } from "../contracts/canonicalSchemas";
 import { RawEventEnvelope } from "../contracts/rawEvent";
 import { newId } from "../utils/id";
 import { SourceAdapter } from "./types";
-import { asObject, defaultMetadata, domainFromEntityType, toKebabCase } from "./helpers";
+import { asObject, canonicalAggregateTypeFromEntityType, defaultMetadata, domainFromEntityType } from "./helpers";
 
 export const foundationAdapter: SourceAdapter = {
   sourceSystem: "foundation-erp",
@@ -35,7 +35,7 @@ export const foundationAdapter: SourceAdapter = {
       },
       domain: {
         domain,
-        aggregateType: toKebabCase(entityType),
+        aggregateType: canonicalAggregateTypeFromEntityType(entityType),
         aggregateId: entityId,
         tenantId: typeof payload.tenantId === "string" ? payload.tenantId : undefined
       },

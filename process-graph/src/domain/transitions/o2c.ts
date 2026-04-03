@@ -64,15 +64,15 @@ export const o2cTransitions: CanonicalTransition[] = [
     id: "O2C.SalesOrder.ship",
     domain: "O2C",
     aggregateType: "sales-order",
-    fromStates: ["Allocated", "PartiallyShipped"],
-    toStates: ["PartiallyShipped", "FullyShipped"],
+    fromStates: ["Allocated"],
+    toStates: ["Shipped"],
     action: "ship"
   },
   {
     id: "O2C.SalesOrder.invoice",
     domain: "O2C",
     aggregateType: "sales-order",
-    fromStates: ["FullyShipped"],
+    fromStates: ["Shipped"],
     toStates: ["Invoiced"],
     action: "invoice"
   },
@@ -80,7 +80,7 @@ export const o2cTransitions: CanonicalTransition[] = [
     id: "O2C.SalesOrder.close",
     domain: "O2C",
     aggregateType: "sales-order",
-    fromStates: ["FullyPaid"],
+    fromStates: ["Paid"],
     toStates: ["Closed"],
     action: "close"
   },

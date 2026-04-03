@@ -89,6 +89,19 @@ test("replayEvents reconstructs O2C and R2R terminal paths", () => {
   assert.equal(periodState?.version, 4);
 });
 
+test("replayEvents recognizes Foundation O2C order shipped and invoiced events", () => {
+  const orderState = replayEvents("O2C", [
+    makeLedgerEvent({ eventType: "O2C.order.created", aggregateId: "SO-1", aggregateType: "sales-order", domain: "O2C" }),
+    makeLedgerEvent({ eventType: "O2C.order.confirmed", aggregateId: "SO-1", aggregateType: "sales-order", domain: "O2C" }),
+    makeLedgerEvent({ eventType: "O2C.order.allocated", aggregateId: "SO-1", aggregateType: "sales-order", domain: "O2C" }),
+    makeLedgerEvent({ eventType: "O2C.order.shipped", aggregateId: "SO-1", aggregateType: "sales-order", domain: "O2C" }),
+    makeLedgerEvent({ eventType: "O2C.order.invoiced", aggregateId: "SO-1", aggregateType: "sales-order", domain: "O2C" })
+  ]);
+
+  assert.equal(orderState?.state, "Invoiced");
+  assert.equal(orderState?.version, 5);
+});
+
 test("evaluateTransition stops at authority deny and never calls governance", async () => {
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];

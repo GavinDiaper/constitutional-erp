@@ -4,6 +4,9 @@ const entityDomainMap: Record<string, string> = {
   Supplier: "P2P",
   Requisition: "P2P",
   PurchaseOrder: "P2P",
+  GoodsReceipt: "P2P",
+  SupplierInvoice: "P2P",
+  ApPayment: "P2P",
   Customer: "O2C",
   Quote: "O2C",
   SalesOrder: "O2C",
@@ -40,6 +43,23 @@ export function toKebabCase(value: string): string {
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .replace(/_/g, "-")
     .toLowerCase();
+}
+
+const aggregateTypeByEntityType: Record<string, string> = {
+  SalesOrder: "sales-order",
+  Invoice: "ar-invoice",
+  Payment: "ar-payment",
+  PurchaseOrder: "purchase-order",
+  GoodsReceipt: "goods-receipt",
+  SupplierInvoice: "supplier-invoice",
+  ApPayment: "ap-payment",
+  FiscalYear: "fiscal-year",
+  FiscalPeriod: "fiscal-period",
+  AuthorityRule: "authority-rule"
+};
+
+export function canonicalAggregateTypeFromEntityType(entityType: string): string {
+  return aggregateTypeByEntityType[entityType] ?? toKebabCase(entityType);
 }
 
 export function toCanonicalMeshEventType(eventType: string): string {
