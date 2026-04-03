@@ -15,5 +15,10 @@
 		</li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Navigator</a></li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin')}>Admin</a></li>
+		<li>
+			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin/create-entities')}>
+				Create Admin Entities
+			</a>
+		</li>
 	</ul>
 </nav>

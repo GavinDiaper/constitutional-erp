@@ -1,17 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import Tabs from '$lib/components/shared/Tabs.svelte';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 
 	type OperationKey =
 		| 'create-customer'
 		| 'create-quote'
+		| 'create-payment'
 		| 'create-supplier'
 		| 'create-requisition'
 		| 'create-purchase-order'
+		| 'create-goods-receipt'
+		| 'create-supplier-invoice'
+		| 'create-ap-payment'
 		| 'create-employee'
 		| 'create-journal';
+
+	type DomainTab = 'O2C' | 'P2P' | 'R2R' | 'H2R';
 
 	interface CreateResult {
 		operation: string;
@@ -35,6 +42,29 @@
 		state?: string;
 	}
 
+	interface PurchaseOrderRow {
+		po_id: string;
+		state?: string;
+	}
+
+	interface GoodsReceiptRow {
+		receipt_id: string;
+		state?: string;
+		po_id?: string;
+	}
+
+	interface SupplierInvoiceRow {
+		supplier_invoice_id: string;
+		state?: string;
+		receipt_id?: string;
+	}
+
+	interface InvoiceRow {
+		invoice_id: string;
+		state?: string;
+		order_id?: string;
+	}
+
 	interface FiscalPeriodRow {
 		fiscal_period_id: string;
 		period_number?: number;
@@ -46,6 +76,9 @@
 		account_name?: string;
 	}
 
+	let activeTab: DomainTab = 'O2C';
+	const tabs: DomainTab[] = ['O2C', 'P2P', 'R2R', 'H2R'];
+
 	let runningKey: OperationKey | null = null;
 	let errorMessage = '';
 	let lastResult: CreateResult | null = null;
@@ -53,6 +86,10 @@
 	let customers: CustomerRow[] = [];
 	let suppliers: SupplierRow[] = [];
 	let approvedRequisitions: RequisitionRow[] = [];
+	let purchaseOrders: PurchaseOrderRow[] = [];
+	let goodsReceipts: GoodsReceiptRow[] = [];
+	let supplierInvoices: SupplierInvoiceRow[] = [];
+	let invoices: InvoiceRow[] = [];
 	let fiscalPeriods: FiscalPeriodRow[] = [];
 	let accounts: AccountRow[] = [];
 
@@ -71,6 +108,14 @@
 		lineSku: '',
 		lineQuantity: 1,
 		lineUnitPrice: 0
+	};
+
+	let paymentForm = {
+		invoiceId: '',
+		amount: 0,
+		currencyCode: 'USD',
+		method: 'bank-transfer',
+		paymentDate: ''
 	};
 
 	let supplierForm = {
@@ -94,6 +139,24 @@
 		totalAmount: 0,
 		currencyCode: 'USD',
 		deliveryAddress: ''
+	};
+
+	let goodsReceiptForm = {
+		poId: ''
+	};
+
+	let supplierInvoiceForm = {
+		receiptId: '',
+		invoiceDate: '',
+		dueDate: '',
+		currencyCode: 'USD'
+	};
+
+	let apPaymentForm = {
+		supplierInvoiceId: '',
+		amount: 0,
+		currencyCode: 'USD',
+		method: 'bank-transfer'
 	};
 
 	let employeeForm = {
@@ -125,10 +188,24 @@
 
 	async function loadLookups(): Promise<void> {
 		try {
-			const [customerResult, supplierResult, requisitionResult, periodResult, accountResult] = await Promise.all([
+			const [
+				customerResult,
+				supplierResult,
+				requisitionResult,
+				poResult,
+				receiptResult,
+				supplierInvoiceResult,
+				invoiceResult,
+				periodResult,
+				accountResult
+			] = await Promise.all([
 				queryTable<CustomerRow>('o2c_customer', $actorStore),
 				queryTable<SupplierRow>('p2p_supplier', $actorStore),
 				queryTable<RequisitionRow>('p2p_requisition', $actorStore),
+				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
+				queryTable<GoodsReceiptRow>('p2p_goods_receipt', $actorStore),
+				queryTable<SupplierInvoiceRow>('p2p_supplier_invoice', $actorStore),
+				queryTable<InvoiceRow>('o2c_invoice', $actorStore),
 				queryTable<FiscalPeriodRow>('r2r_fiscal_period', $actorStore),
 				queryTable<AccountRow>('r2r_account', $actorStore)
 			]);
@@ -136,15 +213,35 @@
 			customers = customerResult.data ?? [];
 			suppliers = supplierResult.data ?? [];
 			approvedRequisitions = (requisitionResult.data ?? []).filter((item) => (item.state ?? '').toLowerCase() === 'approved');
+			purchaseOrders = poResult.data ?? [];
+			goodsReceipts = receiptResult.data ?? [];
+			supplierInvoices = supplierInvoiceResult.data ?? [];
+			invoices = invoiceResult.data ?? [];
 			fiscalPeriods = periodResult.data ?? [];
 			accounts = accountResult.data ?? [];
 
-			if (!journalForm.fiscalPeriodId && fiscalPeriods.length > 0) {
-				journalForm.fiscalPeriodId = fiscalPeriods[0].fiscal_period_id;
+			if (!paymentForm.invoiceId && invoices.length > 0) {
+				paymentForm.invoiceId = invoices[0].invoice_id;
 			}
 
 			if (!purchaseOrderForm.supplierId && suppliers.length > 0) {
 				purchaseOrderForm.supplierId = suppliers[0].supplier_id;
+			}
+
+			if (!goodsReceiptForm.poId && purchaseOrders.length > 0) {
+				goodsReceiptForm.poId = purchaseOrders[0].po_id;
+			}
+
+			if (!supplierInvoiceForm.receiptId && goodsReceipts.length > 0) {
+				supplierInvoiceForm.receiptId = goodsReceipts[0].receipt_id;
+			}
+
+			if (!apPaymentForm.supplierInvoiceId && supplierInvoices.length > 0) {
+				apPaymentForm.supplierInvoiceId = supplierInvoices[0].supplier_invoice_id;
+			}
+
+			if (!journalForm.fiscalPeriodId && fiscalPeriods.length > 0) {
+				journalForm.fiscalPeriodId = fiscalPeriods[0].fiscal_period_id;
 			}
 
 			if (!journalForm.debitAccountId && accounts.length > 0) {
@@ -196,161 +293,299 @@
 		return supplier.supplier_name ? `${supplier.supplier_name} (${supplier.supplier_id})` : supplier.supplier_id;
 	}
 
+	function invoiceLabel(invoice: InvoiceRow): string {
+		const state = invoice.state ? ` / ${invoice.state}` : '';
+		return `${invoice.invoice_id}${state}`;
+	}
+
+	function receiptLabel(receipt: GoodsReceiptRow): string {
+		const state = receipt.state ? ` / ${receipt.state}` : '';
+		const po = receipt.po_id ? ` / PO ${receipt.po_id}` : '';
+		return `${receipt.receipt_id}${state}${po}`;
+	}
+
+	function supplierInvoiceLabel(invoice: SupplierInvoiceRow): string {
+		const state = invoice.state ? ` / ${invoice.state}` : '';
+		return `${invoice.supplier_invoice_id}${state}`;
+	}
+
 	function accountLabel(account: AccountRow): string {
 		const code = account.account_code ?? account.account_id;
 		return account.account_name ? `${code} - ${account.account_name}` : code;
+	}
+
+	function setActiveTab(tab: string): void {
+		if (tab === 'O2C' || tab === 'P2P' || tab === 'R2R' || tab === 'H2R') {
+			activeTab = tab;
+		}
 	}
 </script>
 
 <section class="glass-panel p-6">
 	<h2 class="text-2xl font-semibold">Create New Entity</h2>
-	<p class="muted mt-2 text-sm">Fill in business fields and create entities with real payloads instead of fixed bootstrap defaults.</p>
+	<p class="muted mt-2 text-sm">Create transactional entities by domain with full payload control and prerequisite checks.</p>
 
-	<div class="mt-5 grid gap-3 xl:grid-cols-2">
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Customer</h3>
-			<div class="mt-3 grid gap-2">
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company name" bind:value={customerForm.customerName} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={customerForm.email} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Billing address" bind:value={customerForm.billingAddress} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Shipping address" bind:value={customerForm.shippingAddress} />
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-customer', customerForm)}>
-				{runningKey === 'create-customer' ? 'Creating...' : 'Create Customer'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Quote</h3>
-			<p class="muted mt-1 text-xs">Pick an existing customer or enter a new company name.</p>
-			<div class="mt-3 grid gap-2">
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={quoteForm.customerId}>
-					<option value="">Create from new company</option>
-					{#each customers as customer (customer.customer_id)}
-						<option value={customer.customer_id}>{customerLabel(customer)}</option>
-					{/each}
-				</select>
-				{#if !quoteForm.customerId}
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company name" bind:value={quoteForm.customerName} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company email" bind:value={quoteForm.customerEmail} />
-				{/if}
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={quoteForm.currencyCode} />
-				<div class="grid grid-cols-3 gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="SKU (optional)" bind:value={quoteForm.lineSku} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Qty" bind:value={quoteForm.lineQuantity} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Unit price" bind:value={quoteForm.lineUnitPrice} />
-				</div>
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-quote', quoteForm)}>
-				{runningKey === 'create-quote' ? 'Creating...' : 'Create Quote'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Supplier</h3>
-			<div class="mt-3 grid gap-2">
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier name" bind:value={supplierForm.supplierName} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
-				<div class="grid grid-cols-2 gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment terms" bind:value={supplierForm.paymentTerms} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Tax ID" bind:value={supplierForm.taxId} />
-				</div>
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={supplierForm.currencyCode} />
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-supplier', supplierForm)}>
-				{runningKey === 'create-supplier' ? 'Creating...' : 'Create Supplier'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Requisition</h3>
-			<p class="muted mt-1 text-xs">Requisition amount is derived later through PO conversion in this API model.</p>
-			<div class="mt-3 grid gap-2">
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
-				<div class="grid grid-cols-2 gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={requisitionForm.currencyCode} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={requisitionForm.neededByDate} />
-				</div>
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-requisition', requisitionForm)}>
-				{runningKey === 'create-requisition' ? 'Creating...' : 'Create Requisition'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Purchase Order</h3>
-			<p class="muted mt-1 text-xs">Choose supplier and optional approved requisition, then set amount.</p>
-			<div class="mt-3 grid gap-2">
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
-					<option value="">Select supplier</option>
-					{#each suppliers as supplier (supplier.supplier_id)}
-						<option value={supplier.supplier_id}>{supplierLabel(supplier)}</option>
-					{/each}
-				</select>
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.requisitionId}>
-					<option value="">No requisition link</option>
-					{#each approvedRequisitions as requisition (requisition.requisition_id)}
-						<option value={requisition.requisition_id}>{requisition.requisition_id}</option>
-					{/each}
-				</select>
-				<div class="grid grid-cols-2 gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total amount" bind:value={purchaseOrderForm.totalAmount} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={purchaseOrderForm.currencyCode} />
-				</div>
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Delivery address" bind:value={purchaseOrderForm.deliveryAddress} />
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-purchase-order', purchaseOrderForm)}>
-				{runningKey === 'create-purchase-order' ? 'Creating...' : 'Create Purchase Order'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Employee</h3>
-			<div class="mt-3 grid gap-2">
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Employee full name" bind:value={employeeForm.name} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Employee email" bind:value={employeeForm.email} />
-				<label class="flex items-center gap-2 text-xs text-white/80">
-					<input type="checkbox" bind:checked={employeeForm.autoActivate} />
-					Auto-activate employee after create
-				</label>
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-employee', employeeForm)}>
-				{runningKey === 'create-employee' ? 'Creating...' : 'Create Employee'}
-			</button>
-		</div>
-
-		<div class="rounded-lg border border-white/15 bg-white/5 p-4">
-			<h3 class="text-lg font-semibold">Create Journal</h3>
-			<p class="muted mt-1 text-xs">Provide both sides of the entry: one debit account and one credit account.</p>
-			<div class="mt-3 grid gap-2">
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.fiscalPeriodId}>
-					<option value="">Select fiscal period</option>
-					{#each fiscalPeriods as period (period.fiscal_period_id)}
-						<option value={period.fiscal_period_id}>{period.fiscal_period_id}</option>
-					{/each}
-				</select>
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={journalForm.description} />
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.debitAccountId}>
-					<option value="">Select debit account</option>
-					{#each accounts as account (account.account_id)}
-						<option value={account.account_id}>{accountLabel(account)}</option>
-					{/each}
-				</select>
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.creditAccountId}>
-					<option value="">Select credit account</option>
-					{#each accounts as account (account.account_id)}
-						<option value={account.account_id}>{accountLabel(account)}</option>
-					{/each}
-				</select>
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Amount" bind:value={journalForm.amount} />
-				<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Line memo" bind:value={journalForm.memo} />
-			</div>
-			<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-journal', journalForm)}>
-				{runningKey === 'create-journal' ? 'Creating...' : 'Create Journal'}
-			</button>
-		</div>
+	<div class="mt-4">
+		<Tabs {tabs} selected={activeTab} onSelect={setActiveTab} />
 	</div>
+
+	{#if activeTab === 'O2C'}
+		<div class="mt-5 grid gap-3 xl:grid-cols-2">
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Customer</h3>
+				<div class="mt-3 grid gap-2">
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company name" bind:value={customerForm.customerName} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={customerForm.email} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Billing address" bind:value={customerForm.billingAddress} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Shipping address" bind:value={customerForm.shippingAddress} />
+				</div>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-customer', customerForm)}>
+					{runningKey === 'create-customer' ? 'Creating...' : 'Create Customer'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Quote</h3>
+				<p class="muted mt-1 text-xs">Pick an existing customer or enter a new company name.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={quoteForm.customerId}>
+						<option value="">Create from new company</option>
+						{#each customers as customer (customer.customer_id)}
+							<option value={customer.customer_id}>{customerLabel(customer)}</option>
+						{/each}
+					</select>
+					{#if !quoteForm.customerId}
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company name" bind:value={quoteForm.customerName} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company email" bind:value={quoteForm.customerEmail} />
+					{/if}
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={quoteForm.currencyCode} />
+					<div class="grid grid-cols-3 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="SKU (optional)" bind:value={quoteForm.lineSku} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Qty" bind:value={quoteForm.lineQuantity} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Unit price" bind:value={quoteForm.lineUnitPrice} />
+					</div>
+				</div>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-quote', quoteForm)}>
+					{runningKey === 'create-quote' ? 'Creating...' : 'Create Quote'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Payment</h3>
+				<p class="muted mt-1 text-xs">Requires an existing invoice.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
+						<option value="">Select invoice</option>
+						{#each invoices as invoice (invoice.invoice_id)}
+							<option value={invoice.invoice_id}>{invoiceLabel(invoice)}</option>
+						{/each}
+					</select>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0.01" step="0.01" placeholder="Amount" bind:value={paymentForm.amount} />
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={paymentForm.currencyCode} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
+					</div>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={paymentForm.paymentDate} />
+				</div>
+				{#if invoices.length === 0}
+					<p class="muted mt-2 text-xs">No invoices found. Create and post an invoice before registering payment.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || invoices.length === 0 || !paymentForm.invoiceId} on:click={() => runOperation('create-payment', paymentForm)}>
+					{runningKey === 'create-payment' ? 'Creating...' : 'Create Payment'}
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	{#if activeTab === 'P2P'}
+		<div class="mt-5 grid gap-3 xl:grid-cols-2">
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Supplier</h3>
+				<div class="mt-3 grid gap-2">
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier name" bind:value={supplierForm.supplierName} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment terms" bind:value={supplierForm.paymentTerms} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Tax ID" bind:value={supplierForm.taxId} />
+					</div>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={supplierForm.currencyCode} />
+				</div>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-supplier', supplierForm)}>
+					{runningKey === 'create-supplier' ? 'Creating...' : 'Create Supplier'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Requisition</h3>
+				<p class="muted mt-1 text-xs">Requisition amount is derived later through PO conversion in this API model.</p>
+				<div class="mt-3 grid gap-2">
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={requisitionForm.currencyCode} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={requisitionForm.neededByDate} />
+					</div>
+				</div>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-requisition', requisitionForm)}>
+					{runningKey === 'create-requisition' ? 'Creating...' : 'Create Requisition'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Purchase Order</h3>
+				<p class="muted mt-1 text-xs">Choose supplier and optional approved requisition, then set amount.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
+						<option value="">Select supplier</option>
+						{#each suppliers as supplier (supplier.supplier_id)}
+							<option value={supplier.supplier_id}>{supplierLabel(supplier)}</option>
+						{/each}
+					</select>
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.requisitionId}>
+						<option value="">No requisition link</option>
+						{#each approvedRequisitions as requisition (requisition.requisition_id)}
+							<option value={requisition.requisition_id}>{requisition.requisition_id}</option>
+						{/each}
+					</select>
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total amount" bind:value={purchaseOrderForm.totalAmount} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={purchaseOrderForm.currencyCode} />
+					</div>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Delivery address" bind:value={purchaseOrderForm.deliveryAddress} />
+				</div>
+				{#if suppliers.length === 0}
+					<p class="muted mt-2 text-xs">No suppliers found. Create a supplier first.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || suppliers.length === 0 || !purchaseOrderForm.supplierId} on:click={() => runOperation('create-purchase-order', purchaseOrderForm)}>
+					{runningKey === 'create-purchase-order' ? 'Creating...' : 'Create Purchase Order'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Goods Receipt</h3>
+				<p class="muted mt-1 text-xs">Requires an existing purchase order.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={goodsReceiptForm.poId}>
+						<option value="">Select purchase order</option>
+						{#each purchaseOrders as po (po.po_id)}
+							<option value={po.po_id}>{po.po_id} {po.state ? `(${po.state})` : ''}</option>
+						{/each}
+					</select>
+				</div>
+				{#if purchaseOrders.length === 0}
+					<p class="muted mt-2 text-xs">No purchase orders found. Create or convert a requisition first.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || purchaseOrders.length === 0 || !goodsReceiptForm.poId} on:click={() => runOperation('create-goods-receipt', goodsReceiptForm)}>
+					{runningKey === 'create-goods-receipt' ? 'Creating...' : 'Create Goods Receipt'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Supplier Invoice</h3>
+				<p class="muted mt-1 text-xs">Requires an existing goods receipt.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={supplierInvoiceForm.receiptId}>
+						<option value="">Select receipt</option>
+						{#each goodsReceipts as receipt (receipt.receipt_id)}
+							<option value={receipt.receipt_id}>{receiptLabel(receipt)}</option>
+						{/each}
+					</select>
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" placeholder="Invoice date" bind:value={supplierInvoiceForm.invoiceDate} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" placeholder="Due date" bind:value={supplierInvoiceForm.dueDate} />
+					</div>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={supplierInvoiceForm.currencyCode} />
+				</div>
+				{#if goodsReceipts.length === 0}
+					<p class="muted mt-2 text-xs">No goods receipts found. Create a goods receipt first.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || goodsReceipts.length === 0 || !supplierInvoiceForm.receiptId} on:click={() => runOperation('create-supplier-invoice', supplierInvoiceForm)}>
+					{runningKey === 'create-supplier-invoice' ? 'Creating...' : 'Create Supplier Invoice'}
+				</button>
+			</div>
+
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create AP Payment</h3>
+				<p class="muted mt-1 text-xs">Requires an existing supplier invoice.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={apPaymentForm.supplierInvoiceId}>
+						<option value="">Select supplier invoice</option>
+						{#each supplierInvoices as invoice (invoice.supplier_invoice_id)}
+							<option value={invoice.supplier_invoice_id}>{supplierInvoiceLabel(invoice)}</option>
+						{/each}
+					</select>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0.01" step="0.01" placeholder="Amount" bind:value={apPaymentForm.amount} />
+					<div class="grid grid-cols-2 gap-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={apPaymentForm.currencyCode} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={apPaymentForm.method} />
+					</div>
+				</div>
+				{#if supplierInvoices.length === 0}
+					<p class="muted mt-2 text-xs">No supplier invoices found. Create a supplier invoice first.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || supplierInvoices.length === 0 || !apPaymentForm.supplierInvoiceId} on:click={() => runOperation('create-ap-payment', apPaymentForm)}>
+					{runningKey === 'create-ap-payment' ? 'Creating...' : 'Create AP Payment'}
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	{#if activeTab === 'R2R'}
+		<div class="mt-5 grid gap-3 xl:grid-cols-2">
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Journal</h3>
+				<p class="muted mt-1 text-xs">Provide both sides of the entry: one debit account and one credit account.</p>
+				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.fiscalPeriodId}>
+						<option value="">Select fiscal period</option>
+						{#each fiscalPeriods as period (period.fiscal_period_id)}
+							<option value={period.fiscal_period_id}>{period.fiscal_period_id}</option>
+						{/each}
+					</select>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={journalForm.description} />
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.debitAccountId}>
+						<option value="">Select debit account</option>
+						{#each accounts as account (account.account_id)}
+							<option value={account.account_id}>{accountLabel(account)}</option>
+						{/each}
+					</select>
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.creditAccountId}>
+						<option value="">Select credit account</option>
+						{#each accounts as account (account.account_id)}
+							<option value={account.account_id}>{accountLabel(account)}</option>
+						{/each}
+					</select>
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Amount" bind:value={journalForm.amount} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Line memo" bind:value={journalForm.memo} />
+				</div>
+				{#if fiscalPeriods.length === 0 || accounts.length === 0}
+					<p class="muted mt-2 text-xs">Journals require fiscal periods and accounts from setup/admin.</p>
+				{/if}
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fiscalPeriods.length === 0 || accounts.length === 0} on:click={() => runOperation('create-journal', journalForm)}>
+					{runningKey === 'create-journal' ? 'Creating...' : 'Create Journal'}
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	{#if activeTab === 'H2R'}
+		<div class="mt-5 grid gap-3 xl:grid-cols-2">
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<h3 class="text-lg font-semibold">Create Employee</h3>
+				<div class="mt-3 grid gap-2">
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Employee full name" bind:value={employeeForm.name} />
+					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Employee email" bind:value={employeeForm.email} />
+					<label class="flex items-center gap-2 text-xs text-white/80">
+						<input type="checkbox" bind:checked={employeeForm.autoActivate} />
+						Auto-activate employee after create
+					</label>
+				</div>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-employee', employeeForm)}>
+					{runningKey === 'create-employee' ? 'Creating...' : 'Create Employee'}
+				</button>
+			</div>
+		</div>
+	{/if}
 
 	{#if errorMessage}
 		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{errorMessage}</p>
