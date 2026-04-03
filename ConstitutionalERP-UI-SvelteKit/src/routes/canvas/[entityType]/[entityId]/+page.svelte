@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import ActionList from '$lib/components/canvas/ActionList.svelte';
@@ -74,6 +76,13 @@
 
 		try {
 			const result = await executeProcessAction(action.link, $actorStore, payload) as Record<string, unknown> | null;
+			const target = resolveActionTarget(result);
+			if (target && (target.entityType !== resolvedEntityType || target.entityId !== resolvedEntityId)) {
+				actionSuccessMessage = `Action "${action.name}" completed. Opening ${target.label} ${target.entityId}.`;
+				await goto(resolve(`/canvas/${target.entityType}/${target.entityId}`));
+				return;
+			}
+
 			actionSuccessMessage = `Action "${action.name}" completed.`;
 
 			// If the action result carries the projected new state and links, apply them
@@ -161,6 +170,66 @@
 		}
 
 		return 'low';
+	}
+
+	function resolveActionTarget(result: Record<string, unknown> | null): { entityType: string; entityId: string; label: string } | null {
+		if (!result) {
+			return null;
+		}
+
+		const selfHref = (result._links as Record<string, { href?: string }> | undefined)?.self?.href;
+		if (typeof selfHref === 'string') {
+			const parsed = parseHubHref(selfHref);
+			if (parsed) {
+				return parsed;
+			}
+		}
+
+		const keyMap = [
+			{ key: 'order_id', entityType: 'o2c_sales_order', label: 'sales order' },
+			{ key: 'invoice_id', entityType: 'o2c_invoice', label: 'invoice' },
+			{ key: 'quote_id', entityType: 'o2c_quote', label: 'quote' },
+			{ key: 'payment_id', entityType: 'o2c_payment', label: 'payment' },
+			{ key: 'po_id', entityType: 'p2p_purchase_order', label: 'purchase order' },
+			{ key: 'receipt_id', entityType: 'p2p_goods_receipt', label: 'goods receipt' },
+			{ key: 'supplier_invoice_id', entityType: 'p2p_supplier_invoice', label: 'supplier invoice' },
+			{ key: 'ap_payment_id', entityType: 'p2p_ap_payment', label: 'AP payment' }
+		];
+
+		for (const candidate of keyMap) {
+			const value = result[candidate.key];
+			if (typeof value === 'string' && value.trim()) {
+				return { entityType: candidate.entityType, entityId: value, label: candidate.label };
+			}
+		}
+
+		return null;
+	}
+
+	function parseHubHref(href: string): { entityType: string; entityId: string; label: string } | null {
+		const match = href.match(/^\/api\/v1\/([^/]+)\/([^/]+)\/([^/?#]+)/i);
+		if (!match) {
+			return null;
+		}
+
+		const [, domain, collection, entityId] = match;
+		const entityMap: Record<string, { entityType: string; label: string }> = {
+			'o2c/customers': { entityType: 'o2c_customer', label: 'customer' },
+			'o2c/quotes': { entityType: 'o2c_quote', label: 'quote' },
+			'o2c/orders': { entityType: 'o2c_sales_order', label: 'sales order' },
+			'o2c/invoices': { entityType: 'o2c_invoice', label: 'invoice' },
+			'o2c/payments': { entityType: 'o2c_payment', label: 'payment' },
+			'p2p/purchase-orders': { entityType: 'p2p_purchase_order', label: 'purchase order' },
+			'p2p/goods-receipts': { entityType: 'p2p_goods_receipt', label: 'goods receipt' },
+			'p2p/supplier-invoices': { entityType: 'p2p_supplier_invoice', label: 'supplier invoice' },
+			'p2p/ap-payments': { entityType: 'p2p_ap_payment', label: 'AP payment' },
+			'r2r/journals': { entityType: 'r2r_journal', label: 'journal' },
+			'h2r/employees': { entityType: 'h2r_employee', label: 'employee' }
+		};
+
+		return entityMap[`${domain}/${collection}`]
+			? { ...entityMap[`${domain}/${collection}`], entityId }
+			: null;
 	}
 
 	function resolveLinesHref(entityTypeValue: string, entityIdValue: string): string | null {

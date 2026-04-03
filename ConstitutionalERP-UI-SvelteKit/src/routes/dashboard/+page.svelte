@@ -16,6 +16,7 @@
 
 	const cards = [
 		{ key: 'draftQuotes', label: 'Draft Quotes', href: resolve('/canvas/o2c/quotes/drafts') },
+		{ key: 'openInvoices', label: 'Open Invoices', href: resolve('/canvas/o2c/invoices/open') },
 		{ key: 'draftRequisitions', label: 'Draft Requisitions', href: resolve('/canvas/p2p/requisitions/drafts') },
 		{ key: 'submittedRequisitions', label: 'Submitted Requisitions', href: resolve('/canvas/p2p/requisitions/submitted') },
 		{ key: 'approvedPos', label: 'Approved POs', href: resolve('/canvas/p2p/purchase-orders/approved') },

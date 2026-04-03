@@ -28,6 +28,13 @@ interface RequisitionRow {
 	state?: string;
 }
 
+interface InvoiceRow {
+	invoice_id: string;
+	state?: string;
+	amount_due?: number | string;
+	amount_paid?: number | string;
+}
+
 export function isDraftQuote(quote: O2CQuote): boolean {
 	return (quote.state ?? '').toLowerCase() === 'draft';
 }
@@ -71,9 +78,25 @@ export function isActiveEmployee(employee: EmployeeRow): boolean {
 	return candidateStates.some((value) => ['active', 'activated', 'enabled'].includes(value));
 }
 
+export function isOpenInvoice(invoice: InvoiceRow): boolean {
+	const state = (invoice.state ?? '').trim().toLowerCase();
+	if (['cancelled', 'paid', 'reconciled', 'writtenoff', 'fullypaid'].includes(state)) {
+		return false;
+	}
+
+	const amountDue = toNumber(invoice.amount_due);
+	const amountPaid = toNumber(invoice.amount_paid);
+	if (amountDue > 0) {
+		return amountPaid < amountDue;
+	}
+
+	return true;
+}
+
 export async function getDashboardSummary(actor: ActorContext): Promise<DashboardSummary> {
-	const [quoteResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
+	const [quoteResult, invoiceResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
 		getO2CQuotes(actor),
+		queryTable<InvoiceRow>('o2c_invoice', actor),
 		queryTable<RequisitionRow>('p2p_requisition', actor),
 		queryTable<PurchaseOrderRow>('p2p_purchase_order', actor),
 		queryTable<JournalRow>('r2r_journal', actor),
@@ -82,10 +105,24 @@ export async function getDashboardSummary(actor: ActorContext): Promise<Dashboar
 
 	return {
 		draftQuotes: (quoteResult.data ?? []).filter(isDraftQuote).length,
+		openInvoices: (invoiceResult.data ?? []).filter(isOpenInvoice).length,
 		draftRequisitions: (requisitionResult.data ?? []).filter(isDraftRequisition).length,
 		submittedRequisitions: (requisitionResult.data ?? []).filter(isSubmittedRequisition).length,
 		approvedPos: (poResult.data ?? []).filter(isApprovedPo).length,
 		pendingJournals: (journalResult.data ?? []).filter(isPendingJournal).length,
 		activeEmployees: (employeeResult.data ?? []).filter(isActiveEmployee).length
 	};
+}
+
+function toNumber(value: number | string | undefined): number {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+
+	return 0;
 }

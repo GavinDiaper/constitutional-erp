@@ -6,7 +6,16 @@
 	import { actorStore } from '$lib/stores/actorStore';
 
 	type DomainTab = 'o2c' | 'p2p' | 'r2r' | 'hcm';
-	type EntityKey = 'o2c_quote' | 'o2c_customer' | 'p2p_requisition' | 'p2p_purchase_order' | 'p2p_supplier' | 'r2r_journal' | 'h2r_employee';
+	type EntityKey =
+		| 'o2c_quote'
+		| 'o2c_customer'
+		| 'o2c_sales_order'
+		| 'o2c_invoice'
+		| 'p2p_requisition'
+		| 'p2p_purchase_order'
+		| 'p2p_supplier'
+		| 'r2r_journal'
+		| 'h2r_employee';
 
 	interface EntityListItem {
 		id: string;
@@ -59,6 +68,21 @@
 		created_at?: string;
 	}
 
+	interface SalesOrderRow {
+		order_id: string;
+		state?: string;
+		customer_id?: string;
+		quote_id?: string;
+		created_at?: string;
+	}
+
+	interface InvoiceRow {
+		invoice_id: string;
+		state?: string;
+		order_id?: string;
+		created_at?: string;
+	}
+
 	interface SupplierRow {
 		supplier_id: string;
 		status?: string;
@@ -74,6 +98,8 @@
 
 	let draftQuotes: O2CQuote[] = [];
 	let customers: CustomerRow[] = [];
+	let salesOrders: SalesOrderRow[] = [];
+	let invoices: InvoiceRow[] = [];
 	let requisitions: RequisitionRow[] = [];
 	let approvedPurchaseOrders: PurchaseOrderRow[] = [];
 	let suppliers: SupplierRow[] = [];
@@ -97,9 +123,11 @@
 		errorMessage = '';
 
 		try {
-			const [quotesResult, customerResult, requisitionResult, poResult, supplierResult, journalsResult, employeeResult] = await Promise.all([
+			const [quotesResult, customerResult, salesOrderResult, invoiceResult, requisitionResult, poResult, supplierResult, journalsResult, employeeResult] = await Promise.all([
 				getO2CQuotes($actorStore),
 				queryTable<CustomerRow>('o2c_customer', $actorStore),
+				queryTable<SalesOrderRow>('o2c_sales_order', $actorStore),
+				queryTable<InvoiceRow>('o2c_invoice', $actorStore),
 				queryTable<RequisitionRow>('p2p_requisition', $actorStore),
 				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
 				queryTable<SupplierRow>('p2p_supplier', $actorStore),
@@ -109,6 +137,8 @@
 
 			draftQuotes = quotesResult.data ?? [];
 			customers = customerResult.data ?? [];
+			salesOrders = salesOrderResult.data ?? [];
+			invoices = invoiceResult.data ?? [];
 			requisitions = requisitionResult.data ?? [];
 			approvedPurchaseOrders = poResult.data ?? [];
 			suppliers = supplierResult.data ?? [];
@@ -200,6 +230,24 @@
 		(row) => row.created_at as string | undefined
 	);
 
+	$: salesOrderItems = buildItems(
+		salesOrders,
+		(row) => String(row.order_id ?? ''),
+		(row) => String(row.state ?? ''),
+		(row) => String(row.quote_id ?? row.customer_id ?? ''),
+		'o2c_sales_order',
+		(row) => row.created_at as string | undefined
+	);
+
+	$: invoiceItems = buildItems(
+		invoices,
+		(row) => String(row.invoice_id ?? ''),
+		(row) => String(row.state ?? ''),
+		(row) => String(row.order_id ?? ''),
+		'o2c_invoice',
+		(row) => row.created_at as string | undefined
+	);
+
 	$: requisitionItems = buildItems(
 		requisitions,
 		(row) => String(row.requisition_id ?? ''),
@@ -258,6 +306,18 @@
 				title: 'Customers',
 				description: 'Customer lifecycle and activation states.',
 				items: customerItems
+			},
+			{
+				key: 'o2c_sales_order',
+				title: 'Sales Orders',
+				description: 'Order progression from Draft through Shipped, Invoiced, and Closed.',
+				items: salesOrderItems
+			},
+			{
+				key: 'o2c_invoice',
+				title: 'AR Invoices',
+				description: 'Generated invoices with posting and payment follow-on actions.',
+				items: invoiceItems
 			}
 		],
 		p2p: [

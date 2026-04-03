@@ -63,6 +63,14 @@
 		invoice_id: string;
 		state?: string;
 		order_id?: string;
+		amount_due?: number | string;
+		amount_paid?: number | string;
+	}
+
+	interface OrderRow {
+		order_id: string;
+		state?: string;
+		quote_id?: string;
 	}
 
 	interface FiscalPeriodRow {
@@ -89,6 +97,7 @@
 	let purchaseOrders: PurchaseOrderRow[] = [];
 	let goodsReceipts: GoodsReceiptRow[] = [];
 	let supplierInvoices: SupplierInvoiceRow[] = [];
+	let orders: OrderRow[] = [];
 	let invoices: InvoiceRow[] = [];
 	let fiscalPeriods: FiscalPeriodRow[] = [];
 	let accounts: AccountRow[] = [];
@@ -195,6 +204,7 @@
 				poResult,
 				receiptResult,
 				supplierInvoiceResult,
+				orderResult,
 				invoiceResult,
 				periodResult,
 				accountResult
@@ -205,6 +215,7 @@
 				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
 				queryTable<GoodsReceiptRow>('p2p_goods_receipt', $actorStore),
 				queryTable<SupplierInvoiceRow>('p2p_supplier_invoice', $actorStore),
+				queryTable<OrderRow>('o2c_sales_order', $actorStore),
 				queryTable<InvoiceRow>('o2c_invoice', $actorStore),
 				queryTable<FiscalPeriodRow>('r2r_fiscal_period', $actorStore),
 				queryTable<AccountRow>('r2r_account', $actorStore)
@@ -216,6 +227,7 @@
 			purchaseOrders = poResult.data ?? [];
 			goodsReceipts = receiptResult.data ?? [];
 			supplierInvoices = supplierInvoiceResult.data ?? [];
+			orders = orderResult.data ?? [];
 			invoices = invoiceResult.data ?? [];
 			fiscalPeriods = periodResult.data ?? [];
 			accounts = accountResult.data ?? [];
@@ -298,6 +310,21 @@
 		return `${invoice.invoice_id}${state}`;
 	}
 
+	function isOpenInvoice(invoice: InvoiceRow): boolean {
+		const state = (invoice.state ?? '').trim().toLowerCase();
+		if (['cancelled', 'paid', 'reconciled', 'writtenoff', 'fullypaid'].includes(state)) {
+			return false;
+		}
+
+		const amountDue = typeof invoice.amount_due === 'string' ? Number(invoice.amount_due) : (invoice.amount_due ?? 0);
+		const amountPaid = typeof invoice.amount_paid === 'string' ? Number(invoice.amount_paid) : (invoice.amount_paid ?? 0);
+		if (Number.isFinite(amountDue) && amountDue > 0) {
+			return (Number.isFinite(amountPaid) ? amountPaid : 0) < amountDue;
+		}
+
+		return true;
+	}
+
 	function receiptLabel(receipt: GoodsReceiptRow): string {
 		const state = receipt.state ? ` / ${receipt.state}` : '';
 		const po = receipt.po_id ? ` / PO ${receipt.po_id}` : '';
@@ -331,6 +358,24 @@
 
 	{#if activeTab === 'O2C'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4 xl:col-span-2">
+				<h3 class="text-lg font-semibold">Orders And Invoices</h3>
+				<p class="muted mt-1 text-sm">
+					O2C invoices are workflow-derived, not direct-create entities. Accept a quote to create a sales order, move the order to Shipped, then generate and post the invoice from its process page.
+				</p>
+				<div class="mt-3 flex flex-wrap gap-2">
+					<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/canvas/o2c/orders/open')}>
+						Open Orders ({orders.length})
+					</a>
+					<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/canvas/o2c/invoices/open')}>
+						Open Invoices ({invoices.filter(isOpenInvoice).length})
+					</a>
+				</div>
+				<p class="muted mt-2 text-xs">
+					After converting a quote or generating an invoice, the Canvas now opens the newly created order or invoice automatically.
+				</p>
+			</div>
+
 			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
 				<h3 class="text-lg font-semibold">Create Customer</h3>
 				<div class="mt-3 grid gap-2">
