@@ -121,12 +121,13 @@
 		}
 	}
 
-	function match(value: string | undefined): boolean {
-		if (!filterText.trim()) {
+	function match(value: string | undefined, textFilter: string): boolean {
+		const normalizedFilter = textFilter.trim().toLowerCase();
+		if (!normalizedFilter) {
 			return true;
 		}
 
-		return (value ?? '').toLowerCase().includes(filterText.trim().toLowerCase());
+		return (value ?? '').toLowerCase().includes(normalizedFilter);
 	}
 
 	function normalizeState(raw: string | undefined, fallback = 'Unknown'): string {
@@ -308,11 +309,10 @@
 			.sort((left, right) => right.count - left.count || left.state.localeCompare(right.state));
 	}
 
-	function filteredItems(section: EntitySection): EntityListItem[] {
-		const selectedState = stateFilterByEntity[section.key] ?? '';
-
-		return section.items.filter((item) => {
-			const matchesText = match(item.id) || match(item.secondary) || match(item.state);
+	function filteredItems(items: EntityListItem[], selectedState: string, textFilter: string): EntityListItem[] {
+		return items.filter((item) => {
+			const matchesText =
+				match(item.id, textFilter) || match(item.secondary, textFilter) || match(item.state, textFilter);
 			const matchesState = !selectedState || item.state === selectedState;
 			return matchesText && matchesState;
 		});
@@ -378,6 +378,7 @@
 
 	<div class="mt-5 space-y-4">
 		{#each sectionsByTab[activeTab] as section (section.key)}
+			{@const visibleItems = filteredItems(section.items, stateFilterByEntity[section.key] ?? '', filterText)}
 			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
@@ -409,10 +410,10 @@
 				</div>
 
 				<ul class="mt-3 space-y-2 text-sm">
-					{#if filteredItems(section).length === 0}
+					{#if visibleItems.length === 0}
 						<li class="muted">No matching entities for this view.</li>
 					{:else}
-						{#each filteredItems(section) as item (item.id)}
+						{#each visibleItems as item (item.id)}
 							<li>
 								<a class="block rounded border border-white/10 px-3 py-2 hover:bg-white/10" href={item.href}>
 									<div class="flex items-center justify-between gap-3">
