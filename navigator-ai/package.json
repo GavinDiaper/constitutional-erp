@@ -10,7 +10,8 @@
     "start": "node scripts/start-server.js",
     "migrate": "tsx src/db/migrate.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"No tests configured yet\""
+    "test": "echo \"No tests configured yet\"",
+    "test:postman": "node scripts/run-postman.js"
   },
   "engines": {
     "node": ">=20"
@@ -26,6 +27,7 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/express": "^4.17.21",
     "@types/node": "^22.13.10",
+    "newman": "^6.2.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

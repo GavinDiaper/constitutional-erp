@@ -71,6 +71,8 @@
                   "  json.functions.forEach(fn => {",
                   "    pm.expect(fn).to.include.keys('id', 'name', 'description', 'domain', 'aggregateType', 'action', 'operationType', 'inputSchema', 'backingRoute');",
                   "  });",
+                  "  const preferred = json.functions.find(fn => fn.id === 'r2r_post_journal') || json.functions[0];",
+                  "  if (preferred && preferred.id) pm.environment.set('mcpFunctionId', preferred.id);",
                   "});"
                 ]
               }
@@ -134,6 +136,116 @@
       ]
     },
     {
+      "name": "25 – Foundation Fixture Setup",
+      "item": [
+        {
+          "name": "POST foundation fiscal year",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearLabel\": \"IH-FY-{{$timestamp}}\",\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-years",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "fiscal-years"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('fiscalYearId captured', () => pm.expect(json.fiscal_year_id).to.be.a('string'));",
+                  "pm.environment.set('fiscalYearId', json.fiscal_year_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation fiscal period",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\n  \"periodNumber\": 1,\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "fiscal-periods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('fiscalPeriodId captured', () => pm.expect(json.fiscal_period_id).to.be.a('string'));",
+                  "pm.environment.set('fiscalPeriodId', json.fiscal_period_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"Integration Hub fixture\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('journalId captured', () => pm.expect(json.journal_id).to.be.a('string'));",
+                  "pm.environment.set('journalId', json.journal_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "30 – Process Navigation",
       "item": [
         {
@@ -156,6 +268,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
                   "pm.test('Status is 200 or 404', () => {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
                   "});",
@@ -229,6 +342,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
                   "pm.test('Returns supported outcome', () => {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404]);",
                   "});"
@@ -345,6 +459,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
                   "pm.test('Status is 200 or 404', () => {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
                   "});",
@@ -415,6 +530,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
                   "pm.test('Status is 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
                   "pm.test('Response has sessionId', () => {",
@@ -518,9 +634,13 @@
   ],
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:4017" },
+    { "key": "foundationBaseUrl", "value": "http://localhost:3000" },
     { "key": "apiKey", "value": "change-me" },
+    { "key": "ingressId", "value": "foundation-ingress" },
     { "key": "actorId", "value": "principal.system" },
-    { "key": "journalId", "value": "JNL-PENDING" },
+    { "key": "fiscalYearId", "value": "" },
+    { "key": "fiscalPeriodId", "value": "" },
+    { "key": "journalId", "value": "" },
     { "key": "mcpFunctionId", "value": "r2r_post_journal" },
     { "key": "sessionId", "value": "" }
   ]

@@ -35,6 +35,305 @@
       ]
     },
     {
+      "name": "05 – Foundation Fixture Setup",
+      "item": [
+        {
+          "name": "POST supplier fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/p2p/suppliers",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierName\": \"ProcessGraph Supplier {{$timestamp}}\",\n  \"email\": \"pg+{{$guid}}@local.test\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('supplierId', b.supplier_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST requisition fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/p2p/requisitions",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requester\": \"process-graph.postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('requisitionId', b.requisition_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST requisition submit",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/submit",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST requisition approve",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/approve",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST requisition convert to PO",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/convert",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('purchaseOrderId', b.po_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST customer fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/o2c/customers",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"ProcessGraph Customer {{$timestamp}}\",\n  \"email\": \"pg-customer+{{$guid}}@local.test\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('customerId', b.customer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST quote fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/o2c/quotes",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('quoteId', b.quote_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST fiscal year fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-years",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearLabel\": \"PG-FY-{{$timestamp}}\",\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-12-31\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('fiscalYearId', b.fiscal_year_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST fiscal period fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\n  \"periodNumber\": 1,\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-31\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('fiscalPeriodId', b.fiscal_period_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST journal fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"ProcessGraph fixture\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('journalEntryId', b.journal_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST employee fixture",
+          "request": {
+            "method": "POST",
+            "url": "{{foundationBaseUrl}}/api/v1/h2r/employees",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ProcessGraph Employee {{$timestamp}}\",\n  \"email\": \"pg-employee+{{$guid}}@local.test\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.environment.set('employeeId', b.employee_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "P2P – Requisition",
       "item": [
         {
@@ -72,6 +371,7 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('requisitionId is resolved', () => pm.expect(pm.environment.get('requisitionId')).to.be.a('string').and.not.empty);",
                   "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
                   "if (pm.response.code === 200) {",
                   "  pm.test('Has canonical shape', () => {",
@@ -135,6 +435,7 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('purchaseOrderId is resolved', () => pm.expect(pm.environment.get('purchaseOrderId')).to.be.a('string').and.not.empty);",
                   "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
                 ]
               }
@@ -207,6 +508,7 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('quoteId is resolved', () => pm.expect(pm.environment.get('quoteId')).to.be.a('string').and.not.empty);",
                   "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
                 ]
               }
@@ -232,6 +534,7 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('journalEntryId is resolved', () => pm.expect(pm.environment.get('journalEntryId')).to.be.a('string').and.not.empty);",
                   "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
                 ]
               }
@@ -257,6 +560,7 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.test('employeeId is resolved', () => pm.expect(pm.environment.get('employeeId')).to.be.a('string').and.not.empty);",
                   "pm.test('Status 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
                 ]
               }

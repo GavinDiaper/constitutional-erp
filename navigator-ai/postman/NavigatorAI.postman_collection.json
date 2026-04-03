@@ -25,6 +25,41 @@
       "name": "20 - Navigator",
       "item": [
         {
+          "name": "SETUP Create P2P requisition fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requester\": \"navigator-ai.postman\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fixture created (201)', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Requisition id captured', () => pm.expect(json.requisition_id).to.be.a('string').and.not.empty);",
+                  "pm.environment.set('domain', 'P2P');",
+                  "pm.environment.set('aggregateType', 'requisition');",
+                  "pm.environment.set('aggregateId', json.requisition_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GET /api/v1/resource",
           "request": {
             "method": "GET",
@@ -32,14 +67,14 @@
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/resource?domain=P2P&aggregateType=requisition&aggregateId=REQ-001&actorId=principal.system",
+              "raw": "{{baseUrl}}/api/v1/resource?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "resource"],
               "query": [
-                { "key": "domain", "value": "P2P" },
-                { "key": "aggregateType", "value": "requisition" },
-                { "key": "aggregateId", "value": "REQ-001" },
-                { "key": "actorId", "value": "principal.system" }
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
               ]
             }
           }
@@ -52,14 +87,14 @@
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/actions?domain=P2P&aggregateType=requisition&aggregateId=REQ-001&actorId=principal.system",
+              "raw": "{{baseUrl}}/api/v1/actions?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "actions"],
               "query": [
-                { "key": "domain", "value": "P2P" },
-                { "key": "aggregateType", "value": "requisition" },
-                { "key": "aggregateId", "value": "REQ-001" },
-                { "key": "actorId", "value": "principal.system" }
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
               ]
             }
           }
@@ -74,7 +109,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"domain\": \"P2P\",\n  \"aggregateType\": \"requisition\",\n  \"aggregateId\": \"REQ-001\",\n  \"actorId\": \"principal.system\"\n}"
+              "raw": "{\n  \"domain\": \"{{domain}}\",\n  \"aggregateType\": \"{{aggregateType}}\",\n  \"aggregateId\": \"{{aggregateId}}\",\n  \"actorId\": \"{{actorId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/rank",
@@ -93,7 +128,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"context\": {\n    \"domain\": \"P2P\",\n    \"aggregateType\": \"requisition\",\n    \"aggregateId\": \"REQ-001\",\n    \"actorId\": \"principal.system\"\n  },\n  \"actionId\": \"submit\"\n}"
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/explain",
@@ -112,7 +147,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"context\": {\n    \"domain\": \"P2P\",\n    \"aggregateType\": \"requisition\",\n    \"aggregateId\": \"REQ-001\",\n    \"actorId\": \"principal.system\"\n  },\n  \"actionId\": \"submit\"\n}"
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/simulate",
@@ -131,7 +166,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"domain\": \"P2P\",\n  \"aggregateType\": \"requisition\",\n  \"aggregateId\": \"REQ-001\",\n  \"actorId\": \"principal.system\"\n}"
+              "raw": "{\n  \"domain\": \"{{domain}}\",\n  \"aggregateType\": \"{{aggregateType}}\",\n  \"aggregateId\": \"{{aggregateId}}\",\n  \"actorId\": \"{{actorId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/decide",
@@ -150,7 +185,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"context\": {\n    \"domain\": \"P2P\",\n    \"aggregateType\": \"requisition\",\n    \"aggregateId\": \"REQ-001\",\n    \"actorId\": \"principal.system\"\n  },\n  \"actionId\": \"submit\"\n}"
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/execute",
@@ -167,14 +202,14 @@
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/history?domain=P2P&aggregateType=requisition&aggregateId=REQ-001&actorId=principal.system",
+              "raw": "{{baseUrl}}/api/v1/history?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "history"],
               "query": [
-                { "key": "domain", "value": "P2P" },
-                { "key": "aggregateType", "value": "requisition" },
-                { "key": "aggregateId", "value": "REQ-001" },
-                { "key": "actorId", "value": "principal.system" }
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
               ]
             }
           }
@@ -187,14 +222,14 @@
               { "key": "x-api-key", "value": "{{apiKey}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/navlog?domain=P2P&aggregateType=requisition&aggregateId=REQ-001&actorId=principal.system",
+              "raw": "{{baseUrl}}/api/v1/navlog?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "navlog"],
               "query": [
-                { "key": "domain", "value": "P2P" },
-                { "key": "aggregateType", "value": "requisition" },
-                { "key": "aggregateId", "value": "REQ-001" },
-                { "key": "actorId", "value": "principal.system" }
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
               ]
             }
           }
@@ -209,7 +244,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"actorId\": \"principal.system\",\n  \"commandText\": \"propose\",\n  \"outputText\": \"sample output\"\n}"
+              "raw": "{\n  \"actorId\": \"{{actorId}}\",\n  \"commandText\": \"propose\",\n  \"outputText\": \"sample output\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/transcript",
