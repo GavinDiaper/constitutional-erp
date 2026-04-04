@@ -71,7 +71,7 @@
 	<h2 class="text-xl font-semibold text-slate-900">FoundationERP Domains</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each grouped.foundation as item (item.id)}
-			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve(`/diagrams/${item.id}`)}>
+			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: item.id })}>
 				<p class="text-sm font-semibold text-slate-900">{item.title}</p>
 				<p class="mt-2 text-xs text-slate-700">{item.summary}</p>
 			</a>
@@ -83,7 +83,7 @@
 	<h2 class="text-xl font-semibold text-slate-900">ConstitutionalLayer Systems</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each grouped.constitutional as item (item.id)}
-			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve(`/diagrams/${item.id}`)}>
+			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: item.id })}>
 				<p class="text-sm font-semibold text-slate-900">{item.title}</p>
 				<p class="mt-2 text-xs text-slate-700">{item.summary}</p>
 			</a>
@@ -95,7 +95,7 @@
 	<h2 class="text-xl font-semibold text-slate-900">Cross-System</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		{#each grouped.cross as item (item.id)}
-			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve(`/diagrams/${item.id}`)}>
+			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: item.id })}>
 				<p class="text-sm font-semibold text-slate-900">{item.title}</p>
 				<p class="mt-2 text-xs text-slate-700">{item.summary}</p>
 			</a>

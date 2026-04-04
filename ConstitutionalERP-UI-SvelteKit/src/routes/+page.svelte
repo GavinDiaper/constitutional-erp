@@ -70,7 +70,7 @@
 	</p>
 	<div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each featuredDiagramBoxes as box}
-			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${box.accentClass}`} href={resolve(`/diagrams/${box.id}`)}>
+			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${box.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: box.id })}>
 				<p class="text-sm font-semibold text-slate-900">{box.title}</p>
 				<p class="mt-2 text-xs text-slate-700">{box.summary}</p>
 			</a>
