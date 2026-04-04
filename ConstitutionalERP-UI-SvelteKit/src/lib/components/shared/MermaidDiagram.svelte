@@ -20,6 +20,7 @@
 	let svgHost: HTMLDivElement;
 	let svgHtml = '';
 	let renderError = '';
+	let cleanupClickBinding: (() => void) | null = null;
 
 	async function ensureMermaidLoaded(): Promise<void> {
 		if ((window as Window & { mermaid?: MermaidApi }).mermaid) {
@@ -84,24 +85,65 @@
 		return result;
 	}
 
+	function normalizeLabel(value: string): string {
+		return value.replace(/\s+/g, ' ').trim();
+	}
+
+	function resolveNodeIdFromGroup(group: SVGGElement, labelToId: Record<string, string>): string | null {
+		const textParts = Array.from(group.querySelectorAll('text, tspan'))
+			.map((n) => normalizeLabel(n.textContent ?? ''))
+			.filter(Boolean);
+		if (textParts.length === 0) return null;
+
+		const joined = normalizeLabel(textParts.join(' '));
+		if (labelToId[joined]) return labelToId[joined];
+
+		for (const part of textParts) {
+			if (labelToId[part]) return labelToId[part];
+		}
+
+		return null;
+	}
+
 	function attachClickHandlers(nodeSpecs: NodeSpec[]) {
 		if (!onNodeClick || !svgHost || nodeSpecs.length === 0) return;
+		cleanupClickBinding?.();
 
-		const texts = Array.from(svgHost.querySelectorAll('text, tspan')) as SVGTextElement[];
-
+		const labelToId: Record<string, string> = {};
 		for (const spec of nodeSpecs) {
-			const targetText = texts.find((t) => {
-				const value = (t.textContent ?? '').trim();
-				return spec.labels.includes(value);
-			});
-			if (!targetText) continue;
-
-			const clickable = targetText.closest('g');
-			if (!clickable) continue;
-
-			(clickable as SVGElement).style.cursor = 'pointer';
-			clickable.addEventListener('click', () => onNodeClick?.(spec.id));
+			for (const label of spec.labels) {
+				labelToId[normalizeLabel(label)] = spec.id;
+			}
 		}
+
+		const allGroups = Array.from(svgHost.querySelectorAll('svg g')) as SVGGElement[];
+		for (const group of allGroups) {
+			if (resolveNodeIdFromGroup(group, labelToId)) {
+				group.style.cursor = 'pointer';
+			}
+		}
+
+		const onClick = (evt: MouseEvent) => {
+			const target = evt.target as Element | null;
+			if (!target) return;
+
+			let current: Element | null = target;
+			while (current && current !== svgHost) {
+				if (current instanceof SVGGElement) {
+					const nodeId = resolveNodeIdFromGroup(current, labelToId);
+					if (nodeId) {
+						onNodeClick?.(nodeId);
+						return;
+					}
+				}
+				current = current.parentElement;
+			}
+		};
+
+		svgHost.addEventListener('click', onClick);
+		cleanupClickBinding = () => {
+			svgHost.removeEventListener('click', onClick);
+		};
 	}
 
 	async function renderDiagram(): Promise<void> {
@@ -123,8 +165,12 @@
 		}
 	}
 
-	onMount(async () => {
-		await renderDiagram();
+	onMount(() => {
+		void renderDiagram();
+		return () => {
+			cleanupClickBinding?.();
+			cleanupClickBinding = null;
+		};
 	});
 
 	$: if (definition) {
