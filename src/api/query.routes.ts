@@ -14,6 +14,7 @@ const tablePrimaryKeys = {
   o2c_sales_order_line: "order_line_id",
   o2c_invoice: "invoice_id",
   o2c_payment: "payment_id",
+  o2c_shipment: "shipment_id",
   p2p_supplier: "supplier_id",
   p2p_requisition: "requisition_id",
   p2p_requisition_line: "requisition_line_id",
@@ -35,6 +36,9 @@ const tablePrimaryKeys = {
   r2r_ledger: "ledger_id",
   r2r_ledger_entry: "ledger_entry_id",
   r2r_ledger_set: "ledger_set_id",
+  r2r_ledger_set_member: "rowid",
+  r2r_account_segment_value: "rowid",
+  r2r_coa_combination_rule_condition: "condition_id",
   r2r_sla_posting_profile: "posting_profile_id",
   r2r_sla_posting_profile_line: "posting_profile_line_id",
   r2r_trial_balance_row: "trial_balance_row_id",
@@ -42,7 +46,11 @@ const tablePrimaryKeys = {
   h2r_position: "position_id",
   h2r_assignment: "assignment_id",
   h2r_credential: "credential_id",
-  h2r_authority_rule: "rule_id"
+  h2r_authority_rule: "rule_id",
+  repl_session: "session_id",
+  navlog: "navlog_id",
+  transcript: "transcript_id",
+  governance_decision_log: "decision_id"
 } as const;
 
 type QueryTable = keyof typeof tablePrimaryKeys;
