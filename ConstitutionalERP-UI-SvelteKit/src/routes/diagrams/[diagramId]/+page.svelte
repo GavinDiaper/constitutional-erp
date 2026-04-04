@@ -3,7 +3,7 @@
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	export let data: PageData;
 </script>
 
 <section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
