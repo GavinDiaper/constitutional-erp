@@ -14,11 +14,15 @@
 			</a>
 		</li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Navigator</a></li>
-		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin')}>Admin</a></li>
 		<li>
-			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin/create-entities')}>
-				Create Admin Entities
-			</a>
+			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin')}>Admin</a>
+			<ul class="mt-1 space-y-1 pl-4 text-xs">
+				<li>
+					<a class="block rounded px-3 py-2 text-white/90 hover:bg-white/10" href={resolve('/admin/create-entities')}>
+						Create Admin Entities
+					</a>
+				</li>
+			</ul>
 		</li>
 	</ul>
 </nav>
