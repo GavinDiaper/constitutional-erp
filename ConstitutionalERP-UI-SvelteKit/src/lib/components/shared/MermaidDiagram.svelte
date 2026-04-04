@@ -90,16 +90,22 @@
 	}
 
 	function resolveNodeIdFromGroup(group: SVGGElement, labelToId: Record<string, string>): string | null {
-		const textParts = Array.from(group.querySelectorAll('text, tspan'))
-			.map((n) => normalizeLabel(n.textContent ?? ''))
-			.filter(Boolean);
-		if (textParts.length === 0) return null;
+		const content = normalizeLabel(group.textContent ?? '');
+		if (!content) return null;
 
-		const joined = normalizeLabel(textParts.join(' '));
-		if (labelToId[joined]) return labelToId[joined];
+		const matchedIds: Record<string, true> = {};
+		let matchCount = 0;
+		for (const [label, id] of Object.entries(labelToId)) {
+			if (content.includes(label)) {
+				if (!Object.prototype.hasOwnProperty.call(matchedIds, id)) {
+					matchedIds[id] = true;
+					matchCount += 1;
+				}
+			}
+		}
 
-		for (const part of textParts) {
-			if (labelToId[part]) return labelToId[part];
+		if (matchCount === 1) {
+			return Object.keys(matchedIds)[0];
 		}
 
 		return null;
