@@ -139,6 +139,76 @@
       "name": "25 – Foundation Fixture Setup",
       "item": [
         {
+          "name": "POST foundation debit account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"IH-DR-{{$timestamp}}\",\n  \"accountName\": \"IH Bootstrap Debit Account\",\n  \"accountType\": \"Asset\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "accounts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('debitAccountId captured', () => pm.expect(json.account_id).to.be.a('string'));",
+                  "pm.environment.set('debitAccountId', json.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation credit account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"IH-CR-{{$timestamp}}\",\n  \"accountName\": \"IH Bootstrap Credit Account\",\n  \"accountType\": \"Equity\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "accounts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('creditAccountId captured', () => pm.expect(json.account_id).to.be.a('string'));",
+                  "pm.environment.set('creditAccountId', json.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST foundation fiscal year",
           "request": {
             "method": "POST",
@@ -238,6 +308,70 @@
                   "const json = pm.response.json();",
                   "pm.test('journalId captured', () => pm.expect(json.journal_id).to.be.a('string'));",
                   "pm.environment.set('journalId', json.journal_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal debit line",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{debitAccountId}}\",\n  \"debitAmount\": 100,\n  \"creditAmount\": 0,\n  \"memo\": \"IH bootstrap debit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals", "{{journalId}}", "lines"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal credit line",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{creditAccountId}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 100,\n  \"memo\": \"IH bootstrap credit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals", "{{journalId}}", "lines"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
                 ]
               }
             }
@@ -344,7 +478,7 @@
                 "exec": [
                   "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
                   "pm.test('Returns supported outcome', () => {",
-                  "  pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404]);",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404, 409]);",
                   "});"
                 ]
               }

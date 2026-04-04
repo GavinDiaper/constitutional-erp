@@ -1,5 +1,11 @@
 import { json } from '@sveltejs/kit';
 import { proxyHubRequest } from '$lib/server/hubProxy';
+import {
+	BootstrapValidationError,
+	type BootstrapPayload,
+	assertPostableBootstrapJournal,
+	resolveBootstrapJournalSpec
+} from '$lib/server/bootstrapJournal';
 import type { RequestHandler } from './$types';
 
 interface BootstrapResult {
@@ -8,15 +14,16 @@ interface BootstrapResult {
 	entityId?: string;
 	data: unknown;
 }
-
-type BootstrapPayload = Record<string, unknown>;
-
 export const POST: RequestHandler = async ({ params, request }) => {
 	try {
 		const payload = await readPayload(request);
 		const result = await runBootstrapOperation(params.operation, request.headers, payload);
 		return json(result, { status: 201 });
 	} catch (error) {
+		if (error instanceof BootstrapValidationError) {
+			return json({ error: error.message }, { status: error.status });
+		}
+
 		const message = error instanceof Error ? error.message : 'Bootstrap operation failed.';
 		return json({ error: message }, { status: 500 });
 	}
@@ -721,6 +728,8 @@ async function createCombinationRule(headers: Headers, payload: BootstrapPayload
 }
 
 async function createJournal(headers: Headers, payload: BootstrapPayload): Promise<BootstrapResult> {
+	const journalSpec = resolveBootstrapJournalSpec(payload);
+
 	const periods = (await asJson(await proxyHubRequest('/r2r/fiscal-periods', headers, 'GET'))) as {
 		data?: Array<Record<string, unknown>>;
 	};
@@ -746,48 +755,42 @@ async function createJournal(headers: Headers, payload: BootstrapPayload): Promi
 	}
 
 	const lines: unknown[] = [];
-	const memo = asOptionalString(payload.memo);
+	let linesCreated = 0;
 
-	const debitAccountId = asNonEmptyString(payload.debitAccountId);
-	const creditAccountId = asNonEmptyString(payload.creditAccountId);
-	const amount = asNonNegativeNumber(payload.amount);
-
-	if (debitAccountId && creditAccountId && amount !== null && amount > 0) {
+	try {
 		const debitLine = await asJson(
 			await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
-				accountId: debitAccountId,
-				debitAmount: amount,
+				accountId: journalSpec.debitAccountId,
+				debitAmount: journalSpec.amount,
 				creditAmount: 0,
-				memo
+				memo: journalSpec.memo
 			})
 		);
 		lines.push(debitLine);
+		linesCreated += 1;
 
 		const creditLine = await asJson(
 			await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
-				accountId: creditAccountId,
+				accountId: journalSpec.creditAccountId,
 				debitAmount: 0,
-				creditAmount: amount,
-				memo
+				creditAmount: journalSpec.amount,
+				memo: journalSpec.memo
 			})
 		);
 		lines.push(creditLine);
-	} else {
-		const accountId = asNonEmptyString(payload.accountId);
-		const debitAmount = asNonNegativeNumber(payload.debitAmount);
-		const creditAmount = asNonNegativeNumber(payload.creditAmount);
+		linesCreated += 1;
 
-		if (accountId && debitAmount !== null && creditAmount !== null && (debitAmount > 0 || creditAmount > 0)) {
-			const legacyLine = await asJson(
-				await proxyHubRequest(`/r2r/journals/${journalId}/lines`, headers, 'POST', {
-					accountId,
-					debitAmount,
-					creditAmount,
-					memo
-				})
-			);
-			lines.push(legacyLine);
+		assertPostableBootstrapJournal(linesCreated, journalSpec);
+	} catch (error) {
+		if (linesCreated > 0) {
+			try {
+				await proxyHubRequest(`/r2r/journals/${journalId}/cancel`, headers, 'POST', {});
+			} catch {
+				// Best-effort cleanup only; preserve original failure below.
+			}
 		}
+
+		throw error;
 	}
 
 	const refreshedJournal = await asJson(await proxyHubRequest(`/r2r/journals/${journalId}`, headers, 'GET'));
