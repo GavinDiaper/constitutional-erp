@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { diagramCatalog } from '$lib/diagrams/catalog';
@@ -52,6 +53,28 @@
 		constitutional: diagramCatalog.filter((d) => d.system === 'ConstitutionalLayer'),
 		cross: diagramCatalog.filter((d) => d.system === 'Cross-System')
 	};
+
+	const overviewNodeLinks: Record<string, string> = {
+		F_core: 'foundation-core-eventing',
+		F_o2c: 'foundation-o2c',
+		F_p2p: 'foundation-p2p',
+		F_r2r: 'foundation-r2r',
+		F_h2r: 'foundation-h2r-navlog',
+		F_nav: 'foundation-h2r-navlog',
+		AE: 'authority-engine',
+		GE: 'governance-engine',
+		EP: 'event-processor',
+		MG: 'mesh-gateway',
+		NAI: 'navigator-ai',
+		PGE: 'process-graph-engine'
+	};
+
+	function handleOverviewClick(nodeId: string) {
+		const diagramId = overviewNodeLinks[nodeId];
+		if (diagramId) {
+			goto(resolve('/diagrams/[diagramId]', { diagramId }));
+		}
+	}
 </script>
 
 <section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
@@ -63,6 +86,7 @@
 		<MermaidDiagram
 			title="System and Domain Grouping (Color Key)"
 			definition={systemDomainGroupingDefinition}
+			onNodeClick={handleOverviewClick}
 		/>
 	</div>
 </section>
