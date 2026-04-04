@@ -5,6 +5,7 @@ import { AdapterRegistry } from "./adapters/registry";
 import { createApprovalsRouter } from "./api/approvals.routes";
 import { eventRouter } from "./api/events.routes";
 import { createMeshRouter } from "./api/mesh.routes";
+import { queryRouter } from "./api/query.routes";
 import { AuthorityClient } from "./clients/authorityClient";
 import { GovernanceClient } from "./clients/governanceClient";
 import { AppConfig, loadConfig } from "./config/env";
@@ -77,6 +78,7 @@ export function createApp(overrides: AppOverrides = {}) {
   );
 
   app.use("/api/v1", apiKeyAuth(config.apiKey), eventRouter);
+  app.use("/api/v1", apiKeyAuth(config.apiKey), queryRouter);
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const problem = toProblem(err);

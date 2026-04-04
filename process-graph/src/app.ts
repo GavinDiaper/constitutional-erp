@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import { approvalsRouter } from "./api/approvals.routes";
 import { graphRouter } from "./api/graph.routes";
+import { queryRouter } from "./api/query.routes";
 import { loadConfig } from "./config/env";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { readinessGate } from "./middleware/readinessGate";
@@ -32,6 +33,7 @@ export function createApp() {
   const gate = [apiKeyAuth(config.apiKey), readinessGate()] as const;
   app.use("/graph/approvals", ...gate, approvalsRouter);
   app.use("/graph", ...gate, graphRouter);
+  app.use("/api/v1", apiKeyAuth(config.apiKey), queryRouter);
 
   // Centralised error handler
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

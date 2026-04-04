@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import { createNavigatorRouter } from "./api/navigator.routes";
+import { queryRouter } from "./api/query.routes";
 import { AuthorityClient } from "./clients/authorityClient";
 import { CepClient } from "./clients/cepClient";
 import { GovernanceClient } from "./clients/governanceClient";
@@ -47,6 +48,7 @@ export function createApp() {
   });
 
   app.use("/api/v1", apiKeyAuth(config.apiKey));
+  app.use("/api/v1", queryRouter);
   app.use("/api/v1", readinessGate(), createNavigatorRouter(service));
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

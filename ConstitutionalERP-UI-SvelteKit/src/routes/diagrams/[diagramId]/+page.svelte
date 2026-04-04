@@ -10,6 +10,15 @@
 	let loadingData = false;
 	let dataError = '';
 
+	const subsystemByPrefix: Record<string, string> = {
+		AE: 'authority-engine',
+		GE: 'governance-engine',
+		EP: 'event-processor',
+		MG: 'mesh-gateway',
+		PGE: 'process-graph',
+		NAI: 'navigator-ai'
+	};
+
 	$: columnHeaders = tableRows.length > 0 ? Object.keys(tableRows[0]) : [];
 
 	async function handleNodeClick(nodeId: string) {
@@ -17,15 +26,25 @@
 		tableRows = [];
 		dataError = '';
 
-		if (!nodeId.startsWith('F_')) {
-			dataError = `No data query API available for ${nodeId}. Only FoundationERP entities (F_…) are queryable from this UI.`;
-			return;
+		const [prefix, ...rest] = nodeId.split('_');
+		const suffix = rest.join('_');
+
+		let requestUrl: string;
+
+		if (prefix === 'F') {
+			requestUrl = `/api/hub/query/${suffix}?limit=20`;
+		} else {
+			const subsystem = subsystemByPrefix[prefix];
+			if (!subsystem || !suffix) {
+				dataError = `No data query API mapping available for ${nodeId}.`;
+				return;
+			}
+			requestUrl = `/api/subsystems/${subsystem}/query/${suffix}?limit=20`;
 		}
 
-		const tableName = nodeId.slice(2); // strip "F_" prefix → e.g. "o2c_customer"
 		loadingData = true;
 		try {
-			const res = await fetch(`/api/hub/query/${tableName}?limit=20`);
+			const res = await fetch(requestUrl);
 			const json: { data?: Record<string, unknown>[]; error?: { detail?: string }; detail?: string } =
 				await res.json().catch(() => ({}));
 			if (!res.ok) {
@@ -90,7 +109,7 @@
 	{:else if dataError}
 		<p class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{dataError}</p>
 	{:else if tableRows.length === 0}
-		<p class="mt-4 text-sm text-slate-500">No rows found in <code class="text-xs">{selectedEntity.slice(2)}</code>.</p>
+		<p class="mt-4 text-sm text-slate-500">No rows found in <code class="text-xs">{selectedEntity.split('_').slice(1).join('_')}</code>.</p>
 	{:else}
 		<div class="mt-4 overflow-x-auto">
 			<table class="w-full text-left text-xs">
@@ -111,7 +130,7 @@
 					{/each}
 				</tbody>
 			</table>
-			<p class="mt-2 text-xs text-slate-400">Showing up to 20 rows · table: <code>{selectedEntity.slice(2)}</code></p>
+			<p class="mt-2 text-xs text-slate-400">Showing up to 20 rows · table: <code>{selectedEntity.split('_').slice(1).join('_')}</code></p>
 		</div>
 	{/if}
 </section>

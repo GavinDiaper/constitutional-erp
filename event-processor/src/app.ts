@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import { eventRouter } from "./api/events.routes";
+import { queryRouter } from "./api/query.routes";
 import { replayRouter } from "./api/replay.routes";
 import { statusRouter } from "./api/status.routes";
 import { loadConfig } from "./config/env";
@@ -29,6 +30,7 @@ export function createApp() {
 
   app.use("/api/v1", apiKeyAuth(defaultConfig.apiKey));
   app.use("/api/v1/status", statusRouter);
+  app.use("/api/v1", queryRouter);
   app.use("/api/v1", readinessGate(), eventRouter);
   app.use("/api/v1", readinessGate(), replayRouter);
 
