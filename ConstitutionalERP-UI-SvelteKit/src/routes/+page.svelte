@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { base, resolve } from '$app/paths';
+	import { diagramCatalog } from '$lib/diagrams/catalog';
 
 	const logoUrl = `${base}/images/Provisa.svg`;
 	const frontPageBackgroundUrl = `${base}/images/backgroundFrontPage.png`;
 	const gMarkUrl = `${base}/images/G.png`;
+	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
 </script>
 
 <section class="home-shell relative overflow-hidden rounded-2xl border border-white/30 p-6 md:p-10">
@@ -43,6 +45,9 @@
 				<a class="rounded-md border border-slate-700/40 bg-white/75 px-4 py-2 font-semibold text-slate-900 hover:bg-white" href={resolve('/canvas')}>
 					Open Canvas
 				</a>
+				<a class="rounded-md border border-slate-700/40 bg-white/75 px-4 py-2 font-semibold text-slate-900 hover:bg-white" href={resolve('/diagrams')}>
+					Open Diagram Explorer
+				</a>
 			</div>
 		</div>
 
@@ -55,6 +60,21 @@
 				<li>Process-first execution across Constitutional services.</li>
 			</ul>
 		</aside>
+	</div>
+</section>
+
+<section class="mt-10 rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
+	<h2 class="text-2xl font-semibold text-slate-900">Architecture Diagram Explorer</h2>
+	<p class="mt-3 text-sm text-slate-800/95">
+		Click any box to open the dedicated system or domain diagram page.
+	</p>
+	<div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+		{#each featuredDiagramBoxes as box}
+			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${box.accentClass}`} href={resolve(`/diagrams/${box.id}`)}>
+				<p class="text-sm font-semibold text-slate-900">{box.title}</p>
+				<p class="mt-2 text-xs text-slate-700">{box.summary}</p>
+			</a>
+		{/each}
 	</div>
 </section>
 
@@ -111,30 +131,11 @@ It replaces role based interfaces and monolithic back office systems with a proc
 <section class="mt-10 rounded-2xl border border-white/30 p-6 md:p-10">
 <h2 class="text-2xl font-semibold">Constitutional ERP is defined by five core principles:</h2>
 <ul class="mt-4 text-sm text-white-800/95">
-<li>AI Driven Execution
-<li>The system’s primary operator is an AI Navigator that interprets process state, proposes next actions, executes transitions, and explains its reasoning. Humans intervene only where governance requires it.</li>
-
-
-<li>Human Anchored Governance
-
-<li>Authority is earned, contextual, and revocable. Humans approve, correct, and oversee — but do not manually drive every step. Governance is structural, not procedural.</li>
-
-
-<li>Constitutional Constraints
-
-<li>A Charter Engine enforces immutable rules, domain boundaries, and non bypassable limits. Neither AI nor humans can violate the constitution of the enterprise.</li>
-
-
-<li>Temporal Integrity
-
-<li>All operations are recorded as events in a Ledger that supports versioning, rollback, and replay. Any system state — including external ERPs — can be reconstructed from the constitutional record.</li>
-
-
-<li>Mesh Native Architecture
-
-<li>A distributed Mesh Fabric ensures resilience, continuity, and multi system orchestration. ERPs become projections on the mesh, not the source of truth.</li>
-
-
+<li><strong>AI Driven Execution</strong>: The system’s primary operator is an AI Navigator that interprets process state, proposes next actions, executes transitions, and explains its reasoning. Humans intervene only where governance requires it.</li>
+<li><strong>Human Anchored Governance</strong>: Authority is earned, contextual, and revocable. Humans approve, correct, and oversee, but do not manually drive every step. Governance is structural, not procedural.</li>
+<li><strong>Constitutional Constraints</strong>: A Charter Engine enforces immutable rules, domain boundaries, and non bypassable limits. Neither AI nor humans can violate the constitution of the enterprise.</li>
+<li><strong>Temporal Integrity</strong>: All operations are recorded as events in a Ledger that supports versioning, rollback, and replay. Any system state, including external ERPs, can be reconstructed from the constitutional record.</li>
+<li><strong>Mesh Native Architecture</strong>: A distributed Mesh Fabric ensures resilience, continuity, and multi system orchestration. ERPs become projections on the mesh, not the source of truth.</li>
 </ul>
 </section>
 </section>
