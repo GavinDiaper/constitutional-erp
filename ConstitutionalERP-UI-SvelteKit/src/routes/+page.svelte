@@ -1,11 +1,131 @@
 <script lang="ts">
 	import { base, resolve } from '$app/paths';
+	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { diagramCatalog } from '$lib/diagrams/catalog';
 
 	const logoUrl = `${base}/images/Provisa.svg`;
 	const frontPageBackgroundUrl = `${base}/images/backgroundFrontPage.png`;
 	const gMarkUrl = `${base}/images/G.png`;
 	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
+	const architectureFutureDefinition = `%%{init: {'themeVariables': {'fontSize': '44px'}, 'themeCSS': '.nodeLabel, .edgeLabel, .cluster-label { font-weight: 700; line-height: 1.2; } .node .label { padding-top: 18px; padding-bottom: 10px; }'}}%%
+flowchart TB
+
+subgraph UX["Experience Layer"]
+	U1["Action Canvas<br/>Desktop UI"]
+	U2["Mobile First UI"]
+	U3["Admin UI"]
+	U4["Navigator / AI Agents"]
+end
+
+subgraph ORCH["Canonical 
+Orchestration 
+Layer..................................................."]
+	O1["Integration Hub"]
+	O2["Process Graph Engine"]
+	O3["Hypermedia + Canonical API"]
+	O4["Task / Approval Orchestration"]
+end
+
+subgraph POLICY[".........................Constitutional 
+Core..................."]
+	P1["Authority Engine"]
+	P2["Governance Engine"]
+	P3["Charter / Policy Definitions"]
+end
+
+subgraph EXEC["Execution Layer"]
+	E1["Mesh Gateway"]
+	E2["Adapter Registry"]
+
+	subgraph ADAPTERS["ERP Adapters"]
+		A1["Foundation ERP Adapter"]
+		A2["SAP Adapter"]
+		A3["Oracle Adapter"]
+		A4["Workday Adapter"]
+		A5["Custom Domain Adapters"]
+	end
+end
+
+subgraph ERP["Systems of Record"]
+	R1["Foundation ERP"]
+	R2["SAP"]
+	R3["Oracle"]
+	R4["Workday"]
+	R5["Other Enterprise Systems"]
+end
+
+subgraph TEMPORAL["Temporal + 
+State Layer........................"]
+	T1["Ledger / Event Store"]
+	T2["Projection Engine"]
+	T3["Read Models / Materialized Views"]
+	T4["Audit / Replay"]
+end
+
+subgraph FABRIC["Distributed Continuity Layer"]
+	D1["Distributed Fabric"]
+	D2["Cross-Node Replication"]
+	D3["Multi-ERP State Continuity"]
+	D4["Resilience / Failover"]
+end
+
+U1 --> O1
+U2 --> O1
+U3 --> O1
+U4 --> O1
+
+O1 --> O2
+O2 --> O3
+O2 --> O4
+
+O2 --> P1
+O2 --> P2
+P3 --> P1
+P3 --> P2
+
+O2 --> T1
+T1 --> T2
+T2 --> T3
+T1 --> T4
+
+O2 --> E1
+E1 --> E2
+E2 --> A1
+E2 --> A2
+E2 --> A3
+E2 --> A4
+E2 --> A5
+
+A1 --> R1
+A2 --> R2
+A3 --> R3
+A4 --> R4
+A5 --> R5
+
+T1 --> D1
+T2 --> D1
+D1 --> D2
+D1 --> D3
+D1 --> D4
+
+T3 --> O3
+O3 --> O1
+
+classDef experience fill:#d9f2e6,stroke:#2d6a4f,stroke-width:2px,color:#123524;
+classDef orchestration fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#172554;
+classDef policy fill:#fde68a,stroke:#b45309,stroke-width:2px,color:#78350f;
+classDef execution fill:#fce7f3,stroke:#be185d,stroke-width:2px,color:#831843;
+classDef erp fill:#e5e7eb,stroke:#4b5563,stroke-width:2px,color:#1f2937;
+classDef temporal fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#4c1d95;
+classDef fabric fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#7f1d1d;
+
+class U1,U2,U3,U4 experience;
+class O1,O2,O3,O4 orchestration;
+class P1,P2,P3 policy;
+class E1,E2,A1,A2,A3,A4,A5 execution;
+class R1,R2,R3,R4,R5 erp;
+class T1,T2,T3,T4 temporal;
+class D1,D2,D3,D4 fabric;`;
 </script>
 
 <section class="home-shell relative overflow-hidden rounded-2xl border border-white/30 p-6 md:p-10">
@@ -82,7 +202,12 @@
 <h2 class="text-2xl font-semibold">Constitutional ERP</h2>
 <p class="mt-4 text-sm text-white-800/95">Constitutional ERP is an AI executed, human governed enterprise system built on an immutable constitutional fabric that guarantees process integrity, authority control, and reconstructable operations across a distributed mesh.</p>
 
-<img class="mt-6 w-full rounded-md border border-white/30" src={`${base}/images/Architecture(Future)t.png`} alt="Diagram illustrating the architecture of a Constitutional ERP system, showing the AI execution layer, human governance layer, constitutional fabric, and mesh architecture." />
+<div class="mt-6 rounded-md border border-white/30 bg-white/70 p-3">
+	<MermaidDiagram
+		title="Constitutional ERP Architecture (Future)"
+		definition={architectureFutureDefinition}
+	/>
+</div>
 
 <section class="mt-10 rounded-2xl border border-white/30 p-6 md:p-10">
 <h2 class="text-2xl font-semibold">Category Description</h2>

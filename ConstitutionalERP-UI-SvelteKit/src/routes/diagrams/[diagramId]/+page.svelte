@@ -28,7 +28,24 @@
 	};
 
 	$: columnHeaders = tableRows.length > 0 ? Object.keys(tableRows[0]) : [];
-	$: sortedRows = [...tableRows].sort((a, b) => compareRowValues(a[sortColumn], b[sortColumn]));
+	$: sortedRows = [...tableRows].sort((a, b) => {
+		if (!sortColumn) return 0;
+
+		const aValue = a[sortColumn];
+		const bValue = b[sortColumn];
+		if (aValue == null && bValue == null) return 0;
+		if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
+		if (bValue == null) return sortDirection === 'asc' ? 1 : -1;
+
+		if (typeof aValue === 'number' && typeof bValue === 'number') {
+			return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+		}
+
+		const aText = String(aValue);
+		const bText = String(bValue);
+		const result = aText.localeCompare(bText, undefined, { numeric: true, sensitivity: 'base' });
+		return sortDirection === 'asc' ? result : -result;
+	});
 
 	function resolveQueryBasePath(nodeId: string): { table: string; basePath: string } | null {
 		const [prefix, ...rest] = nodeId.split('_');
@@ -50,22 +67,6 @@
 			table: suffix,
 			basePath: `/api/subsystems/${subsystem}/query/${suffix}`
 		};
-	}
-
-	function compareRowValues(a: unknown, b: unknown): number {
-		if (!sortColumn) return 0;
-		if (a == null && b == null) return 0;
-		if (a == null) return sortDirection === 'asc' ? -1 : 1;
-		if (b == null) return sortDirection === 'asc' ? 1 : -1;
-
-		if (typeof a === 'number' && typeof b === 'number') {
-			return sortDirection === 'asc' ? a - b : b - a;
-		}
-
-		const aText = String(a);
-		const bText = String(b);
-		const result = aText.localeCompare(bText, undefined, { numeric: true, sensitivity: 'base' });
-		return sortDirection === 'asc' ? result : -result;
 	}
 
 	function toggleSort(column: string) {
@@ -238,7 +239,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedRows as row, i (i)}
+					{#each sortedRows as row}
 						<tr class="border-b border-slate-100 odd:bg-slate-50/60">
 							{#each columnHeaders as col (col)}
 								<td class="py-1.5 pr-4 text-slate-800 whitespace-nowrap">{row[col] ?? ''}</td>
