@@ -71,6 +71,7 @@ function getJournal(journalId: string) {
     | {
         journal_id: string;
         fiscal_period_id: string;
+        ledger_id: string | null;
         description: string;
         state: JournalState;
         version: number;
@@ -90,10 +91,20 @@ function assertTransition(fromState: JournalState, toState: JournalState) {
   }
 }
 
-export function createJournal(input: { fiscalPeriodId: string; description?: string }) {
+export function createJournal(input: { fiscalPeriodId: string; ledgerId?: string; description?: string }) {
   const fiscalPeriod = getFiscalPeriodById(input.fiscalPeriodId);
   if (fiscalPeriod.state !== "Open") {
     throw new HttpError(409, "invalid_transition", "Fiscal period must be Open to create journal");
+  }
+
+  if (input.ledgerId) {
+    const ledger = db
+      .prepare("SELECT ledger_id FROM r2r_ledger WHERE ledger_id = ?")
+      .get(input.ledgerId) as { ledger_id: string } | undefined;
+
+    if (!ledger) {
+      throw new HttpError(404, "not_found", "Ledger not found");
+    }
   }
 
   const journalId = newId("JNL-");
@@ -101,9 +112,16 @@ export function createJournal(input: { fiscalPeriodId: string; description?: str
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO r2r_journal(journal_id, fiscal_period_id, description, state, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', 1, ?, ?)`
-    ).run(journalId, input.fiscalPeriodId, input.description ?? null, timestamp, timestamp);
+      `INSERT INTO r2r_journal(journal_id, fiscal_period_id, ledger_id, description, state, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'Draft', 1, ?, ?)`
+    ).run(
+      journalId,
+      input.fiscalPeriodId,
+      input.ledgerId ?? null,
+      input.description ?? null,
+      timestamp,
+      timestamp
+    );
 
     appendEvent({
       entityId: journalId,
@@ -132,6 +150,24 @@ export function addJournalLine(input: {
   assertValidJournalLine(input.debitAmount, input.creditAmount);
 
   ensureAccountExists(input.accountId);
+
+  if (journal.ledger_id) {
+    const account = db
+      .prepare("SELECT ledger_id FROM r2r_account WHERE account_id = ?")
+      .get(input.accountId) as { ledger_id: string | null } | undefined;
+
+    if (!account) {
+      throw new HttpError(404, "not_found", "Account not found");
+    }
+
+    if (account.ledger_id !== journal.ledger_id) {
+      throw new HttpError(
+        409,
+        "ledger_mismatch",
+        "Journal account must belong to the same ledger as the journal"
+      );
+    }
+  }
 
   const journalLineId = newId("JNL-L-");
   const timestamp = now();

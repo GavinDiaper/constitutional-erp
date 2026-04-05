@@ -117,6 +117,7 @@ const createFiscalPeriodSchema = z.object({
 
 const createJournalSchema = z.object({
   fiscalPeriodId: z.string().min(1),
+  ledgerId: z.string().min(1).optional(),
   description: z.string().optional()
 });
 
