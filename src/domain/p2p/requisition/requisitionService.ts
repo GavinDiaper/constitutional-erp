@@ -2,6 +2,7 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
+import { ensureLegalEntityExists } from "../../r2r/legalEntity/legalEntityService";
 
 type RequisitionState = "Draft" | "Submitted" | "Approved" | "ConvertedToPO" | "Rejected" | "Cancelled";
 
@@ -25,6 +26,7 @@ function getRequisition(requisitionId: string) {
         requester: string;
         state: RequisitionState;
         total_amount: number;
+        legal_entity_id: string | null;
         version: number;
       }
     | undefined;
@@ -47,19 +49,24 @@ function assertTransition(fromState: RequisitionState, toState: RequisitionState
 }
 
 export function createRequisition(
-  input: { requester: string; department?: string; currencyCode?: string; neededByDate?: string },
+  input: { requester: string; department?: string; currencyCode?: string; neededByDate?: string; legalEntityId?: string },
   actor?: EventActor
 ) {
   const requisitionId = newId("REQ-");
   const timestamp = now();
 
+  if (input.legalEntityId) {
+    ensureLegalEntityExists(input.legalEntityId);
+  }
+
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_requisition(requisition_id, requester, state, total_amount, department, currency_code, needed_by_date, version, created_at, updated_at)
-       VALUES (?, ?, 'Draft', 0, ?, ?, ?, 1, ?, ?)`
+      `INSERT INTO p2p_requisition(requisition_id, requester, legal_entity_id, state, total_amount, department, currency_code, needed_by_date, version, created_at, updated_at)
+       VALUES (?, ?, ?, 'Draft', 0, ?, ?, ?, 1, ?, ?)`
     ).run(
       requisitionId,
       input.requester,
+      input.legalEntityId ?? null,
       input.department ?? null,
       input.currencyCode ?? null,
       input.neededByDate ?? null,
@@ -76,7 +83,8 @@ export function createRequisition(
         requester: input.requester,
         department: input.department ?? null,
         currencyCode: input.currencyCode ?? null,
-        neededByDate: input.neededByDate ?? null
+        neededByDate: input.neededByDate ?? null,
+        legalEntityId: input.legalEntityId ?? null
       },
       actor
     });

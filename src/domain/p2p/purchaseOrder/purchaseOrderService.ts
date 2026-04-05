@@ -3,6 +3,7 @@ import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureSupplierExists } from "../supplier/supplierService";
+import { ensureLegalEntityExists } from "../../r2r/legalEntity/legalEntityService";
 
 type PurchaseOrderState = "Draft" | "Approved" | "Sent" | "PartiallyReceived" | "FullyReceived" | "Closed" | "Cancelled";
 
@@ -30,6 +31,7 @@ export function getPurchaseOrderById(poId: string) {
         total_amount: number;
         currency_code: string | null;
         delivery_address: string | null;
+        legal_entity_id: string | null;
         version: number;
       }
     | undefined;
@@ -52,22 +54,33 @@ function assertTransition(fromState: PurchaseOrderState, toState: PurchaseOrderS
 }
 
 export function createPurchaseOrder(
-  input: { supplierId: string; requisitionId?: string; totalAmount?: number; currencyCode?: string; deliveryAddress?: string },
+  input: {
+    supplierId: string;
+    requisitionId?: string;
+    totalAmount?: number;
+    currencyCode?: string;
+    deliveryAddress?: string;
+    legalEntityId?: string;
+  },
   actor?: EventActor
 ) {
   ensureSupplierExists(input.supplierId);
+  if (input.legalEntityId) {
+    ensureLegalEntityExists(input.legalEntityId);
+  }
 
   const poId = newId("PO-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, state, total_amount, currency_code, delivery_address, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', ?, ?, ?, 1, ?, ?)`
+      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, legal_entity_id, state, total_amount, currency_code, delivery_address, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'Draft', ?, ?, ?, 1, ?, ?)`
     ).run(
       poId,
       input.requisitionId ?? null,
       input.supplierId,
+      input.legalEntityId ?? null,
       input.totalAmount ?? 0,
       input.currencyCode ?? null,
       input.deliveryAddress ?? null,
@@ -84,7 +97,8 @@ export function createPurchaseOrder(
         requisitionId: input.requisitionId ?? null,
         supplierId: input.supplierId,
         totalAmount: input.totalAmount ?? 0,
-        currencyCode: input.currencyCode ?? null
+        currencyCode: input.currencyCode ?? null,
+        legalEntityId: input.legalEntityId ?? null
       },
       actor
     });
@@ -94,11 +108,11 @@ export function createPurchaseOrder(
 }
 
 export function createPurchaseOrderFromRequisition(
-  input: { requisitionId: string; supplierId: string },
+  input: { requisitionId: string; supplierId: string; legalEntityId?: string },
   actor?: EventActor
 ) {
   const requisition = db.prepare("SELECT * FROM p2p_requisition WHERE requisition_id = ?").get(input.requisitionId) as
-    | { requisition_id: string; state: string; total_amount: number; version: number }
+    | { requisition_id: string; state: string; total_amount: number; legal_entity_id: string | null; version: number }
     | undefined;
 
   if (!requisition) {
@@ -110,6 +124,12 @@ export function createPurchaseOrderFromRequisition(
   }
 
   ensureSupplierExists(input.supplierId);
+
+  const effectiveLegalEntityId = input.legalEntityId ?? requisition.legal_entity_id ?? null;
+
+  if (effectiveLegalEntityId) {
+    ensureLegalEntityExists(effectiveLegalEntityId);
+  }
 
   const requisitionLines = db
     .prepare(
@@ -132,9 +152,9 @@ export function createPurchaseOrderFromRequisition(
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, state, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', ?, 1, ?, ?)`
-    ).run(poId, input.requisitionId, input.supplierId, totalAmount, timestamp, timestamp);
+      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, legal_entity_id, state, total_amount, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'Draft', ?, 1, ?, ?)`
+    ).run(poId, input.requisitionId, input.supplierId, effectiveLegalEntityId, totalAmount, timestamp, timestamp);
 
     if (requisitionLines.length > 0) {
       const insertPOLine = db.prepare(
@@ -176,7 +196,8 @@ export function createPurchaseOrderFromRequisition(
         requisitionId: input.requisitionId,
         supplierId: input.supplierId,
         totalAmount,
-        lineCount: requisitionLines.length
+        lineCount: requisitionLines.length,
+        legalEntityId: effectiveLegalEntityId
       },
       actor
     });

@@ -71,7 +71,8 @@ const createRequisitionSchema = z.object({
   requester: z.string().min(1),
   department: z.string().optional(),
   currencyCode: z.string().optional(),
-  neededByDate: z.string().optional()
+  neededByDate: z.string().optional(),
+  legalEntityId: z.string().min(1).optional()
 });
 
 const createSupplierSchema = z.object({
@@ -87,7 +88,8 @@ const createPurchaseOrderSchema = z.object({
   requisitionId: z.string().min(1).optional(),
   totalAmount: z.number().nonnegative().optional(),
   currencyCode: z.string().optional(),
-  deliveryAddress: z.string().optional()
+  deliveryAddress: z.string().optional(),
+  legalEntityId: z.string().min(1).optional()
 });
 
 const createReceiptSchema = z.object({
@@ -113,7 +115,8 @@ const createApPaymentSchema = z.object({
 });
 
 const convertRequisitionSchema = z.object({
-  supplierId: z.string().min(1)
+  supplierId: z.string().min(1),
+  legalEntityId: z.string().min(1).optional()
 });
 
 const requisitionLineSchema = z.object({
@@ -364,7 +367,14 @@ p2pRouter.post("/requisitions/:requisitionId/cancel", (req, res) => {
 });
 
 p2pRouter.post("/requisitions/:requisitionId/convert", validateBody(convertRequisitionSchema), (req, res) => {
-  const po = createPurchaseOrderFromRequisition({ requisitionId: req.params.requisitionId, supplierId: req.body.supplierId }, req.actor);
+  const po = createPurchaseOrderFromRequisition(
+    {
+      requisitionId: req.params.requisitionId,
+      supplierId: req.body.supplierId,
+      legalEntityId: req.body.legalEntityId
+    },
+    req.actor
+  );
   res.status(201).json(entityWithLinks(po as any, purchaseOrderLinks((po as any).po_id, (po as any).state)));
 });
 

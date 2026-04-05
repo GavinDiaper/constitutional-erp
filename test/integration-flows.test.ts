@@ -23,9 +23,20 @@ function resetTestDb(): void {
   const migrationsDir = path.join(rootDir, "src", "db", "migrations");
   const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort();
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS migration (
+      id TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    );
+  `);
+
+  const now = new Date().toISOString();
+  const insert = db.prepare("INSERT INTO migration(id, applied_at) VALUES (?, ?)");
+
   for (const fileName of migrationFiles) {
     const sql = fs.readFileSync(path.join(migrationsDir, fileName), "utf8");
     db.exec(sql);
+    insert.run(fileName, now);
   }
 
   db.close();
@@ -76,7 +87,7 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
   const requisition = await request(app)
     .post("/api/v1/p2p/requisitions")
     .set(headers)
-    .send({ requester: "ops.user" })
+    .send({ requester: "ops.user", legalEntityId: "LE-SEED-US" })
     .expect(201);
 
   const requisitionLine = await request(app)
@@ -95,6 +106,8 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .set(headers)
     .send({ supplierId: supplier.body.supplier_id })
     .expect(201);
+
+  assert.equal(po.body.legal_entity_id, "LE-SEED-US");
 
   await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/approve`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/send`).set(headers).expect(200);
@@ -190,7 +203,7 @@ test("O2C shipping creates shipment records for diagram visibility", async () =>
   const quote = await request(app)
     .post("/api/v1/o2c/quotes")
     .set(headers)
-    .send({ customerId: customer.body.customer_id, currencyCode: "USD" })
+    .send({ customerId: customer.body.customer_id, currencyCode: "USD", legalEntityId: "LE-SEED-US" })
     .expect(201);
 
   await request(app)
@@ -212,7 +225,10 @@ test("O2C shipping creates shipment records for diagram visibility", async () =>
   const order = await request(app)
     .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/convert`)
     .set(headers)
+    .send({})
     .expect(201);
+
+  assert.equal(order.body.legal_entity_id, "LE-SEED-US");
 
   await request(app)
     .post(`/api/v1/o2c/orders/${order.body.order_id}/confirm`)

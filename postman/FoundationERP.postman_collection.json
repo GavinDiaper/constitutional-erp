@@ -194,7 +194,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\"\n}"
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\",\n  \"legalEntityId\": \"LE-SEED-US\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/o2c/quotes",
@@ -371,8 +371,16 @@
               {
                 "key": "x-ingress-id",
                 "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
             "url": {
               "raw": "{{baseUrl}}/api/v1/o2c/quotes/{{quoteId}}/convert",
               "host": [
@@ -397,6 +405,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"orderId\", body.order_id);",
+                  "pm.test(\"Order legal entity linkage is set\", function () { pm.expect(body.legal_entity_id).to.eql(\"LE-SEED-US\"); });",
                   "pm.test(\"Order created in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }
@@ -879,7 +888,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"requester\": \"postman.user\"\n}"
+              "raw": "{\n  \"requester\": \"postman.user\",\n  \"legalEntityId\": \"LE-SEED-US\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/p2p/requisitions",
@@ -1093,6 +1102,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"poId\", body.po_id);",
+                  "pm.test(\"PO legal entity linkage is set\", function () { pm.expect(body.legal_entity_id).to.eql(\"LE-SEED-US\"); });",
                   "pm.test(\"PO in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }

@@ -144,7 +144,7 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = activateCustomer(input.customerId, actor);
         break;
       case "o2c_create_quote":
-        result = createQuote({ customerId: input.customerId, currencyCode: input.currencyCode });
+        result = createQuote({ customerId: input.customerId, currencyCode: input.currencyCode, legalEntityId: input.legalEntityId });
         break;
       case "o2c_add_quote_line":
         result = addQuoteLine({
@@ -167,7 +167,7 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = expireQuote(input.quoteId, actor);
         break;
       case "o2c_convert_quote_to_order":
-        result = createOrderFromQuote(input.quoteId);
+        result = createOrderFromQuote(input.quoteId, input.legalEntityId);
         break;
       case "o2c_confirm_order":
         result = confirmOrder(input.orderId, actor);
@@ -230,7 +230,8 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           requester: input.requester,
           department: input.department,
           currencyCode: input.currencyCode,
-          neededByDate: input.neededByDate
+          neededByDate: input.neededByDate,
+          legalEntityId: input.legalEntityId
         }, actor);
         break;
       case "p2p_submit_requisition":
@@ -248,7 +249,8 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
       case "p2p_convert_requisition_to_po":
         result = createPurchaseOrderFromRequisition({
           requisitionId: input.requisitionId,
-          supplierId: input.supplierId
+          supplierId: input.supplierId,
+          legalEntityId: input.legalEntityId
         }, actor);
         break;
       case "p2p_create_supplier":
@@ -272,7 +274,8 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           requisitionId: input.requisitionId,
           totalAmount: input.totalAmount,
           currencyCode: input.currencyCode,
-          deliveryAddress: input.deliveryAddress
+          deliveryAddress: input.deliveryAddress,
+          legalEntityId: input.legalEntityId
         }, actor);
         break;
       case "p2p_approve_po":

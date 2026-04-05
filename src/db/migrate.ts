@@ -30,7 +30,7 @@ function applyMigration(fileName: string) {
   console.log(`Applied migration: ${fileName}`);
 }
 
-function main() {
+export function runMigrations() {
   ensureMigrationsTable();
 
   const applied = getAppliedMigrations();
@@ -47,5 +47,3 @@ function main() {
 
   console.log("Migrations complete");
 }
-
-main();

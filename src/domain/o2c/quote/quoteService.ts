@@ -3,6 +3,7 @@ import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureCustomerExists } from "../customer/customerService";
+import { ensureLegalEntityExists } from "../../r2r/legalEntity/legalEntityService";
 
 type QuoteState = "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired" | "ConvertedToOrder";
 
@@ -18,6 +19,7 @@ const transitions: Record<QuoteState, QuoteState[]> = {
 interface QuoteInput {
   customerId: string;
   currencyCode: string;
+  legalEntityId?: string;
 }
 
 interface QuoteLineInput {
@@ -39,6 +41,7 @@ function getQuote(quoteId: string) {
         state: QuoteState;
         currency_code: string;
         total_amount: number;
+        legal_entity_id: string | null;
         version: number;
       }
     | undefined;
@@ -60,13 +63,17 @@ export function createQuote(input: QuoteInput) {
   const quoteId = newId("Q-");
   const timestamp = now();
 
+  if (input.legalEntityId) {
+    ensureLegalEntityExists(input.legalEntityId);
+  }
+
   transaction(() => {
     ensureCustomerExists(input.customerId);
 
     db.prepare(
-      `INSERT INTO o2c_quote(quote_id, customer_id, state, currency_code, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(quoteId, input.customerId, input.currencyCode, timestamp, timestamp);
+      `INSERT INTO o2c_quote(quote_id, customer_id, legal_entity_id, state, currency_code, total_amount, version, created_at, updated_at)
+       VALUES (?, ?, ?, 'Draft', ?, 0, 1, ?, ?)`
+    ).run(quoteId, input.customerId, input.legalEntityId ?? null, input.currencyCode, timestamp, timestamp);
 
     appendEvent({
       entityId: quoteId,
@@ -75,7 +82,8 @@ export function createQuote(input: QuoteInput) {
       version: 1,
       payload: {
         customerId: input.customerId,
-        currencyCode: input.currencyCode
+        currencyCode: input.currencyCode,
+        legalEntityId: input.legalEntityId ?? null
       }
     });
   });

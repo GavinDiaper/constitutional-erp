@@ -1,4 +1,3 @@
-import "./db/migrate";
 import { createApp } from "./app";
 import { loadConfig } from "./config/env";
 

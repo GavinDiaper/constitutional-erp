@@ -15,10 +15,12 @@ import { navlogRouter } from "./api/navlog/navlog.routes";
 import { authRouter } from "./api/auth.routes";
 import { toProblem } from "./utils/errors";
 import { seedStarterAccounts } from "./domain/r2r/account/accountService";
+import { runMigrations } from "./db/migrate";
 
 const config = loadConfig();
 
 export function createApp() {
+  runMigrations();
   seedStarterAccounts();
 
   const app = express();
