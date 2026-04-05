@@ -2433,7 +2433,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"O2C Invoice Posted\",\n  \"eventType\": \"o2c.invoice.posted\",\n  \"lines\": [\n    {\n      \"entrySide\": \"debit\",\n      \"accountId\": \"{{accountId}}\",\n      \"amountSource\": \"grossAmount\"\n    },\n    {\n      \"entrySide\": \"credit\",\n      \"accountId\": \"{{accountOffsetId}}\",\n      \"amountSource\": \"grossAmount\"\n    }\n  ]\n}"
+              "raw": "{\n  \"name\": \"O2C Invoice Posted\",\n  \"eventType\": \"o2c.invoice.posted\",\n  \"lines\": [\n    {\n      \"entrySide\": \"debit\",\n      \"accountId\": \"{{accountId}}\",\n      \"amountSource\": \"grossAmount\",\n      \"taxCode\": \"VAT5\",\n      \"taxApplicability\": \"taxable\",\n      \"taxAccountRole\": \"tax_recoverable\"\n    },\n    {\n      \"entrySide\": \"credit\",\n      \"accountId\": \"{{accountOffsetId}}\",\n      \"amountSource\": \"grossAmount\",\n      \"taxCode\": \"VAT5\",\n      \"taxApplicability\": \"taxable\",\n      \"taxAccountRole\": \"tax_liability\"\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/sla/posting-profiles",
@@ -2458,7 +2458,13 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"postingProfileId\", body.posting_profile_id);",
-                  "pm.test(\"SLA profile created with lines\", function () { pm.expect(body.lines.length).to.eql(2); });"
+                  "pm.test(\"SLA profile created with lines\", function () { pm.expect(body.lines.length).to.eql(2); });",
+                  "pm.test(\"SLA profile stores tax fields\", function () {",
+                  "  pm.expect(body.lines[0].tax_code).to.eql(\"VAT5\");",
+                  "  pm.expect(body.lines[0].tax_applicability).to.eql(\"taxable\");",
+                  "  pm.expect(body.lines[0].tax_account_role).to.eql(\"tax_recoverable\");",
+                  "  pm.expect(body.lines[1].tax_account_role).to.eql(\"tax_liability\");",
+                  "});"
                 ]
               }
             }
