@@ -10,6 +10,17 @@
 	// undefined = not yet fetched; null = fetch failed/empty; [...] = fetched with results
 	let lookupOptions: Record<string, Array<{ value: string; label: string }> | null> = {};
 
+	function mapLookupRows(rows: unknown[]): Array<{ value: string; label: string }> {
+		return (rows as Record<string, string>[])
+			.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
+			.map((r) => ({
+				value: r.supplier_id ?? r.id ?? String(r),
+				label: r.supplier_name
+					? `${r.supplier_name} (${r.supplier_id ?? r.id})`
+					: String(r.supplier_id ?? r.id ?? r)
+			}));
+	}
+
 	async function fetchLookups(currentActions: typeof actions): Promise<void> {
 		for (const action of currentActions) {
 			for (const schema of Object.values(action.link.inputSchema?.properties ?? {})) {
@@ -26,16 +37,19 @@
 					if (res.ok) {
 						const json = await res.json();
 						const rows: unknown[] = Array.isArray(json.data) ? json.data : [];
+							let mapped = mapLookupRows(rows);
+
+							if (lookupUrl === 'p2p/suppliers?activeOnly=true' && mapped.length === 0) {
+								const fallbackRes = await fetch('/api/hub/p2p/suppliers');
+								if (fallbackRes.ok) {
+									const fallbackJson = await fallbackRes.json();
+									const fallbackRows: unknown[] = Array.isArray(fallbackJson.data) ? fallbackJson.data : [];
+									mapped = mapLookupRows(fallbackRows);
+								}
+							}
 						lookupOptions = {
 							...lookupOptions,
-							[lookupUrl]: (rows as Record<string, string>[])
-								.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
-								.map((r) => ({
-									value: r.supplier_id ?? r.id ?? String(r),
-									label: r.supplier_name
-										? `${r.supplier_name} (${r.supplier_id ?? r.id})`
-										: String(r.supplier_id ?? r.id ?? r)
-								}))
+								[lookupUrl]: mapped
 						};
 					} else {
 						lookupOptions = { ...lookupOptions, [lookupUrl]: null };
@@ -125,12 +139,12 @@
 												>{field} <span class="text-red-400">*</span></span
 											>
 											{#if xLookup && fetchedOptions === undefined}
-												<input
-													type="text"
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
-													placeholder="Loading…"
+												<select
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
 													disabled
-												/>
+												>
+													<option value="">Loading...</option>
+												</select>
 											{:else if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
 												<select
 													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
@@ -142,6 +156,13 @@
 													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
+												</select>
+											{:else if xLookup}
+												<select
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
+													disabled
+												>
+													<option value="">No lookup options available</option>
 												</select>
 											{:else}
 												<input
@@ -172,6 +193,20 @@
 													{#each fetchedOptions as opt}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
+												</select>
+											{:else if xLookup && fetchedOptions === undefined}
+												<select
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
+													disabled
+												>
+													<option value="">Loading...</option>
+												</select>
+											{:else if xLookup}
+												<select
+													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
+													disabled
+												>
+													<option value="">No lookup options available</option>
 												</select>
 											{:else}
 												<input

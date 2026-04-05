@@ -233,6 +233,7 @@ async function createSupplier(headers: Headers, payload: BootstrapPayload): Prom
 async function createRequisition(headers: Headers, payload: BootstrapPayload): Promise<BootstrapResult> {
 	const requester = asNonEmptyString(payload.requester) ?? 'principal.system';
 	const department = asOptionalString(payload.department) ?? 'Operations';
+	const legalEntityId = asOptionalString(payload.legalEntityId);
 	const currencyCode = asCurrency(payload.currencyCode) ?? 'USD';
 	const neededByDate = asOptionalString(payload.neededByDate);
 
@@ -240,6 +241,7 @@ async function createRequisition(headers: Headers, payload: BootstrapPayload): P
 		await proxyHubRequest('/p2p/requisitions', headers, 'POST', {
 			requester,
 			department,
+			legalEntityId,
 			currencyCode,
 			neededByDate
 		})
