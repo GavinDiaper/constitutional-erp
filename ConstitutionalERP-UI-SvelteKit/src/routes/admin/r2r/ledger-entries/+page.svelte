@@ -18,22 +18,37 @@
 
 	interface JournalRow {
 		journal_id: string;
+		ledger_id?: string;
 		fiscal_period_id?: string;
 		period_id?: string;
+	}
+
+	interface LedgerRow {
+		ledger_id: string;
+		name?: string;
+	}
+
+	interface AccountRow {
+		account_id: string;
+		ledger_id?: string | null;
 	}
 
 	let loading = false;
 	let errorMessage = '';
 	let entries: LedgerEntryRow[] = [];
 	let journals: JournalRow[] = [];
+	let ledgers: LedgerRow[] = [];
+	let accounts: AccountRow[] = [];
 	let offset = 0;
 	let pageSize = 200;
 	let accountFilter = '';
 	let journalFilter = '';
 	let periodFilter = '';
+	let selectedLedgerId = '';
 
 	$: queryPeriodId = $page.url.searchParams.get('periodId') ?? '';
 	$: queryAccountId = $page.url.searchParams.get('accountId') ?? '';
+	$: queryLedgerId = $page.url.searchParams.get('ledgerId') ?? '';
 
 	onMount(() => {
 		if (queryPeriodId) {
@@ -41,6 +56,9 @@
 		}
 		if (queryAccountId) {
 			accountFilter = queryAccountId;
+		}
+		if (queryLedgerId) {
+			selectedLedgerId = queryLedgerId;
 		}
 
 		const unsubscribeActor = actorStore.subscribe(() => {
@@ -59,13 +77,17 @@
 		errorMessage = '';
 
 		try {
-			const [entryResult, journalResult] = await Promise.all([
+			const [entryResult, journalResult, ledgerResult, accountResult] = await Promise.all([
 				queryTable<LedgerEntryRow>('r2r_ledger_entry', $actorStore, pageSize, offset),
-				queryTable<JournalRow>('r2r_journal', $actorStore, 500)
+				queryTable<JournalRow>('r2r_journal', $actorStore, 5000),
+				queryTable<LedgerRow>('r2r_ledger', $actorStore, 500),
+				queryTable<AccountRow>('r2r_account', $actorStore, 5000)
 			]);
 
 			entries = entryResult.data ?? [];
 			journals = journalResult.data ?? [];
+			ledgers = ledgerResult.data ?? [];
+			accounts = accountResult.data ?? [];
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load ledger entries.';
 		} finally {
@@ -107,6 +129,20 @@
 		return String(journal?.fiscal_period_id ?? journal?.period_id ?? '');
 	}
 
+	function ledgerIdOf(entry: LedgerEntryRow): string {
+		const journal = journals.find((candidate) => candidate.journal_id === entry.journal_id);
+		if (journal?.ledger_id) {
+			return String(journal.ledger_id);
+		}
+
+		const account = accounts.find((candidate) => candidate.account_id === entry.account_id);
+		return String(account?.ledger_id ?? '');
+	}
+
+	function ledgerLabel(ledger: LedgerRow): string {
+		return ledger.name ? `${ledger.name} (${ledger.ledger_id})` : ledger.ledger_id;
+	}
+
 	function match(value: string | undefined, filter: string): boolean {
 		if (!filter.trim()) {
 			return true;
@@ -128,8 +164,11 @@
 		const matchesAccount = match(entry.account_id, accountFilter);
 		const matchesJournal = match(entry.journal_id, journalFilter);
 		const matchesPeriod = !periodFilter || periodOf(entry) === periodFilter;
-		return matchesAccount && matchesJournal && matchesPeriod;
+		const matchesLedger = !selectedLedgerId || ledgerIdOf(entry) === selectedLedgerId;
+		return matchesAccount && matchesJournal && matchesPeriod && matchesLedger;
 	});
+
+	$: sortedLedgers = [...ledgers].sort((left, right) => ledgerLabel(left).localeCompare(ledgerLabel(right)));
 </script>
 
 <section class="glass-panel p-6">
@@ -144,6 +183,12 @@
 	</div>
 
 	<div class="mt-4 grid gap-2 md:grid-cols-4">
+		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={selectedLedgerId}>
+			<option value="">All ledgers</option>
+			{#each sortedLedgers as ledger (ledger.ledger_id)}
+				<option value={ledger.ledger_id}>{ledgerLabel(ledger)}</option>
+			{/each}
+		</select>
 		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by account" bind:value={accountFilter} />
 		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by journal" bind:value={journalFilter} />
 		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by period" bind:value={periodFilter} />
