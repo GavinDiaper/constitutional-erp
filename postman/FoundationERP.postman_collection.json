@@ -755,6 +755,61 @@
       "name": "20 - P2P Flow",
       "item": [
         {
+          "name": "Capture Ledger Baseline Before P2P",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=500&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "query",
+                "r2r_ledger_entry"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "500"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "var rows = body.data || [];",
+                  "pm.environment.set(\"p2pLedgerCountBefore\", String(rows.length));",
+                  "pm.test(\"Captured baseline ledger entry count\", function () {",
+                  "  pm.expect(Number(pm.environment.get(\"p2pLedgerCountBefore\"))).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Supplier",
           "request": {
             "method": "POST",
@@ -849,6 +904,60 @@
                   "var body = pm.response.json();",
                   "pm.environment.set(\"requisitionId\", body.requisition_id);",
                   "pm.test(\"Requisition draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Requisition Line",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"P2P flow test line\",\n  \"quantity\": 2,\n  \"unitPrice\": 125.50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{requisitionId}}/lines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "requisitions",
+                "{{requisitionId}}",
+                "lines"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Requisition total is now > 0\", function () {",
+                  "  pm.expect(body.requisition).to.exist;",
+                  "  pm.expect(body.requisition.total_amount).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -1252,6 +1361,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"supplierInvoiceId\", body.supplier_invoice_id);",
+                  "pm.environment.set(\"supplierInvoiceAmountDue\", String(body.amount_due));",
                   "pm.test(\"Supplier invoice draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }
@@ -1362,7 +1472,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplierInvoiceId\": \"{{supplierInvoiceId}}\",\n  \"amount\": 0.01\n}"
+              "raw": "{\n  \"supplierInvoiceId\": \"{{supplierInvoiceId}}\",\n  \"amount\": {{supplierInvoiceAmountDue}}\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/p2p/ap-payments",
@@ -1553,7 +1663,120 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"Supplier invoice moved to Paid\", function () { pm.expect(pm.response.json().state).to.eql(\"Paid\"); });"
+                  "var body = pm.response.json();",
+                  "pm.test(\"Supplier invoice moved to Paid\", function () { pm.expect(body.state).to.eql(\"Paid\"); });",
+                  "pm.test(\"Supplier invoice fully settled\", function () {",
+                  "  pm.expect(Number(body.amount_paid)).to.be.at.least(Number(body.amount_due));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get AP Payment After Reconcile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/p2p/ap-payments/{{apPaymentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "p2p",
+                "ap-payments",
+                "{{apPaymentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"AP payment remained Reconciled\", function () { pm.expect(body.state).to.eql(\"Reconciled\"); });",
+                  "pm.test(\"AP payment amount matches invoice due\", function () {",
+                  "  pm.expect(Number(body.amount)).to.eql(Number(pm.environment.get(\"supplierInvoiceAmountDue\")));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Ledger Delta After P2P Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=500&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "query",
+                "r2r_ledger_entry"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "500"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "var beforeCount = Number(pm.environment.get(\"p2pLedgerCountBefore\") || \"0\");",
+                  "var afterCount = Number((body.data || []).length);",
+                  "var delta = afterCount - beforeCount;",
+                  "pm.environment.set(\"p2pLedgerCountAfter\", String(afterCount));",
+                  "pm.environment.set(\"p2pLedgerDelta\", String(delta));",
+                  "var requireLedger = String(pm.environment.get(\"requireP2PLedgerPosting\") || \"false\").toLowerCase() === \"true\";",
+                  "if (requireLedger) {",
+                  "  pm.test(\"P2P payment produced ledger movement\", function () { pm.expect(delta).to.be.above(0); });",
+                  "} else {",
+                  "  pm.test(\"Captured P2P ledger delta (informational)\", function () { pm.expect(delta).to.be.at.least(0); });",
+                  "}",
+                  "pm.test(\"P2P flow produced a monetary invoice\", function () {",
+                  "  pm.expect(Number(pm.environment.get(\"supplierInvoiceAmountDue\"))).to.be.above(0);",
+                  "});"
                 ]
               }
             }
