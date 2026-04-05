@@ -153,7 +153,51 @@ export function allocateOrder(orderId: string, actor?: EventActor) {
 }
 
 export function shipOrder(orderId: string, actor?: EventActor) {
-  return _doOrderTransition(orderId, "Shipped", actor);
+  const order = getOrderById(orderId);
+  assertTransition(order.state, "Shipped");
+
+  const nextVersion = order.version + 1;
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare("UPDATE o2c_sales_order SET state = ?, version = ?, updated_at = ? WHERE order_id = ?")
+      .run("Shipped", nextVersion, timestamp, orderId);
+
+    appendEvent({
+      entityId: orderId,
+      entityType: "SalesOrder",
+      eventType: "order.shipped",
+      version: nextVersion,
+      actor,
+      payload: { from: order.state, to: "Shipped" }
+    });
+
+    const shipmentId = newId("SHIP-");
+    db.prepare(
+      `INSERT INTO o2c_shipment(shipment_id, order_id, state, ship_date, version, created_at, updated_at)
+       VALUES (?, ?, 'Shipped', ?, 2, ?, ?)`
+    ).run(shipmentId, orderId, timestamp, timestamp, timestamp);
+
+    appendEvent({
+      entityId: shipmentId,
+      entityType: "Shipment",
+      eventType: "shipment.created",
+      version: 1,
+      actor,
+      payload: { orderId }
+    });
+
+    appendEvent({
+      entityId: shipmentId,
+      entityType: "Shipment",
+      eventType: "shipment.shipped",
+      version: 2,
+      actor,
+      payload: { from: "Planned", to: "Shipped" }
+    });
+  });
+
+  return getOrderById(orderId);
 }
 
 export function closeOrder(orderId: string, actor?: EventActor) {

@@ -234,7 +234,9 @@ export function cancelJournal(journalId: string, actor?: EventActor) {
 }
 
 export function getTrialBalance(fiscalPeriodId: string) {
-  return db
+  getFiscalPeriodById(fiscalPeriodId);
+
+  const rows = db
     .prepare(
       `SELECT
          account_id,
@@ -245,5 +247,33 @@ export function getTrialBalance(fiscalPeriodId: string) {
        WHERE j.fiscal_period_id = ?
        GROUP BY account_id`
     )
-    .all(fiscalPeriodId);
+    .all(fiscalPeriodId) as Array<{
+      account_id: string;
+      debit_total: number;
+      credit_total: number;
+    }>;
+
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare("DELETE FROM r2r_trial_balance_row WHERE fiscal_period_id = ?").run(fiscalPeriodId);
+
+    const insertRow = db.prepare(
+      `INSERT INTO r2r_trial_balance_row(trial_balance_row_id, fiscal_period_id, account_id, debit_total, credit_total, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const row of rows) {
+      insertRow.run(
+        newId("TBR-"),
+        fiscalPeriodId,
+        row.account_id,
+        row.debit_total ?? 0,
+        row.credit_total ?? 0,
+        timestamp
+      );
+    }
+  });
+
+  return rows;
 }

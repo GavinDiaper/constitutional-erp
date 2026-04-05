@@ -173,6 +173,75 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
   assert.equal(ledgerDelta, 4);
 });
 
+test("O2C shipping creates shipment records for diagram visibility", async () => {
+  const headers = authHeaders();
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: "Diagram O2C Customer", email: "diagram.o2c@example.com" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/customers/${customer.body.customer_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const quote = await request(app)
+    .post("/api/v1/o2c/quotes")
+    .set(headers)
+    .send({ customerId: customer.body.customer_id, currencyCode: "USD" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/lines`)
+    .set(headers)
+    .send({ sku: "SKU-DIAGRAM-1", quantity: 1, unitPrice: 100 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/send`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/accept`)
+    .set(headers)
+    .expect(200);
+
+  const order = await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/convert`)
+    .set(headers)
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/confirm`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/allocate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/ship`)
+    .set(headers)
+    .expect(200);
+
+  const shipments = await request(app)
+    .get(`/api/v1/query/o2c_shipment?limit=1000&offset=0`)
+    .set(headers)
+    .expect(200);
+
+  const orderShipments = (shipments.body.data as Array<Record<string, unknown>>).filter(
+    (row) => row.order_id === order.body.order_id
+  );
+
+  assert.ok(orderShipments.length > 0);
+  assert.equal(orderShipments[0]?.state, "Shipped");
+});
+
 test("R2R integration flow enforces period lifecycle and posting rules", async () => {
   const headers = authHeaders();
 
@@ -229,6 +298,25 @@ test("R2R integration flow enforces period lifecycle and posting rules", async (
     .expect(200);
 
   assert.equal(postedJournal.body.state, "Posted");
+
+  const trialBalance = await request(app)
+    .get(`/api/v1/r2r/trial-balance/${fiscalPeriod.body.fiscal_period_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.ok(Array.isArray(trialBalance.body.data));
+  assert.ok(trialBalance.body.data.length > 0);
+
+  const trialBalanceRows = await request(app)
+    .get(`/api/v1/query/r2r_trial_balance_row?limit=500&offset=0`)
+    .set(headers)
+    .expect(200);
+
+  const rowsForPeriod = (trialBalanceRows.body.data as Array<Record<string, unknown>>).filter(
+    (row) => row.fiscal_period_id === fiscalPeriod.body.fiscal_period_id
+  );
+
+  assert.ok(rowsForPeriod.length > 0);
 
   await request(app)
     .post(`/api/v1/r2r/fiscal-periods/${fiscalPeriod.body.fiscal_period_id}/close`)
