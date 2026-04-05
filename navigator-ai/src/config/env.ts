@@ -10,7 +10,7 @@ function loadLocalEnv() {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      dotenv.config({ path: candidate, override: false });
+      dotenv.config({ path: candidate, override: true });
       return;
     }
   }
@@ -76,7 +76,7 @@ export function loadConfig(): AppConfig {
   const usingOpenAi = llmProvider === "openai";
 
   return {
-    port: Number(process.env.PORT ?? 4006),
+    port: Number(process.env.PORT ?? 4016),
     nodeEnv: process.env.NODE_ENV ?? "development",
     apiKey: required("API_KEY", "change-me"),
     databasePath: process.env.DATABASE_PATH ?? "navigator-ai.db",
