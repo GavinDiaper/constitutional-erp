@@ -185,13 +185,19 @@
 							<td class="px-3 py-3">{formatAmount(entry.debit_amount)}</td>
 							<td class="px-3 py-3">{formatAmount(entry.credit_amount)}</td>
 							<td class="px-3 py-3">
-								{#if entry.journal_id}
-									<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10" href={resolve(`/canvas/r2r_journal/${entry.journal_id}`)}>
-										Open Journal
+								<div class="flex flex-wrap gap-2">
+									<a
+										class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+										href={resolve(`/admin/r2r/ledger-entries/${entry.ledger_entry_id}`)}
+									>
+										View Entry
 									</a>
-								{:else}
-									<span class="muted text-xs">No journal link</span>
-								{/if}
+									{#if entry.journal_id}
+										<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10" href={resolve('/canvas/[entityType]/[entityId]', { entityType: 'r2r_journal', entityId: entry.journal_id })}>
+											Open Journal
+										</a>
+									{/if}
+								</div>
 							</td>
 						</tr>
 					{/each}

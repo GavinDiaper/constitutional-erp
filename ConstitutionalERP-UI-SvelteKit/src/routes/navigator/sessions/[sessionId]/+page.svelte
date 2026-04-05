@@ -27,7 +27,11 @@
 		command?: string;
 		command_type?: string;
 		status?: string;
+		arguments_json?: string;
+		output_json?: string;
 		output_text?: string;
+		context_json?: string;
+		actor_id?: string;
 		error_message?: string;
 		execution_time_ms?: number;
 	}
@@ -127,6 +131,66 @@
 		};
 	}
 
+	function lower(value: string | undefined): string {
+		return (value ?? '').trim().toLowerCase();
+	}
+
+	function formatTextBlock(value: string | undefined): string {
+		const source = (value ?? '').trim();
+		if (!source) {
+			return '';
+		}
+
+		const parsed = tryParseJson(source);
+		if (parsed !== null) {
+			return JSON.stringify(parsed, null, 2);
+		}
+
+		return source;
+	}
+
+	function formatJsonColumn(value: string | undefined): string {
+		const source = (value ?? '').trim();
+		if (!source) {
+			return '';
+		}
+
+		const parsed = tryParseJson(source);
+		if (parsed !== null) {
+			return JSON.stringify(parsed, null, 2);
+		}
+
+		return source;
+	}
+
+	function tryParseJson(value: string): unknown | null {
+		try {
+			return JSON.parse(value);
+		} catch {
+			return null;
+		}
+	}
+
+	function statusClass(status: string | undefined): string {
+		switch (lower(status)) {
+			case 'success':
+				return 'border-emerald-500/50 bg-emerald-500/10 text-emerald-100';
+			case 'error':
+				return 'border-red-500/50 bg-red-500/10 text-red-100';
+			case 'partial':
+				return 'border-amber-500/50 bg-amber-500/10 text-amber-100';
+			default:
+				return 'border-white/25 bg-white/10 text-white/85';
+		}
+	}
+
+	function formatMs(value: number | undefined): string {
+		if (typeof value !== 'number' || !Number.isFinite(value)) {
+			return 'n/a';
+		}
+		return `${Math.round(value)}ms`;
+	}
+
 	$: entryTypeOptions = Array.from(new Set(navlogEntries.map((row) => row.entry_type).filter((value): value is string => typeof value === 'string' && value.length > 0))).sort((a, b) =>
 		a.localeCompare(b)
 	);
@@ -137,9 +201,54 @@
 		a.localeCompare(b)
 	);
 
-	$: successCount = transcriptEntries.filter((row) => (row.status ?? '').toLowerCase() === 'success').length;
-	$: failureCount = transcriptEntries.filter((row) => (row.status ?? '').toLowerCase() === 'error').length;
-	$: executionCount = navlogEntries.filter((row) => (row.entry_type ?? '').toLowerCase() === 'execution').length;
+	$: successCount = transcriptEntries.filter((row) => lower(row.status) === 'success').length;
+	$: failureCount = transcriptEntries.filter((row) => lower(row.status) === 'error').length;
+	$: partialCount = transcriptEntries.filter((row) => lower(row.status) === 'partial').length;
+	$: proposalCount = navlogEntries.filter((row) => lower(row.entry_type) === 'proposal').length;
+	$: simulationCount = navlogEntries.filter((row) => lower(row.entry_type) === 'simulation').length;
+	$: decisionCount = navlogEntries.filter((row) => lower(row.entry_type) === 'decision').length;
+	$: executionCount = navlogEntries.filter((row) => lower(row.entry_type) === 'execution').length;
+	$: completionRate = transcriptEntries.length > 0 ? (successCount / transcriptEntries.length) * 100 : 0;
+
+	$: executionTimes = transcriptEntries
+		.map((row) => row.execution_time_ms)
+		.filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0)
+		.sort((left, right) => left - right);
+	$: avgExecutionMs =
+		executionTimes.length > 0
+			? Math.round(executionTimes.reduce((sum, value) => sum + value, 0) / executionTimes.length)
+			: 0;
+	$: p95ExecutionMs =
+		executionTimes.length > 0
+			? executionTimes[Math.max(0, Math.ceil(executionTimes.length * 0.95) - 1)]
+			: 0;
+	$: maxExecutionMs = executionTimes.length > 0 ? executionTimes[executionTimes.length - 1] : 0;
+
+	$: timelineStart =
+		[...navlogEntries.map((row) => row.timestamp), ...transcriptEntries.map((row) => row.timestamp)]
+			.filter((value): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value)))
+			.sort((left, right) => Date.parse(left) - Date.parse(right))[0] ?? '';
+	$: timelineValues = [...navlogEntries.map((row) => row.timestamp), ...transcriptEntries.map((row) => row.timestamp)]
+		.filter((value): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value)))
+		.sort((left, right) => Date.parse(left) - Date.parse(right));
+	$: timelineEnd = timelineValues.length > 0 ? timelineValues[timelineValues.length - 1] : '';
+	$: timelineMinutes =
+		timelineStart && timelineEnd
+			? Math.max(0, Math.round((Date.parse(timelineEnd) - Date.parse(timelineStart)) / 60000))
+			: 0;
+
+	$: commandBreakdown = Object.entries(
+		transcriptEntries.reduce(
+			(acc, entry) => {
+				const key = entry.command_type || 'unknown';
+				acc[key] = (acc[key] ?? 0) + 1;
+				return acc;
+			},
+			{} as Record<string, number>
+		)
+	)
+		.sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+		.slice(0, 5);
 </script>
 
 <section class="glass-panel p-6">
@@ -232,13 +341,36 @@
 					{#each transcriptEntries as entry, index (`${entry.transcript_id ?? 'row'}-${index}`)}
 						<li class="rounded-md border border-white/15 bg-white/5 p-3">
 							<div class="flex flex-wrap items-center justify-between gap-2">
-								<p class="font-semibold">{entry.command_type ?? 'command'}</p>
+								<div class="flex items-center gap-2">
+									<p class="font-semibold">{entry.command_type ?? 'command'}</p>
+									<span class={`rounded border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] ${statusClass(entry.status)}`}>{entry.status ?? 'n/a'}</span>
+								</div>
 								<span class="muted text-xs">{formatDate(entry.timestamp)}</span>
 							</div>
-							<p class="mt-1 text-xs">{entry.command ?? 'n/a'}</p>
-							<p class="muted mt-1 text-xs">Status: {entry.status ?? 'n/a'} {#if entry.execution_time_ms} | {entry.execution_time_ms}ms{/if}</p>
+							<p class="mt-2 text-xs font-semibold text-white/90">Command</p>
+							<pre class="mt-1 overflow-x-auto rounded-md border border-white/10 bg-[#0b1d33] p-2 text-xs text-white/90 whitespace-pre-wrap">{entry.command ?? 'n/a'}</pre>
+							<p class="muted mt-2 text-xs">Actor: {entry.actor_id ?? 'n/a'} | Duration: {formatMs(entry.execution_time_ms)}</p>
 							{#if entry.output_text || entry.error_message}
-								<p class="mt-2 text-xs text-white/85">{entry.output_text ?? entry.error_message}</p>
+								<p class="mt-2 text-xs font-semibold text-white/90">Output</p>
+								<pre class="mt-1 overflow-x-auto rounded-md border border-white/10 bg-[#0b1d33] p-2 text-xs text-white/90 whitespace-pre-wrap">{formatTextBlock(entry.output_text ?? entry.error_message)}</pre>
+							{/if}
+							{#if entry.arguments_json}
+								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
+									<summary class="cursor-pointer text-xs font-semibold text-white/90">Arguments JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.arguments_json)}</pre>
+								</details>
+							{/if}
+							{#if entry.context_json}
+								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
+									<summary class="cursor-pointer text-xs font-semibold text-white/90">Context JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.context_json)}</pre>
+								</details>
+							{/if}
+							{#if entry.output_json}
+								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
+									<summary class="cursor-pointer text-xs font-semibold text-white/90">Output JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.output_json)}</pre>
+								</details>
 							{/if}
 						</li>
 					{/each}
@@ -246,18 +378,49 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="mt-4 grid gap-3 md:grid-cols-3">
+		<div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
 			<div class="rounded-md border border-white/15 bg-white/5 p-4">
 				<p class="muted text-xs">Navlog entries</p>
 				<p class="mt-2 text-2xl font-semibold">{navlogEntries.length}</p>
+			</div>
+			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+				<p class="muted text-xs">Transcript entries</p>
+				<p class="mt-2 text-2xl font-semibold">{transcriptEntries.length}</p>
 			</div>
 			<div class="rounded-md border border-white/15 bg-white/5 p-4">
 				<p class="muted text-xs">Execution entries</p>
 				<p class="mt-2 text-2xl font-semibold">{executionCount}</p>
 			</div>
 			<div class="rounded-md border border-white/15 bg-white/5 p-4">
-				<p class="muted text-xs">Transcript success / error</p>
-				<p class="mt-2 text-2xl font-semibold">{successCount} / {failureCount}</p>
+				<p class="muted text-xs">Success rate</p>
+				<p class="mt-2 text-2xl font-semibold">{completionRate.toFixed(1)}%</p>
+				<p class="muted text-xs">{successCount} success, {failureCount} error, {partialCount} partial</p>
+			</div>
+			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+				<p class="muted text-xs">Timeline</p>
+				<p class="mt-2 text-xl font-semibold">{timelineMinutes} min</p>
+				<p class="muted text-xs">{formatDate(timelineStart)} to {formatDate(timelineEnd)}</p>
+			</div>
+			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+				<p class="muted text-xs">Execution latency</p>
+				<p class="mt-2 text-xl font-semibold">avg {formatMs(avgExecutionMs)}</p>
+				<p class="muted text-xs">p95 {formatMs(p95ExecutionMs)} | max {formatMs(maxExecutionMs)}</p>
+			</div>
+			<div class="rounded-md border border-white/15 bg-white/5 p-4 md:col-span-2 xl:col-span-2">
+				<p class="muted text-xs">Navlog stage mix</p>
+				<p class="mt-2 text-sm text-white/90">Proposal {proposalCount} | Simulation {simulationCount} | Decision {decisionCount} | Execution {executionCount}</p>
+			</div>
+			<div class="rounded-md border border-white/15 bg-white/5 p-4 md:col-span-2 xl:col-span-2">
+				<p class="muted text-xs">Top command types</p>
+				{#if commandBreakdown.length === 0}
+					<p class="mt-2 text-sm text-white/85">No command data</p>
+				{:else}
+					<ul class="mt-2 space-y-1 text-sm">
+						{#each commandBreakdown as [name, count] (`${name}-${count}`)}
+							<li>{name}: {count}</li>
+						{/each}
+					</ul>
+				{/if}
 			</div>
 		</div>
 	{/if}

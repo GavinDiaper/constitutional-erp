@@ -11,31 +11,71 @@
 	let eventTypeFilter = '';
 	let entityTypeFilter = '';
 	let pageSize = '150';
+	let currentAfter = '';
+	let nextAfter = '';
+	let previousAfterStack: string[] = [];
+	let currentPageCount = 0;
+	let hasMore = false;
 
 	onMount(() => {
 		const unsubscribeActor = actorStore.subscribe(() => {
-			void loadEvents();
+			void resetAndLoad();
 		});
 
-		void loadEvents();
+		void resetAndLoad();
 
 		return () => {
 			unsubscribeActor();
 		};
 	});
 
-	async function loadEvents(): Promise<void> {
+	async function resetAndLoad(): Promise<void> {
+		currentAfter = '';
+		nextAfter = '';
+		previousAfterStack = [];
+		await loadEvents('');
+	}
+
+	async function loadEvents(after: string): Promise<void> {
 		loading = true;
 		errorMessage = '';
 
 		try {
-			const response = await getEvents($actorStore, { limit: Number(pageSize) || 150 });
+			const response = await getEvents($actorStore, {
+				limit: Number(pageSize) || 150,
+				after: after || undefined
+			});
 			events = response.data ?? [];
+			currentAfter = after;
+			currentPageCount = events.length;
+			hasMore = events.length >= (Number(pageSize) || 150);
+
+			const lastTimestamp = events.length > 0 ? events[events.length - 1].timestamp : '';
+			nextAfter = lastTimestamp || '';
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load events.';
 		} finally {
 			loading = false;
 		}
+	}
+
+	function nextPage(): void {
+		if (!nextAfter || loading) {
+			return;
+		}
+
+		previousAfterStack = [...previousAfterStack, currentAfter];
+		void loadEvents(nextAfter);
+	}
+
+	function previousPage(): void {
+		if (previousAfterStack.length === 0 || loading) {
+			return;
+		}
+
+		const previousAfter = previousAfterStack[previousAfterStack.length - 1] ?? '';
+		previousAfterStack = previousAfterStack.slice(0, -1);
+		void loadEvents(previousAfter);
 	}
 
 	function match(value: string | undefined, filter: string): boolean {
@@ -123,7 +163,7 @@
 			<h2 class="text-2xl font-semibold">Event Stream Viewer</h2>
 			<p class="muted mt-2 text-sm">Audit-ready stream of domain events with links to related process entities.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadEvents} disabled={loading}>
+		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={resetAndLoad} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
@@ -146,11 +186,24 @@
 				<option value={entityType}>{entityType}</option>
 			{/each}
 		</select>
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={pageSize} on:change={loadEvents}>
+		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={pageSize} on:change={resetAndLoad}>
 			<option value="100">100 rows</option>
 			<option value="150">150 rows</option>
 			<option value="250">250 rows</option>
 		</select>
+	</div>
+
+	<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={previousPage} disabled={loading || previousAfterStack.length === 0}>
+			Previous Page
+		</button>
+		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={nextPage} disabled={loading || !hasMore || !nextAfter}>
+			Next Page
+		</button>
+		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={resetAndLoad} disabled={loading || (currentAfter === '' && previousAfterStack.length === 0)}>
+			Reset Cursor
+		</button>
+		<span class="muted">Rows {currentPageCount} | Cursor {currentAfter || 'start'} {#if !hasMore}(end){/if}</span>
 	</div>
 
 	{#if errorMessage}
