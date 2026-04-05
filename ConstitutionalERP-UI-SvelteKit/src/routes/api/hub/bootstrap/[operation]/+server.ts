@@ -729,6 +729,7 @@ async function createCombinationRule(headers: Headers, payload: BootstrapPayload
 
 async function createJournal(headers: Headers, payload: BootstrapPayload): Promise<BootstrapResult> {
 	const journalSpec = resolveBootstrapJournalSpec(payload);
+	const selectedLedgerId = asOptionalString(payload.ledgerId);
 
 	const periods = (await asJson(await proxyHubRequest('/r2r/fiscal-periods', headers, 'GET'))) as {
 		data?: Array<Record<string, unknown>>;
@@ -740,11 +741,32 @@ async function createJournal(headers: Headers, payload: BootstrapPayload): Promi
 		throw new Error('No fiscal period available to create a journal.');
 	}
 
+	if (selectedLedgerId) {
+		const debitAccount = (await asJson(
+			await proxyHubRequest(`/query/r2r_account/${encodeURIComponent(journalSpec.debitAccountId)}`, headers, 'GET')
+		)) as { data?: Record<string, unknown> };
+		const creditAccount = (await asJson(
+			await proxyHubRequest(`/query/r2r_account/${encodeURIComponent(journalSpec.creditAccountId)}`, headers, 'GET')
+		)) as { data?: Record<string, unknown> };
+
+		const debitLedgerId = asOptionalString(debitAccount.data?.ledger_id);
+		const creditLedgerId = asOptionalString(creditAccount.data?.ledger_id);
+
+		if (debitLedgerId !== selectedLedgerId) {
+			throw new Error('Selected debit account does not belong to the selected ledger.');
+		}
+
+		if (creditLedgerId !== selectedLedgerId) {
+			throw new Error('Selected credit account does not belong to the selected ledger.');
+		}
+	}
+
 	const description = asOptionalString(payload.description) ?? 'Bootstrap Draft Journal';
 
 	const journal = await asJson(
 		await proxyHubRequest('/r2r/journals', headers, 'POST', {
 			fiscalPeriodId,
+			ledgerId: selectedLedgerId,
 			description
 		})
 	) as Record<string, unknown>;

@@ -76,12 +76,25 @@
 	interface FiscalPeriodRow {
 		fiscal_period_id: string;
 		period_number?: number;
+		state?: string;
 	}
 
 	interface AccountRow {
 		account_id: string;
 		account_code?: string;
 		account_name?: string;
+		ledger_id?: string | null;
+	}
+
+	interface LegalEntityRow {
+		legal_entity_id: string;
+		name?: string;
+	}
+
+	interface LedgerRow {
+		ledger_id: string;
+		name?: string;
+		legal_entity_id?: string | null;
 	}
 
 	let activeTab: DomainTab = 'O2C';
@@ -101,6 +114,18 @@
 	let invoices: InvoiceRow[] = [];
 	let fiscalPeriods: FiscalPeriodRow[] = [];
 	let accounts: AccountRow[] = [];
+	let legalEntities: LegalEntityRow[] = [];
+	let ledgers: LedgerRow[] = [];
+
+	$: filteredLedgers = journalForm.legalEntityId
+		? ledgers.filter((ledger) => ledger.legal_entity_id === journalForm.legalEntityId)
+		: ledgers;
+
+	$: filteredAccounts = journalForm.ledgerId
+		? accounts.filter((account) => (account.ledger_id ?? '') === journalForm.ledgerId)
+		: accounts;
+
+	$: openFiscalPeriods = fiscalPeriods.filter((period) => (period.state ?? '').toLowerCase() === 'open');
 
 	let customerForm = {
 		customerName: '',
@@ -175,6 +200,8 @@
 	};
 
 	let journalForm = {
+		legalEntityId: '',
+		ledgerId: '',
 		fiscalPeriodId: '',
 		description: '',
 		debitAccountId: '',
@@ -207,7 +234,9 @@
 				orderResult,
 				invoiceResult,
 				periodResult,
-				accountResult
+				accountResult,
+				legalEntityResult,
+				ledgerResult
 			] = await Promise.all([
 				queryTable<CustomerRow>('o2c_customer', $actorStore),
 				queryTable<SupplierRow>('p2p_supplier', $actorStore),
@@ -218,7 +247,9 @@
 				queryTable<OrderRow>('o2c_sales_order', $actorStore),
 				queryTable<InvoiceRow>('o2c_invoice', $actorStore),
 				queryTable<FiscalPeriodRow>('r2r_fiscal_period', $actorStore),
-				queryTable<AccountRow>('r2r_account', $actorStore)
+				queryTable<AccountRow>('r2r_account', $actorStore),
+				queryTable<LegalEntityRow>('r2r_legal_entity', $actorStore),
+				queryTable<LedgerRow>('r2r_ledger', $actorStore)
 			]);
 
 			customers = customerResult.data ?? [];
@@ -231,6 +262,8 @@
 			invoices = invoiceResult.data ?? [];
 			fiscalPeriods = periodResult.data ?? [];
 			accounts = accountResult.data ?? [];
+			legalEntities = legalEntityResult.data ?? [];
+			ledgers = ledgerResult.data ?? [];
 
 			if (!paymentForm.invoiceId && invoices.length > 0) {
 				paymentForm.invoiceId = invoices[0].invoice_id;
@@ -252,18 +285,26 @@
 				apPaymentForm.supplierInvoiceId = supplierInvoices[0].supplier_invoice_id;
 			}
 
-			if (!journalForm.fiscalPeriodId && fiscalPeriods.length > 0) {
-				journalForm.fiscalPeriodId = fiscalPeriods[0].fiscal_period_id;
+			if (!journalForm.legalEntityId && legalEntities.length > 0) {
+				journalForm.legalEntityId = legalEntities[0].legal_entity_id;
 			}
 
-			if (!journalForm.debitAccountId && accounts.length > 0) {
-				journalForm.debitAccountId = accounts[0].account_id;
+			if (!journalForm.ledgerId && filteredLedgers.length > 0) {
+				journalForm.ledgerId = filteredLedgers[0].ledger_id;
 			}
 
-			if (!journalForm.creditAccountId && accounts.length > 1) {
-				journalForm.creditAccountId = accounts[1].account_id;
-			} else if (!journalForm.creditAccountId && accounts.length === 1) {
-				journalForm.creditAccountId = accounts[0].account_id;
+			if (!journalForm.fiscalPeriodId && openFiscalPeriods.length > 0) {
+				journalForm.fiscalPeriodId = openFiscalPeriods[0].fiscal_period_id;
+			}
+
+			if (!journalForm.debitAccountId && filteredAccounts.length > 0) {
+				journalForm.debitAccountId = filteredAccounts[0].account_id;
+			}
+
+			if (!journalForm.creditAccountId && filteredAccounts.length > 1) {
+				journalForm.creditAccountId = filteredAccounts[1].account_id;
+			} else if (!journalForm.creditAccountId && filteredAccounts.length === 1) {
+				journalForm.creditAccountId = filteredAccounts[0].account_id;
 			}
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load create-form lookups.';
@@ -339,6 +380,30 @@
 	function accountLabel(account: AccountRow): string {
 		const code = account.account_code ?? account.account_id;
 		return account.account_name ? `${code} - ${account.account_name}` : code;
+	}
+
+	function legalEntityLabel(entity: LegalEntityRow): string {
+		return entity.name ? `${entity.name} (${entity.legal_entity_id})` : entity.legal_entity_id;
+	}
+
+	function ledgerLabel(ledger: LedgerRow): string {
+		return ledger.name ? `${ledger.name} (${ledger.ledger_id})` : ledger.ledger_id;
+	}
+
+	$: if (journalForm.legalEntityId && !filteredLedgers.some((ledger) => ledger.ledger_id === journalForm.ledgerId)) {
+		journalForm.ledgerId = filteredLedgers[0]?.ledger_id ?? '';
+	}
+
+	$: if (journalForm.ledgerId && !filteredAccounts.some((account) => account.account_id === journalForm.debitAccountId)) {
+		journalForm.debitAccountId = filteredAccounts[0]?.account_id ?? '';
+	}
+
+	$: if (journalForm.ledgerId && !filteredAccounts.some((account) => account.account_id === journalForm.creditAccountId)) {
+		journalForm.creditAccountId = filteredAccounts[1]?.account_id ?? filteredAccounts[0]?.account_id ?? '';
+	}
+
+	$: if (!journalForm.fiscalPeriodId && openFiscalPeriods.length > 0) {
+		journalForm.fiscalPeriodId = openFiscalPeriods[0].fiscal_period_id;
 	}
 
 	function setActiveTab(tab: string): void {
@@ -579,34 +644,46 @@
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
 			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
 				<h3 class="text-lg font-semibold">Create Journal</h3>
-				<p class="muted mt-1 text-xs">Provide both sides of the entry: one debit account and one credit account.</p>
+				<p class="muted mt-1 text-xs">Select legal entity and ledger first, then provide both sides of the entry.</p>
 				<div class="mt-3 grid gap-2">
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.legalEntityId}>
+						<option value="">Select legal entity</option>
+						{#each legalEntities as entity (entity.legal_entity_id)}
+							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
+						{/each}
+					</select>
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.ledgerId} disabled={filteredLedgers.length === 0}>
+						<option value="">Select ledger</option>
+						{#each filteredLedgers as ledger (ledger.ledger_id)}
+							<option value={ledger.ledger_id}>{ledgerLabel(ledger)}</option>
+						{/each}
+					</select>
 					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.fiscalPeriodId}>
-						<option value="">Select fiscal period</option>
-						{#each fiscalPeriods as period (period.fiscal_period_id)}
+						<option value="">Select open fiscal period</option>
+						{#each openFiscalPeriods as period (period.fiscal_period_id)}
 							<option value={period.fiscal_period_id}>{period.fiscal_period_id}</option>
 						{/each}
 					</select>
 					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={journalForm.description} />
 					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.debitAccountId}>
 						<option value="">Select debit account</option>
-						{#each accounts as account (account.account_id)}
+						{#each filteredAccounts as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
 					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={journalForm.creditAccountId}>
 						<option value="">Select credit account</option>
-						{#each accounts as account (account.account_id)}
+						{#each filteredAccounts as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
 					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Amount" bind:value={journalForm.amount} />
 					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Line memo" bind:value={journalForm.memo} />
 				</div>
-				{#if fiscalPeriods.length === 0 || accounts.length === 0}
-					<p class="muted mt-2 text-xs">Journals require fiscal periods and accounts from setup/admin.</p>
+				{#if legalEntities.length === 0 || ledgers.length === 0 || openFiscalPeriods.length === 0 || filteredAccounts.length === 0}
+					<p class="muted mt-2 text-xs">Journals require legal entities, ledgers, open fiscal periods, and ledger-linked accounts from setup/admin.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fiscalPeriods.length === 0 || accounts.length === 0} on:click={() => runOperation('create-journal', journalForm)}>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || !journalForm.legalEntityId || !journalForm.ledgerId || !journalForm.fiscalPeriodId || !journalForm.debitAccountId || !journalForm.creditAccountId || openFiscalPeriods.length === 0 || filteredAccounts.length === 0} on:click={() => runOperation('create-journal', journalForm)}>
 					{runningKey === 'create-journal' ? 'Creating...' : 'Create Journal'}
 				</button>
 			</div>
