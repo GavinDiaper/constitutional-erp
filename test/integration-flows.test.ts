@@ -57,6 +57,16 @@ before(async () => {
 test("P2P integration flow transitions through canonical lifecycle", async () => {
   const headers = authHeaders();
 
+  const ledgerBefore = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const journalsBefore = await request(app)
+    .get("/api/v1/query/r2r_journal?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
   const supplier = await request(app)
     .post("/api/v1/p2p/suppliers")
     .set(headers)
@@ -68,6 +78,14 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .set(headers)
     .send({ requester: "ops.user" })
     .expect(201);
+
+  const requisitionLine = await request(app)
+    .post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/lines`)
+    .set(headers)
+    .send({ description: "test line", quantity: 2, unitPrice: 125.5 })
+    .expect(201);
+
+  assert.equal(requisitionLine.body.requisition.total_amount, 251);
 
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/submit`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/approve`).set(headers).expect(200);
@@ -109,7 +127,7 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
   const apPayment = await request(app)
     .post("/api/v1/p2p/ap-payments")
     .set(headers)
-    .send({ supplierInvoiceId: supplierInvoice.body.supplier_invoice_id, amount: 0.01 })
+    .send({ supplierInvoiceId: supplierInvoice.body.supplier_invoice_id, amount: supplierInvoice.body.amount_due })
     .expect(201);
 
   await request(app)
@@ -136,6 +154,23 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .expect(200);
 
   assert.equal(invoiceAfterPayment.body.state, "Paid");
+  assert.ok(Number(invoiceAfterPayment.body.amount_paid) >= Number(invoiceAfterPayment.body.amount_due));
+
+  const ledgerAfter = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const journalsAfter = await request(app)
+    .get("/api/v1/query/r2r_journal?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const ledgerDelta = ledgerAfter.body.data.length - ledgerBefore.body.data.length;
+  const journalDelta = journalsAfter.body.data.length - journalsBefore.body.data.length;
+
+  assert.equal(journalDelta, 2);
+  assert.equal(ledgerDelta, 4);
 });
 
 test("R2R integration flow enforces period lifecycle and posting rules", async () => {

@@ -2,6 +2,7 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
+import { createAndPostP2PJournal } from "../accounting/p2pPostingService";
 
 type SupplierInvoiceState = "Draft" | "Validated" | "Posted" | "Paid" | "Cancelled";
 
@@ -116,6 +117,24 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
   const timestamp = now();
 
   transaction(() => {
+    let accountingJournalId: string | null = null;
+
+    if (toState === "Posted") {
+      const posting = createAndPostP2PJournal(
+        {
+          amount: supplierInvoice.amount_due,
+          debitAccountCode: "SYS-510-EXP-OPEX",
+          creditAccountCode: "SYS-200-LIAB-AP",
+          description: `AP accrual for supplier invoice ${supplierInvoiceId}`,
+          memo: `P2P AP accrual ${supplierInvoiceId}`,
+          referenceEntityType: "SupplierInvoice",
+          referenceEntityId: supplierInvoiceId
+        },
+        actor
+      );
+      accountingJournalId = posting.journalId;
+    }
+
     db.prepare("UPDATE p2p_supplier_invoice SET state = ?, version = ?, updated_at = ? WHERE supplier_invoice_id = ?")
       .run(toState, nextVersion, timestamp, supplierInvoiceId);
 
@@ -124,7 +143,12 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
       entityType: "SupplierInvoice",
       eventType,
       version: nextVersion,
-      payload: { from: supplierInvoice.state, to: toState },
+      payload: {
+        from: supplierInvoice.state,
+        to: toState,
+        accountingJournalId,
+        amountDue: supplierInvoice.amount_due
+      },
       actor
     });
   });
