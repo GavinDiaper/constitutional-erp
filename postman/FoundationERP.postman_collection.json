@@ -2856,7 +2856,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"Opening cash\"\n}"
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"ledgerId\": \"{{seededUsLedgerId}}\",\n  \"description\": \"Opening cash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/journals",
@@ -2880,6 +2880,10 @@
                   "var fiscalPeriodId = pm.environment.get(\"fiscalPeriodId\");",
                   "if (!fiscalPeriodId || !String(fiscalPeriodId).trim()) {",
                   "  throw new Error(\"Missing fiscalPeriodId. Run 'Create Fiscal Period' first, or set fiscalPeriodId in the active environment.\");",
+                  "}",
+                  "var seededUsLedgerId = pm.environment.get(\"seededUsLedgerId\");",
+                  "if (!seededUsLedgerId || !String(seededUsLedgerId).trim()) {",
+                  "  throw new Error(\"Missing seededUsLedgerId. Run 'List Seeded Ledgers' first, or set seededUsLedgerId in the active environment.\");",
                   "}"
                 ]
               }
@@ -2892,6 +2896,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"journalId\", body.journal_id);",
+                  "pm.test(\"Journal is bound to selected ledger\", function () { pm.expect(body.ledger_id).to.eql(pm.environment.get(\"seededUsLedgerId\")); });",
                   "pm.test(\"Journal draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }
