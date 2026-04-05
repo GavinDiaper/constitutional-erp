@@ -23,6 +23,21 @@
 						Create Admin Entities
 					</a>
 				</li>
+				<li>
+					<a class="block rounded px-3 py-2 text-white/90 hover:bg-white/10" href={resolve('/admin/events')}>
+						Event Stream Viewer
+					</a>
+				</li>
+				<li>
+					<a class="block rounded px-3 py-2 text-white/90 hover:bg-white/10" href={resolve('/admin/r2r/trial-balance')}>
+						R2R Trial Balance
+					</a>
+				</li>
+				<li>
+					<a class="block rounded px-3 py-2 text-white/90 hover:bg-white/10" href={resolve('/admin/r2r/ledger-entries')}>
+						R2R Ledger Entries
+					</a>
+				</li>
 			</ul>
 		</li>
 	</ul>

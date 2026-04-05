@@ -11,7 +11,12 @@ export interface QueryTableResponse<T> {
 	};
 }
 
-export function queryTable<T>(table: string, actor: ActorContext, limit = 500): Promise<QueryTableResponse<T>> {
-	const params = new URLSearchParams({ limit: String(limit), offset: '0' });
+export function queryTable<T>(
+	table: string,
+	actor: ActorContext,
+	limit = 500,
+	offset = 0
+): Promise<QueryTableResponse<T>> {
+	const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
 	return fetchHubJson<QueryTableResponse<T>>(`/api/hub/query/${table}?${params.toString()}`, actor);
 }

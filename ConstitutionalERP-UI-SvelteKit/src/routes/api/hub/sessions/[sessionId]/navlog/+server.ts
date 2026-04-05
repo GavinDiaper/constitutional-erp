@@ -1,6 +1,7 @@
 import { proxyHubGet } from '$lib/server/hubProxy';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ params, request }) => {
-	return proxyHubGet(`/hub/sessions/${params.sessionId}/navlog`, request.headers);
+export const GET: RequestHandler = async ({ params, request, url }) => {
+	const suffix = url.search ? `${url.search}` : '';
+	return proxyHubGet(`/hub/sessions/${params.sessionId}/navlog${suffix}`, request.headers);
 };
