@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { browser } from '$app/environment';
+	import {
+		buildDiagramLabelMap,
+		extractDiagramNodeSpecs,
+		resolveDiagramNodeIdFromContent
+	} from '$lib/diagrams/nodeResolution';
 
 	export let definition: string;
 	export let title = 'Diagram';
@@ -10,11 +15,6 @@
 	type MermaidApi = {
 		initialize: (config: Record<string, unknown>) => void;
 		render: (id: string, definition: string) => Promise<{ svg: string }>;
-	};
-
-	type NodeSpec = {
-		id: string;
-		labels: string[];
 	};
 
 	let svgHost: HTMLDivElement;
@@ -43,84 +43,18 @@
 		});
 	}
 
-	function extractNodeSpecs(def: string): NodeSpec[] {
-		const seen: Record<string, true> = {};
-		const result: NodeSpec[] = [];
-		function add(id: string, label?: string) {
-			if (!id) return;
-			const labels = label && label !== id ? [id, label] : [id];
-
-			if (Object.prototype.hasOwnProperty.call(seen, id)) {
-				const existing = result.find((n) => n.id === id);
-				if (existing) {
-					for (const l of labels) {
-						if (!existing.labels.includes(l)) existing.labels.push(l);
-					}
-				}
-				return;
-			}
-
-			seen[id] = true;
-			result.push({ id, labels });
-		}
-
-		if (/\berDiagram\b/.test(def)) {
-			// Left-hand entity: 4-space-indented line whose first word precedes { or |
-			const lhsRe = /^ {4}([A-Za-z]\w+)[ \t]*[{|]/gm;
-			let m: RegExpExecArray | null;
-			while ((m = lhsRe.exec(def)) !== null) add(m[1], m[1]);
-			// Right-hand entity in a relationship: after o{ / }| etc. and before the label colon
-			const rhsRe = /[|o<>}]{1,4}\s+(\w+)\s*:/g;
-			while ((m = rhsRe.exec(def)) !== null) add(m[1], m[1]);
-		} else {
-			// flowchart nodes declared as Id[Label]
-			const squareRe = /\b([A-Za-z_]\w*)\s*\[([^\]]+)\]/g;
-			let m: RegExpExecArray | null;
-			while ((m = squareRe.exec(def)) !== null) add(m[1], m[2].trim());
-			// fallback for unlabeled nodes where ID is visible text
-			const bareRe = /\b([A-Za-z_]\w*)\b(?=\s*-->|\s*:::|\s*$)/gm;
-			while ((m = bareRe.exec(def)) !== null) add(m[1], m[1]);
-		}
-
-		return result;
-	}
-
-	function normalizeLabel(value: string): string {
-		return value.replace(/\s+/g, ' ').trim();
-	}
-
 	function resolveNodeIdFromGroup(group: SVGGElement, labelToId: Record<string, string>): string | null {
-		const content = normalizeLabel(group.textContent ?? '');
-		if (!content) return null;
-
-		const matchedIds: Record<string, true> = {};
-		let matchCount = 0;
-		for (const [label, id] of Object.entries(labelToId)) {
-			if (content.includes(label)) {
-				if (!Object.prototype.hasOwnProperty.call(matchedIds, id)) {
-					matchedIds[id] = true;
-					matchCount += 1;
-				}
-			}
-		}
-
-		if (matchCount === 1) {
-			return Object.keys(matchedIds)[0];
-		}
-
-		return null;
+		return resolveDiagramNodeIdFromContent(group.textContent ?? '', labelToId);
 	}
 
-	function attachClickHandlers(nodeSpecs: NodeSpec[]) {
-		if (!onNodeClick || !svgHost || nodeSpecs.length === 0) return;
+	function attachClickHandlers(definition: string) {
+		if (!onNodeClick || !svgHost) return;
 		cleanupClickBinding?.();
 
-		const labelToId: Record<string, string> = {};
-		for (const spec of nodeSpecs) {
-			for (const label of spec.labels) {
-				labelToId[normalizeLabel(label)] = spec.id;
-			}
-		}
+		const nodeSpecs = extractDiagramNodeSpecs(definition);
+		if (nodeSpecs.length === 0) return;
+
+		const labelToId = buildDiagramLabelMap(nodeSpecs);
 
 		const allGroups = Array.from(svgHost.querySelectorAll('svg g')) as SVGGElement[];
 		for (const group of allGroups) {
@@ -164,7 +98,7 @@
 			if (result?.svg) {
 				svgHtml = result.svg;
 				await tick();
-				attachClickHandlers(extractNodeSpecs(definition));
+				attachClickHandlers(definition);
 			}
 		} catch (err) {
 			renderError = err instanceof Error ? err.message : 'Failed to render diagram.';
