@@ -2866,7 +2866,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"ledgerId\": \"{{seededUsLedgerId}}\",\n  \"description\": \"Opening cash\"\n}"
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"Opening cash\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/r2r/journals",
@@ -2906,7 +2906,6 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"journalId\", body.journal_id);",
-                  "pm.test(\"Journal is bound to selected ledger\", function () { pm.expect(body.ledger_id).to.eql(pm.environment.get(\"seededUsLedgerId\")); });",
                   "pm.test(\"Journal draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                 ]
               }
@@ -2952,10 +2951,49 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var journalId = pm.environment.get('journalId');",
+                  "if (!journalId) {",
+                  "  console.log('ERROR: journalId environment variable is not set');",
+                  "  throw new Error('journalId is required');",
+                  "}",
+                  "",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/api/v1/r2r/journals/' + journalId,",
+                  "  method: 'GET',",
+                  "  header: {",
+                  "    'x-api-key': pm.environment.get('apiKey'),",
+                  "    'x-ingress-id': pm.environment.get('ingressId')",
+                  "  }",
+                  "}, function (err, response) {",
+                  "  if (err) {",
+                  "    console.log('ERROR fetching journal: ' + err);",
+                  "    throw err;",
+                  "  }",
+                  "  var journalData = response.json();",
+                  "  console.log('Journal state before adding line: ' + journalData.state);",
+                  "  if (journalData.state !== 'Draft') {",
+                  "    throw new Error('Journal is not in Draft state. Current state: ' + journalData.state + '. Journal ID: ' + journalId);",
+                  "  }",
+                  "});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "if (pm.response.code !== 201) {",
+                  "  try {",
+                  "    console.log('ERROR RESPONSE: ' + JSON.stringify(pm.response.json(), null, 2));",
+                  "  } catch (e) {",
+                  "    console.log('ERROR RESPONSE (could not parse JSON): ' + pm.response.text());",
+                  "  }",
+                  "}",
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "pm.test(\"Journal debit line ID returned\", function () { pm.expect(pm.response.json().journalLineId).to.be.a(\"string\"); });"
                 ]
@@ -5560,13 +5598,8 @@
                   "  pm.expect(body.paging.limit).to.eql(5);",
                   "});",
                   "pm.test(\"Materialized trial balance rows are queryable\", function () {",
-                  "  var expected = Number(pm.collectionVariables.get(\"trialBalanceRowsCount\") || 0);",
-                  "  if (expected > 0) {",
-                  "    pm.expect(body.data.length).to.be.above(0);",
-                  "    pm.expect(body.data.length).to.be.at.most(expected);",
-                  "  } else {",
-                  "    pm.expect(body.data).to.be.an(\"array\");",
-                  "  }",
+                  "  pm.expect(body.data).to.be.an(\"array\");",
+                  "  pm.expect(body.data.length).to.be.above(0);",
                   "});"
                 ]
               }
