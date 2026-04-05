@@ -32,6 +32,8 @@ const STARTER_ACCOUNTS: Array<{ accountCode: string; accountName: string; accoun
   { accountCode: "SYS-510-EXP-OPEX", accountName: "Operating Expense", accountType: "Expense" }
 ];
 
+const DEFAULT_SEEDED_LEDGER_ID = "LGR-SEED-US";
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -260,15 +262,19 @@ export function listAccountSegments(accountId: string) {
 
 export function seedStarterAccounts() {
   const timestamp = now();
+  const seededLedger = db
+    .prepare("SELECT ledger_id FROM r2r_ledger WHERE ledger_id = ?")
+    .get(DEFAULT_SEEDED_LEDGER_ID) as { ledger_id: string } | undefined;
+  const ledgerId = seededLedger?.ledger_id ?? null;
 
   transaction(() => {
     const insert = db.prepare(
-      `INSERT OR IGNORE INTO r2r_account(account_id, account_code, account_name, account_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT OR IGNORE INTO r2r_account(account_id, account_code, account_name, account_type, ledger_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const account of STARTER_ACCOUNTS) {
-      insert.run(newId("ACC-"), account.accountCode, account.accountName, account.accountType, timestamp, timestamp);
+      insert.run(newId("ACC-"), account.accountCode, account.accountName, account.accountType, ledgerId, timestamp, timestamp);
     }
   });
 }

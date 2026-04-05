@@ -1565,6 +1565,242 @@
       "name": "30 - R2R Flow",
       "item": [
         {
+          "name": "List Seeded Legal Entities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/legal-entities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "legal-entities"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "var rows = body.data || [];",
+                  "var us = rows.find(function (row) { return row.legal_entity_id === \"LE-SEED-US\"; });",
+                  "var au = rows.find(function (row) { return row.legal_entity_id === \"LE-SEED-AU\"; });",
+                  "pm.test(\"US and AU seeded legal entities exist\", function () {",
+                  "  pm.expect(us).to.exist;",
+                  "  pm.expect(au).to.exist;",
+                  "});",
+                  "pm.environment.set(\"seededUsLegalEntityId\", \"LE-SEED-US\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Seeded US Legal Entity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/legal-entities/{{seededUsLegalEntityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "legal-entities",
+                "{{seededUsLegalEntityId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Seeded US legal entity matches expected ID\", function () {",
+                  "  pm.expect(body.legal_entity_id).to.eql(\"LE-SEED-US\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Seeded Ledgers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/ledgers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "ledgers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var rows = (pm.response.json().data || []);",
+                  "var us = rows.find(function (row) { return row.ledger_id === \"LGR-SEED-US\"; });",
+                  "var au = rows.find(function (row) { return row.ledger_id === \"LGR-SEED-AU\"; });",
+                  "pm.test(\"US and AU seeded ledgers exist and are linked\", function () {",
+                  "  pm.expect(us).to.exist;",
+                  "  pm.expect(au).to.exist;",
+                  "  pm.expect(us.legal_entity_id).to.eql(\"LE-SEED-US\");",
+                  "  pm.expect(au.legal_entity_id).to.eql(\"LE-SEED-AU\");",
+                  "});",
+                  "pm.environment.set(\"seededUsLedgerId\", \"LGR-SEED-US\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Seeded US Ledger",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/ledgers/{{seededUsLedgerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "ledgers",
+                "{{seededUsLedgerId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Seeded US ledger matches expected IDs\", function () {",
+                  "  pm.expect(body.ledger_id).to.eql(\"LGR-SEED-US\");",
+                  "  pm.expect(body.legal_entity_id).to.eql(\"LE-SEED-US\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Accounts Includes Seeded Starter COA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var rows = (pm.response.json().data || []);",
+                  "var codes = rows.map(function (row) { return row.account_code; });",
+                  "var expected = [\"SYS-100-ASSET-CASH\", \"SYS-110-ASSET-AR\", \"SYS-200-LIAB-AP\", \"SYS-300-EQ-RE\", \"SYS-400-REV-SALES\", \"SYS-500-EXP-COGS\", \"SYS-510-EXP-OPEX\"];",
+                  "pm.test(\"All starter SYS account codes exist\", function () {",
+                  "  expected.forEach(function (code) { pm.expect(codes).to.include(code); });",
+                  "});",
+                  "var cash = rows.find(function (row) { return row.account_code === \"SYS-100-ASSET-CASH\"; });",
+                  "pm.test(\"Seeded cash account linked to default seeded ledger\", function () {",
+                  "  pm.expect(cash).to.exist;",
+                  "  pm.expect(cash.ledger_id).to.eql(\"LGR-SEED-US\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Create Account",
           "request": {
             "method": "POST",
@@ -2570,6 +2806,51 @@
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
                   "pm.test(\"Journal posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Trial Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-ingress-id",
+                "value": "{{ingressId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/r2r/trial-balance/{{fiscalPeriodId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "r2r",
+                "trial-balance",
+                "{{fiscalPeriodId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test(\"Trial balance returns rows\", function () {",
+                  "  pm.expect(Array.isArray(body.data)).to.eql(true);",
+                  "  pm.expect(body.data.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }

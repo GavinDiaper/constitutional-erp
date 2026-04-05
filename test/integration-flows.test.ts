@@ -281,12 +281,67 @@ test("R2R account type validation and starter COA seeding are enforced", async (
   const accountTypes = new Set(
     accountsResponse.body.data.map((row: { account_type: string }) => row.account_type)
   );
+  const accountRows = accountsResponse.body.data as Array<{ account_code: string; ledger_id: string | null }>;
+  const accountCodes = new Set(accountRows.map((row) => row.account_code));
+
+  assert.ok(accountCodes.has("SYS-100-ASSET-CASH"));
+  assert.ok(accountCodes.has("SYS-110-ASSET-AR"));
+  assert.ok(accountCodes.has("SYS-200-LIAB-AP"));
+  assert.ok(accountCodes.has("SYS-300-EQ-RE"));
+  assert.ok(accountCodes.has("SYS-400-REV-SALES"));
+  assert.ok(accountCodes.has("SYS-500-EXP-COGS"));
+  assert.ok(accountCodes.has("SYS-510-EXP-OPEX"));
+
+  const cashAccount = accountRows.find((row) => row.account_code === "SYS-100-ASSET-CASH");
+  assert.equal(cashAccount?.ledger_id, "LGR-SEED-US");
 
   assert.ok(accountTypes.has("Asset"));
   assert.ok(accountTypes.has("Liability"));
   assert.ok(accountTypes.has("Equity"));
   assert.ok(accountTypes.has("Revenue"));
   assert.ok(accountTypes.has("Expense"));
+});
+
+test("R2R bootstrap seeds default legal entities and ledgers", async () => {
+  const headers = authHeaders();
+
+  const legalEntities = await request(app)
+    .get("/api/v1/r2r/legal-entities")
+    .set(headers)
+    .expect(200);
+
+  const legalEntityRows = legalEntities.body.data as Array<{
+    legal_entity_id: string;
+    name: string;
+    currency_code: string;
+  }>;
+
+  const seededUsLegalEntity = legalEntityRows.find((row) => row.legal_entity_id === "LE-SEED-US");
+  const seededAuLegalEntity = legalEntityRows.find((row) => row.legal_entity_id === "LE-SEED-AU");
+
+  assert.equal(seededUsLegalEntity?.name, "Constitutional Holdings US");
+  assert.equal(seededUsLegalEntity?.currency_code, "USD");
+  assert.equal(seededAuLegalEntity?.name, "Constitutional Holdings AU");
+  assert.equal(seededAuLegalEntity?.currency_code, "AUD");
+
+  const ledgers = await request(app)
+    .get("/api/v1/r2r/ledgers")
+    .set(headers)
+    .expect(200);
+
+  const ledgerRows = ledgers.body.data as Array<{
+    ledger_id: string;
+    legal_entity_id: string | null;
+    currency_code: string;
+  }>;
+
+  const seededUsLedger = ledgerRows.find((row) => row.ledger_id === "LGR-SEED-US");
+  const seededAuLedger = ledgerRows.find((row) => row.ledger_id === "LGR-SEED-AU");
+
+  assert.equal(seededUsLedger?.legal_entity_id, "LE-SEED-US");
+  assert.equal(seededUsLedger?.currency_code, "USD");
+  assert.equal(seededAuLedger?.legal_entity_id, "LE-SEED-AU");
+  assert.equal(seededAuLedger?.currency_code, "AUD");
 });
 
 test("R2R supports COA segment definitions and account hierarchy", async () => {
