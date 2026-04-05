@@ -15,16 +15,19 @@ function normalizeMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 
-function getAccountIdByCode(accountCode: string): string {
+function getAccountByCode(accountCode: string): { accountId: string; ledgerId: string | null } {
   const row = db
-    .prepare("SELECT account_id FROM r2r_account WHERE account_code = ?")
-    .get(accountCode) as { account_id: string } | undefined;
+    .prepare("SELECT account_id, ledger_id FROM r2r_account WHERE account_code = ?")
+    .get(accountCode) as { account_id: string; ledger_id: string | null } | undefined;
 
   if (!row) {
     throw new HttpError(409, "missing_account", `Required posting account '${accountCode}' is not configured`);
   }
 
-  return row.account_id;
+  return {
+    accountId: row.account_id,
+    ledgerId: row.ledger_id ?? null
+  };
 }
 
 function findOpenFiscalPeriodId(): string | null {
@@ -150,8 +153,20 @@ export function createAndPostP2PJournal(input: {
   }
 
   const fiscalPeriodId = getOrCreateOpenFiscalPeriodId(actor);
-  const debitAccountId = getAccountIdByCode(input.debitAccountCode);
-  const creditAccountId = getAccountIdByCode(input.creditAccountCode);
+  const debitAccount = getAccountByCode(input.debitAccountCode);
+  const creditAccount = getAccountByCode(input.creditAccountCode);
+
+  if (!debitAccount.ledgerId || !creditAccount.ledgerId || debitAccount.ledgerId !== creditAccount.ledgerId) {
+    throw new HttpError(
+      409,
+      "ledger_mismatch",
+      "P2P posting accounts must belong to the same ledger and have ledger assignments"
+    );
+  }
+
+  const debitAccountId = debitAccount.accountId;
+  const creditAccountId = creditAccount.accountId;
+  const ledgerId = debitAccount.ledgerId;
 
   const timestamp = now();
   const journalId = newId("JNL-");
@@ -161,9 +176,9 @@ export function createAndPostP2PJournal(input: {
   const creditLedgerEntryId = newId("LED-");
 
   db.prepare(
-    `INSERT INTO r2r_journal(journal_id, fiscal_period_id, description, state, version, created_at, updated_at)
-     VALUES (?, ?, ?, 'Posted', 2, ?, ?)`
-  ).run(journalId, fiscalPeriodId, input.description, timestamp, timestamp);
+     `INSERT INTO r2r_journal(journal_id, fiscal_period_id, ledger_id, description, state, version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'Posted', 2, ?, ?)`
+    ).run(journalId, fiscalPeriodId, ledgerId, input.description, timestamp, timestamp);
 
   db.prepare(
     `INSERT INTO r2r_journal_line(journal_line_id, journal_id, account_id, debit_amount, credit_amount, memo, created_at)
@@ -193,6 +208,7 @@ export function createAndPostP2PJournal(input: {
     actor,
     payload: {
       fiscalPeriodId,
+      ledgerId,
       description: input.description,
       sourceEntityType: input.referenceEntityType,
       sourceEntityId: input.referenceEntityId
