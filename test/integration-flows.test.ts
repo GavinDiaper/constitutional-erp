@@ -258,6 +258,130 @@ test("O2C shipping creates shipment records for diagram visibility", async () =>
   assert.equal(orderShipments[0]?.state, "Shipped");
 });
 
+test("O2C payment registration auto-applies invoice and posts accounting entries", async () => {
+  const headers = authHeaders();
+
+  const ledgerBefore = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const journalsBefore = await request(app)
+    .get("/api/v1/query/r2r_journal?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: "Auto Apply Customer", email: "auto.apply@example.com" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/customers/${customer.body.customer_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const quote = await request(app)
+    .post("/api/v1/o2c/quotes")
+    .set(headers)
+    .send({ customerId: customer.body.customer_id, currencyCode: "USD", legalEntityId: "LE-SEED-US" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/lines`)
+    .set(headers)
+    .send({ sku: "SKU-PAYMENT-1", quantity: 1, unitPrice: 10 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/send`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/accept`)
+    .set(headers)
+    .expect(200);
+
+  const order = await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/convert`)
+    .set(headers)
+    .send({})
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/confirm`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/allocate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/ship`)
+    .set(headers)
+    .expect(200);
+
+  const invoice = await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/generate-invoice`)
+    .set(headers)
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/invoices/${invoice.body.invoice_id}/post`)
+    .set(headers)
+    .expect(200);
+
+  const payment = await request(app)
+    .post("/api/v1/o2c/payments")
+    .set(headers)
+    .send({ invoiceId: invoice.body.invoice_id, amount: 10 })
+    .expect(201);
+
+  assert.equal(payment.body.state, "Applied");
+
+  const invoiceAfterPayment = await request(app)
+    .get(`/api/v1/o2c/invoices/${invoice.body.invoice_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(invoiceAfterPayment.body.state, "Paid");
+  assert.ok(Number(invoiceAfterPayment.body.amount_paid) >= Number(invoiceAfterPayment.body.amount_due));
+
+  const idempotentApply = await request(app)
+    .post(`/api/v1/o2c/payments/${payment.body.payment_id}/apply`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(idempotentApply.body.state, "Applied");
+
+  const reconciled = await request(app)
+    .post(`/api/v1/o2c/payments/${payment.body.payment_id}/reconcile`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(reconciled.body.state, "Reconciled");
+
+  const ledgerAfter = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const journalsAfter = await request(app)
+    .get("/api/v1/query/r2r_journal?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+
+  const ledgerDelta = ledgerAfter.body.data.length - ledgerBefore.body.data.length;
+  const journalDelta = journalsAfter.body.data.length - journalsBefore.body.data.length;
+
+  assert.equal(journalDelta, 1);
+  assert.equal(ledgerDelta, 2);
+});
+
 test("R2R integration flow enforces period lifecycle and posting rules", async () => {
   const headers = authHeaders();
 

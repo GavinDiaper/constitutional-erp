@@ -668,7 +668,7 @@
                   "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                   "var body = pm.response.json();",
                   "pm.environment.set(\"paymentId\", body.payment_id);",
-                  "pm.test(\"Payment received\", function () { pm.expect(body.state).to.eql(\"Received\"); });"
+                  "pm.test(\"Payment auto-applied\", function () { pm.expect(body.state).to.eql(\"Applied\"); });"
                 ]
               }
             }
@@ -710,7 +710,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"Payment applied\", function () { pm.expect(pm.response.json().state).to.eql(\"Applied\"); });"
+                  "pm.test(\"Payment remains applied (idempotent)\", function () { pm.expect(pm.response.json().state).to.eql(\"Applied\"); });"
                 ]
               }
             }

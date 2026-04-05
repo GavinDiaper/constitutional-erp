@@ -2,6 +2,7 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
+import { createAndPostP2PJournal } from "../../p2p/accounting/p2pPostingService";
 
 type PaymentState = "Received" | "Applied" | "Reconciled" | "Cancelled";
 
@@ -44,6 +45,20 @@ export function registerPayment(input: { invoiceId: string; amount: number; curr
   const paymentDate = input.paymentDate ?? timestamp;
 
   transaction(() => {
+    const invoice = db
+      .prepare("SELECT order_id, state, amount_due, amount_paid, version FROM o2c_invoice WHERE invoice_id = ?")
+      .get(input.invoiceId) as
+      | { order_id: string; state: string; amount_due: number; amount_paid: number; version: number }
+      | undefined;
+
+    if (!invoice) {
+      throw new HttpError(404, "not_found", "Invoice not found");
+    }
+
+    if (!["Posted", "Paid"].includes(invoice.state)) {
+      throw new HttpError(409, "invalid_transition", "Invoice must be Posted or Paid before payment registration");
+    }
+
     db.prepare(
       `INSERT INTO o2c_payment(payment_id, invoice_id, state, amount, received_at, currency_code, method, payment_date, version, created_at, updated_at)
        VALUES (?, ?, 'Received', ?, ?, ?, ?, ?, 1, ?, ?)`
@@ -56,6 +71,79 @@ export function registerPayment(input: { invoiceId: string; amount: number; curr
       version: 1,
       actor,
       payload: { invoiceId: input.invoiceId, amount: input.amount }
+    });
+
+    const posting = createAndPostP2PJournal(
+      {
+        amount: input.amount,
+        debitAccountCode: "SYS-100-ASSET-CASH",
+        creditAccountCode: "SYS-110-ASSET-AR",
+        description: `AR settlement for payment ${paymentId}`,
+        memo: `O2C AR payment ${paymentId}`,
+        referenceEntityType: "Payment",
+        referenceEntityId: paymentId
+      },
+      actor
+    );
+
+    const invoiceAmountPaid = invoice.amount_paid + input.amount;
+    const invoiceState = invoiceAmountPaid >= invoice.amount_due ? "Paid" : "Posted";
+    const invoiceNextVersion = invoice.version + 1;
+
+    db.prepare("UPDATE o2c_invoice SET amount_paid = ?, state = ?, version = ?, updated_at = ? WHERE invoice_id = ?")
+      .run(invoiceAmountPaid, invoiceState, invoiceNextVersion, timestamp, input.invoiceId);
+
+    appendEvent({
+      entityId: input.invoiceId,
+      entityType: "Invoice",
+      eventType: invoiceAmountPaid >= invoice.amount_due ? "ar-invoice.fullypaid" : "ar-invoice.partiallypaid",
+      version: invoiceNextVersion,
+      actor,
+      payload: {
+        amount: input.amount,
+        amountPaid: invoiceAmountPaid,
+        amountDue: invoice.amount_due,
+        paymentId,
+        accountingJournalId: posting.journalId
+      }
+    });
+
+    if (invoiceAmountPaid >= invoice.amount_due) {
+      const order = db
+        .prepare("SELECT version FROM o2c_sales_order WHERE order_id = ?")
+        .get(invoice.order_id) as { version: number } | undefined;
+
+      if (order) {
+        db.prepare("UPDATE o2c_sales_order SET state = 'Paid', version = version + 1, updated_at = ? WHERE order_id = ?")
+          .run(timestamp, invoice.order_id);
+
+        appendEvent({
+          entityId: invoice.order_id,
+          entityType: "SalesOrder",
+          eventType: "order.paid",
+          version: order.version + 1,
+          actor,
+          payload: { invoiceId: input.invoiceId, paymentId }
+        });
+      }
+    }
+
+    db.prepare("UPDATE o2c_payment SET state = 'Applied', version = 2, updated_at = ? WHERE payment_id = ?")
+      .run(timestamp, paymentId);
+
+    appendEvent({
+      entityId: paymentId,
+      entityType: "Payment",
+      eventType: "ar-payment.applied",
+      version: 2,
+      actor,
+      payload: {
+        from: "Received",
+        to: "Applied",
+        accountingJournalId: posting.journalId,
+        amount: input.amount,
+        invoiceId: input.invoiceId
+      }
     });
   });
 
@@ -74,6 +162,13 @@ export function updatePaymentState(paymentId: string, toState: PaymentState, act
 
 function _doPaymentTransition(paymentId: string, toState: PaymentState, actor?: EventActor) {
   const payment = getPaymentById(paymentId);
+
+  // Keep transition endpoints backward-compatible for callers that may re-send
+  // apply/reconcile after an already-completed step.
+  if (payment.state === toState) {
+    return payment;
+  }
+
   assertTransition(payment.state, toState);
 
   const nextVersion = payment.version + 1;
