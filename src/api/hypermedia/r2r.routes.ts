@@ -199,7 +199,12 @@ const createPostingProfileSchema = z.object({
         entrySide: z.enum(["debit", "credit"]),
         accountId: z.string().min(1),
         amountSource: z.string().min(1),
-        memoTemplate: z.string().optional()
+        memoTemplate: z.string().optional(),
+        taxCode: z.string().min(1).optional(),
+        taxApplicability: z
+          .enum(["taxable", "exempt", "zero-rated", "reverse-charge", "withholding"])
+          .optional(),
+        taxAccountRole: z.string().min(1).optional()
       })
     )
     .min(1)

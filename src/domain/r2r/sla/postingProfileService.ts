@@ -8,11 +8,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
+type TaxApplicability = "taxable" | "exempt" | "zero-rated" | "reverse-charge" | "withholding";
+
 type PostingProfileLineInput = {
   entrySide: "debit" | "credit";
   accountId: string;
   amountSource: string;
   memoTemplate?: string;
+  taxCode?: string;
+  taxApplicability?: TaxApplicability;
+  taxAccountRole?: string;
 };
 
 function getPostingProfileLines(postingProfileId: string) {
@@ -62,9 +67,12 @@ export function createPostingProfile(input: {
          account_id,
          amount_source,
          memo_template,
+         tax_code,
+         tax_applicability,
+         tax_account_role,
          created_at
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const line of input.lines) {
@@ -76,6 +84,9 @@ export function createPostingProfile(input: {
         line.accountId,
         line.amountSource,
         line.memoTemplate ?? null,
+        line.taxCode ?? null,
+        line.taxApplicability ?? null,
+        line.taxAccountRole ?? null,
         timestamp
       );
     }

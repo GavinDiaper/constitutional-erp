@@ -530,13 +530,30 @@ test("R2R supports SLA posting profile starter APIs", async () => {
       name: "O2C Invoice Posted",
       eventType: "o2c.invoice.posted",
       lines: [
-        { entrySide: "debit", accountId: debitAccount.body.account_id, amountSource: "grossAmount" },
-        { entrySide: "credit", accountId: creditAccount.body.account_id, amountSource: "grossAmount" }
+        {
+          entrySide: "debit",
+          accountId: debitAccount.body.account_id,
+          amountSource: "grossAmount",
+          taxCode: "VAT5",
+          taxApplicability: "taxable",
+          taxAccountRole: "tax_recoverable"
+        },
+        {
+          entrySide: "credit",
+          accountId: creditAccount.body.account_id,
+          amountSource: "grossAmount",
+          taxCode: "VAT5",
+          taxApplicability: "taxable",
+          taxAccountRole: "tax_liability"
+        }
       ]
     })
     .expect(201);
 
   assert.equal(profile.body.lines.length, 2);
+  assert.equal(profile.body.lines[0].tax_code, "VAT5");
+  assert.equal(profile.body.lines[0].tax_applicability, "taxable");
+  assert.equal(profile.body.lines[1].tax_account_role, "tax_liability");
 
   const deactivated = await request(app)
     .post(`/api/v1/r2r/sla/posting-profiles/${profile.body.posting_profile_id}/deactivate`)
