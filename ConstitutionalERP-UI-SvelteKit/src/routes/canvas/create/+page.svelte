@@ -487,7 +487,7 @@
 
 			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
 				<h3 class="text-lg font-semibold">Create Payment</h3>
-				<p class="muted mt-1 text-xs">Requires an existing invoice.</p>
+				<p class="muted mt-1 text-xs">Requires a posted invoice. Create now auto-applies cash to AR and posts accounting entries.</p>
 				<div class="mt-3 grid gap-2">
 					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
 						<option value="">Select invoice</option>
