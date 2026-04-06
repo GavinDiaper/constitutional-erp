@@ -37,6 +37,57 @@ function getAccountById(accountId: string): { accountId: string; ledgerId: strin
   return { accountId: row.account_id, ledgerId: row.ledger_id ?? null };
 }
 
+function getLedgerIdForLegalEntity(legalEntityId: string | null | undefined): string | null {
+  if (!legalEntityId) {
+    return null;
+  }
+
+  const row = db
+    .prepare(
+      `SELECT ledger_id
+       FROM r2r_ledger
+       WHERE legal_entity_id = ?
+       ORDER BY created_at ASC
+       LIMIT 1`
+    )
+    .get(legalEntityId) as { ledger_id: string } | undefined;
+
+  return row?.ledger_id ?? null;
+}
+
+function resolveSourceLedgerId(sourceEntityType: string, sourceEntityId: string): string | null {
+  switch (sourceEntityType) {
+    case "Invoice": {
+      const row = db
+        .prepare(
+          `SELECT so.legal_entity_id
+           FROM o2c_invoice i
+           JOIN o2c_sales_order so ON so.order_id = i.order_id
+           WHERE i.invoice_id = ?`
+        )
+        .get(sourceEntityId) as { legal_entity_id: string | null } | undefined;
+
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    case "SupplierInvoice": {
+      const row = db
+        .prepare(
+          `SELECT po.legal_entity_id
+           FROM p2p_supplier_invoice si
+           JOIN p2p_purchase_order po ON po.po_id = si.po_id
+           WHERE si.supplier_invoice_id = ?`
+        )
+        .get(sourceEntityId) as { legal_entity_id: string | null } | undefined;
+
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    default:
+      return null;
+  }
+}
+
 function findOpenFiscalPeriodId(): string | null {
   const row = db
     .prepare(
@@ -170,13 +221,20 @@ export function createAndPostTaxAwareJournal(
   const baseDebit = getAccountByCode(input.debitAccountCode);
   const baseCredit = getAccountByCode(input.creditAccountCode);
   const baseAmount = normalizeMoney(input.baseAmount);
+  const sourceLedgerId = resolveSourceLedgerId(input.sourceEntityType, input.sourceEntityId)
+    ?? getLedgerIdForLegalEntity(input.legalEntityId);
 
   if (baseAmount === 0) {
     throw new HttpError(409, "invalid_amount", "Posting amount must be greater than zero");
   }
 
-  if (!baseDebit.ledgerId || !baseCredit.ledgerId || baseDebit.ledgerId !== baseCredit.ledgerId) {
+  if (!sourceLedgerId && (!baseDebit.ledgerId || !baseCredit.ledgerId || baseDebit.ledgerId !== baseCredit.ledgerId)) {
     throw new HttpError(409, "ledger_mismatch", "Posting accounts must belong to the same ledger");
+  }
+
+  const postingLedgerId = sourceLedgerId ?? baseDebit.ledgerId;
+  if (!postingLedgerId) {
+    throw new HttpError(409, "ledger_mismatch", "Posting requires a resolved ledger assignment");
   }
 
   // ── No tax lines → legacy 2-line fallback ────────────────────────────────
@@ -184,7 +242,7 @@ export function createAndPostTaxAwareJournal(
     const fiscalPeriodId = getOrCreateOpenFiscalPeriodId(actor);
     const timestamp = now();
     const journalId = newId("JNL-");
-    const ledgerId = baseDebit.ledgerId;
+    const ledgerId = postingLedgerId;
 
     db.prepare(
       `INSERT INTO r2r_journal(journal_id, fiscal_period_id, ledger_id, description, state, version, created_at, updated_at)
@@ -214,7 +272,7 @@ export function createAndPostTaxAwareJournal(
   const grossAmount = Math.round((totalTaxable + totalTax) * 100) / 100;
 
   const lines: PostingLine[] = [];
-  const ledgerId = baseDebit.ledgerId;
+  const ledgerId = postingLedgerId;
 
   if (input.transactionType === "ap-invoice" || input.transactionType === "ap-credit-memo") {
       const asOfDate = input.invoiceDate ?? now();

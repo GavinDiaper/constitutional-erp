@@ -30,6 +30,59 @@ function getAccountByCode(accountCode: string): { accountId: string; ledgerId: s
   };
 }
 
+function getLedgerIdForLegalEntity(legalEntityId: string | null | undefined): string | null {
+  if (!legalEntityId) {
+    return null;
+  }
+
+  const row = db
+    .prepare(
+      `SELECT ledger_id
+       FROM r2r_ledger
+       WHERE legal_entity_id = ?
+       ORDER BY created_at ASC
+       LIMIT 1`
+    )
+    .get(legalEntityId) as { ledger_id: string } | undefined;
+
+  return row?.ledger_id ?? null;
+}
+
+function resolveSourceLedgerId(referenceEntityType: string, referenceEntityId: string): string | null {
+  switch (referenceEntityType) {
+    case "Payment": {
+      const row = db
+        .prepare(
+          `SELECT so.legal_entity_id
+           FROM o2c_payment p
+           JOIN o2c_invoice i ON i.invoice_id = p.invoice_id
+           JOIN o2c_sales_order so ON so.order_id = i.order_id
+           WHERE p.payment_id = ?`
+        )
+        .get(referenceEntityId) as { legal_entity_id: string | null } | undefined;
+
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    case "ApPayment": {
+      const row = db
+        .prepare(
+          `SELECT po.legal_entity_id
+           FROM p2p_ap_payment ap
+           JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = ap.supplier_invoice_id
+           JOIN p2p_purchase_order po ON po.po_id = si.po_id
+           WHERE ap.ap_payment_id = ?`
+        )
+        .get(referenceEntityId) as { legal_entity_id: string | null } | undefined;
+
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    default:
+      return null;
+  }
+}
+
 function findOpenFiscalPeriodId(): string | null {
   const row = db
     .prepare(
@@ -155,8 +208,18 @@ export function createAndPostP2PJournal(input: {
   const fiscalPeriodId = getOrCreateOpenFiscalPeriodId(actor);
   const debitAccount = getAccountByCode(input.debitAccountCode);
   const creditAccount = getAccountByCode(input.creditAccountCode);
+  const sourceLedgerId = resolveSourceLedgerId(input.referenceEntityType, input.referenceEntityId);
+  const ledgerId = sourceLedgerId ?? debitAccount.ledgerId;
 
-  if (!debitAccount.ledgerId || !creditAccount.ledgerId || debitAccount.ledgerId !== creditAccount.ledgerId) {
+  if (!ledgerId) {
+    throw new HttpError(
+      409,
+      "ledger_mismatch",
+      "P2P posting requires a resolved ledger assignment"
+    );
+  }
+
+  if (!sourceLedgerId && (!debitAccount.ledgerId || !creditAccount.ledgerId || debitAccount.ledgerId !== creditAccount.ledgerId)) {
     throw new HttpError(
       409,
       "ledger_mismatch",
@@ -166,7 +229,6 @@ export function createAndPostP2PJournal(input: {
 
   const debitAccountId = debitAccount.accountId;
   const creditAccountId = creditAccount.accountId;
-  const ledgerId = debitAccount.ledgerId;
 
   const timestamp = now();
   const journalId = newId("JNL-");
