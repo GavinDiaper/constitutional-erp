@@ -7397,8 +7397,9 @@
                                                                    "exec":  [
                                                                                 "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
                                                                                 "var body = pm.response.json();",
-                                                                                "pm.environment.set(\"uaeOrderId\", body.sales_order_id);",
-                                                                                "pm.test(\"UAE order created\", function () { pm.expect(body.sales_order_id).to.be.a(\"string\"); });"
+                                                                                "pm.environment.set(\"uaeOrderId\", body.order_id);",
+                                                                                "pm.test(\"UAE order created\", function () { pm.expect(body.order_id).to.be.a(\"string\"); });",
+                                                                                "pm.test(\"UAE order created in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                                                                             ],
                                                                    "type":  "text/javascript"
                                                                },
