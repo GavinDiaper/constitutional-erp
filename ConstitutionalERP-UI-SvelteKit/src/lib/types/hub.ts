@@ -40,3 +40,41 @@ export interface ProcessGraphModel {
 	nodes: string[];
 	edges: ProcessGraphEdge[];
 }
+
+export type CanonicalFlowDomain = 'O2C' | 'P2P' | 'R2R' | 'H2R';
+
+export interface ProcessFlowNode {
+	id: string;
+	sequence: number;
+	requestName: string;
+	httpMethod: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+	requestPath: string;
+	action: string;
+	entityType: string;
+	dependsOnVariables: string[];
+	capturesVariables: string[];
+}
+
+export interface ProcessFlowEdge {
+	sourceId: string;
+	targetId: string;
+	condition: string;
+}
+
+export interface ProcessFlowDefinition {
+	id: string;
+	name: string;
+	domain: CanonicalFlowDomain;
+	variantKey: string;
+	variantLabel: string;
+	sourceFolderName: string;
+	nodes: ProcessFlowNode[];
+	edges: ProcessFlowEdge[];
+}
+
+export interface ProcessFlowBundle {
+	generatedAt: string;
+	sourceCollectionPath: string;
+	flows: ProcessFlowDefinition[];
+	warnings: string[];
+}

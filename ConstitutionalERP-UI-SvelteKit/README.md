@@ -40,3 +40,23 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Postman Process Flows
+
+The Canvas landing page can render domain process flow sequences generated from the FoundationERP Postman collection.
+
+Generate flow artifacts with:
+
+```sh
+npm run flows:generate
+```
+
+Optional override:
+
+```sh
+FLOW_COLLECTION_PATH="D:/path/to/FoundationERP.postman_collection.json" npm run flows:generate
+```
+
+Generated artifact path:
+
+- `src/lib/flows/generated/foundation-process-flows.json`

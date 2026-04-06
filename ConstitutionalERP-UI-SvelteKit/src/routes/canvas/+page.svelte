@@ -4,6 +4,8 @@
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
+	import { getProcessFlowBundle, getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
+	import type { CanonicalFlowDomain, ProcessFlowDefinition } from '$lib/types/hub';
 
 	type DomainTab = 'o2c' | 'p2p' | 'r2r' | 'hcm';
 	type EntityKey =
@@ -95,6 +97,9 @@
 	let filterText = '';
 	let activeTab: DomainTab = 'o2c';
 	let stateFilterByEntity: Partial<Record<EntityKey, string>> = {};
+	let flowVariantByTab: Partial<Record<DomainTab, string>> = {};
+
+	const flowBundle = getProcessFlowBundle();
 
 	let draftQuotes: O2CQuote[] = [];
 	let customers: CustomerRow[] = [];
@@ -381,6 +386,41 @@
 	function setStateFilter(entity: EntityKey, state: string): void {
 		stateFilterByEntity = { ...stateFilterByEntity, [entity]: state };
 	}
+
+	function mapDomainTabToCanonical(tab: DomainTab): CanonicalFlowDomain {
+		switch (tab) {
+			case 'o2c':
+				return 'O2C';
+			case 'p2p':
+				return 'P2P';
+			case 'r2r':
+				return 'R2R';
+			default:
+				return 'H2R';
+		}
+	}
+
+	function selectFlowVariant(tab: DomainTab, variantKey: string): void {
+		flowVariantByTab = { ...flowVariantByTab, [tab]: variantKey };
+	}
+
+	function summarizeNode(node: ProcessFlowDefinition['nodes'][number]): string {
+		const parts = [`${node.httpMethod} ${node.requestPath}`];
+		if (node.dependsOnVariables.length > 0) {
+			parts.push(`in: ${node.dependsOnVariables.join(', ')}`);
+		}
+		if (node.capturesVariables.length > 0) {
+			parts.push(`out: ${node.capturesVariables.join(', ')}`);
+		}
+
+		return parts.join(' • ');
+	}
+
+	$: activeDomain = mapDomainTabToCanonical(activeTab);
+	$: flowsForActiveDomain = listFlowsByDomain(activeDomain);
+	$: selectedVariantKey = flowVariantByTab[activeTab] ?? getDefaultFlowForDomain(activeDomain)?.variantKey ?? 'base';
+	$: selectedFlow =
+		flowsForActiveDomain.find((flow) => flow.variantKey === selectedVariantKey) ?? flowsForActiveDomain[0] ?? null;
 </script>
 
 <section class="glass-panel p-6">
@@ -430,6 +470,53 @@
 		>
 			HCM
 		</button>
+	</div>
+
+	<div class="mt-5 rounded-lg border border-emerald-300/35 bg-emerald-500/5 p-4">
+		<div class="flex flex-wrap items-start justify-between gap-3">
+			<div>
+				<h3 class="text-base font-semibold text-emerald-100">Domain Process Flow</h3>
+				<p class="mt-1 text-xs text-emerald-100/85">
+					Generated from FoundationERP Postman end-to-end folders.
+				</p>
+			</div>
+			<span class="rounded bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-100">
+				{flowBundle.flows.length} flows generated
+			</span>
+		</div>
+
+		{#if flowsForActiveDomain.length === 0}
+			<p class="mt-3 text-sm text-emerald-100/85">No generated flow is available for this domain yet.</p>
+		{:else}
+			<div class="mt-3 flex flex-wrap gap-2 text-xs">
+				{#each flowsForActiveDomain as flow (flow.id)}
+					<button
+						type="button"
+						class={`rounded-md border px-2 py-1 ${selectedFlow?.id === flow.id ? 'border-emerald-100 bg-emerald-400/25 text-emerald-100' : 'border-emerald-200/40 text-emerald-100/85 hover:bg-emerald-300/20'}`}
+						on:click={() => selectFlowVariant(activeTab, flow.variantKey)}
+					>
+						{flow.variantLabel}
+					</button>
+				{/each}
+			</div>
+
+			{#if selectedFlow}
+				<p class="mt-3 text-xs text-emerald-100/80">
+					{selectedFlow.sourceFolderName} • {selectedFlow.nodes.length} steps
+				</p>
+				<ol class="mt-2 space-y-2 text-sm">
+					{#each selectedFlow.nodes as node (node.id)}
+						<li class="rounded border border-emerald-100/20 bg-emerald-950/20 px-3 py-2">
+							<div class="flex flex-wrap items-center justify-between gap-2">
+								<span class="font-semibold text-emerald-50">{node.sequence}. {node.requestName}</span>
+								<span class="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-100">{node.action}</span>
+							</div>
+							<p class="mt-1 text-xs text-emerald-100/80">{summarizeNode(node)}</p>
+						</li>
+					{/each}
+				</ol>
+			{/if}
+		{/if}
 	</div>
 
 	{#if errorMessage}

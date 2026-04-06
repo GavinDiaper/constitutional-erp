@@ -1,0 +1,2708 @@
+{
+  "generatedAt": "2026-04-06T14:59:09.849Z",
+  "sourceCollectionPath": "D:\\Projects\\ConstitutionalERP\\FoundationERP\\ConstitutionalERP-FoundationERP\\postman\\FoundationERP.postman_collection.json",
+  "flows": [
+    {
+      "id": "h2r-base",
+      "name": "H2R End-to-End Flow",
+      "domain": "H2R",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "60 - H2R Flow",
+      "nodes": [
+        {
+          "id": "h2r-base-01-employees",
+          "sequence": 1,
+          "requestName": "Create Employee",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/employees",
+          "action": "employees",
+          "entityType": "employees",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "employeeId"
+          ]
+        },
+        {
+          "id": "h2r-base-02-activate",
+          "sequence": 2,
+          "requestName": "Activate Employee",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/employees/{{employeeId}}/activate",
+          "action": "activate",
+          "entityType": "employees",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "h2r-base-03-positions",
+          "sequence": 3,
+          "requestName": "Create Position",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/positions",
+          "action": "positions",
+          "entityType": "positions",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "positionId"
+          ]
+        },
+        {
+          "id": "h2r-base-04-assignments",
+          "sequence": 4,
+          "requestName": "Assign Position",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/assignments",
+          "action": "assignments",
+          "entityType": "assignments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId",
+            "positionId"
+          ],
+          "capturesVariables": [
+            "assignmentId"
+          ]
+        },
+        {
+          "id": "h2r-base-05-activate",
+          "sequence": 5,
+          "requestName": "Activate Assignment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/assignments/{{assignmentId}}/activate",
+          "action": "activate",
+          "entityType": "assignments",
+          "dependsOnVariables": [
+            "assignmentId",
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "h2r-base-06-credentials",
+          "sequence": 6,
+          "requestName": "Issue Credential",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/credentials",
+          "action": "credentials",
+          "entityType": "credentials",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId"
+          ],
+          "capturesVariables": [
+            "credentialId"
+          ]
+        },
+        {
+          "id": "h2r-base-07-authority-rules",
+          "sequence": 7,
+          "requestName": "Create Authority Rule",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/authority-rules",
+          "action": "authority-rules",
+          "entityType": "authority-rules",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "h2r-base-08-leave",
+          "sequence": 8,
+          "requestName": "Place Employee On Leave",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/employees/{{employeeId}}/leave",
+          "action": "leave",
+          "entityType": "employees",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "h2r-base-09-return",
+          "sequence": 9,
+          "requestName": "Return Employee",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/employees/{{employeeId}}/return",
+          "action": "return",
+          "entityType": "employees",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "h2r-base-10-terminate",
+          "sequence": 10,
+          "requestName": "Terminate Employee",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/h2r/employees/{{employeeId}}/terminate",
+          "action": "terminate",
+          "entityType": "employees",
+          "dependsOnVariables": [
+            "baseUrl",
+            "employeeId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "h2r-base-01-employees",
+          "targetId": "h2r-base-02-activate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-02-activate",
+          "targetId": "h2r-base-03-positions",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-03-positions",
+          "targetId": "h2r-base-04-assignments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-04-assignments",
+          "targetId": "h2r-base-05-activate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-05-activate",
+          "targetId": "h2r-base-06-credentials",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-06-credentials",
+          "targetId": "h2r-base-07-authority-rules",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-07-authority-rules",
+          "targetId": "h2r-base-08-leave",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-08-leave",
+          "targetId": "h2r-base-09-return",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "h2r-base-09-return",
+          "targetId": "h2r-base-10-terminate",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "o2c-base",
+      "name": "O2C End-to-End Flow",
+      "domain": "O2C",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "10 - O2C Flow",
+      "nodes": [
+        {
+          "id": "o2c-base-01-customers",
+          "sequence": 1,
+          "requestName": "Create Customer",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/customers",
+          "action": "customers",
+          "entityType": "customers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "customerId"
+          ]
+        },
+        {
+          "id": "o2c-base-02-quotes",
+          "sequence": 2,
+          "requestName": "Create Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes",
+          "action": "quotes",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "customerId"
+          ],
+          "capturesVariables": [
+            "quoteId"
+          ]
+        },
+        {
+          "id": "o2c-base-03-lines",
+          "sequence": 3,
+          "requestName": "Add Quote Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{quoteId}}/lines",
+          "action": "lines",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "quoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-04-send",
+          "sequence": 4,
+          "requestName": "Send Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{quoteId}}/send",
+          "action": "send",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "quoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-05-accept",
+          "sequence": 5,
+          "requestName": "Accept Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{quoteId}}/accept",
+          "action": "accept",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "quoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-06-convert",
+          "sequence": 6,
+          "requestName": "Convert Quote To Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{quoteId}}/convert",
+          "action": "convert",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "quoteId"
+          ],
+          "capturesVariables": [
+            "orderId"
+          ]
+        },
+        {
+          "id": "o2c-base-07-confirm",
+          "sequence": 7,
+          "requestName": "Confirm Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{orderId}}/confirm",
+          "action": "confirm",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "orderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-08-allocate",
+          "sequence": 8,
+          "requestName": "Allocate Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{orderId}}/allocate",
+          "action": "allocate",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "orderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-09-ship",
+          "sequence": 9,
+          "requestName": "Ship Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{orderId}}/ship",
+          "action": "ship",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "orderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-10-generate-invoice",
+          "sequence": 10,
+          "requestName": "Generate Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{orderId}}/generate-invoice",
+          "action": "generate-invoice",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "orderId"
+          ],
+          "capturesVariables": [
+            "invoiceId"
+          ]
+        },
+        {
+          "id": "o2c-base-11-post",
+          "sequence": 11,
+          "requestName": "Post Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/invoices/{{invoiceId}}/post",
+          "action": "post",
+          "entityType": "invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-12-payments",
+          "sequence": 12,
+          "requestName": "Register Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments",
+          "action": "payments",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invoiceId"
+          ],
+          "capturesVariables": [
+            "paymentId"
+          ]
+        },
+        {
+          "id": "o2c-base-13-apply",
+          "sequence": 13,
+          "requestName": "Apply Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments/{{paymentId}}/apply",
+          "action": "apply",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "paymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-base-14-reconcile",
+          "sequence": 14,
+          "requestName": "Reconcile Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments/{{paymentId}}/reconcile",
+          "action": "reconcile",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "paymentId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "o2c-base-01-customers",
+          "targetId": "o2c-base-02-quotes",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-02-quotes",
+          "targetId": "o2c-base-03-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-03-lines",
+          "targetId": "o2c-base-04-send",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-04-send",
+          "targetId": "o2c-base-05-accept",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-05-accept",
+          "targetId": "o2c-base-06-convert",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-06-convert",
+          "targetId": "o2c-base-07-confirm",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-07-confirm",
+          "targetId": "o2c-base-08-allocate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-08-allocate",
+          "targetId": "o2c-base-09-ship",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-09-ship",
+          "targetId": "o2c-base-10-generate-invoice",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-10-generate-invoice",
+          "targetId": "o2c-base-11-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-11-post",
+          "targetId": "o2c-base-12-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-12-payments",
+          "targetId": "o2c-base-13-apply",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-base-13-apply",
+          "targetId": "o2c-base-14-reconcile",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "o2c-vat5",
+      "name": "O2C End-to-End Flow",
+      "domain": "O2C",
+      "variantKey": "vat5",
+      "variantLabel": "UAE VAT (VAT5)",
+      "sourceFolderName": "11 - O2C Flow UAE VAT (VAT5)",
+      "nodes": [
+        {
+          "id": "o2c-vat5-01-customers",
+          "sequence": 1,
+          "requestName": "Create UAE Customer",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/customers",
+          "action": "customers",
+          "entityType": "customers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-02-quotes",
+          "sequence": 2,
+          "requestName": "Create UAE Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes",
+          "action": "quotes",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeCustomerId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-03-lines",
+          "sequence": 3,
+          "requestName": "Add UAE Quote Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{uaeQuoteId}}/lines",
+          "action": "lines",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeQuoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-04-send",
+          "sequence": 4,
+          "requestName": "Send UAE Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{uaeQuoteId}}/send",
+          "action": "send",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeQuoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-05-accept",
+          "sequence": 5,
+          "requestName": "Accept UAE Quote",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{uaeQuoteId}}/accept",
+          "action": "accept",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeQuoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-06-convert",
+          "sequence": 6,
+          "requestName": "Convert UAE Quote To Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/quotes/{{uaeQuoteId}}/convert",
+          "action": "convert",
+          "entityType": "quotes",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeQuoteId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-07-confirm",
+          "sequence": 7,
+          "requestName": "Confirm UAE Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{uaeOrderId}}/confirm",
+          "action": "confirm",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeOrderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-08-allocate",
+          "sequence": 8,
+          "requestName": "Allocate UAE Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{uaeOrderId}}/allocate",
+          "action": "allocate",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeOrderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-09-ship",
+          "sequence": 9,
+          "requestName": "Ship UAE Order",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{uaeOrderId}}/ship",
+          "action": "ship",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeOrderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-10-generate-invoice",
+          "sequence": 10,
+          "requestName": "Generate UAE Invoice With VAT5",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/orders/{{uaeOrderId}}/generate-invoice",
+          "action": "generate-invoice",
+          "entityType": "orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeOrderId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-11-get-transaction-lines",
+          "sequence": 11,
+          "requestName": "Get UAE Invoice Tax Lines (After Generate)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{uaeInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-12-post",
+          "sequence": 12,
+          "requestName": "Post UAE Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/invoices/{{uaeInvoiceId}}/post",
+          "action": "post",
+          "entityType": "invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-13-get-transaction-lines",
+          "sequence": 13,
+          "requestName": "Verify UAE Tax Lines Posted",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{uaeInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-14-r2r-ledger-entry",
+          "sequence": 14,
+          "requestName": "Verify UAE Multi-Line Journal (DR AR + CR Rev + CR VAT Out)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/query/r2r_ledger_entry",
+          "action": "r2r_ledger_entry",
+          "entityType": "r2r_ledger_entry",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-15-payments",
+          "sequence": 15,
+          "requestName": "Register UAE Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments",
+          "action": "payments",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-16-apply",
+          "sequence": 16,
+          "requestName": "Apply UAE Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments/{{uaePaymentId}}/apply",
+          "action": "apply",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaePaymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "o2c-vat5-17-reconcile",
+          "sequence": 17,
+          "requestName": "Reconcile UAE Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/o2c/payments/{{uaePaymentId}}/reconcile",
+          "action": "reconcile",
+          "entityType": "payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaePaymentId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "o2c-vat5-01-customers",
+          "targetId": "o2c-vat5-02-quotes",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-02-quotes",
+          "targetId": "o2c-vat5-03-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-03-lines",
+          "targetId": "o2c-vat5-04-send",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-04-send",
+          "targetId": "o2c-vat5-05-accept",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-05-accept",
+          "targetId": "o2c-vat5-06-convert",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-06-convert",
+          "targetId": "o2c-vat5-07-confirm",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-07-confirm",
+          "targetId": "o2c-vat5-08-allocate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-08-allocate",
+          "targetId": "o2c-vat5-09-ship",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-09-ship",
+          "targetId": "o2c-vat5-10-generate-invoice",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-10-generate-invoice",
+          "targetId": "o2c-vat5-11-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-11-get-transaction-lines",
+          "targetId": "o2c-vat5-12-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-12-post",
+          "targetId": "o2c-vat5-13-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-13-get-transaction-lines",
+          "targetId": "o2c-vat5-14-r2r-ledger-entry",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-14-r2r-ledger-entry",
+          "targetId": "o2c-vat5-15-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-15-payments",
+          "targetId": "o2c-vat5-16-apply",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "o2c-vat5-16-apply",
+          "targetId": "o2c-vat5-17-reconcile",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "p2p-base",
+      "name": "P2P End-to-End Flow",
+      "domain": "P2P",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "20 - P2P Flow",
+      "nodes": [
+        {
+          "id": "p2p-base-01-r2r-ledger-entry",
+          "sequence": 1,
+          "requestName": "Capture Ledger Baseline Before P2P",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/query/r2r_ledger_entry",
+          "action": "r2r_ledger_entry",
+          "entityType": "r2r_ledger_entry",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "p2pLedgerCountBefore"
+          ]
+        },
+        {
+          "id": "p2p-base-02-suppliers",
+          "sequence": 2,
+          "requestName": "Create Supplier",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/suppliers",
+          "action": "suppliers",
+          "entityType": "suppliers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "supplierId"
+          ]
+        },
+        {
+          "id": "p2p-base-03-requisitions",
+          "sequence": 3,
+          "requestName": "Create Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions",
+          "action": "requisitions",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "requisitionId"
+          ]
+        },
+        {
+          "id": "p2p-base-04-lines",
+          "sequence": 4,
+          "requestName": "Add Requisition Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{requisitionId}}/lines",
+          "action": "lines",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "requisitionId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-05-submit",
+          "sequence": 5,
+          "requestName": "Submit Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{requisitionId}}/submit",
+          "action": "submit",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "requisitionId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-06-approve",
+          "sequence": 6,
+          "requestName": "Approve Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{requisitionId}}/approve",
+          "action": "approve",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "requisitionId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-07-convert",
+          "sequence": 7,
+          "requestName": "Convert Requisition To PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{requisitionId}}/convert",
+          "action": "convert",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "requisitionId",
+            "supplierId"
+          ],
+          "capturesVariables": [
+            "poId"
+          ]
+        },
+        {
+          "id": "p2p-base-08-approve",
+          "sequence": 8,
+          "requestName": "Approve PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{poId}}/approve",
+          "action": "approve",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "poId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-09-send",
+          "sequence": 9,
+          "requestName": "Send PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{poId}}/send",
+          "action": "send",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "poId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-10-goods-receipts",
+          "sequence": 10,
+          "requestName": "Create Goods Receipt",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts",
+          "action": "goods-receipts",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "poId"
+          ],
+          "capturesVariables": [
+            "receiptId"
+          ]
+        },
+        {
+          "id": "p2p-base-11-receive",
+          "sequence": 11,
+          "requestName": "Receive Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{receiptId}}/receive",
+          "action": "receive",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "receiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-12-accept",
+          "sequence": 12,
+          "requestName": "Accept Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{receiptId}}/accept",
+          "action": "accept",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "receiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-13-supplier-invoices",
+          "sequence": 13,
+          "requestName": "Create Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices",
+          "action": "supplier-invoices",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "receiptId"
+          ],
+          "capturesVariables": [
+            "supplierInvoiceAmountDue",
+            "supplierInvoiceId"
+          ]
+        },
+        {
+          "id": "p2p-base-14-validate",
+          "sequence": 14,
+          "requestName": "Validate Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{supplierInvoiceId}}/validate",
+          "action": "validate",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "supplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-15-post",
+          "sequence": 15,
+          "requestName": "Post Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{supplierInvoiceId}}/post",
+          "action": "post",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "supplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-16-ap-payments",
+          "sequence": 16,
+          "requestName": "Create AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments",
+          "action": "ap-payments",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "supplierInvoiceAmountDue",
+            "supplierInvoiceId"
+          ],
+          "capturesVariables": [
+            "apPaymentId"
+          ]
+        },
+        {
+          "id": "p2p-base-17-receive",
+          "sequence": 17,
+          "requestName": "Receive AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{apPaymentId}}/receive",
+          "action": "receive",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "apPaymentId",
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-18-apply",
+          "sequence": 18,
+          "requestName": "Apply AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{apPaymentId}}/apply",
+          "action": "apply",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "apPaymentId",
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-19-reconcile",
+          "sequence": 19,
+          "requestName": "Reconcile AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{apPaymentId}}/reconcile",
+          "action": "reconcile",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "apPaymentId",
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-20-get-supplier-invoices",
+          "sequence": 20,
+          "requestName": "Get Supplier Invoice After Payment",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{supplierInvoiceId}}",
+          "action": "get-supplier-invoices",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "supplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-21-get-ap-payments",
+          "sequence": 21,
+          "requestName": "Get AP Payment After Reconcile",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/p2p/ap-payments/{{apPaymentId}}",
+          "action": "get-ap-payments",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "apPaymentId",
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-base-22-r2r-ledger-entry",
+          "sequence": 22,
+          "requestName": "Verify Ledger Delta After P2P Payment",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/query/r2r_ledger_entry",
+          "action": "r2r_ledger_entry",
+          "entityType": "r2r_ledger_entry",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "p2pLedgerCountAfter",
+            "p2pLedgerDelta"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "p2p-base-01-r2r-ledger-entry",
+          "targetId": "p2p-base-02-suppliers",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-02-suppliers",
+          "targetId": "p2p-base-03-requisitions",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-03-requisitions",
+          "targetId": "p2p-base-04-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-04-lines",
+          "targetId": "p2p-base-05-submit",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-05-submit",
+          "targetId": "p2p-base-06-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-06-approve",
+          "targetId": "p2p-base-07-convert",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-07-convert",
+          "targetId": "p2p-base-08-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-08-approve",
+          "targetId": "p2p-base-09-send",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-09-send",
+          "targetId": "p2p-base-10-goods-receipts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-10-goods-receipts",
+          "targetId": "p2p-base-11-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-11-receive",
+          "targetId": "p2p-base-12-accept",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-12-accept",
+          "targetId": "p2p-base-13-supplier-invoices",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-13-supplier-invoices",
+          "targetId": "p2p-base-14-validate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-14-validate",
+          "targetId": "p2p-base-15-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-15-post",
+          "targetId": "p2p-base-16-ap-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-16-ap-payments",
+          "targetId": "p2p-base-17-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-17-receive",
+          "targetId": "p2p-base-18-apply",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-18-apply",
+          "targetId": "p2p-base-19-reconcile",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-19-reconcile",
+          "targetId": "p2p-base-20-get-supplier-invoices",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-20-get-supplier-invoices",
+          "targetId": "p2p-base-21-get-ap-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-base-21-get-ap-payments",
+          "targetId": "p2p-base-22-r2r-ledger-entry",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "p2p-rc5",
+      "name": "P2P End-to-End Flow",
+      "domain": "P2P",
+      "variantKey": "rc5",
+      "variantLabel": "UAE Reverse Charge (RC5)",
+      "sourceFolderName": "22 - P2P Flow UAE Reverse Charge (RC5)",
+      "nodes": [
+        {
+          "id": "p2p-rc5-01-suppliers",
+          "sequence": 1,
+          "requestName": "Create RC Supplier",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/suppliers",
+          "action": "suppliers",
+          "entityType": "suppliers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-02-requisitions",
+          "sequence": 2,
+          "requestName": "Create RC Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions",
+          "action": "requisitions",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-03-lines",
+          "sequence": 3,
+          "requestName": "Add RC Requisition Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{rcReqId}}/lines",
+          "action": "lines",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-04-submit",
+          "sequence": 4,
+          "requestName": "Submit RC Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{rcReqId}}/submit",
+          "action": "submit",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-05-approve",
+          "sequence": 5,
+          "requestName": "Approve RC Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{rcReqId}}/approve",
+          "action": "approve",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-06-convert",
+          "sequence": 6,
+          "requestName": "Convert RC Requisition To PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{rcReqId}}/convert",
+          "action": "convert",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReqId",
+            "rcSupplierId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-07-approve",
+          "sequence": 7,
+          "requestName": "Approve RC PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{rcPoId}}/approve",
+          "action": "approve",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcPoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-08-send",
+          "sequence": 8,
+          "requestName": "Send RC PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{rcPoId}}/send",
+          "action": "send",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcPoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-09-goods-receipts",
+          "sequence": 9,
+          "requestName": "Create RC Goods Receipt",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts",
+          "action": "goods-receipts",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcPoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-10-receive",
+          "sequence": 10,
+          "requestName": "Receive RC Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{rcReceiptId}}/receive",
+          "action": "receive",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-11-accept",
+          "sequence": 11,
+          "requestName": "Accept RC Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{rcReceiptId}}/accept",
+          "action": "accept",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-12-supplier-invoices",
+          "sequence": 12,
+          "requestName": "Create RC Supplier Invoice With RC5",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices",
+          "action": "supplier-invoices",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-13-get-transaction-lines",
+          "sequence": 13,
+          "requestName": "Get RC Tax Lines (Pending - Reverse Charge)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{rcSupplierInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-14-validate",
+          "sequence": 14,
+          "requestName": "Validate RC Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{rcSupplierInvoiceId}}/validate",
+          "action": "validate",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-15-post",
+          "sequence": 15,
+          "requestName": "Post RC Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{rcSupplierInvoiceId}}/post",
+          "action": "post",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-16-get-transaction-lines",
+          "sequence": 16,
+          "requestName": "Verify RC Tax Lines Posted",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{rcSupplierInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-17-r2r-ledger-entry",
+          "sequence": 17,
+          "requestName": "Verify RC 4-Line Journal (DR Exp + CR AP + DR VAT-In + CR VAT-Out)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/query/r2r_ledger_entry",
+          "action": "r2r_ledger_entry",
+          "entityType": "r2r_ledger_entry",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-18-ap-payments",
+          "sequence": 18,
+          "requestName": "Create RC AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments",
+          "action": "ap-payments",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-19-receive",
+          "sequence": 19,
+          "requestName": "Receive RC AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{rcApPaymentId}}/receive",
+          "action": "receive",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcApPaymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-20-apply",
+          "sequence": 20,
+          "requestName": "Apply RC AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{rcApPaymentId}}/apply",
+          "action": "apply",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcApPaymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-rc5-21-reconcile",
+          "sequence": 21,
+          "requestName": "Reconcile RC AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{rcApPaymentId}}/reconcile",
+          "action": "reconcile",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "rcApPaymentId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "p2p-rc5-01-suppliers",
+          "targetId": "p2p-rc5-02-requisitions",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-02-requisitions",
+          "targetId": "p2p-rc5-03-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-03-lines",
+          "targetId": "p2p-rc5-04-submit",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-04-submit",
+          "targetId": "p2p-rc5-05-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-05-approve",
+          "targetId": "p2p-rc5-06-convert",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-06-convert",
+          "targetId": "p2p-rc5-07-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-07-approve",
+          "targetId": "p2p-rc5-08-send",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-08-send",
+          "targetId": "p2p-rc5-09-goods-receipts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-09-goods-receipts",
+          "targetId": "p2p-rc5-10-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-10-receive",
+          "targetId": "p2p-rc5-11-accept",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-11-accept",
+          "targetId": "p2p-rc5-12-supplier-invoices",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-12-supplier-invoices",
+          "targetId": "p2p-rc5-13-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-13-get-transaction-lines",
+          "targetId": "p2p-rc5-14-validate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-14-validate",
+          "targetId": "p2p-rc5-15-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-15-post",
+          "targetId": "p2p-rc5-16-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-16-get-transaction-lines",
+          "targetId": "p2p-rc5-17-r2r-ledger-entry",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-17-r2r-ledger-entry",
+          "targetId": "p2p-rc5-18-ap-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-18-ap-payments",
+          "targetId": "p2p-rc5-19-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-19-receive",
+          "targetId": "p2p-rc5-20-apply",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-rc5-20-apply",
+          "targetId": "p2p-rc5-21-reconcile",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "p2p-vat5",
+      "name": "P2P End-to-End Flow",
+      "domain": "P2P",
+      "variantKey": "vat5",
+      "variantLabel": "UAE VAT (VAT5)",
+      "sourceFolderName": "21 - P2P Flow UAE VAT (VAT5)",
+      "nodes": [
+        {
+          "id": "p2p-vat5-01-suppliers",
+          "sequence": 1,
+          "requestName": "Create UAE Supplier",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/suppliers",
+          "action": "suppliers",
+          "entityType": "suppliers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-02-requisitions",
+          "sequence": 2,
+          "requestName": "Create UAE Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions",
+          "action": "requisitions",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-03-lines",
+          "sequence": 3,
+          "requestName": "Add UAE Requisition Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{uaeReqId}}/lines",
+          "action": "lines",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-04-submit",
+          "sequence": 4,
+          "requestName": "Submit UAE Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{uaeReqId}}/submit",
+          "action": "submit",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-05-approve",
+          "sequence": 5,
+          "requestName": "Approve UAE Requisition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{uaeReqId}}/approve",
+          "action": "approve",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReqId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-06-convert",
+          "sequence": 6,
+          "requestName": "Convert UAE Requisition To PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/requisitions/{{uaeReqId}}/convert",
+          "action": "convert",
+          "entityType": "requisitions",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReqId",
+            "uaeSupplierId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-07-approve",
+          "sequence": 7,
+          "requestName": "Approve UAE PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{uaePoId}}/approve",
+          "action": "approve",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaePoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-08-send",
+          "sequence": 8,
+          "requestName": "Send UAE PO",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/purchase-orders/{{uaePoId}}/send",
+          "action": "send",
+          "entityType": "purchase-orders",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaePoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-09-goods-receipts",
+          "sequence": 9,
+          "requestName": "Create UAE Goods Receipt",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts",
+          "action": "goods-receipts",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaePoId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-10-receive",
+          "sequence": 10,
+          "requestName": "Receive UAE Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{uaeReceiptId}}/receive",
+          "action": "receive",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-11-accept",
+          "sequence": 11,
+          "requestName": "Accept UAE Goods",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/goods-receipts/{{uaeReceiptId}}/accept",
+          "action": "accept",
+          "entityType": "goods-receipts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-12-supplier-invoices",
+          "sequence": 12,
+          "requestName": "Create UAE Supplier Invoice With VAT5",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices",
+          "action": "supplier-invoices",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeReceiptId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-13-get-transaction-lines",
+          "sequence": 13,
+          "requestName": "Get UAE AP Tax Lines (Pending)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{uaeSupplierInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-14-validate",
+          "sequence": 14,
+          "requestName": "Validate UAE Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{uaeSupplierInvoiceId}}/validate",
+          "action": "validate",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-15-post",
+          "sequence": 15,
+          "requestName": "Post UAE Supplier Invoice",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/supplier-invoices/{{uaeSupplierInvoiceId}}/post",
+          "action": "post",
+          "entityType": "supplier-invoices",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-16-get-transaction-lines",
+          "sequence": 16,
+          "requestName": "Verify UAE AP Tax Lines Posted",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/tax/transaction-lines/{{uaeSupplierInvoiceId}}",
+          "action": "get-transaction-lines",
+          "entityType": "tax",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-17-r2r-ledger-entry",
+          "sequence": 17,
+          "requestName": "Verify UAE AP Multi-Line Journal (DR Expense + DR VAT-In + CR AP)",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/query/r2r_ledger_entry",
+          "action": "r2r_ledger_entry",
+          "entityType": "r2r_ledger_entry",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-18-ap-payments",
+          "sequence": 18,
+          "requestName": "Create UAE AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments",
+          "action": "ap-payments",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeSupplierInvoiceId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-19-receive",
+          "sequence": 19,
+          "requestName": "Receive UAE AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{uaeApPaymentId}}/receive",
+          "action": "receive",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeApPaymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-20-apply",
+          "sequence": 20,
+          "requestName": "Apply UAE AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{uaeApPaymentId}}/apply",
+          "action": "apply",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeApPaymentId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "p2p-vat5-21-reconcile",
+          "sequence": 21,
+          "requestName": "Reconcile UAE AP Payment",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/p2p/ap-payments/{{uaeApPaymentId}}/reconcile",
+          "action": "reconcile",
+          "entityType": "ap-payments",
+          "dependsOnVariables": [
+            "baseUrl",
+            "uaeApPaymentId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "p2p-vat5-01-suppliers",
+          "targetId": "p2p-vat5-02-requisitions",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-02-requisitions",
+          "targetId": "p2p-vat5-03-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-03-lines",
+          "targetId": "p2p-vat5-04-submit",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-04-submit",
+          "targetId": "p2p-vat5-05-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-05-approve",
+          "targetId": "p2p-vat5-06-convert",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-06-convert",
+          "targetId": "p2p-vat5-07-approve",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-07-approve",
+          "targetId": "p2p-vat5-08-send",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-08-send",
+          "targetId": "p2p-vat5-09-goods-receipts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-09-goods-receipts",
+          "targetId": "p2p-vat5-10-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-10-receive",
+          "targetId": "p2p-vat5-11-accept",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-11-accept",
+          "targetId": "p2p-vat5-12-supplier-invoices",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-12-supplier-invoices",
+          "targetId": "p2p-vat5-13-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-13-get-transaction-lines",
+          "targetId": "p2p-vat5-14-validate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-14-validate",
+          "targetId": "p2p-vat5-15-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-15-post",
+          "targetId": "p2p-vat5-16-get-transaction-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-16-get-transaction-lines",
+          "targetId": "p2p-vat5-17-r2r-ledger-entry",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-17-r2r-ledger-entry",
+          "targetId": "p2p-vat5-18-ap-payments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-18-ap-payments",
+          "targetId": "p2p-vat5-19-receive",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-19-receive",
+          "targetId": "p2p-vat5-20-apply",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "p2p-vat5-20-apply",
+          "targetId": "p2p-vat5-21-reconcile",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "r2r-base",
+      "name": "R2R End-to-End Flow",
+      "domain": "R2R",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "30 - R2R Flow",
+      "nodes": [
+        {
+          "id": "r2r-base-01-legal-entities",
+          "sequence": 1,
+          "requestName": "List Seeded Legal Entities",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/legal-entities",
+          "action": "legal-entities",
+          "entityType": "legal-entities",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "seededUsLegalEntityId"
+          ]
+        },
+        {
+          "id": "r2r-base-02-get-legal-entities",
+          "sequence": 2,
+          "requestName": "Get Seeded US Legal Entity",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/legal-entities/{{seededUsLegalEntityId}}",
+          "action": "get-legal-entities",
+          "entityType": "legal-entities",
+          "dependsOnVariables": [
+            "baseUrl",
+            "seededUsLegalEntityId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-03-ledgers",
+          "sequence": 3,
+          "requestName": "List Seeded Ledgers",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/ledgers",
+          "action": "ledgers",
+          "entityType": "ledgers",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "seededUsLedgerId"
+          ]
+        },
+        {
+          "id": "r2r-base-04-get-ledgers",
+          "sequence": 4,
+          "requestName": "Get Seeded US Ledger",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/ledgers/{{seededUsLedgerId}}",
+          "action": "get-ledgers",
+          "entityType": "ledgers",
+          "dependsOnVariables": [
+            "baseUrl",
+            "seededUsLedgerId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-05-accounts",
+          "sequence": 5,
+          "requestName": "List Accounts Includes Seeded Starter COA",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/accounts",
+          "action": "accounts",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-06-accounts",
+          "sequence": 6,
+          "requestName": "Create Account",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts",
+          "action": "accounts",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "accountId"
+          ]
+        },
+        {
+          "id": "r2r-base-07-accounts",
+          "sequence": 7,
+          "requestName": "Create Offset Account",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts",
+          "action": "accounts",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "accountOffsetId"
+          ]
+        },
+        {
+          "id": "r2r-base-08-segment-definitions",
+          "sequence": 8,
+          "requestName": "Create COA Segment Definition",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts/segment-definitions",
+          "action": "segment-definitions",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "segmentDefinitionId"
+          ]
+        },
+        {
+          "id": "r2r-base-09-accounts",
+          "sequence": 9,
+          "requestName": "Create Parent Account",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts",
+          "action": "accounts",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "parentAccountId"
+          ]
+        },
+        {
+          "id": "r2r-base-10-accounts",
+          "sequence": 10,
+          "requestName": "Create Child Account With Parent",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts",
+          "action": "accounts",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl",
+            "parentAccountId"
+          ],
+          "capturesVariables": [
+            "childAccountId"
+          ]
+        },
+        {
+          "id": "r2r-base-11-segments",
+          "sequence": 11,
+          "requestName": "Set Child Account Segments",
+          "httpMethod": "PUT",
+          "requestPath": "/api/v1/r2r/accounts/{{childAccountId}}/segments",
+          "action": "segments",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "childAccountId",
+            "segmentDefinitionId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-12-hierarchy",
+          "sequence": 12,
+          "requestName": "Get Account Hierarchy",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/accounts/hierarchy",
+          "action": "hierarchy",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-13-combination-rules",
+          "sequence": 13,
+          "requestName": "Create COA Combination Rule",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts/combination-rules",
+          "action": "combination-rules",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "segmentDefinitionId"
+          ],
+          "capturesVariables": [
+            "combinationRuleId"
+          ]
+        },
+        {
+          "id": "r2r-base-14-validate",
+          "sequence": 14,
+          "requestName": "Validate COA Combination (valid)",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/accounts/combination-rules/validate",
+          "action": "validate",
+          "entityType": "accounts",
+          "dependsOnVariables": [
+            "baseUrl",
+            "segmentDefinitionId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-15-rate-types",
+          "sequence": 15,
+          "requestName": "Create FX Rate Type",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fx/rate-types",
+          "action": "rate-types",
+          "entityType": "fx",
+          "dependsOnVariables": [
+            "$timestamp",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "fxRateTypeId"
+          ]
+        },
+        {
+          "id": "r2r-base-16-rates",
+          "sequence": 16,
+          "requestName": "Create FX Rate",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fx/rates",
+          "action": "rates",
+          "entityType": "fx",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fxRateTypeId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-17-latest",
+          "sequence": 17,
+          "requestName": "Get Latest FX Rate",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/fx/rates/latest",
+          "action": "latest",
+          "entityType": "fx",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fxRateTypeId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-18-posting-profiles",
+          "sequence": 18,
+          "requestName": "Create SLA Posting Profile",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/sla/posting-profiles",
+          "action": "posting-profiles",
+          "entityType": "sla",
+          "dependsOnVariables": [
+            "accountId",
+            "accountOffsetId",
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "postingProfileId"
+          ]
+        },
+        {
+          "id": "r2r-base-19-deactivate",
+          "sequence": 19,
+          "requestName": "Deactivate SLA Posting Profile",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/sla/posting-profiles/{{postingProfileId}}/deactivate",
+          "action": "deactivate",
+          "entityType": "sla",
+          "dependsOnVariables": [
+            "baseUrl",
+            "postingProfileId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-20-fiscal-years",
+          "sequence": 20,
+          "requestName": "Create Fiscal Year",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fiscal-years",
+          "action": "fiscal-years",
+          "entityType": "fiscal-years",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": [
+            "fiscalYearId"
+          ]
+        },
+        {
+          "id": "r2r-base-21-fiscal-periods",
+          "sequence": 21,
+          "requestName": "Create Fiscal Period",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fiscal-periods",
+          "action": "fiscal-periods",
+          "entityType": "fiscal-periods",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalYearId"
+          ],
+          "capturesVariables": [
+            "fiscalPeriodId"
+          ]
+        },
+        {
+          "id": "r2r-base-22-journals",
+          "sequence": 22,
+          "requestName": "Create Journal",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/journals",
+          "action": "journals",
+          "entityType": "journals",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalPeriodId"
+          ],
+          "capturesVariables": [
+            "journalId"
+          ]
+        },
+        {
+          "id": "r2r-base-23-lines",
+          "sequence": 23,
+          "requestName": "Add Journal Debit Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/journals/{{journalId}}/lines",
+          "action": "lines",
+          "entityType": "journals",
+          "dependsOnVariables": [
+            "accountId",
+            "baseUrl",
+            "journalId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-24-lines",
+          "sequence": 24,
+          "requestName": "Add Journal Credit Line",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/journals/{{journalId}}/lines",
+          "action": "lines",
+          "entityType": "journals",
+          "dependsOnVariables": [
+            "accountOffsetId",
+            "baseUrl",
+            "journalId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-25-post",
+          "sequence": 25,
+          "requestName": "Post Journal",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/journals/{{journalId}}/post",
+          "action": "post",
+          "entityType": "journals",
+          "dependsOnVariables": [
+            "baseUrl",
+            "journalId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-26-get-trial-balance",
+          "sequence": 26,
+          "requestName": "Get Trial Balance",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/r2r/trial-balance/{{fiscalPeriodId}}",
+          "action": "get-trial-balance",
+          "entityType": "trial-balance",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalPeriodId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-27-close",
+          "sequence": 27,
+          "requestName": "Close Fiscal Period",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fiscal-periods/{{fiscalPeriodId}}/close",
+          "action": "close",
+          "entityType": "fiscal-periods",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalPeriodId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-28-lock",
+          "sequence": 28,
+          "requestName": "Lock Fiscal Period",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/fiscal-periods/{{fiscalPeriodId}}/lock",
+          "action": "lock",
+          "entityType": "fiscal-periods",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalPeriodId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "r2r-base-29-journals",
+          "sequence": 29,
+          "requestName": "Create Journal In Locked Period (negative)",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/r2r/journals",
+          "action": "journals",
+          "entityType": "journals",
+          "dependsOnVariables": [
+            "baseUrl",
+            "fiscalPeriodId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "r2r-base-01-legal-entities",
+          "targetId": "r2r-base-02-get-legal-entities",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-02-get-legal-entities",
+          "targetId": "r2r-base-03-ledgers",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-03-ledgers",
+          "targetId": "r2r-base-04-get-ledgers",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-04-get-ledgers",
+          "targetId": "r2r-base-05-accounts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-05-accounts",
+          "targetId": "r2r-base-06-accounts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-06-accounts",
+          "targetId": "r2r-base-07-accounts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-07-accounts",
+          "targetId": "r2r-base-08-segment-definitions",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-08-segment-definitions",
+          "targetId": "r2r-base-09-accounts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-09-accounts",
+          "targetId": "r2r-base-10-accounts",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-10-accounts",
+          "targetId": "r2r-base-11-segments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-11-segments",
+          "targetId": "r2r-base-12-hierarchy",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-12-hierarchy",
+          "targetId": "r2r-base-13-combination-rules",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-13-combination-rules",
+          "targetId": "r2r-base-14-validate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-14-validate",
+          "targetId": "r2r-base-15-rate-types",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-15-rate-types",
+          "targetId": "r2r-base-16-rates",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-16-rates",
+          "targetId": "r2r-base-17-latest",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-17-latest",
+          "targetId": "r2r-base-18-posting-profiles",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-18-posting-profiles",
+          "targetId": "r2r-base-19-deactivate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-19-deactivate",
+          "targetId": "r2r-base-20-fiscal-years",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-20-fiscal-years",
+          "targetId": "r2r-base-21-fiscal-periods",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-21-fiscal-periods",
+          "targetId": "r2r-base-22-journals",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-22-journals",
+          "targetId": "r2r-base-23-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-23-lines",
+          "targetId": "r2r-base-24-lines",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-24-lines",
+          "targetId": "r2r-base-25-post",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-25-post",
+          "targetId": "r2r-base-26-get-trial-balance",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-26-get-trial-balance",
+          "targetId": "r2r-base-27-close",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-27-close",
+          "targetId": "r2r-base-28-lock",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "r2r-base-28-lock",
+          "targetId": "r2r-base-29-journals",
+          "condition": "Previous step completed"
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Accept UAE Quote' depends on unresolved variable '{{uaeQuoteId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Add UAE Quote Line' depends on unresolved variable '{{uaeQuoteId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Allocate UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Apply UAE Payment' depends on unresolved variable '{{uaePaymentId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Confirm UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Convert UAE Quote To Order' depends on unresolved variable '{{uaeQuoteId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Create UAE Quote' depends on unresolved variable '{{uaeCustomerId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Generate UAE Invoice With VAT5' depends on unresolved variable '{{uaeOrderId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Get UAE Invoice Tax Lines (After Generate)' depends on unresolved variable '{{uaeInvoiceId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Post UAE Invoice' depends on unresolved variable '{{uaeInvoiceId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Reconcile UAE Payment' depends on unresolved variable '{{uaePaymentId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Register UAE Payment' depends on unresolved variable '{{uaeInvoiceId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Send UAE Quote' depends on unresolved variable '{{uaeQuoteId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Ship UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
+    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Verify UAE Tax Lines Posted' depends on unresolved variable '{{uaeInvoiceId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Accept UAE Goods' depends on unresolved variable '{{uaeReceiptId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Add UAE Requisition Line' depends on unresolved variable '{{uaeReqId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Apply UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Approve UAE PO' depends on unresolved variable '{{uaePoId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Approve UAE Requisition' depends on unresolved variable '{{uaeReqId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Convert UAE Requisition To PO' depends on unresolved variable '{{uaeReqId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Convert UAE Requisition To PO' depends on unresolved variable '{{uaeSupplierId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE AP Payment' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE Goods Receipt' depends on unresolved variable '{{uaePoId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE Supplier Invoice With VAT5' depends on unresolved variable '{{uaeReceiptId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Get UAE AP Tax Lines (Pending)' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Post UAE Supplier Invoice' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Receive UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Receive UAE Goods' depends on unresolved variable '{{uaeReceiptId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Reconcile UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Send UAE PO' depends on unresolved variable '{{uaePoId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Submit UAE Requisition' depends on unresolved variable '{{uaeReqId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Validate UAE Supplier Invoice' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
+    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Verify UAE AP Tax Lines Posted' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Accept RC Goods' depends on unresolved variable '{{rcReceiptId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Add RC Requisition Line' depends on unresolved variable '{{rcReqId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Apply RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Approve RC PO' depends on unresolved variable '{{rcPoId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Approve RC Requisition' depends on unresolved variable '{{rcReqId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Convert RC Requisition To PO' depends on unresolved variable '{{rcReqId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Convert RC Requisition To PO' depends on unresolved variable '{{rcSupplierId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC AP Payment' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC Goods Receipt' depends on unresolved variable '{{rcPoId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC Supplier Invoice With RC5' depends on unresolved variable '{{rcReceiptId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Get RC Tax Lines (Pending - Reverse Charge)' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Post RC Supplier Invoice' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Receive RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Receive RC Goods' depends on unresolved variable '{{rcReceiptId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Reconcile RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Send RC PO' depends on unresolved variable '{{rcPoId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Submit RC Requisition' depends on unresolved variable '{{rcReqId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Validate RC Supplier Invoice' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
+    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Verify RC Tax Lines Posted' depends on unresolved variable '{{rcSupplierInvoiceId}}'."
+  ]
+}
