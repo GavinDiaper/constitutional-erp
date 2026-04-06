@@ -6868,7 +6868,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"taxJurisdictionId\":\"{{customTaxJurisdictionId}}\",\"taxCodeId\":\"{{customTaxCodeId}}\",\"code\":\"CUST-RULE\",\"name\":\"Custom AE Rule\",\"priority\":50,\"conditionsJson\":{\"conditions\":[{\"field\":\"country_code\",\"op\":\"eq\",\"value\":\"AE\"}],\"match\":\"all\"},\"effectiveFrom\":\"2026-01-01T00:00:00.000Z\"}",
+                                                                   "raw":  "{\"taxRegimeId\":\"{{customTaxRegimeId}}\",\"taxJurisdictionId\":\"{{customTaxJurisdictionId}}\",\"taxCodeId\":\"{{customTaxCodeId}}\",\"code\":\"CUST-RULE\",\"name\":\"Custom AE Rule\",\"priority\":50,\"conditionsJson\":{\"conditions\":[{\"field\":\"country_code\",\"op\":\"eq\",\"value\":\"AE\"}],\"match\":\"all\"},\"effectiveFrom\":\"2026-01-01T00:00:00.000Z\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -6958,7 +6958,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"taxRegimeId\":\"TREG-UAE-VAT\",\"taxCodeId\":\"TCOD-VAT5\",\"transactionType\":\"ar-invoice\",\"accountRole\":\"tax_liability\",\"accountCode\":\"SYS-210-LIAB-VAT-OUT\",\"effectiveFrom\":\"2026-01-01T00:00:00.000Z\"}",
+                                                                   "raw":  "{\"taxRegimeId\":\"{{customTaxRegimeId}}\",\"taxCodeId\":\"{{customTaxCodeId}}\",\"transactionType\":\"ar-invoice\",\"accountRole\":\"tax_liability\",\"accountId\":\"ACC-TAX-SYS-210-LIAB-VAT-OUT\",\"effectiveFrom\":\"2026-01-01T00:00:00.000Z\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
