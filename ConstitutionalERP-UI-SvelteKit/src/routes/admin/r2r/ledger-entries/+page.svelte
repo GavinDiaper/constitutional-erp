@@ -41,6 +41,7 @@
 	let accounts: AccountRow[] = [];
 	let offset = 0;
 	let pageSize = 200;
+	const maxRows = 5000;
 	let accountFilter = '';
 	let journalFilter = '';
 	let periodFilter = '';
@@ -75,13 +76,14 @@
 	async function loadEntries(): Promise<void> {
 		loading = true;
 		errorMessage = '';
+		offset = 0;
 
 		try {
 			const [entryResult, journalResult, ledgerResult, accountResult] = await Promise.all([
-				queryTable<LedgerEntryRow>('r2r_ledger_entry', $actorStore, pageSize, offset),
-				queryTable<JournalRow>('r2r_journal', $actorStore, 5000),
+				queryTable<LedgerEntryRow>('r2r_ledger_entry', $actorStore, maxRows, 0),
+				queryTable<JournalRow>('r2r_journal', $actorStore, maxRows),
 				queryTable<LedgerRow>('r2r_ledger', $actorStore, 500),
-				queryTable<AccountRow>('r2r_account', $actorStore, 5000)
+				queryTable<AccountRow>('r2r_account', $actorStore, maxRows)
 			]);
 
 			entries = entryResult.data ?? [];
@@ -152,21 +154,41 @@
 
 	function nextPage(): void {
 		offset += pageSize;
-		void loadEntries();
 	}
 
 	function previousPage(): void {
 		offset = Math.max(0, offset - pageSize);
-		void loadEntries();
 	}
 
-	$: filteredEntries = entries.filter((entry) => {
+	function entryTimestamp(entry: LedgerEntryRow): number {
+		const posting = Date.parse(String(entry.posting_date ?? ''));
+		if (!Number.isNaN(posting)) {
+			return posting;
+		}
+
+		const created = Date.parse(String(entry.created_at ?? ''));
+		if (!Number.isNaN(created)) {
+			return created;
+		}
+
+		return 0;
+	}
+
+	$: filteredEntries = [...entries]
+		.sort((left, right) => entryTimestamp(right) - entryTimestamp(left))
+		.filter((entry) => {
 		const matchesAccount = match(entry.account_id, accountFilter);
 		const matchesJournal = match(entry.journal_id, journalFilter);
 		const matchesPeriod = !periodFilter || periodOf(entry) === periodFilter;
 		const matchesLedger = !selectedLedgerId || ledgerIdOf(entry) === selectedLedgerId;
 		return matchesAccount && matchesJournal && matchesPeriod && matchesLedger;
 	});
+
+	$: if (offset > 0 && offset >= filteredEntries.length) {
+		offset = Math.max(0, Math.floor((Math.max(filteredEntries.length, 1) - 1) / pageSize) * pageSize);
+	}
+
+	$: pagedEntries = filteredEntries.slice(offset, offset + pageSize);
 
 	$: sortedLedgers = [...ledgers].sort((left, right) => ledgerLabel(left).localeCompare(ledgerLabel(right)));
 </script>
@@ -196,8 +218,8 @@
 
 	<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
 		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={previousPage} disabled={loading || offset === 0}>Previous</button>
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={nextPage} disabled={loading}>Next</button>
-		<span class="muted">Offset {offset} | Page size {pageSize}</span>
+		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={nextPage} disabled={loading || offset + pageSize >= filteredEntries.length}>Next</button>
+		<span class="muted">Offset {offset} | Page size {pageSize} | Filtered {filteredEntries.length} / Loaded {entries.length}</span>
 	</div>
 
 	{#if errorMessage}
@@ -221,7 +243,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each filteredEntries as entry (entry.ledger_entry_id)}
+					{#each pagedEntries as entry (entry.ledger_entry_id)}
 						<tr class="border-b border-white/10">
 							<td class="px-3 py-3 font-semibold">{entry.ledger_entry_id}</td>
 							<td class="px-3 py-3 text-xs">{entry.journal_id ?? 'n/a'}</td>
