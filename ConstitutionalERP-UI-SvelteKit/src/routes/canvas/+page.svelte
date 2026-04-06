@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { getProcessFlowBundle, getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
 	import type { CanonicalFlowDomain, ProcessFlowDefinition } from '$lib/types/hub';
+	import CompactFlowGraph from '$lib/components/canvas/CompactFlowGraph.svelte';
 
 	type DomainTab = 'o2c' | 'p2p' | 'r2r' | 'hcm';
 	type EntityKey =
@@ -417,10 +419,27 @@
 	}
 
 	$: activeDomain = mapDomainTabToCanonical(activeTab);
+	$: urlTabParam = $page.url.searchParams.get('tab');
+	$: urlFlowParam = $page.url.searchParams.get('flow');
+	$: urlHighlightStepId = $page.url.searchParams.get('highlight');
+	$: {
+		if (urlTabParam && ['o2c', 'p2p', 'r2r', 'hcm'].includes(urlTabParam) && activeTab !== urlTabParam) {
+			activeTab = urlTabParam as DomainTab;
+		}
+	}
+	$: {
+		if (urlFlowParam && flowVariantByTab[activeTab] !== urlFlowParam) {
+			flowVariantByTab = { ...flowVariantByTab, [activeTab]: urlFlowParam };
+		}
+	}
 	$: flowsForActiveDomain = listFlowsByDomain(activeDomain);
 	$: selectedVariantKey = flowVariantByTab[activeTab] ?? getDefaultFlowForDomain(activeDomain)?.variantKey ?? 'base';
 	$: selectedFlow =
 		flowsForActiveDomain.find((flow) => flow.variantKey === selectedVariantKey) ?? flowsForActiveDomain[0] ?? null;
+	$: selectedFlowHighlight =
+		selectedFlow && urlHighlightStepId && selectedFlow.nodes.some((node) => node.id === urlHighlightStepId)
+			? urlHighlightStepId
+			: null;
 </script>
 
 <section class="glass-panel p-6">
@@ -504,17 +523,21 @@
 				<p class="mt-3 text-xs text-emerald-100/80">
 					{selectedFlow.sourceFolderName} • {selectedFlow.nodes.length} steps
 				</p>
-				<ol class="mt-2 space-y-2 text-sm">
-					{#each selectedFlow.nodes as node (node.id)}
-						<li class="rounded border border-emerald-100/20 bg-emerald-950/20 px-3 py-2">
-							<div class="flex flex-wrap items-center justify-between gap-2">
-								<span class="font-semibold text-emerald-50">{node.sequence}. {node.requestName}</span>
-								<span class="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-100">{node.action}</span>
-							</div>
-							<p class="mt-1 text-xs text-emerald-100/80">{summarizeNode(node)}</p>
+				<div class="mt-2">
+					<CompactFlowGraph
+						flow={selectedFlow}
+						highlightedStepId={selectedFlowHighlight}
+						title="Compact domain flow"
+					/>
+				</div>
+				<ul class="mt-3 grid gap-2 text-xs text-emerald-100/80 md:grid-cols-2">
+					{#each selectedFlow.nodes.slice(0, 6) as node (node.id)}
+						<li class="rounded border border-emerald-100/20 bg-emerald-950/20 px-2 py-1">
+							<span class="font-semibold">{node.sequence}.</span>
+							<span class="ml-1">{node.requestName}</span>
 						</li>
 					{/each}
-				</ol>
+				</ul>
 			{/if}
 		{/if}
 	</div>

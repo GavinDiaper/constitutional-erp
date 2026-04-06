@@ -60,3 +60,17 @@ FLOW_COLLECTION_PATH="D:/path/to/FoundationERP.postman_collection.json" npm run 
 Generated artifact path:
 
 - `src/lib/flows/generated/foundation-process-flows.json`
+
+Landing deep-link parameters:
+
+- `tab`: `o2c` | `p2p` | `r2r` | `hcm`
+- `flow`: variant key such as `base`, `vat5`, `rc5`
+- `highlight`: flow step id to highlight in the compact graph
+
+Entity process pages include a domain flow context card with:
+
+- compact D3 flow preview
+- inferred current/next step highlighting
+- deep link to Canvas landing with selected variant and highlighted step
+
+Generator warnings now include drift checks against process-graph canonical transitions (from transition registry imports).

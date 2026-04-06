@@ -4,12 +4,15 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import ActionList from '$lib/components/canvas/ActionList.svelte';
+	import CompactFlowGraph from '$lib/components/canvas/CompactFlowGraph.svelte';
 	import EntityHeader from '$lib/components/canvas/EntityHeader.svelte';
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import EventTimeline from '$lib/components/canvas/EventTimeline.svelte';
 	import NavigatorPanel from '$lib/components/canvas/NavigatorPanel.svelte';
 	import ProcessGraph from '$lib/components/canvas/ProcessGraph.svelte';
 	import SimulationPanel from '$lib/components/canvas/SimulationPanel.svelte';
+	import { getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
+	import { domainToCanvasTab, inferDomainFromEntityType, resolveHighlightedStepId } from '$lib/flows/mapping';
 	import { executeProcessAction, getProcess } from '$lib/api/process';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { processStore } from '$lib/stores/processStore';
@@ -32,6 +35,16 @@
 	$: actions = Object.entries($processStore._links)
 		.filter(([name]) => name !== 'self')
 		.map(([name, link]) => ({ name, link }));
+	$: inferredFlowDomain = inferDomainFromEntityType(resolvedEntityType);
+	$: domainFlows = inferredFlowDomain ? listFlowsByDomain(inferredFlowDomain) : [];
+	$: selectedVariant = $page.url.searchParams.get('flow') ?? (inferredFlowDomain ? getDefaultFlowForDomain(inferredFlowDomain)?.variantKey ?? 'base' : 'base');
+	$: selectedDomainFlow = domainFlows.find((flow) => flow.variantKey === selectedVariant) ?? domainFlows[0] ?? null;
+	$: highlightedFlowStepId = resolveHighlightedStepId(selectedDomainFlow, $processStore.state, $processStore._links);
+	$: flowDeepLinkHref = inferredFlowDomain
+		? resolve(
+				`/canvas?tab=${domainToCanvasTab(inferredFlowDomain)}&flow=${selectedDomainFlow?.variantKey ?? 'base'}${highlightedFlowStepId ? `&highlight=${encodeURIComponent(highlightedFlowStepId)}` : ''}`
+			)
+		: resolve('/canvas');
 
 	onMount(() => {
 		const unsubscribeActor = actorStore.subscribe(() => {
@@ -310,6 +323,39 @@
 			<ProcessGraph model={processGraphModel} />
 			<EventTimeline events={timelineEvents} />
 		</div>
+
+		{#if inferredFlowDomain}
+			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<div>
+						<h3 class="text-sm font-semibold text-white">Domain Flow Context</h3>
+						<p class="muted mt-1 text-xs">
+							{inferredFlowDomain} flow derived from Postman end-to-end sequence.
+						</p>
+					</div>
+					<a class="rounded-md border border-white/25 px-2 py-1 text-xs text-white/85 hover:bg-white/10" href={flowDeepLinkHref}>
+						Open flow explorer
+					</a>
+				</div>
+
+				{#if domainFlows.length > 1}
+					<div class="mt-3 flex flex-wrap gap-2 text-xs">
+						{#each domainFlows as flow (flow.id)}
+							<a
+								class={`rounded-md border px-2 py-1 ${selectedDomainFlow?.id === flow.id ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+								href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${flow.variantKey}`)}
+							>
+								{flow.variantLabel}
+							</a>
+						{/each}
+					</div>
+				{/if}
+
+				<div class="mt-3">
+					<CompactFlowGraph flow={selectedDomainFlow} highlightedStepId={highlightedFlowStepId} title="Entity-aligned flow" />
+				</div>
+			</div>
+		{/if}
 
 		<div class="grid gap-4 xl:grid-cols-2">
 			<NavigatorPanel />

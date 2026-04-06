@@ -6,6 +6,7 @@ const FLOW_FOLDER_PATTERN = /^\s*\d+\s*-\s*(.+)$/;
 const DOMAIN_PATTERN = /\b(O2C|P2P|R2R|H2R)\b/i;
 const VARIABLE_PATTERN = /{{\s*([^}]+?)\s*}}/g;
 const CAPTURE_PATTERN = /pm\.environment\.set\(\s*['"]([^'"]+)['"]/g;
+const TRANSITION_OBJECT_PATTERN = /domain:\s*"([A-Z0-9]+)"[\s\S]*?aggregateType:\s*"([^"]+)"[\s\S]*?action:\s*"([^"]+)"/g;
 
 function ensureArray(value) {
 	return Array.isArray(value) ? value : [];
@@ -154,6 +155,198 @@ function flattenRequestItems(item, destination) {
 	}
 }
 
+function normalizeKeyToken(value) {
+	return String(value).replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function transitionKey(domain, aggregateType, action) {
+	return `${normalizeKeyToken(domain)}|${normalizeKeyToken(aggregateType)}|${normalizeKeyToken(action)}`;
+}
+
+function buildTransitionSetFromRegistry(cwd, warnings) {
+	const registryPath = resolve(
+		cwd,
+		'..',
+		'process-graph',
+		'src',
+		'domain',
+		'transitions',
+		'registry.ts'
+	);
+
+	let registryContent = '';
+	try {
+		registryContent = readFileSync(registryPath, 'utf8');
+	} catch {
+		warnings.push('Drift-check: unable to read process-graph transition registry.ts.');
+		return new Set();
+	}
+
+	const importPattern = /from\s+"\.\/([a-z0-9-]+)"/gi;
+	const importedModules = new Set();
+	for (const match of registryContent.matchAll(importPattern)) {
+		const moduleName = String(match[1] ?? '').trim();
+		if (moduleName && moduleName !== 'registry') {
+			importedModules.add(moduleName);
+		}
+	}
+
+	const transitions = new Set();
+	for (const moduleName of importedModules) {
+		const transitionFile = resolve(
+			cwd,
+			'..',
+			'process-graph',
+			'src',
+			'domain',
+			'transitions',
+			`${moduleName}.ts`
+		);
+
+		let content = '';
+		try {
+			content = readFileSync(transitionFile, 'utf8');
+		} catch {
+			warnings.push(`Drift-check: unable to read transition file '${moduleName}.ts'.`);
+			continue;
+		}
+
+		for (const match of content.matchAll(TRANSITION_OBJECT_PATTERN)) {
+			const domain = String(match[1] ?? '').trim();
+			const aggregateType = String(match[2] ?? '').trim();
+			const action = String(match[3] ?? '').trim();
+			if (domain && aggregateType && action) {
+				transitions.add(transitionKey(domain, aggregateType, action));
+			}
+		}
+	}
+
+	if (transitions.size === 0) {
+		warnings.push('Drift-check: transition set is empty; check process-graph transition files.');
+	}
+
+	return transitions;
+}
+
+function deriveAggregateCandidates(domain, entityType) {
+	const normalized = String(entityType).toLowerCase();
+	const common = new Set([normalized, normalized.replace(/s$/, ''), normalized.replace(/ies$/, 'y')]);
+
+	if (domain === 'O2C') {
+		if (normalized === 'quotes') common.add('quote');
+		if (normalized === 'orders') common.add('sales-order');
+		if (normalized === 'invoices') common.add('ar-invoice');
+		if (normalized === 'payments') common.add('ar-payment');
+	}
+
+	if (domain === 'P2P') {
+		if (normalized === 'requisitions') common.add('requisition');
+		if (normalized === 'purchase-orders') common.add('purchase-order');
+		if (normalized === 'supplier-invoices') common.add('supplier-invoice');
+		if (normalized === 'ap-payments') common.add('ap-payment');
+		if (normalized === 'suppliers') common.add('supplier');
+	}
+
+	if (domain === 'R2R') {
+		if (normalized === 'journals') common.add('journal');
+		if (normalized === 'fiscal-periods') common.add('fiscal-period');
+	}
+
+	if (domain === 'H2R') {
+		if (normalized === 'employees') common.add('employee');
+		if (normalized === 'leave-requests') common.add('leave-request');
+	}
+
+	return Array.from(common).filter(Boolean);
+}
+
+function deriveActionCandidates(domain, action) {
+	const normalized = normalizeKeyToken(action);
+	const candidates = new Set([normalized]);
+
+	if (normalized === 'convert') {
+		if (domain === 'O2C') {
+			candidates.add('converttoorder');
+		}
+		if (domain === 'P2P') {
+			candidates.add('converttopo');
+		}
+	}
+
+	if (normalized === 'generateinvoice') {
+		candidates.add('invoice');
+	}
+
+	if (normalized === 'reconcile') {
+		candidates.add('reconcilepayment');
+	}
+
+	if (domain === 'H2R' && normalized === 'leave') {
+		candidates.add('goonleave');
+	}
+
+	if (domain === 'H2R' && normalized === 'return') {
+		candidates.add('returnfromleave');
+	}
+
+	return Array.from(candidates).filter(Boolean);
+}
+
+function shouldCheckNodeForDrift(node) {
+	const method = String(node.httpMethod ?? '').toUpperCase();
+	if (!['POST', 'PUT', 'PATCH'].includes(method)) {
+		return false;
+	}
+
+	const actionToken = normalizeKeyToken(node.action);
+	if (!actionToken || actionToken.startsWith('get')) {
+		return false;
+	}
+
+	const entityToken = normalizeKeyToken(node.entityType);
+	if (actionToken === entityToken) {
+		return false;
+	}
+
+	if (!/\{\{[^}]+\}\}/.test(String(node.requestPath ?? ''))) {
+		return false;
+	}
+
+	return true;
+}
+
+function appendDriftWarnings(flows, transitionSet, warnings) {
+	for (const flow of flows) {
+		for (const node of ensureArray(flow.nodes)) {
+			if (!shouldCheckNodeForDrift(node)) {
+				continue;
+			}
+
+			const aggregateCandidates = deriveAggregateCandidates(flow.domain, node.entityType);
+			const actionCandidates = deriveActionCandidates(flow.domain, node.action);
+
+			let matched = false;
+			for (const aggregateType of aggregateCandidates) {
+				for (const action of actionCandidates) {
+					if (transitionSet.has(transitionKey(flow.domain, aggregateType, action))) {
+						matched = true;
+						break;
+					}
+				}
+				if (matched) {
+					break;
+				}
+			}
+
+			if (!matched) {
+				warnings.push(
+					`Drift-check: ${flow.domain} '${node.requestName}' (${node.httpMethod} ${node.requestPath}) does not map to a canonical transition in process-graph registry.`
+				);
+			}
+		}
+	}
+}
+
 function buildFlow(folderItem, warnings, knownVariables) {
 	const folderName = String(folderItem?.name ?? '').trim();
 	const domain = normalizeDomain(folderName);
@@ -285,6 +478,7 @@ function main() {
 	}
 	const warnings = [];
 	const flows = [];
+	const transitionSet = buildTransitionSetFromRegistry(cwd, warnings);
 
 	for (const item of ensureArray(collection?.item)) {
 		const folderName = String(item?.name ?? '');
@@ -313,6 +507,10 @@ function main() {
 		}
 		return left.domain.localeCompare(right.domain);
 	});
+
+	if (transitionSet.size > 0) {
+		appendDriftWarnings(flows, transitionSet, warnings);
+	}
 
 	const output = {
 		generatedAt: new Date().toISOString(),
