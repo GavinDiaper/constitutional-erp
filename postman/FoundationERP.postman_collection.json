@@ -7925,7 +7925,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"name\":\"UAE VAT Test Supplier\",\"email\":\"supplier.uae@test.ae\",\"currencyCode\":\"AED\"}",
+                                                                   "raw":  "{\"supplierName\":\"UAE VAT Test Supplier\",\"email\":\"supplier.uae@test.ae\",\"currencyCode\":\"AED\",\"paymentTerms\":\"NET30\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -7972,7 +7972,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"requestedBy\":\"UAE Buyer\",\"notes\":\"UAE VAT procurement test\"}",
+                                                                   "raw":  "{\"requester\":\"UAE Buyer\",\"currencyCode\":\"AED\",\"legalEntityId\":\"LE-SEED-AE\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8020,7 +8020,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"productCode\":\"UAE-ITEM-001\",\"description\":\"UAE Taxable Goods\",\"quantity\":5,\"unitPrice\":2000,\"currency\":\"AED\"}",
+                                                                   "raw":  "{\"description\":\"UAE Taxable Goods\",\"quantity\":5,\"unitPrice\":2000}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8133,14 +8133,14 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/p2p/requisitions/{{uaeReqId}}/convert-to-po",
+                                                                  "raw":  "{{baseUrl}}/api/v1/p2p/requisitions/{{uaeReqId}}/convert",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",
                                                                                "p2p",
                                                                                "requisitions",
                                                                                "{{uaeReqId}}",
-                                                                               "convert-to-po"
+                                                                               "convert"
                                                                            ]
                                                               },
                                                       "method":  "POST",
@@ -8168,7 +8168,10 @@
                                                     "script":  {
                                                                    "exec":  [
                                                                                 "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                                                                                "pm.environment.set(\"uaePoId\", pm.response.json().purchase_order_id);"
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.environment.set(\"uaePoId\", body.po_id);",
+                                                                                "pm.test(\"UAE PO created\", function () { pm.expect(body.po_id).to.be.a(\"string\"); });",
+                                                                                "pm.test(\"UAE PO in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                                                                             ],
                                                                    "type":  "text/javascript"
                                                                },
@@ -8269,7 +8272,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"purchaseOrderId\":\"{{uaePoId}}\",\"receivedBy\":\"UAE Receiving Team\",\"notes\":\"UAE test receipt\"}",
+                                                                   "raw":  "{\"poId\":\"{{uaePoId}}\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8666,7 +8669,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"supplierInvoiceId\":\"{{uaeSupplierInvoiceId}}\",\"amount\":10500,\"currency\":\"AED\",\"paymentDate\":\"2026-04-06T00:00:00.000Z\",\"reference\":\"AP-PAY-UAE-001\"}",
+                                                                   "raw":  "{\"supplierInvoiceId\":\"{{uaeSupplierInvoiceId}}\",\"amount\":10500,\"currencyCode\":\"AED\",\"method\":\"bank-transfer\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8835,7 +8838,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"name\":\"UAE Reverse Charge Supplier\",\"email\":\"supplier.rc@test.ae\",\"currencyCode\":\"AED\"}",
+                                                                   "raw":  "{\"supplierName\":\"UAE Reverse Charge Supplier\",\"email\":\"supplier.rc@test.ae\",\"currencyCode\":\"AED\",\"paymentTerms\":\"NET30\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8881,7 +8884,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"requestedBy\":\"RC Buyer\",\"notes\":\"Reverse charge VAT test\"}",
+                                                                   "raw":  "{\"requester\":\"RC Buyer\",\"currencyCode\":\"AED\",\"legalEntityId\":\"LE-SEED-AE\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -8929,7 +8932,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"productCode\":\"RC-SERVICE-001\",\"description\":\"Imported Digital Service\",\"quantity\":1,\"unitPrice\":8000,\"currency\":\"AED\"}",
+                                                                   "raw":  "{\"description\":\"Imported Digital Service\",\"quantity\":1,\"unitPrice\":8000}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -9042,14 +9045,14 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/p2p/requisitions/{{rcReqId}}/convert-to-po",
+                                                                  "raw":  "{{baseUrl}}/api/v1/p2p/requisitions/{{rcReqId}}/convert",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",
                                                                                "p2p",
                                                                                "requisitions",
                                                                                "{{rcReqId}}",
-                                                                               "convert-to-po"
+                                                                               "convert"
                                                                            ]
                                                               },
                                                       "method":  "POST",
@@ -9077,7 +9080,10 @@
                                                     "script":  {
                                                                    "exec":  [
                                                                                 "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
-                                                                                "pm.environment.set(\"rcPoId\", pm.response.json().purchase_order_id);"
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.environment.set(\"rcPoId\", body.po_id);",
+                                                                                "pm.test(\"RC PO created\", function () { pm.expect(body.po_id).to.be.a(\"string\"); });",
+                                                                                "pm.test(\"RC PO in Draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });"
                                                                             ],
                                                                    "type":  "text/javascript"
                                                                },
@@ -9178,7 +9184,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"purchaseOrderId\":\"{{rcPoId}}\",\"receivedBy\":\"RC Receiving Team\",\"notes\":\"Reverse charge test receipt\"}",
+                                                                   "raw":  "{\"poId\":\"{{rcPoId}}\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -9574,7 +9580,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"supplierInvoiceId\":\"{{rcSupplierInvoiceId}}\",\"amount\":8000,\"currency\":\"AED\",\"paymentDate\":\"2026-04-06T00:00:00.000Z\",\"reference\":\"AP-PAY-RC-001\"}",
+                                                                   "raw":  "{\"supplierInvoiceId\":\"{{rcSupplierInvoiceId}}\",\"amount\":8000,\"currencyCode\":\"AED\",\"method\":\"bank-transfer\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
