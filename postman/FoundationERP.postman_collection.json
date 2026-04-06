@@ -6372,9 +6372,16 @@
                                                                                "regimes"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Regimes",
                                       "event":  {
@@ -6409,9 +6416,16 @@
                                                                                "TREG-UAE-VAT"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get UAE Tax Regime",
                                       "event":  {
@@ -6442,9 +6456,16 @@
                                                                                "jurisdictions"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Jurisdictions",
                                       "event":  {
@@ -6478,9 +6499,16 @@
                                                                                "codes"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Codes",
                                       "event":  {
@@ -6514,9 +6542,16 @@
                                                                                "rates"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Rates",
                                       "event":  {
@@ -6551,9 +6586,16 @@
                                                                                "rules"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Rules",
                                       "event":  {
@@ -6587,9 +6629,16 @@
                                                                                "account-mappings"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List Tax Account Mappings",
                                       "event":  {
@@ -6869,9 +6918,16 @@
                                                                                "deactivate"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Deactivate Custom Tax Rule",
                                       "event":  {
@@ -6964,9 +7020,16 @@
                                                                                "latest"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "List UAE FX Rate (USD-AED)",
                                       "event":  {
@@ -6999,9 +7062,16 @@
                                                                                "LE-SEED-AE"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get UAE Legal Entity",
                                       "event":  {
@@ -7033,9 +7103,16 @@
                                                                                "LGR-SEED-AE"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get UAE Ledger",
                                       "event":  {
@@ -7215,9 +7292,16 @@
                                                                                "send"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Send UAE Quote",
                                       "event":  {
@@ -7248,9 +7332,16 @@
                                                                                "accept"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Accept UAE Quote",
                                       "event":  {
@@ -7281,9 +7372,16 @@
                                                                                "convert-to-order"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Convert UAE Quote To Order",
                                       "event":  {
@@ -7316,9 +7414,16 @@
                                                                                "confirm"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Confirm UAE Order",
                                       "event":  {
@@ -7349,9 +7454,16 @@
                                                                                "allocate"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Allocate UAE Order",
                                       "event":  {
@@ -7382,9 +7494,16 @@
                                                                                "ship"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Ship UAE Order",
                                       "event":  {
@@ -7468,9 +7587,16 @@
                                                                                "{{uaeInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get UAE Invoice Tax Lines (After Generate)",
                                       "event":  {
@@ -7508,9 +7634,16 @@
                                                                                "post"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Post UAE Invoice",
                                       "event":  {
@@ -7541,9 +7674,16 @@
                                                                                "{{uaeInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify UAE Tax Lines Posted",
                                       "event":  {
@@ -7586,9 +7726,16 @@
                                                                                "r2r_ledger_entry"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify UAE Multi-Line Journal (DR AR + CR Rev + CR VAT Out)",
                                       "event":  {
@@ -7673,9 +7820,16 @@
                                                                                "apply"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Apply UAE Payment",
                                       "event":  {
@@ -7706,9 +7860,16 @@
                                                                                "reconcile"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Reconcile UAE Payment",
                                       "event":  {
@@ -7884,9 +8045,16 @@
                                                                                "submit"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Submit UAE Requisition",
                                       "event":  {
@@ -7916,9 +8084,16 @@
                                                                                "approve"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Approve UAE Requisition",
                                       "event":  {
@@ -7996,9 +8171,16 @@
                                                                                "approve"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Approve UAE PO",
                                       "event":  {
@@ -8028,9 +8210,16 @@
                                                                                "send"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Send UAE PO",
                                       "event":  {
@@ -8106,9 +8295,16 @@
                                                                                "receive"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Receive UAE Goods",
                                       "event":  {
@@ -8138,9 +8334,16 @@
                                                                                "accept"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Accept UAE Goods",
                                       "event":  {
@@ -8221,9 +8424,16 @@
                                                                                "{{uaeSupplierInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get UAE AP Tax Lines (Pending)",
                                       "event":  {
@@ -8259,9 +8469,16 @@
                                                                                "validate"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Validate UAE Supplier Invoice",
                                       "event":  {
@@ -8291,9 +8508,16 @@
                                                                                "post"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Post UAE Supplier Invoice",
                                       "event":  {
@@ -8324,9 +8548,16 @@
                                                                                "{{uaeSupplierInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify UAE AP Tax Lines Posted",
                                       "event":  {
@@ -8368,9 +8599,16 @@
                                                                                "r2r_ledger_entry"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify UAE AP Multi-Line Journal (DR Expense + DR VAT-In + CR AP)",
                                       "event":  {
@@ -8454,9 +8692,16 @@
                                                                                "receive"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Receive UAE AP Payment",
                                       "event":  {
@@ -8486,9 +8731,16 @@
                                                                                "apply"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Apply UAE AP Payment",
                                       "event":  {
@@ -8518,9 +8770,16 @@
                                                                                "reconcile"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Reconcile UAE AP Payment",
                                       "event":  {
@@ -8695,9 +8954,16 @@
                                                                                "submit"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Submit RC Requisition",
                                       "event":  {
@@ -8727,9 +8993,16 @@
                                                                                "approve"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Approve RC Requisition",
                                       "event":  {
@@ -8807,9 +9080,16 @@
                                                                                "approve"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Approve RC PO",
                                       "event":  {
@@ -8839,9 +9119,16 @@
                                                                                "send"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Send RC PO",
                                       "event":  {
@@ -8917,9 +9204,16 @@
                                                                                "receive"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Receive RC Goods",
                                       "event":  {
@@ -8949,9 +9243,16 @@
                                                                                "accept"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Accept RC Goods",
                                       "event":  {
@@ -9032,9 +9333,16 @@
                                                                                "{{rcSupplierInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Get RC Tax Lines (Pending - Reverse Charge)",
                                       "event":  {
@@ -9070,9 +9378,16 @@
                                                                                "validate"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Validate RC Supplier Invoice",
                                       "event":  {
@@ -9102,9 +9417,16 @@
                                                                                "post"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Post RC Supplier Invoice",
                                       "event":  {
@@ -9135,9 +9457,16 @@
                                                                                "{{rcSupplierInvoiceId}}"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify RC Tax Lines Posted",
                                       "event":  {
@@ -9178,9 +9507,16 @@
                                                                                "r2r_ledger_entry"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Verify RC 4-Line Journal (DR Exp + CR AP + DR VAT-In + CR VAT-Out)",
                                       "event":  {
@@ -9264,9 +9600,16 @@
                                                                                "receive"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Receive RC AP Payment",
                                       "event":  {
@@ -9296,9 +9639,16 @@
                                                                                "apply"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Apply RC AP Payment",
                                       "event":  {
@@ -9328,9 +9678,16 @@
                                                                                "reconcile"
                                                                            ]
                                                               },
-                                                      "header":  {
-
-                                                                 }
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
                                                   },
                                       "name":  "Reconcile RC AP Payment",
                                       "event":  {
