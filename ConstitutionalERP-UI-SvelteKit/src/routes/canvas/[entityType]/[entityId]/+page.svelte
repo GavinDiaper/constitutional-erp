@@ -4,19 +4,21 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import ActionList from '$lib/components/canvas/ActionList.svelte';
-	import CompactFlowGraph from '$lib/components/canvas/CompactFlowGraph.svelte';
 	import EntityHeader from '$lib/components/canvas/EntityHeader.svelte';
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import EventTimeline from '$lib/components/canvas/EventTimeline.svelte';
 	import NavigatorPanel from '$lib/components/canvas/NavigatorPanel.svelte';
 	import ProcessGraph from '$lib/components/canvas/ProcessGraph.svelte';
 	import SimulationPanel from '$lib/components/canvas/SimulationPanel.svelte';
+	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
 	import { domainToCanvasTab, inferDomainFromEntityType, resolveHighlightedStepId } from '$lib/flows/mapping';
 	import { executeProcessAction, getProcess } from '$lib/api/process';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { processStore } from '$lib/stores/processStore';
 	import type { HubActionLink, ProcessGraphModel, TimelineEvent } from '$lib/types/hub';
+
+	type FlowViewMode = 'mermaid' | 'list' | 'hidden';
 
 	let loading = false;
 	let errorMessage = '';
@@ -38,13 +40,53 @@
 	$: inferredFlowDomain = inferDomainFromEntityType(resolvedEntityType);
 	$: domainFlows = inferredFlowDomain ? listFlowsByDomain(inferredFlowDomain) : [];
 	$: selectedVariant = $page.url.searchParams.get('flow') ?? (inferredFlowDomain ? getDefaultFlowForDomain(inferredFlowDomain)?.variantKey ?? 'base' : 'base');
+	$: selectedFlowView = (($page.url.searchParams.get('flowView') as FlowViewMode | null) ?? 'list');
 	$: selectedDomainFlow = domainFlows.find((flow) => flow.variantKey === selectedVariant) ?? domainFlows[0] ?? null;
 	$: highlightedFlowStepId = resolveHighlightedStepId(selectedDomainFlow, $processStore.state, $processStore._links);
+	$: selectedDomainFlowMermaid = buildFlowMermaidDefinition(selectedDomainFlow);
 	$: flowDeepLinkHref = inferredFlowDomain
 		? resolve(
-				`/canvas?tab=${domainToCanvasTab(inferredFlowDomain)}&flow=${selectedDomainFlow?.variantKey ?? 'base'}${highlightedFlowStepId ? `&highlight=${encodeURIComponent(highlightedFlowStepId)}` : ''}`
+				`/canvas?tab=${domainToCanvasTab(inferredFlowDomain)}&flow=${selectedDomainFlow?.variantKey ?? 'base'}&flowView=${selectedFlowView}${highlightedFlowStepId ? `&highlight=${encodeURIComponent(highlightedFlowStepId)}` : ''}`
 			)
 		: resolve('/canvas');
+
+	function sanitizeMermaidLabel(value: string): string {
+		return value.replace(/"/g, '\\"').replace(/\|/g, '/').trim();
+	}
+
+	function buildFlowMermaidDefinition(flow: (typeof selectedDomainFlow) | null): string {
+		if (!flow || flow.nodes.length === 0) {
+			return 'sequenceDiagram\n  Note over System: No flow available';
+		}
+
+		const lines: string[] = ['sequenceDiagram'];
+		const refById = new Map<string, string>();
+
+		for (const node of flow.nodes) {
+			const ref = `P${node.sequence}`;
+			refById.set(node.id, ref);
+			lines.push(`  participant ${ref} as "${sanitizeMermaidLabel(`${node.sequence}. ${node.requestName}`)}"`);
+		}
+
+		if (flow.nodes.length === 1) {
+			const onlyRef = refById.get(flow.nodes[0]?.id ?? '');
+			if (onlyRef) {
+				lines.push(`  ${onlyRef}->>${onlyRef}: ${sanitizeMermaidLabel(flow.nodes[0].action || 'step')}`);
+			}
+		} else if (flow.edges.length > 0) {
+			for (const edge of flow.edges) {
+				const sourceRef = refById.get(edge.sourceId);
+				const targetRef = refById.get(edge.targetId);
+				if (!sourceRef || !targetRef) {
+					continue;
+				}
+				const label = sanitizeMermaidLabel(edge.condition || 'next');
+				lines.push(`  ${sourceRef}->>${targetRef}: ${label}`);
+			}
+		}
+
+		return lines.join('\n');
+	}
 
 	onMount(() => {
 		const unsubscribeActor = actorStore.subscribe(() => {
@@ -343,7 +385,7 @@
 						{#each domainFlows as flow (flow.id)}
 							<a
 								class={`rounded-md border px-2 py-1 ${selectedDomainFlow?.id === flow.id ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
-								href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${flow.variantKey}`)}
+								href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${flow.variantKey}&flowView=${selectedFlowView}`)}
 							>
 								{flow.variantLabel}
 							</a>
@@ -351,9 +393,43 @@
 					</div>
 				{/if}
 
-				<div class="mt-3">
-					<CompactFlowGraph flow={selectedDomainFlow} highlightedStepId={highlightedFlowStepId} title="Entity-aligned flow" />
+				<div class="mt-3 flex flex-wrap gap-2 text-xs">
+					<a
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'mermaid' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=mermaid`)}
+					>
+						Mermaid diagram
+					</a>
+					<a
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'list' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=list`)}
+					>
+						List view
+					</a>
+					<a
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'hidden' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=hidden`)}
+					>
+						Hide flows
+					</a>
 				</div>
+
+				{#if selectedFlowView === 'hidden'}
+					<p class="mt-3 text-xs text-white/75">Flow display is hidden for this entity view.</p>
+				{:else if selectedFlowView === 'mermaid'}
+					<div class="mt-3 rounded border border-white/20 bg-slate-950/20 p-2">
+						<MermaidDiagram definition={selectedDomainFlowMermaid} title="Entity-aligned flow" fontSize={44} />
+					</div>
+				{:else if selectedDomainFlow}
+					<ol class="mt-3 space-y-2 text-xs">
+						{#each selectedDomainFlow.nodes as node (node.id)}
+							<li class={`rounded border px-2 py-2 ${node.id === highlightedFlowStepId ? 'border-amber-300/70 bg-amber-300/10' : 'border-white/20 bg-slate-950/20'}`}>
+								<div class="font-semibold text-white">{node.sequence}. {node.requestName}</div>
+								<div class="mt-1 text-white/75">{node.httpMethod} {node.requestPath}</div>
+							</li>
+						{/each}
+					</ol>
+				{/if}
 			</div>
 		{/if}
 

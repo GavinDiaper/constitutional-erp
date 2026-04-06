@@ -9,6 +9,8 @@
 
 	export let definition: string;
 	export let title = 'Diagram';
+	export let fontSize = 16;
+	export let showFullscreenToggle = true;
 	/** When provided, entity/node clicks call this with the node's ID. */
 	export let onNodeClick: ((nodeId: string) => void) | undefined = undefined;
 
@@ -18,8 +20,10 @@
 	};
 
 	let svgHost: HTMLDivElement;
+	let containerHost: HTMLDivElement;
 	let svgHtml = '';
 	let renderError = '';
+	let isFullscreen = false;
 	let cleanupClickBinding: (() => void) | null = null;
 
 	async function ensureMermaidLoaded(): Promise<void> {
@@ -92,7 +96,19 @@
 		try {
 			await ensureMermaidLoaded();
 			const mermaid = (window as Window & { mermaid?: MermaidApi }).mermaid;
-			mermaid?.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'default' });
+			mermaid?.initialize({
+				startOnLoad: false,
+				securityLevel: 'loose',
+				theme: 'base',
+				themeVariables: {
+					fontSize: `${fontSize}px`
+				},
+				sequence: {
+					actorFontSize: fontSize,
+					messageFontSize: fontSize,
+					noteFontSize: fontSize
+				}
+			});
 			const renderId = `mermaid-${Math.random().toString(36).slice(2, 10)}`;
 			const result = await mermaid?.render(renderId, definition);
 			if (result?.svg) {
@@ -105,21 +121,58 @@
 		}
 	}
 
+	async function toggleFullscreen(): Promise<void> {
+		if (!browser || !containerHost) {
+			return;
+		}
+
+		if (document.fullscreenElement === containerHost) {
+			await document.exitFullscreen();
+			return;
+		}
+
+		await containerHost.requestFullscreen();
+	}
+
+	function syncFullscreenState(): void {
+		if (!browser || !containerHost) {
+			isFullscreen = false;
+			return;
+		}
+
+		isFullscreen = document.fullscreenElement === containerHost;
+	}
+
 	onMount(() => {
 		void renderDiagram();
+		document.addEventListener('fullscreenchange', syncFullscreenState);
 		return () => {
 			cleanupClickBinding?.();
 			cleanupClickBinding = null;
+			document.removeEventListener('fullscreenchange', syncFullscreenState);
 		};
 	});
 
-	$: if (definition) {
+	$: {
+		definition;
+		fontSize;
 		void renderDiagram();
 	}
 </script>
 
-<div class="rounded-xl border border-slate-300 bg-white p-4">
-	<div class="mb-2 text-sm font-semibold text-slate-700">{title}</div>
+<div bind:this={containerHost} class="mermaid-shell rounded-xl border border-slate-300 bg-white p-4">
+	<div class="mb-2 flex items-center justify-between gap-2">
+		<div class="text-sm font-semibold text-slate-700">{title}</div>
+		{#if showFullscreenToggle}
+			<button
+				type="button"
+				class="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+				on:click={toggleFullscreen}
+			>
+				{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+			</button>
+		{/if}
+	</div>
 	{#if renderError}
 		<p class="text-sm text-red-700">{renderError}</p>
 		<pre class="mt-3 overflow-x-auto rounded border border-red-300 bg-red-50 p-3 text-xs text-red-900">{definition}</pre>
@@ -136,6 +189,17 @@
 	.svghost :global(svg) {
 		max-width: 100%;
 		height: auto;
+	}
+	:global(.mermaid-shell:fullscreen) {
+		background: #ffffff;
+		padding: 1rem;
+	}
+	:global(.mermaid-shell:fullscreen .svghost) {
+		height: calc(100vh - 5.5rem);
+	}
+	:global(.mermaid-shell:fullscreen .svghost svg) {
+		height: 100%;
+		max-height: 100%;
 	}
 	/* Show pointer cursor on entity/node elements when click handlers are registered */
 	.clickable-nodes :global(.er-entity),

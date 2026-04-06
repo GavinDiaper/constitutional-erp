@@ -65,11 +65,12 @@ Landing deep-link parameters:
 
 - `tab`: `o2c` | `p2p` | `r2r` | `hcm`
 - `flow`: variant key such as `base`, `vat5`, `rc5`
-- `highlight`: flow step id to highlight in the compact graph
+- `flowView`: `mermaid` | `list` | `hidden`
+- `highlight`: flow step id to highlight in list view
 
 Entity process pages include a domain flow context card with:
 
-- compact D3 flow preview
+- Mermaid diagram or list view (or hidden mode)
 - inferred current/next step highlighting
 - deep link to Canvas landing with selected variant and highlighted step
 
