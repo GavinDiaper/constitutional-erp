@@ -73,3 +73,19 @@ export function createLegalEntity(input: CreateLegalEntityInput, actor?: EventAc
 
   return getLegalEntityById(legalEntityId);
 }
+
+export function seedDefaultLegalEntity() {
+  const timestamp = now();
+  const DEFAULT_LE_ID = "LE-SEED-DEFAULT";
+  
+  transaction(() => {
+    // Check if already exists
+    const existing = db.prepare("SELECT legal_entity_id FROM r2r_legal_entity WHERE legal_entity_id = ?").get(DEFAULT_LE_ID);
+    if (!existing) {
+      db.prepare(
+        `INSERT INTO r2r_legal_entity(legal_entity_id, name, currency_code, locale, parent_legal_entity_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(DEFAULT_LE_ID, "Default Legal Entity", "USD", "en-US", null, timestamp, timestamp);
+    }
+  });
+}

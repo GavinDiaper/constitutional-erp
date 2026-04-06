@@ -16,6 +16,7 @@ import { authRouter } from "./api/auth.routes";
 import { toProblem } from "./utils/errors";
 import { seedStarterAccounts } from "./domain/r2r/account/accountService";
 import { seedTaxConfiguration } from "./domain/tax/taxSeedService";
+import { seedDefaultLegalEntity } from "./domain/r2r/legalEntity/legalEntityService";
 import { runMigrations } from "./db/migrate";
 
 const config = loadConfig();
@@ -24,6 +25,7 @@ export function createApp() {
   runMigrations();
   seedStarterAccounts();
   seedTaxConfiguration();
+  seedDefaultLegalEntity();
 
   const app = express();
 

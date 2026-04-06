@@ -63,9 +63,8 @@ export function createQuote(input: QuoteInput) {
   const quoteId = newId("Q-");
   const timestamp = now();
 
-  if (input.legalEntityId) {
-    ensureLegalEntityExists(input.legalEntityId);
-  }
+  const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
+  ensureLegalEntityExists(effectiveLegalEntityId);
 
   transaction(() => {
     ensureCustomerExists(input.customerId);
@@ -73,7 +72,7 @@ export function createQuote(input: QuoteInput) {
     db.prepare(
       `INSERT INTO o2c_quote(quote_id, customer_id, legal_entity_id, state, currency_code, total_amount, version, created_at, updated_at)
        VALUES (?, ?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(quoteId, input.customerId, input.legalEntityId ?? null, input.currencyCode, timestamp, timestamp);
+    ).run(quoteId, input.customerId, effectiveLegalEntityId, input.currencyCode, timestamp, timestamp);
 
     appendEvent({
       entityId: quoteId,

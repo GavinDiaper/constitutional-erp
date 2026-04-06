@@ -55,9 +55,8 @@ export function createRequisition(
   const requisitionId = newId("REQ-");
   const timestamp = now();
 
-  if (input.legalEntityId) {
-    ensureLegalEntityExists(input.legalEntityId);
-  }
+  const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
+  ensureLegalEntityExists(effectiveLegalEntityId);
 
   transaction(() => {
     db.prepare(
@@ -66,7 +65,7 @@ export function createRequisition(
     ).run(
       requisitionId,
       input.requester,
-      input.legalEntityId ?? null,
+      effectiveLegalEntityId,
       input.department ?? null,
       input.currencyCode ?? null,
       input.neededByDate ?? null,

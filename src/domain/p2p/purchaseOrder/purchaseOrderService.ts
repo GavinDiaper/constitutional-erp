@@ -65,9 +65,8 @@ export function createPurchaseOrder(
   actor?: EventActor
 ) {
   ensureSupplierExists(input.supplierId);
-  if (input.legalEntityId) {
-    ensureLegalEntityExists(input.legalEntityId);
-  }
+  const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
+  ensureLegalEntityExists(effectiveLegalEntityId);
 
   const poId = newId("PO-");
   const timestamp = now();
@@ -80,7 +79,7 @@ export function createPurchaseOrder(
       poId,
       input.requisitionId ?? null,
       input.supplierId,
-      input.legalEntityId ?? null,
+      effectiveLegalEntityId,
       input.totalAmount ?? 0,
       input.currencyCode ?? null,
       input.deliveryAddress ?? null,
