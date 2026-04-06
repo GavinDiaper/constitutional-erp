@@ -97,12 +97,12 @@ const shipShipmentSchema = z.object({
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
 
-function customerLinks(customerId: string, state: string) {
+function customerLinks(customerId: string, status: string) {
   const links: Record<string, { href: string; method: "GET" | "POST"; mcpFunction?: string; governance?: any }> = {
     self: { href: `/api/v1/o2c/customers/${customerId}`, method: "GET" }
   };
 
-  if (state === "Draft") {
+  if (status === "Draft") {
     links["activate"] = {
       href: `/api/v1/o2c/customers/${customerId}/activate`,
       method: "POST",
@@ -353,24 +353,24 @@ export const o2cRouter = Router();
 
 o2cRouter.get("/customers", (_req, res) => {
   const customers = listCustomers().map((row: any) =>
-    entityWithLinks(row, customerLinks(row.customer_id, row.state ?? "Active"))
+    entityWithLinks(row, customerLinks(row.customer_id, row.status ?? "Active"))
   );
   res.json({ data: customers });
 });
 
 o2cRouter.get("/customers/:customerId", (req, res) => {
   const customer = getCustomerById(req.params.customerId);
-  res.json(entityWithLinks(customer as any, customerLinks(req.params.customerId, (customer as any).state ?? "Active")));
+  res.json(entityWithLinks(customer as any, customerLinks(req.params.customerId, (customer as any).status ?? "Active")));
 });
 
 o2cRouter.post("/customers", validateBody(createCustomerSchema), (req, res) => {
   const customer = createCustomer(req.body, req.actor);
-  res.status(201).json(entityWithLinks(customer as any, customerLinks((customer as any).customer_id, (customer as any).state ?? "Active")));
+  res.status(201).json(entityWithLinks(customer as any, customerLinks((customer as any).customer_id, (customer as any).status ?? "Active")));
 });
 
 o2cRouter.post("/customers/:customerId/activate", (req, res) => {
   const customer = activateCustomer(req.params.customerId, req.actor);
-  res.json(entityWithLinks(customer as any, customerLinks(req.params.customerId, (customer as any).state ?? "Active")));
+  res.json(entityWithLinks(customer as any, customerLinks(req.params.customerId, (customer as any).status ?? "Active")));
 });
 
 // -- Quotes --

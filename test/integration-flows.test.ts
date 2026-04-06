@@ -258,6 +258,35 @@ test("O2C shipping creates shipment records for diagram visibility", async () =>
   assert.equal(orderShipments[0]?.state, "Shipped");
 });
 
+test("O2C customer hypermedia exposes activate link while Draft", async () => {
+  const headers = authHeaders();
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: "Draft Link Customer", email: "draft.link@example.com" })
+    .expect(201);
+
+  assert.equal(customer.body.status, "Draft");
+  assert.ok(customer.body._links?.activate);
+  assert.equal(customer.body._links.activate?.href, `/api/v1/o2c/customers/${customer.body.customer_id}/activate`);
+
+  const customerById = await request(app)
+    .get(`/api/v1/o2c/customers/${customer.body.customer_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.ok(customerById.body._links?.activate);
+
+  const activated = await request(app)
+    .post(`/api/v1/o2c/customers/${customer.body.customer_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(activated.body.status, "Active");
+  assert.equal(activated.body._links?.activate, undefined);
+});
+
 test("O2C payment registration auto-applies invoice and posts accounting entries", async () => {
   const headers = authHeaders();
 
