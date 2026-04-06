@@ -7149,7 +7149,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"name\":\"UAE Test Customer\",\"email\":\"uae.customer@test.ae\",\"currencyCode\":\"AED\"}",
+                                                                   "raw":  "{\"customerName\":\"UAE Test Customer\",\"email\":\"uae.customer@test.ae\",\"billingAddress\":\"Dubai, AE\",\"shippingAddress\":\"Dubai, AE\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -7197,7 +7197,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"customerId\":\"{{uaeCustomerId}}\",\"validUntil\":\"2027-12-31T23:59:59.000Z\",\"notes\":\"UAE VAT test quote\"}",
+                                                                   "raw":  "{\"customerId\":\"{{uaeCustomerId}}\",\"currencyCode\":\"AED\",\"legalEntityId\":\"LE-SEED-AE\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -7246,7 +7246,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"productCode\":\"UAE-PROD-001\",\"description\":\"UAE Taxable Product\",\"quantity\":10,\"unitPrice\":1000,\"currency\":\"AED\"}",
+                                                                   "raw":  "{\"sku\":\"UAE-PROD-001\",\"quantity\":10,\"unitPrice\":1000}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -7362,14 +7362,14 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/o2c/quotes/{{uaeQuoteId}}/convert-to-order",
+                                                                  "raw":  "{{baseUrl}}/api/v1/o2c/quotes/{{uaeQuoteId}}/convert",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",
                                                                                "o2c",
                                                                                "quotes",
                                                                                "{{uaeQuoteId}}",
-                                                                               "convert-to-order"
+                                                                               "convert"
                                                                            ]
                                                               },
                                                       "header":  [
@@ -7380,8 +7380,16 @@
                                                                      {
                                                                          "key":  "x-ingress-id",
                                                                          "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
                                                                      }
-                                                                 ]
+                                                                 ],
+                                                      "body":  {
+                                                                   "raw":  "{}",
+                                                                   "mode":  "raw"
+                                                               }
                                                   },
                                       "name":  "Convert UAE Quote To Order",
                                       "event":  {
@@ -7772,7 +7780,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"invoiceId\":\"{{uaeInvoiceId}}\",\"amount\":10500,\"currency\":\"AED\",\"paymentDate\":\"2026-04-06T00:00:00.000Z\",\"reference\":\"PAY-UAE-001\"}",
+                                                                   "raw":  "{\"invoiceId\":\"{{uaeInvoiceId}}\",\"amount\":10500,\"currencyCode\":\"AED\",\"paymentDate\":\"2026-04-06T00:00:00.000Z\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
