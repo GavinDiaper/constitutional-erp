@@ -28,6 +28,14 @@ const ENTITY_MAP: Record<string, EntityMapEntry> = {
   fiscalyear: { domain: "r2r", aggregateType: "fiscal-year" },
   fiscalperiod: { domain: "r2r", aggregateType: "fiscal-period" },
   journal: { domain: "r2r", aggregateType: "journal" },
+  taxregime: { domain: "r2r", aggregateType: "tax-regime" },
+  taxjurisdiction: { domain: "r2r", aggregateType: "tax-jurisdiction" },
+  taxcode: { domain: "r2r", aggregateType: "tax-code" },
+  taxrate: { domain: "r2r", aggregateType: "tax-rate" },
+  taxrule: { domain: "r2r", aggregateType: "tax-rule" },
+  taxaccountmapping: { domain: "r2r", aggregateType: "tax-account-mapping" },
+  taxtransactionline: { domain: "r2r", aggregateType: "tax-transaction-line" },
+
 
   employee: { domain: "h2r", aggregateType: "employee" },
   position: { domain: "h2r", aggregateType: "position" },
