@@ -6770,7 +6770,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"taxJurisdictionId\":\"{{customTaxJurisdictionId}}\",\"code\":\"CUST-VAT\",\"description\":\"Custom VAT Code\",\"taxApplicability\":\"taxable\",\"priority\":50}",
+                                                                   "raw":  "{\"taxRegimeId\":\"{{customTaxRegimeId}}\",\"taxJurisdictionId\":\"{{customTaxJurisdictionId}}\",\"code\":\"CUST-VAT\",\"description\":\"Custom VAT Code\",\"taxApplicability\":\"taxable\",\"priority\":50}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
