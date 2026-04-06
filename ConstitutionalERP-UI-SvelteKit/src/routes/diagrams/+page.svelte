@@ -17,7 +17,7 @@
 		F_core[Core and Eventing]
 		F_o2c[O2C Domain]
 		F_p2p[P2P Domain]
-		F_r2r[R2R Domain]
+		F_r2r[R2R Domain + Tax]
 		F_h2r[H2R Domain]
 		F_nav[REPL and Navlog]
 	end

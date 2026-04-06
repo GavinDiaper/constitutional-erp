@@ -67,7 +67,7 @@ export const diagramCatalog: DiagramItem[] = [
 		id: 'foundation-r2r',
 		title: 'Foundation R2R Domain',
 		system: 'FoundationERP',
-		summary: 'Ledger, chart of accounts, periods, journals, balances, and SLA.',
+		summary: 'Ledger, chart of accounts, periods, journals, balances, tax, and SLA.',
 		accentClass: 'border-blue-700/40 bg-blue-100/70',
 		definition: `erDiagram
     F_r2r_legal_entity ||--o{ F_r2r_ledger : owns
@@ -77,7 +77,78 @@ export const diagramCatalog: DiagramItem[] = [
     F_r2r_journal ||--o{ F_r2r_journal_line : has
     F_r2r_account ||--o{ F_r2r_journal_line : referenced_by
     F_r2r_account ||--o{ F_r2r_ledger_entry : referenced_by
-    F_r2r_account ||--o{ F_r2r_trial_balance_row : summarized_into`
+    F_r2r_account ||--o{ F_r2r_trial_balance_row : summarized_into
+    F_tax_regime ||--o{ F_tax_jurisdiction : defines
+    F_tax_jurisdiction ||--o{ F_tax_code : has
+    F_tax_code ||--o{ F_tax_rate : assigned
+    F_tax_code ||--o{ F_tax_rule : evaluated_by
+    F_tax_rule ||--o{ F_tax_account_mapping : determines
+    F_tax_account_mapping ||--o{ F_r2r_account : resolves_to
+    F_r2r_journal ||--o{ F_tax_transaction_line : sources`
+	},
+	{
+		id: 'foundation-r2r-tax',
+		title: 'R2R Tax Configuration and Transactions',
+		system: 'FoundationERP',
+		summary: 'Tax regime, jurisdiction, codes, rates, rules, mappings, and transaction tracking.',
+		accentClass: 'border-amber-600/40 bg-amber-50/70',
+		definition: `erDiagram
+    F_tax_regime {
+        string regime_id PK
+        string regime_name
+        int priority
+        boolean is_active
+    }
+    F_tax_jurisdiction {
+        string jurisdiction_id PK
+        string regime_id FK
+        string country_code
+        string jurisdiction_name
+    }
+    F_tax_code {
+        string tax_code_id PK
+        string jurisdiction_id FK
+        string code
+        string description
+        int priority
+    }
+    F_tax_rate {
+        string tax_rate_id PK
+        string tax_code_id FK
+        decimal percent_value
+        boolean inclusive_flag
+        date effective_from
+    }
+    F_tax_rule {
+        string tax_rule_id PK
+        string jurisdiction_id FK
+        string description
+        string conditions_json
+        int priority
+    }
+    F_tax_account_mapping {
+        string mapping_id PK
+        string tax_code_id FK
+        string transaction_type
+        string account_role
+        string account_code
+    }
+    F_tax_transaction_line {
+        string transaction_line_id PK
+        string source_entity_id
+        string source_entity_type
+        string transaction_type
+        string tax_code_id FK
+        decimal taxable_amount
+        decimal tax_amount
+        string accounting_status
+    }
+    F_tax_regime ||--o{ F_tax_jurisdiction : "1 : many"
+    F_tax_jurisdiction ||--o{ F_tax_code : "1 : many"
+    F_tax_code ||--o{ F_tax_rate : "1 : many"
+    F_tax_jurisdiction ||--o{ F_tax_rule : "1 : many"
+    F_tax_code ||--o{ F_tax_account_mapping : "1 : many"
+    F_tax_code ||--o{ F_tax_transaction_line : "1 : many"`
 	},
 	{
 		id: 'foundation-h2r-navlog',
