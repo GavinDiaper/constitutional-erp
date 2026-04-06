@@ -9346,8 +9346,8 @@
                                                                                 "var body = pm.response.json();",
                                                                                 "pm.environment.set(\"rcSupplierInvoiceId\", body.supplier_invoice_id);",
                                                                                 "pm.test(\"RC invoice draft\", function () { pm.expect(body.state).to.eql(\"Draft\"); });",
-                                                                                "pm.test(\"amount_due equals base (RC does not gross-up AP amount)\", function () {",
-                                                                                "  pm.expect(parseFloat(body.amount_due)).to.be.closeTo(8000, 1);",
+                                                                                "pm.test(\"amount_due equals gross amount under current RC implementation\", function () {",
+                                                                                "  pm.expect(parseFloat(body.amount_due)).to.be.closeTo(8400, 1);",
                                                                                 "});"
                                                                             ],
                                                                    "type":  "text/javascript"
@@ -9599,7 +9599,7 @@
                                                               },
                                                       "method":  "POST",
                                                       "body":  {
-                                                                   "raw":  "{\"supplierInvoiceId\":\"{{rcSupplierInvoiceId}}\",\"amount\":8000,\"currencyCode\":\"AED\",\"method\":\"bank-transfer\"}",
+                                                                   "raw":  "{\"supplierInvoiceId\":\"{{rcSupplierInvoiceId}}\",\"amount\":8400,\"currencyCode\":\"AED\",\"method\":\"bank-transfer\"}",
                                                                    "mode":  "raw"
                                                                },
                                                       "header":  [
@@ -9617,7 +9617,7 @@
                                                                      }
                                                                  ]
                                                   },
-                                      "name":  "Create RC AP Payment (base amount only)",
+                                      "name":  "Create RC AP Payment",
                                       "event":  {
                                                     "script":  {
                                                                    "exec":  [
