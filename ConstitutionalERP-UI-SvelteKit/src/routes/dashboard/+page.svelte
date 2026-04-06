@@ -4,6 +4,7 @@
 	import {
 		getDashboardSummary,
 		isActiveEmployee,
+		isDraftCustomer,
 		isPendingJournal,
 		isSubmittedRequisition
 	} from '$lib/api/dashboard';
@@ -55,6 +56,15 @@
 		created_at?: string;
 	}
 
+	interface CustomerRow {
+		customer_id: string;
+		customer_name?: string;
+		email?: string;
+		state?: string;
+		status?: string;
+		created_at?: string;
+	}
+
 	interface EmployeeRow {
 		employee_id: string;
 		state?: string;
@@ -73,7 +83,7 @@
 
 	interface ApprovalQueueItem {
 		id: string;
-		entityType: 'p2p_requisition' | 'r2r_journal';
+		entityType: 'o2c_customer' | 'p2p_requisition' | 'r2r_journal';
 		ownerLabel: string;
 		stateLabel: string;
 		href: string;
@@ -115,9 +125,10 @@
 		chartErrorMessage = '';
 
 		try {
-			const [summary, quoteResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
+			const [summary, quoteResult, customerResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
 				getDashboardSummary($actorStore),
 				getO2CQuotes($actorStore),
+				queryTable<CustomerRow>('o2c_customer', $actorStore),
 				queryTable<RequisitionRow>('p2p_requisition', $actorStore),
 				queryTable<PurchaseOrderRow>('p2p_purchase_order', $actorStore),
 				queryTable<JournalRow>('r2r_journal', $actorStore),
@@ -133,7 +144,11 @@
 			employeeStatusData = aggregateStates((employeeResult.data ?? []).map(resolveEmployeeStatus), 'Unknown');
 			journalsByPeriod = aggregateJournalsByPeriod(journalResult.data ?? []);
 			poValueByState = aggregatePoValueByState(poResult.data ?? []);
-			approvalQueueItems = buildApprovalQueue(requisitionResult.data ?? [], journalResult.data ?? []);
+			approvalQueueItems = buildApprovalQueue(
+				customerResult.data ?? [],
+				requisitionResult.data ?? [],
+				journalResult.data ?? []
+			);
 		} catch (error) {
 			chartErrorMessage = error instanceof Error ? error.message : 'Unable to load dashboard analytics.';
 		} finally {
@@ -142,9 +157,21 @@
 	}
 
 	function buildApprovalQueue(
+		customers: CustomerRow[],
 		requisitions: RequisitionRow[],
 		journals: JournalRow[]
 	): ApprovalQueueItem[] {
+		const customerActivations = customers
+			.filter(isDraftCustomer)
+			.map((customer) => ({
+				id: customer.customer_id,
+				entityType: 'o2c_customer' as const,
+				ownerLabel: customer.customer_name || customer.email || 'n/a',
+				stateLabel: normalizeLabel(customer.status || customer.state || 'Draft'),
+				href: resolve(`/canvas/o2c_customer/${customer.customer_id}`),
+				createdAt: customer.created_at ?? ''
+			}));
+
 		const submittedRequisitions = requisitions
 			.filter(isSubmittedRequisition)
 			.map((requisition) => ({
@@ -172,7 +199,7 @@
 				createdAt: journal.created_at ?? ''
 			}));
 
-		return [...submittedRequisitions, ...pendingJournals]
+		return [...customerActivations, ...submittedRequisitions, ...pendingJournals]
 			.sort((a, b) => sortByCreatedAtDesc(a.createdAt, b.createdAt))
 			.slice(0, 12);
 	}
@@ -356,7 +383,7 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h2 class="text-lg font-semibold">Approval Queue</h2>
-				<p class="muted mt-1 text-xs">Submitted requisitions and pending journals requiring operator attention.</p>
+				<p class="muted mt-1 text-xs">Draft customer activations, submitted requisitions, and pending journals requiring operator attention.</p>
 			</div>
 			<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
 				{approvalQueueItems.length} items
@@ -372,7 +399,13 @@
 						<a class="block rounded-md border border-white/15 bg-white/5 px-3 py-2 hover:bg-white/10" href={item.href}>
 							<div class="flex items-center justify-between gap-2">
 								<p class="font-semibold">{item.id}</p>
-								<span class="text-[11px] uppercase tracking-[0.12em] text-white/65">{item.entityType === 'p2p_requisition' ? 'Requisition' : 'Journal'}</span>
+								<span class="text-[11px] uppercase tracking-[0.12em] text-white/65">
+									{item.entityType === 'o2c_customer'
+										? 'Customer'
+										: item.entityType === 'p2p_requisition'
+											? 'Requisition'
+											: 'Journal'}
+								</span>
 							</div>
 							<p class="muted mt-1 text-xs">{item.ownerLabel}</p>
 							<p class="mt-1 text-xs text-white/85">State: {item.stateLabel}</p>

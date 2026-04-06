@@ -12,6 +12,7 @@ interface PurchaseOrderRow {
 interface JournalRow {
 	journal_id: string;
 	state?: string;
+	status?: string;
 }
 
 interface EmployeeRow {
@@ -27,6 +28,20 @@ interface EmployeeRow {
 interface RequisitionRow {
 	requisition_id: string;
 	state?: string;
+	status?: string;
+}
+
+interface CustomerRow {
+	customer_id: string;
+	state?: string;
+	status?: string;
+}
+
+function normalizeLifecycleToken(value: string | undefined): string {
+	return (value ?? '')
+		.trim()
+		.toLowerCase()
+		.replace(/[\s_-]+/g, '');
 }
 
 export function isDraftQuote(quote: O2CQuote): boolean {
@@ -38,20 +53,31 @@ export function isApprovedPo(order: PurchaseOrderRow): boolean {
 }
 
 export function isDraftRequisition(requisition: RequisitionRow): boolean {
-	return (requisition.state ?? '').toLowerCase() === 'draft';
+	const lifecycle = normalizeLifecycleToken(requisition.state ?? requisition.status);
+	return lifecycle === 'draft';
 }
 
 export function isSubmittedRequisition(requisition: RequisitionRow): boolean {
-	return (requisition.state ?? '').toLowerCase() === 'submitted';
+	const lifecycle = normalizeLifecycleToken(requisition.state ?? requisition.status);
+	return ['submitted', 'pendingapproval', 'awaitingapproval', 'inreview'].includes(lifecycle);
+}
+
+export function isDraftCustomer(customer: CustomerRow): boolean {
+	const lifecycle = normalizeLifecycleToken(customer.status ?? customer.state);
+	return lifecycle === 'draft';
 }
 
 export function isPendingJournal(journal: JournalRow): boolean {
-	const state = (journal.state ?? '').toLowerCase();
-	if (!state) {
+	const lifecycle = normalizeLifecycleToken(journal.state ?? journal.status);
+	if (!lifecycle) {
 		return true;
 	}
 
-	return !['posted', 'closed', 'locked'].includes(state);
+	if (['posted', 'closed', 'locked', 'cancelled', 'canceled', 'reversed'].includes(lifecycle)) {
+		return false;
+	}
+
+	return ['draft', 'pending', 'pendingapproval', 'awaitingapproval', 'readytopost', 'unposted'].includes(lifecycle);
 }
 
 export function isActiveEmployee(employee: EmployeeRow): boolean {
