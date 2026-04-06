@@ -104,7 +104,9 @@ const createSupplierInvoiceSchema = z.object({
   receiptId: z.string().min(1),
   invoiceDate: z.string().optional(),
   dueDate: z.string().optional(),
-  currencyCode: z.string().optional()
+  currencyCode: z.string().optional(),
+  taxCodeId: z.string().optional(),
+  countryCode: z.string().optional()
 });
 
 const createApPaymentSchema = z.object({

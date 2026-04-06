@@ -2,6 +2,9 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
+import { calculateTax, determineTaxByCode, persistTaxLine, getTaxLinesForEntity } from "../../tax/taxService";
+import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
+
 
 type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled" | "Cancelled";
 
@@ -46,7 +49,7 @@ function assertTransition(fromState: InvoiceState, toState: InvoiceState) {
   }
 }
 
-export function generateInvoice(orderId: string) {
+export function generateInvoice(orderId: string, options?: { taxCodeId?: string; countryCode?: string }) {
   const order = db.prepare("SELECT * FROM o2c_sales_order WHERE order_id = ?").get(orderId) as
     | { order_id: string; total_amount: number; state: string; version: number }
     | undefined;
@@ -61,12 +64,28 @@ export function generateInvoice(orderId: string) {
 
   const invoiceId = newId("INV-");
   const timestamp = now();
+  // Determine tax if explicit taxCodeId provided
+  let amountDue = order.total_amount;
+  let taxDetermination: ReturnType<typeof determineTaxByCode> = null;
+  if (options?.taxCodeId) {
+    const invoiceDate = new Date().toISOString().slice(0, 10);
+    taxDetermination = determineTaxByCode({
+      taxCodeId: options.taxCodeId,
+      countryCode: options.countryCode ?? "AE",
+      invoiceDate
+    });
+    if (taxDetermination) {
+      const taxCalc = calculateTax(order.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+      amountDue = taxCalc.grossAmount;
+    }
+  }
+
 
   transaction(() => {
     db.prepare(
       `INSERT INTO o2c_invoice(invoice_id, order_id, state, amount_due, amount_paid, version, created_at, updated_at)
        VALUES (?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(invoiceId, orderId, order.total_amount, timestamp, timestamp);
+    ).run(invoiceId, orderId, amountDue, timestamp, timestamp);
 
     db.prepare("UPDATE o2c_sales_order SET state = 'Invoiced', version = version + 1, updated_at = ? WHERE order_id = ?")
       .run(timestamp, orderId);
@@ -84,9 +103,29 @@ export function generateInvoice(orderId: string) {
       entityType: "Invoice",
       eventType: "ar-invoice.generated",
       version: 1,
-      payload: { orderId, amountDue: order.total_amount }
+      payload: { orderId, amountDue }
     });
   });
+
+  if (taxDetermination) {
+    const taxCalc = calculateTax(order.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+    persistTaxLine({
+      sourceDomain: "o2c",
+      sourceEntityType: "Invoice",
+      sourceEntityId: invoiceId,
+      taxRegimeId: taxDetermination.taxRegimeId,
+      taxJurisdictionId: taxDetermination.jurisdictionId ?? undefined,
+      taxCodeId: taxDetermination.taxCodeId,
+      taxRateId: taxDetermination.taxRateId ?? undefined,
+      taxRuleId: taxDetermination.taxRuleId ?? undefined,
+      transactionType: "ar-invoice",
+      taxApplicability: taxDetermination.taxApplicability,
+      taxableAmount: taxCalc.taxableAmount,
+      taxAmount: taxCalc.taxAmount,
+      currencyCode: "USD"
+    });
+  }
+
 
   return getInvoiceById(invoiceId);
 }
@@ -120,8 +159,26 @@ function _doInvoiceTransition(invoiceId: string, toState: InvoiceState, actor?: 
 }
 
 export function postARInvoice(invoiceId: string, actor?: EventActor) {
-  return _doInvoiceTransition(invoiceId, "Posted", actor);
+  const invoice = getInvoiceById(invoiceId);
+  _doInvoiceTransition(invoiceId, "Posted", actor);
+
+  const taxLines = getTaxLinesForEntity(invoiceId).filter(l => l.accounting_status === "pending");
+  if (taxLines.length > 0) {
+    createAndPostTaxAwareJournal({
+      eventType: "ar-invoice.posted",
+      baseAmount: invoice.amount_due,
+      debitAccountCode: "SYS-110-ASSET-AR",
+      creditAccountCode: "SYS-400-REV-SALES",
+      sourceEntityId: invoiceId,
+      sourceEntityType: "Invoice",
+      description: `AR Invoice posted: ${invoiceId}`,
+      transactionType: "ar-invoice"
+    }, actor);
+  }
+
+  return getInvoiceById(invoiceId);
 }
+
 
 export function cancelARInvoice(invoiceId: string, actor?: EventActor) {
   return _doInvoiceTransition(invoiceId, "Cancelled", actor);

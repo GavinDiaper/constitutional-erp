@@ -50,7 +50,14 @@ const tablePrimaryKeys = {
   repl_session: "session_id",
   navlog: "navlog_id",
   transcript: "transcript_id",
-  governance_decision_log: "decision_id"
+  governance_decision_log: "decision_id",
+  tax_regime: "tax_regime_id",
+  tax_jurisdiction: "tax_jurisdiction_id",
+  tax_code: "tax_code_id",
+  tax_rate: "tax_rate_id",
+  tax_rule: "tax_rule_id",
+  tax_account_mapping: "tax_account_mapping_id",
+  tax_transaction_line: "tax_transaction_line_id"
 } as const;
 
 type QueryTable = keyof typeof tablePrimaryKeys;

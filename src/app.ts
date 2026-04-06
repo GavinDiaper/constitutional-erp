@@ -15,6 +15,7 @@ import { navlogRouter } from "./api/navlog/navlog.routes";
 import { authRouter } from "./api/auth.routes";
 import { toProblem } from "./utils/errors";
 import { seedStarterAccounts } from "./domain/r2r/account/accountService";
+import { seedTaxConfiguration } from "./domain/tax/taxSeedService";
 import { runMigrations } from "./db/migrate";
 
 const config = loadConfig();
@@ -22,6 +23,7 @@ const config = loadConfig();
 export function createApp() {
   runMigrations();
   seedStarterAccounts();
+  seedTaxConfiguration();
 
   const app = express();
 

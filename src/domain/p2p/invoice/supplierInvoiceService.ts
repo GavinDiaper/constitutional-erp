@@ -3,6 +3,9 @@ import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { createAndPostP2PJournal } from "../accounting/p2pPostingService";
+import { calculateTax, determineTaxByCode, persistTaxLine } from "../../tax/taxService";
+import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
+
 
 type SupplierInvoiceState = "Draft" | "Validated" | "Posted" | "Paid" | "Cancelled";
 
@@ -53,7 +56,7 @@ function assertTransition(fromState: SupplierInvoiceState, toState: SupplierInvo
 
 export function createSupplierInvoiceFromReceipt(
   receiptId: string,
-  options: { invoiceDate?: string; dueDate?: string; currencyCode?: string } = {},
+  options: { invoiceDate?: string; dueDate?: string; currencyCode?: string; taxCodeId?: string; countryCode?: string } = {},
   actor?: EventActor
 ) {
   const receipt = db.prepare("SELECT * FROM p2p_goods_receipt WHERE receipt_id = ?").get(receiptId) as
@@ -79,6 +82,22 @@ export function createSupplierInvoiceFromReceipt(
   const supplierInvoiceId = newId("APINV-");
   const timestamp = now();
   const invoiceDate = options.invoiceDate ?? timestamp;
+  // Determine tax if explicit taxCodeId provided
+  let amountDue = po.total_amount;
+  let taxDetermination: ReturnType<typeof determineTaxByCode> = null;
+  if (options.taxCodeId) {
+    const taxDate = (options.invoiceDate ?? timestamp).slice(0, 10);
+    taxDetermination = determineTaxByCode({
+      taxCodeId: options.taxCodeId,
+      countryCode: options.countryCode ?? "AE",
+      invoiceDate: taxDate
+    });
+    if (taxDetermination) {
+      const taxCalc = calculateTax(po.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+      amountDue = taxCalc.grossAmount;
+    }
+  }
+
 
   transaction(() => {
     db.prepare(
@@ -88,7 +107,7 @@ export function createSupplierInvoiceFromReceipt(
       supplierInvoiceId,
       receipt.po_id,
       po.supplier_id,
-      po.total_amount,
+      amountDue,
       invoiceDate,
       options.dueDate ?? null,
       options.currencyCode ?? po.currency_code ?? null,
@@ -101,9 +120,29 @@ export function createSupplierInvoiceFromReceipt(
       entityType: "SupplierInvoice",
       eventType: "invoice.created",
       version: 1,
-      payload: { receiptId, poId: receipt.po_id, supplierId: po.supplier_id, amountDue: po.total_amount },
+      payload: { receiptId, poId: receipt.po_id, supplierId: po.supplier_id, amountDue },
       actor
     });
+
+    if (taxDetermination) {
+      const taxCalc = calculateTax(po.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+      persistTaxLine({
+        sourceDomain: "p2p",
+        sourceEntityType: "SupplierInvoice",
+        sourceEntityId: supplierInvoiceId,
+        taxRegimeId: taxDetermination.taxRegimeId,
+        taxJurisdictionId: taxDetermination.jurisdictionId ?? undefined,
+        taxCodeId: taxDetermination.taxCodeId,
+        taxRateId: taxDetermination.taxRateId ?? undefined,
+        taxRuleId: taxDetermination.taxRuleId ?? undefined,
+        transactionType: "ap-invoice",
+        taxApplicability: taxDetermination.taxApplicability,
+        taxableAmount: taxCalc.taxableAmount,
+        taxAmount: taxCalc.taxAmount,
+        currencyCode: options.currencyCode ?? po.currency_code ?? "USD"
+      });
+    }
+
   });
 
   return getSupplierInvoiceById(supplierInvoiceId);
@@ -120,15 +159,17 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
     let accountingJournalId: string | null = null;
 
     if (toState === "Posted") {
-      const posting = createAndPostP2PJournal(
+      const posting = createAndPostTaxAwareJournal(
         {
-          amount: supplierInvoice.amount_due,
+          eventType: "ap-invoice.posted",
+          baseAmount: supplierInvoice.amount_due,
           debitAccountCode: "SYS-510-EXP-OPEX",
           creditAccountCode: "SYS-200-LIAB-AP",
+          sourceEntityId: supplierInvoiceId,
+          sourceEntityType: "SupplierInvoice",
           description: `AP accrual for supplier invoice ${supplierInvoiceId}`,
           memo: `P2P AP accrual ${supplierInvoiceId}`,
-          referenceEntityType: "SupplierInvoice",
-          referenceEntityId: supplierInvoiceId
+          transactionType: "ap-invoice"
         },
         actor
       );

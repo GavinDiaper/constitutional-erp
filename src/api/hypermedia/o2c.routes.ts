@@ -463,7 +463,11 @@ o2cRouter.post("/orders/:orderId/cancel", (req, res) => {
 });
 
 o2cRouter.post("/orders/:orderId/generate-invoice", (req, res) => {
-  const invoice = generateInvoice(req.params.orderId);
+  const { taxCodeId, countryCode } = req.body ?? {};
+  const invoice = generateInvoice(req.params.orderId, {
+    taxCodeId: typeof taxCodeId === "string" ? taxCodeId : undefined,
+    countryCode: typeof countryCode === "string" ? countryCode : undefined
+  });
   res.status(201).json(entityWithLinks(invoice as any, invoiceLinks((invoice as any).invoice_id, (invoice as any).state)));
 });
 

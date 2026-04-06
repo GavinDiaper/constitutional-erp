@@ -76,6 +76,30 @@ import {
   listPostingProfiles,
   setPostingProfileActiveState
 } from "../../domain/r2r/sla/postingProfileService";
+import {
+  createTaxRegime,
+  getTaxRegimeById,
+  listTaxRegimes,
+  createTaxJurisdiction,
+  getTaxJurisdictionById,
+  listTaxJurisdictions,
+  createTaxCode,
+  getTaxCodeById,
+  listTaxCodes,
+  createTaxRate,
+  getTaxRateById,
+  listTaxRates,
+  createTaxRule,
+  getTaxRuleById,
+  listTaxRules,
+  deactivateTaxRule,
+  createTaxAccountMapping,
+  getTaxAccountMappingById,
+  listTaxAccountMappings
+} from "../../domain/tax/taxConfigService";
+import { getTaxLinesForEntity } from "../../domain/tax/taxService";
+
+
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -209,6 +233,64 @@ const createPostingProfileSchema = z.object({
       })
     )
     .min(1)
+});
+
+// ── HATEOAS link builders ────────────────────────────────────────────────────
+const createTaxRegimeSchema = z.object({
+  code:        z.string().min(1),
+  name:        z.string().min(1),
+  description: z.string().optional(),
+  isActive:    z.boolean().optional()
+});
+
+const createTaxJurisdictionSchema = z.object({
+  taxRegimeId:  z.string().min(1),
+  countryCode:  z.string().length(2),
+  regionCode:   z.string().optional(),
+  cityCode:     z.string().optional(),
+  name:         z.string().min(1)
+});
+
+const createTaxCodeSchema = z.object({
+  taxRegimeId:      z.string().min(1),
+  code:             z.string().min(1),
+  description:      z.string().optional(),
+  taxApplicability: z.enum(["taxable", "exempt", "zero-rated", "reverse-charge", "withholding"])
+});
+
+const createTaxRateSchema = z.object({
+  taxCodeId:         z.string().min(1),
+  taxJurisdictionId: z.string().min(1),
+  ratePercent:       z.number().min(0),
+  inclusiveFlag:     z.boolean().optional(),
+  effectiveFrom:     z.string().min(1),
+  effectiveTo:       z.string().optional()
+});
+
+const createTaxRuleSchema = z.object({
+  taxRegimeId:    z.string().min(1),
+  code:           z.string().min(1),
+  name:           z.string().min(1),
+  description:    z.string().optional(),
+  priority:       z.number().int().min(0),
+  taxCodeId:      z.string().min(1),
+  conditionsJson: z.object({
+    conditions: z.array(z.object({ field: z.string(), op: z.string(), value: z.string() })),
+    match: z.enum(["all", "any"]).optional()
+  }),
+  effectiveFrom:  z.string().min(1),
+  effectiveTo:    z.string().optional()
+});
+
+const createTaxAccountMappingSchema = z.object({
+  taxRegimeId:     z.string().min(1),
+  legalEntityId:   z.string().optional(),
+  taxCodeId:       z.string().min(1),
+  transactionType: z.string().min(1),
+  accountRole:     z.enum(["tax_liability", "tax_recoverable", "withholding_payable"]),
+  accountId:       z.string().min(1),
+  effectiveFrom:   z.string().min(1),
+  effectiveTo:     z.string().optional()
 });
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
@@ -766,5 +848,131 @@ r2rRouter.post("/journals/:journalId/cancel", (req, res) => {
 
 r2rRouter.get("/trial-balance/:fiscalPeriodId", (req, res) => {
   const rows = getTrialBalance(req.params.fiscalPeriodId);
+
+  // -- Tax Regimes --
+
+  r2rRouter.get("/tax/regimes", (_req, res) => {
+    const rows = listTaxRegimes().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/regimes/${row.tax_regime_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/regimes/:taxRegimeId", (req, res) => {
+    const row = getTaxRegimeById(req.params.taxRegimeId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/regimes/${req.params.taxRegimeId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/regimes", validateBody(createTaxRegimeSchema), (req, res) => {
+    const row = createTaxRegime(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/regimes/${(row as any).tax_regime_id}`, method: "GET" } }));
+  });
+
+  // -- Tax Jurisdictions --
+
+  r2rRouter.get("/tax/jurisdictions", (_req, res) => {
+    const rows = listTaxJurisdictions().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/jurisdictions/${row.tax_jurisdiction_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/jurisdictions/:taxJurisdictionId", (req, res) => {
+    const row = getTaxJurisdictionById(req.params.taxJurisdictionId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/jurisdictions/${req.params.taxJurisdictionId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/jurisdictions", validateBody(createTaxJurisdictionSchema), (req, res) => {
+    const row = createTaxJurisdiction(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/jurisdictions/${(row as any).tax_jurisdiction_id}`, method: "GET" } }));
+  });
+
+  // -- Tax Codes --
+
+  r2rRouter.get("/tax/codes", (_req, res) => {
+    const rows = listTaxCodes().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/codes/${row.tax_code_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/codes/:taxCodeId", (req, res) => {
+    const row = getTaxCodeById(req.params.taxCodeId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/codes/${req.params.taxCodeId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/codes", validateBody(createTaxCodeSchema), (req, res) => {
+    const row = createTaxCode(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/codes/${(row as any).tax_code_id}`, method: "GET" } }));
+  });
+
+  // -- Tax Rates --
+
+  r2rRouter.get("/tax/rates", (_req, res) => {
+    const rows = listTaxRates().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/rates/${row.tax_rate_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/rates/:taxRateId", (req, res) => {
+    const row = getTaxRateById(req.params.taxRateId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/rates/${req.params.taxRateId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/rates", validateBody(createTaxRateSchema), (req, res) => {
+    const row = createTaxRate(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/rates/${(row as any).tax_rate_id}`, method: "GET" } }));
+  });
+
+  // -- Tax Rules --
+
+  r2rRouter.get("/tax/rules", (_req, res) => {
+    const rows = listTaxRules().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/rules/${row.tax_rule_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/rules/:taxRuleId", (req, res) => {
+    const row = getTaxRuleById(req.params.taxRuleId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/rules/${req.params.taxRuleId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/rules", validateBody(createTaxRuleSchema), (req, res) => {
+    const row = createTaxRule(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/rules/${(row as any).tax_rule_id}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/rules/:taxRuleId/deactivate", (req, res) => {
+    const row = deactivateTaxRule(req.params.taxRuleId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/rules/${req.params.taxRuleId}`, method: "GET" } }));
+  });
+
+  // -- Tax Account Mappings --
+
+  r2rRouter.get("/tax/account-mappings", (_req, res) => {
+    const rows = listTaxAccountMappings().map((row: any) =>
+      entityWithLinks(row, { self: { href: `/api/v1/r2r/tax/account-mappings/${row.tax_account_mapping_id}`, method: "GET" } })
+    );
+    res.json({ data: rows });
+  });
+
+  r2rRouter.get("/tax/account-mappings/:taxAccountMappingId", (req, res) => {
+    const row = getTaxAccountMappingById(req.params.taxAccountMappingId);
+    res.json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/account-mappings/${req.params.taxAccountMappingId}`, method: "GET" } }));
+  });
+
+  r2rRouter.post("/tax/account-mappings", validateBody(createTaxAccountMappingSchema), (req, res) => {
+    const row = createTaxAccountMapping(req.body);
+    res.status(201).json(entityWithLinks(row as any, { self: { href: `/api/v1/r2r/tax/account-mappings/${(row as any).tax_account_mapping_id}`, method: "GET" } }));
+  });
+
+  // -- Tax Transaction Lines (read-only) --
+
+  r2rRouter.get("/tax/transaction-lines/:sourceEntityId", (req, res) => {
+    const rows = getTaxLinesForEntity(req.params.sourceEntityId);
+    res.json({ data: rows });
+  });
   res.json({ data: rows });
 });
