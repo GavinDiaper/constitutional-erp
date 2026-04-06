@@ -1,5 +1,5 @@
 import { HttpError } from "../utils/errors";
-import { McpFunction } from "./types";
+import { McpFunction, OperationType } from "./types";
 
 function tierFromRiskLevel(riskLevel?: "Low" | "Medium" | "High"): number | undefined {
   if (riskLevel === "Low") {
@@ -112,7 +112,27 @@ const FUNCTION_DEFS = [
   { id: "p2p_reconcile_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "reconcile_ap_payment", operationType: "transition", description: "Reconcile AP payment", riskLevel: "Low", governanceTag: "P2P.ApPayment.Reconcile" },
 
   { id: "o2c_create_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "create_quote", operationType: "create", description: "Create a sales quote", riskLevel: "Low", governanceTag: "O2C.Quote.Create" },
-  { id: "o2c_add_quote_line", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "add_quote_line", operationType: "update", description: "Add a quote line", riskLevel: "Low", governanceTag: "O2C.Quote.Update" },
+  {
+    id: "o2c_add_quote_line",
+    entity: "Quote",
+    domain: "o2c",
+    aggregateType: "quote",
+    action: "lines",
+    actionAliases: ["add_quote_line", "add-line"],
+    operationType: "update",
+    description: "Add a quote line",
+    riskLevel: "Low",
+    governanceTag: "O2C.Quote.Update",
+    inputSchema: {
+      type: "object",
+      required: ["description", "quantity", "unitPrice"],
+      properties: {
+        description: { type: "string", minLength: 1 },
+        quantity: { type: "number", minimum: 0.000001 },
+        unitPrice: { type: "number", minimum: 0 }
+      }
+    }
+  },
   { id: "o2c_send_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "send", operationType: "transition", description: "Send quote", riskLevel: "Low", governanceTag: "O2C.Quote.Send" },
   { id: "o2c_accept_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "accept", operationType: "transition", description: "Accept quote", riskLevel: "Low", governanceTag: "O2C.Quote.Accept" },
   { id: "o2c_convert_quote_to_order", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "convert-to-order", operationType: "transition", description: "Convert quote to order", riskLevel: "Medium", governanceTag: "O2C.Quote.Convert" },
@@ -334,6 +354,18 @@ export class McpCatalog {
         normalizeKey(fn.domain) === domainKey &&
         normalizeKey(fn.aggregateType) === aggregateTypeKey &&
         matchesAction(action, fn.action, fn.actionAliases)
+    );
+  }
+
+  listByDomainAggregateAndOperation(domain: string, aggregateType: string, operationType: OperationType): McpFunction[] {
+    const domainKey = normalizeKey(domain);
+    const aggregateTypeKey = normalizeKey(aggregateType);
+
+    return this.functions.filter(
+      (fn) =>
+        normalizeKey(fn.domain) === domainKey &&
+        normalizeKey(fn.aggregateType) === aggregateTypeKey &&
+        fn.operationType === operationType
     );
   }
 

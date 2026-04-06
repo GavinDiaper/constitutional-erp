@@ -14,6 +14,7 @@
 	import { getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
 	import { domainToCanvasTab, inferDomainFromEntityType, resolveHighlightedStepId } from '$lib/flows/mapping';
 	import { executeProcessAction, getProcess } from '$lib/api/process';
+	import { fetchHubJson } from '$lib/api/hub';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { processStore } from '$lib/stores/processStore';
 	import type { HubActionLink, ProcessGraphModel, TimelineEvent } from '$lib/types/hub';
@@ -115,7 +116,11 @@
 
 		try {
 			const process = await getProcess(resolvedEntityType, resolvedEntityId, $actorStore);
-			processStore.set(process);
+			const fallbackAttributes = await loadEntityAttributesFallback(resolvedEntityType, resolvedEntityId);
+			processStore.set({
+				...process,
+				attributes: fallbackAttributes ? mergeProcessAttributes(process.attributes, fallbackAttributes) : process.attributes
+			});
 			entityLines = await loadEntityLines(resolvedEntityType, resolvedEntityId);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load process data.';
@@ -289,6 +294,9 @@
 
 	function resolveLinesHref(entityTypeValue: string, entityIdValue: string): string | null {
 		const normalized = entityTypeValue.toLowerCase();
+		if (normalized === 'o2c_quote' || normalized === 'quote') {
+			return `/api/v1/o2c/quotes/${entityIdValue}/lines`;
+		}
 		if (normalized === 'p2p_requisition' || normalized === 'requisition') {
 			return `/api/v1/p2p/requisitions/${entityIdValue}/lines`;
 		}
@@ -338,6 +346,58 @@
 			return rows;
 		} catch {
 			return [];
+		}
+	}
+
+	function mergeProcessAttributes(
+		primary: Record<string, unknown>,
+		fallback: Record<string, unknown>
+	): Record<string, unknown> {
+		const merged: Record<string, unknown> = { ...primary };
+
+		for (const [key, value] of Object.entries(fallback)) {
+			if (!(key in merged) || merged[key] === null || merged[key] === undefined || merged[key] === '') {
+				merged[key] = value;
+			}
+		}
+
+		if ((merged.legal_entity_id === null || merged.legal_entity_id === undefined || merged.legal_entity_id === '') && fallback.legal_entity_id) {
+			merged.legal_entity_id = fallback.legal_entity_id;
+		}
+
+		if ((merged.legalEntityId === null || merged.legalEntityId === undefined || merged.legalEntityId === '') && fallback.legalEntityId) {
+			merged.legalEntityId = fallback.legalEntityId;
+		}
+
+		return merged;
+	}
+
+	async function loadEntityAttributesFallback(
+		entityTypeValue: string,
+		entityIdValue: string
+	): Promise<Record<string, unknown> | null> {
+		const normalized = entityTypeValue.toLowerCase();
+		if (normalized !== 'o2c_quote' && normalized !== 'quote') {
+			return null;
+		}
+
+		try {
+			const payload = await fetchHubJson<Record<string, unknown> | { data?: unknown }>(
+				`/api/hub/query/o2c_quote/${entityIdValue}`,
+				$actorStore
+			);
+
+			if (!payload || typeof payload !== 'object') {
+				return null;
+			}
+
+			if ('data' in payload && payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+				return payload.data as Record<string, unknown>;
+			}
+
+			return payload as Record<string, unknown>;
+		} catch {
+			return null;
 		}
 	}
 </script>

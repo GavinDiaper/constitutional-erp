@@ -2,6 +2,9 @@
 	export let attributes: Record<string, unknown> = {};
 
 	const lineFieldKeys = new Set([
+		'quoteLineId',
+		'quote_line_id',
+		'sku',
 		'requisitionLineId',
 		'poLineId',
 		'description',
@@ -19,6 +22,8 @@
 		: [];
 	$: normalizedEntityType = entityTypeValue.toLowerCase();
 	$: supportsLineLayout =
+		normalizedEntityType === 'o2c_quote' ||
+		normalizedEntityType === 'quote' ||
 		normalizedEntityType === 'p2p_requisition' ||
 		normalizedEntityType === 'p2p_purchase_order' ||
 		normalizedEntityType === 'r2r_journal' ||
@@ -151,7 +156,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each lineRows as line, index (`${String(line.requisition_line_id ?? line.po_line_id ?? index)}`)}
+								{#each lineRows as line, index (`${String(line.quote_line_id ?? line.requisition_line_id ?? line.po_line_id ?? index)}`)}
 									<tr class="border-t border-white/10">
 										<td class="px-3 py-2">{String(line.description ?? '')}</td>
 										<td class="px-3 py-2 text-right">{String(line.quantity ?? '')}</td>
