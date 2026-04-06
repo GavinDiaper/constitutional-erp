@@ -581,11 +581,14 @@ test("R2R bootstrap seeds default legal entities and ledgers", async () => {
 
   const seededUsLegalEntity = legalEntityRows.find((row) => row.legal_entity_id === "LE-SEED-US");
   const seededAuLegalEntity = legalEntityRows.find((row) => row.legal_entity_id === "LE-SEED-AU");
+  const seededAeLegalEntity = legalEntityRows.find((row) => row.legal_entity_id === "LE-SEED-AE");
 
   assert.equal(seededUsLegalEntity?.name, "Constitutional Holdings US");
   assert.equal(seededUsLegalEntity?.currency_code, "USD");
   assert.equal(seededAuLegalEntity?.name, "Constitutional Holdings AU");
   assert.equal(seededAuLegalEntity?.currency_code, "AUD");
+  assert.equal(seededAeLegalEntity?.name, "Constitutional Holdings UAE");
+  assert.equal(seededAeLegalEntity?.currency_code, "AED");
 
   const ledgers = await request(app)
     .get("/api/v1/r2r/ledgers")
@@ -600,11 +603,14 @@ test("R2R bootstrap seeds default legal entities and ledgers", async () => {
 
   const seededUsLedger = ledgerRows.find((row) => row.ledger_id === "LGR-SEED-US");
   const seededAuLedger = ledgerRows.find((row) => row.ledger_id === "LGR-SEED-AU");
+  const seededAeLedger = ledgerRows.find((row) => row.ledger_id === "LGR-SEED-AE");
 
   assert.equal(seededUsLedger?.legal_entity_id, "LE-SEED-US");
   assert.equal(seededUsLedger?.currency_code, "USD");
   assert.equal(seededAuLedger?.legal_entity_id, "LE-SEED-AU");
   assert.equal(seededAuLedger?.currency_code, "AUD");
+  assert.equal(seededAeLedger?.legal_entity_id, "LE-SEED-AE");
+  assert.equal(seededAeLedger?.currency_code, "AED");
 });
 
 test("R2R supports COA segment definitions and account hierarchy", async () => {

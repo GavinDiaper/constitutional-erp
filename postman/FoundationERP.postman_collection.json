@@ -1926,11 +1926,14 @@
                   "var rows = (pm.response.json().data || []);",
                   "var us = rows.find(function (row) { return row.ledger_id === \"LGR-SEED-US\"; });",
                   "var au = rows.find(function (row) { return row.ledger_id === \"LGR-SEED-AU\"; });",
-                  "pm.test(\"US and AU seeded ledgers exist and are linked\", function () {",
+                  "var ae = rows.find(function (row) { return row.ledger_id === \"LGR-SEED-AE\"; });",
+                  "pm.test(\"US, AU, and AE seeded ledgers exist and are linked\", function () {",
                   "  pm.expect(us).to.exist;",
                   "  pm.expect(au).to.exist;",
+                  "  pm.expect(ae).to.exist;",
                   "  pm.expect(us.legal_entity_id).to.eql(\"LE-SEED-US\");",
                   "  pm.expect(au.legal_entity_id).to.eql(\"LE-SEED-AU\");",
+                  "  pm.expect(ae.legal_entity_id).to.eql(\"LE-SEED-AE\");",
                   "});",
                   "pm.environment.set(\"seededUsLedgerId\", \"LGR-SEED-US\");"
                 ]
