@@ -166,7 +166,18 @@ const FUNCTION_DEFS = [
     }
   },
   { id: "o2c_generate_invoice", entity: "ArInvoice", domain: "o2c", aggregateType: "ar-invoice", action: "generate_invoice", operationType: "create", description: "Generate invoice", riskLevel: "Medium", governanceTag: "O2C.Invoice.Generate" },
-  { id: "o2c_post_invoice", entity: "ArInvoice", domain: "o2c", aggregateType: "ar-invoice", action: "post_invoice", operationType: "transition", description: "Post invoice", riskLevel: "Medium", governanceTag: "O2C.Invoice.Post" },
+  {
+    id: "o2c_post_invoice",
+    entity: "ArInvoice",
+    domain: "o2c",
+    aggregateType: "ar-invoice",
+    action: "post_invoice",
+    actionAliases: ["post", "post-ar-invoice", "post_ar_invoice"],
+    operationType: "transition",
+    description: "Post invoice",
+    riskLevel: "Medium",
+    governanceTag: "O2C.Invoice.Post"
+  },
   { id: "o2c_register_payment", entity: "ArPayment", domain: "o2c", aggregateType: "ar-payment", action: "register_payment", operationType: "create", description: "Register payment", riskLevel: "Medium", governanceTag: "O2C.Payment.Register" },
   { id: "o2c_apply_payment_to_invoice", entity: "ArPayment", domain: "o2c", aggregateType: "ar-payment", action: "apply_payment_to_invoice", operationType: "transition", description: "Apply payment", riskLevel: "Low", governanceTag: "O2C.Payment.Apply" },
 
