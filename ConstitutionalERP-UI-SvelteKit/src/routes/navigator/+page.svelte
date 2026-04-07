@@ -72,23 +72,17 @@
 	let executionLoading = false;
 	let executionError = '';
 
-	$: aggregateTypeOptions = AGGREGATE_TYPES[domain] ?? [];
-	$: aggregateIdOptions = AGGREGATE_IDS[aggregateType] ?? [];
-
-	$: if (!aggregateTypeOptions.includes(aggregateType)) {
-		aggregateType = aggregateTypeOptions[0] ?? '';
+	$: if (!getAggregateTypeOptions(domain).includes(aggregateType)) {
+		aggregateType = getAggregateTypeOptions(domain)[0] ?? '';
 	}
 
-	$: if (aggregateIdOptions.length > 0 && !aggregateIdOptions.includes(aggregateId)) {
-		aggregateId = aggregateIdOptions[0] ?? '';
+	$: if (getAggregateIdOptions(aggregateType).length > 0 && !getAggregateIdOptions(aggregateType).includes(aggregateId)) {
+		aggregateId = getAggregateIdOptions(aggregateType)[0] ?? '';
 	}
 
 	$: if ($actorStore.actorId !== actorId) {
 		setActorById(actorId);
 	}
-
-	let aggregateTypeOptions: string[] = [];
-	let aggregateIdOptions: string[] = [];
 
 	function buildContext(): NavigatorContext {
 		return {
@@ -97,6 +91,14 @@
 			aggregateId: aggregateId.trim(),
 			actorId: actorId.trim()
 		};
+	}
+
+	function getAggregateTypeOptions(currentDomain: (typeof DOMAINS)[number]): string[] {
+		return AGGREGATE_TYPES[currentDomain] ?? [];
+	}
+
+	function getAggregateIdOptions(currentAggregateType: string): string[] {
+		return AGGREGATE_IDS[currentAggregateType] ?? [];
 	}
 
 	function clearDownstreamState(): void {
@@ -115,6 +117,26 @@
 
 	function selectedActor(): ActorContext {
 		return actorOptions.find((actor) => actor.actorId === actorId) ?? actorOptions[0];
+	}
+
+	function formatAttributeValue(value: unknown): string {
+		if (value == null) {
+			return 'null';
+		}
+
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			return String(value);
+		}
+
+		try {
+			return JSON.stringify(value, null, 2);
+		} catch {
+			return String(value);
+		}
+	}
+
+	function isStructuredValue(value: unknown): boolean {
+		return typeof value === 'object' && value !== null;
 	}
 
 	async function handleLoadResource(): Promise<void> {
@@ -261,7 +283,7 @@
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={aggregateType}
 			>
-				{#each aggregateTypeOptions as type (type)}
+				{#each getAggregateTypeOptions(domain) as type (type)}
 					<option value={type}>{type}</option>
 				{/each}
 			</select>
@@ -274,7 +296,7 @@
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={aggregateId}
 			>
-				{#each aggregateIdOptions as id (id)}
+				{#each getAggregateIdOptions(aggregateType) as id (id)}
 					<option value={id}>{id}</option>
 				{/each}
 			</select>
@@ -338,8 +360,12 @@
 				<div class="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
 					{#each Object.entries(resource.attributes ?? {}) as [key, value] (key)}
 						<div class="rounded border border-white/10 bg-white/5 px-2 py-1">
-							<span class="text-white/60">{key}:</span>
-							<span class="ml-1 text-white/90">{String(value)}</span>
+							<p class="text-white/60">{key}:</p>
+							{#if isStructuredValue(value)}
+								<pre class="mt-1 overflow-x-auto rounded border border-white/10 bg-[#112946] p-2 text-[11px] text-white/90">{formatAttributeValue(value)}</pre>
+							{:else}
+								<p class="mt-1 text-white/90">{formatAttributeValue(value)}</p>
+							{/if}
 						</div>
 					{/each}
 				</div>
