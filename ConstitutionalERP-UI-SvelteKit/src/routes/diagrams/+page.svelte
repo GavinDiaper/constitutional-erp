@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { diagramCatalog } from '$lib/diagrams/catalog';
 
@@ -54,6 +55,38 @@
 		cross: diagramCatalog.filter((d) => d.system === 'Cross-System')
 	};
 
+	const processFlowDomains: Array<{
+		domain: 'o2c' | 'p2p' | 'r2r' | 'h2r';
+		title: string;
+		summary: string;
+		accentClass: string;
+	}> = [
+		{
+			domain: 'o2c',
+			title: 'O2C Domain Process Flows',
+			summary: 'Quote to cash process variants and step-level sequence details.',
+			accentClass: 'border-indigo-500/40 bg-indigo-50/70'
+		},
+		{
+			domain: 'p2p',
+			title: 'P2P Domain Process Flows',
+			summary: 'Procurement lifecycle variants from requisition through supplier payment.',
+			accentClass: 'border-sky-500/40 bg-sky-50/70'
+		},
+		{
+			domain: 'r2r',
+			title: 'R2R Domain Process Flows',
+			summary: 'Record to report process variants and journal-driven sequencing.',
+			accentClass: 'border-blue-700/40 bg-blue-100/70'
+		},
+		{
+			domain: 'h2r',
+			title: 'H2R Domain Process Flows',
+			summary: 'Employee lifecycle process variants across HR state transitions.',
+			accentClass: 'border-cyan-600/40 bg-cyan-50/70'
+		}
+	];
+
 	const overviewNodeLinks: Record<string, string> = {
 		F_core: 'foundation-core-eventing',
 		F_o2c: 'foundation-o2c',
@@ -77,11 +110,18 @@
 	}
 </script>
 
+<DiagramBreadcrumb items={[{ label: 'Home', href: resolve('/') }, { label: 'Diagram Explorer' }]} />
+
 <section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
-	<h1 class="text-3xl font-semibold text-slate-900">Architecture Diagram Explorer</h1>
+	<h1 class="text-3xl font-semibold text-slate-900">Diagram Explorer</h1>
 	<p class="mt-3 max-w-3xl text-sm text-slate-700">
-		Select a box to open the dedicated diagram page for that system or domain.
+		Open architecture diagrams and domain process flows from one landing page.
 	</p>
+	<div class="mt-4 flex flex-wrap gap-3 text-xs">
+		<a class="rounded-md border border-slate-300 px-3 py-2 font-semibold text-slate-800 hover:bg-slate-100" href={resolve('/diagrams/process-flows')}>
+			Browse All Domain Process Flows
+		</a>
+	</div>
 	<div class="mt-5">
 		<MermaidDiagram
 			title="System and Domain Grouping (Color Key)"
@@ -92,7 +132,22 @@
 </section>
 
 <section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
-	<h2 class="text-xl font-semibold text-slate-900">FoundationERP Domains</h2>
+	<h2 class="text-xl font-semibold text-slate-900">Domain Process Flows</h2>
+	<div class="mt-4 grid gap-3 sm:grid-cols-2">
+		{#each processFlowDomains as flowDomain (flowDomain.domain)}
+			<a
+				class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${flowDomain.accentClass}`}
+				href={resolve('/diagrams/process-flows/[domain]', { domain: flowDomain.domain })}
+			>
+				<p class="text-sm font-semibold text-slate-900">{flowDomain.title}</p>
+				<p class="mt-2 text-xs text-slate-700">{flowDomain.summary}</p>
+			</a>
+		{/each}
+	</div>
+</section>
+
+<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+	<h2 class="text-xl font-semibold text-slate-900">Architecture Diagrams: FoundationERP Domains</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each grouped.foundation as item (item.id)}
 			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: item.id })}>

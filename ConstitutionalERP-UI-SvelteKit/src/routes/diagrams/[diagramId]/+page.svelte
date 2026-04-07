@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import type { PageData } from './$types';
 
@@ -165,6 +166,14 @@
 		sortDirection = 'asc';
 	}
 </script>
+
+<DiagramBreadcrumb
+	items={[
+		{ label: 'Home', href: resolve('/') },
+		{ label: 'Diagram Explorer', href: resolve('/diagrams') },
+		{ label: data.diagram.title }
+	]}
+/>
 
 <section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
 	<p class="text-xs uppercase tracking-[0.18em] text-slate-600">{data.diagram.system}</p>

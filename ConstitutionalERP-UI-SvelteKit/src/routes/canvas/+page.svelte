@@ -1,13 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
-	import { getProcessFlowBundle, getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
-	import type { CanonicalFlowDomain, ProcessFlowDefinition } from '$lib/types/hub';
-	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 
 	type DomainTab = 'o2c' | 'p2p' | 'r2r' | 'hcm';
 	type EntityKey =
@@ -106,17 +102,11 @@
 		created_at?: string;
 	}
 
-	type FlowViewMode = 'mermaid' | 'list' | 'hidden';
-
 	let loading = false;
 	let errorMessage = '';
 	let filterText = '';
 	let activeTab: DomainTab = 'o2c';
 	let stateFilterByEntity: Partial<Record<EntityKey, string>> = {};
-	let flowVariantByTab: Partial<Record<DomainTab, string>> = {};
-	let flowViewModeByTab: Partial<Record<DomainTab, FlowViewMode>> = {};
-
-	const flowBundle = getProcessFlowBundle();
 
 	let draftQuotes: O2CQuote[] = [];
 	let customers: CustomerRow[] = [];
@@ -409,111 +399,6 @@
 		stateFilterByEntity = { ...stateFilterByEntity, [entity]: state };
 	}
 
-	function mapDomainTabToCanonical(tab: DomainTab): CanonicalFlowDomain {
-		switch (tab) {
-			case 'o2c':
-				return 'O2C';
-			case 'p2p':
-				return 'P2P';
-			case 'r2r':
-				return 'R2R';
-			default:
-				return 'H2R';
-		}
-	}
-
-	function selectFlowVariant(tab: DomainTab, variantKey: string): void {
-		flowVariantByTab = { ...flowVariantByTab, [tab]: variantKey };
-	}
-
-	function summarizeNode(node: ProcessFlowDefinition['nodes'][number]): string {
-		const parts = [`${node.httpMethod} ${node.requestPath}`];
-		if (node.dependsOnVariables.length > 0) {
-			parts.push(`in: ${node.dependsOnVariables.join(', ')}`);
-		}
-		if (node.capturesVariables.length > 0) {
-			parts.push(`out: ${node.capturesVariables.join(', ')}`);
-		}
-
-		return parts.join(' • ');
-	}
-
-	function setFlowViewMode(tab: DomainTab, mode: FlowViewMode): void {
-		flowViewModeByTab = { ...flowViewModeByTab, [tab]: mode };
-	}
-
-	function sanitizeMermaidLabel(value: string): string {
-		return value.replace(/"/g, '\\"').replace(/\|/g, '/').trim();
-	}
-
-	function buildFlowMermaidDefinition(flow: ProcessFlowDefinition | null): string {
-		if (!flow || flow.nodes.length === 0) {
-			return 'sequenceDiagram\n  Note over System: No flow available';
-		}
-
-		const lines: string[] = ['sequenceDiagram'];
-		const refById = new Map<string, string>();
-
-		for (const node of flow.nodes) {
-			const ref = `P${node.sequence}`;
-			refById.set(node.id, ref);
-			lines.push(`  participant ${ref} as "${sanitizeMermaidLabel(`${node.sequence}. ${node.requestName}`)}"`);
-		}
-
-		if (flow.nodes.length === 1) {
-			const onlyRef = refById.get(flow.nodes[0]?.id ?? '');
-			if (onlyRef) {
-				lines.push(`  ${onlyRef}->>${onlyRef}: ${sanitizeMermaidLabel(flow.nodes[0].action || 'step')}`);
-			}
-		} else if (flow.edges.length > 0) {
-			for (const edge of flow.edges) {
-				const sourceRef = refById.get(edge.sourceId);
-				const targetRef = refById.get(edge.targetId);
-				if (!sourceRef || !targetRef) {
-					continue;
-				}
-				const label = sanitizeMermaidLabel(edge.condition || 'next');
-				lines.push(`  ${sourceRef}->>${targetRef}: ${label}`);
-			}
-		} else {
-			for (let index = 1; index < flow.nodes.length; index += 1) {
-				lines.push(`  P${index}->>P${index + 1}: next`);
-			}
-		}
-
-		return lines.join('\n');
-	}
-
-	$: activeDomain = mapDomainTabToCanonical(activeTab);
-	$: urlTabParam = $page.url.searchParams.get('tab');
-	$: urlFlowParam = $page.url.searchParams.get('flow');
-	$: urlHighlightStepId = $page.url.searchParams.get('highlight');
-	$: urlFlowViewParam = $page.url.searchParams.get('flowView');
-	$: {
-		if (urlTabParam && ['o2c', 'p2p', 'r2r', 'hcm'].includes(urlTabParam) && activeTab !== urlTabParam) {
-			activeTab = urlTabParam as DomainTab;
-		}
-	}
-	$: {
-		if (urlFlowParam && flowVariantByTab[activeTab] !== urlFlowParam) {
-			flowVariantByTab = { ...flowVariantByTab, [activeTab]: urlFlowParam };
-		}
-	}
-	$: {
-		if (urlFlowViewParam && ['mermaid', 'list', 'hidden'].includes(urlFlowViewParam) && flowViewModeByTab[activeTab] !== urlFlowViewParam) {
-			flowViewModeByTab = { ...flowViewModeByTab, [activeTab]: urlFlowViewParam as FlowViewMode };
-		}
-	}
-	$: flowsForActiveDomain = listFlowsByDomain(activeDomain);
-	$: selectedVariantKey = flowVariantByTab[activeTab] ?? getDefaultFlowForDomain(activeDomain)?.variantKey ?? 'base';
-	$: selectedFlow =
-		flowsForActiveDomain.find((flow) => flow.variantKey === selectedVariantKey) ?? flowsForActiveDomain[0] ?? null;
-	$: selectedFlowViewMode = flowViewModeByTab[activeTab] ?? 'list';
-	$: selectedFlowMermaid = buildFlowMermaidDefinition(selectedFlow);
-	$: selectedFlowHighlight =
-		selectedFlow && urlHighlightStepId && selectedFlow.nodes.some((node) => node.id === urlHighlightStepId)
-			? urlHighlightStepId
-			: null;
 </script>
 
 <section class="glass-panel p-6">
@@ -521,6 +406,12 @@
 	<p class="muted mt-2 text-sm">
 		Explore all entities by domain and state, then jump directly into each process.
 	</p>
+	<div class="mt-3 rounded-lg border border-emerald-300/35 bg-emerald-500/5 p-3 text-xs text-emerald-100">
+		Domain process flows have moved to Diagram Explorer.
+		<a class="ml-2 font-semibold text-emerald-100 underline decoration-emerald-200/80 underline-offset-2" href={resolve('/diagrams/process-flows')}>
+			Open Domain Process Flows
+		</a>
+	</div>
 
 	<div class="mt-4 flex flex-wrap items-center gap-3">
 		<input
@@ -563,85 +454,6 @@
 		>
 			HCM
 		</button>
-	</div>
-
-	<div class="mt-5 rounded-lg border border-emerald-300/35 bg-emerald-500/5 p-4">
-		<div class="flex flex-wrap items-start justify-between gap-3">
-			<div>
-				<h3 class="text-base font-semibold text-emerald-100">Domain Process Flow</h3>
-				<p class="mt-1 text-xs text-emerald-100/85">
-					Generated from FoundationERP Postman end-to-end folders.
-				</p>
-			</div>
-			<span class="rounded bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-100">
-				{flowBundle.flows.length} flows generated
-			</span>
-		</div>
-
-		{#if flowsForActiveDomain.length === 0}
-			<p class="mt-3 text-sm text-emerald-100/85">No generated flow is available for this domain yet.</p>
-		{:else}
-			<div class="mt-3 flex flex-wrap gap-2 text-xs">
-				{#each flowsForActiveDomain as flow (flow.id)}
-					<button
-						type="button"
-						class={`rounded-md border px-2 py-1 ${selectedFlow?.id === flow.id ? 'border-emerald-100 bg-emerald-400/25 text-emerald-100' : 'border-emerald-200/40 text-emerald-100/85 hover:bg-emerald-300/20'}`}
-						on:click={() => selectFlowVariant(activeTab, flow.variantKey)}
-					>
-						{flow.variantLabel}
-					</button>
-				{/each}
-			</div>
-
-			{#if selectedFlow}
-				<p class="mt-3 text-xs text-emerald-100/80">
-					{selectedFlow.sourceFolderName} • {selectedFlow.nodes.length} steps
-				</p>
-				<div class="mt-3 flex flex-wrap gap-2 text-xs">
-					<button
-						type="button"
-						class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'mermaid' ? 'border-emerald-100 bg-emerald-400/25 text-emerald-100' : 'border-emerald-200/40 text-emerald-100/85 hover:bg-emerald-300/20'}`}
-						on:click={() => setFlowViewMode(activeTab, 'mermaid')}
-					>
-						Mermaid diagram
-					</button>
-					<button
-						type="button"
-						class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'list' ? 'border-emerald-100 bg-emerald-400/25 text-emerald-100' : 'border-emerald-200/40 text-emerald-100/85 hover:bg-emerald-300/20'}`}
-						on:click={() => setFlowViewMode(activeTab, 'list')}
-					>
-						List view
-					</button>
-					<button
-						type="button"
-						class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'hidden' ? 'border-emerald-100 bg-emerald-400/25 text-emerald-100' : 'border-emerald-200/40 text-emerald-100/85 hover:bg-emerald-300/20'}`}
-						on:click={() => setFlowViewMode(activeTab, 'hidden')}
-					>
-						Hide flows
-					</button>
-				</div>
-
-				{#if selectedFlowViewMode === 'hidden'}
-					<p class="mt-3 text-xs text-emerald-100/80">Flow display is hidden for this domain tab.</p>
-				{:else if selectedFlowViewMode === 'mermaid'}
-					<div class="mt-3 rounded border border-emerald-200/25 bg-emerald-950/20 p-2">
-						<MermaidDiagram definition={selectedFlowMermaid} title="Domain flow diagram" fontSize={44} />
-					</div>
-				{:else}
-					<ol class="mt-3 space-y-2 text-sm">
-						{#each selectedFlow.nodes as node (node.id)}
-							<li class={`rounded border px-3 py-2 ${node.id === selectedFlowHighlight ? 'border-amber-300/70 bg-amber-300/10' : 'border-emerald-100/20 bg-emerald-950/20'}`}>
-								<div class="flex flex-wrap items-center justify-between gap-2">
-									<span class="font-semibold text-emerald-50">{node.sequence}. {node.requestName}</span>
-									<span class="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-100">{node.action}</span>
-								</div>
-								<p class="mt-1 text-xs text-emerald-100/80">{summarizeNode(node)}</p>
-							</li>
-						{/each}
-					</ol>
-				{/if}
-			{/if}
-		{/if}
 	</div>
 
 	{#if errorMessage}

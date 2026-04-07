@@ -8,6 +8,11 @@
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/')}>Home</a></li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/dashboard')}>Dashboard</a></li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/diagrams')}>Diagram Explorer</a></li>
+		<li>
+			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/diagrams/process-flows')}>
+				Domain Process Flows
+			</a>
+		</li>
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/canvas')}>Canvas Home</a></li>
 		<li>
 			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/canvas/create')}>
@@ -17,7 +22,7 @@
 		<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Navigator</a></li>
 		<li>
 			<a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin')}>Admin</a>
-			<ul class="mt-1 space-y-1 pl-4 text-xs">
+			<!-- <ul class="mt-1 space-y-1 pl-4 text-xs">
 				<li>
 					<a class="block rounded px-3 py-2 text-white/90 hover:bg-white/10" href={resolve('/admin/create-entities')}>
 						Create Admin Entities
@@ -38,7 +43,7 @@
 						R2R Ledger Entries
 					</a>
 				</li>
-			</ul>
+			</ul>-->
 		</li>
 	</ul>
 </nav>
