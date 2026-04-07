@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { actorStore } from '$lib/stores/actorStore';
+	import {
+		actorOptions,
+		actorStore,
+		setActorById,
+		type ActorContext
+	} from '$lib/stores/actorStore';
 	import {
 		decide,
 		executeAction,
@@ -18,12 +23,32 @@
 		type SimulationResult
 	} from '$lib/api/navigator';
 
-	const DOMAINS = ['O2C', 'P2P', 'R2R', 'H2R'];
+	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R'] as const;
+	const AGGREGATE_TYPES: Record<(typeof DOMAINS)[number], string[]> = {
+		P2P: ['requisition', 'purchase-order', 'supplier-invoice', 'ap-payment'],
+		O2C: ['quote', 'sales-order', 'ar-invoice', 'ar-payment'],
+		R2R: ['journal', 'fiscal-period'],
+		H2R: ['employee', 'leave-request']
+	};
+	const AGGREGATE_IDS: Record<string, string[]> = {
+		requisition: ['REQ-1775572652080-38928', 'REQ-1775570608743-95731', 'REQ-1'],
+		'purchase-order': ['PO-1775570609188-27416', 'PO-1', 'PO-001'],
+		'supplier-invoice': ['SI-1'],
+		'ap-payment': ['APP-1'],
+		quote: ['Q-1'],
+		'sales-order': ['SO-1', 'SO-402'],
+		'ar-invoice': ['ARI-1'],
+		'ar-payment': ['ARP-1'],
+		journal: ['JNL-1775570617772-73064'],
+		'fiscal-period': ['FP-1'],
+		employee: ['EMP-1'],
+		'leave-request': ['LV-1']
+	};
 
-	let domain = 'O2C';
-	let aggregateType = '';
-	let aggregateId = '';
-	let actorId = '';
+	let domain: (typeof DOMAINS)[number] = 'P2P';
+	let aggregateType = 'requisition';
+	let aggregateId = 'REQ-1775572652080-38928';
+	let actorId = 'principal.system';
 
 	let loading = false;
 	let errorMessage = '';
@@ -47,9 +72,23 @@
 	let executionLoading = false;
 	let executionError = '';
 
-	$: if (!actorId) {
-		actorId = $actorStore.actorId;
+	$: aggregateTypeOptions = AGGREGATE_TYPES[domain] ?? [];
+	$: aggregateIdOptions = AGGREGATE_IDS[aggregateType] ?? [];
+
+	$: if (!aggregateTypeOptions.includes(aggregateType)) {
+		aggregateType = aggregateTypeOptions[0] ?? '';
 	}
+
+	$: if (aggregateIdOptions.length > 0 && !aggregateIdOptions.includes(aggregateId)) {
+		aggregateId = aggregateIdOptions[0] ?? '';
+	}
+
+	$: if ($actorStore.actorId !== actorId) {
+		setActorById(actorId);
+	}
+
+	let aggregateTypeOptions: string[] = [];
+	let aggregateIdOptions: string[] = [];
 
 	function buildContext(): NavigatorContext {
 		return {
@@ -74,6 +113,10 @@
 		executionError = '';
 	}
 
+	function selectedActor(): ActorContext {
+		return actorOptions.find((actor) => actor.actorId === actorId) ?? actorOptions[0];
+	}
+
 	async function handleLoadResource(): Promise<void> {
 		if (!aggregateType.trim() || !aggregateId.trim() || !actorId.trim()) {
 			resourceError = 'Aggregate type, aggregate ID, and actor ID are required.';
@@ -88,8 +131,8 @@
 
 		try {
 			const context = buildContext();
-			resource = await getResource(context, $actorStore);
-			actionOptions = await getActions(context, $actorStore);
+			resource = await getResource(context, selectedActor());
+			actionOptions = await getActions(context, selectedActor());
 		} catch (err) {
 			resourceError = err instanceof Error ? err.message : 'Resource request failed.';
 		} finally {
@@ -117,7 +160,7 @@
 		executionError = '';
 
 		try {
-			const result = await rankActions(buildContext(), $actorStore);
+			const result = await rankActions(buildContext(), selectedActor());
 			rankedActions = result.rankedActions ?? [];
 			actionOptions = result.actionOptions ?? actionOptions;
 		} catch (err) {
@@ -133,7 +176,7 @@
 		explanation = '';
 
 		try {
-			const result = await explainAction(buildContext(), actionId, $actorStore);
+			const result = await explainAction(buildContext(), actionId, selectedActor());
 			explanation = result.explanation ?? '';
 		} catch (err) {
 			explanationError = err instanceof Error ? err.message : 'Explain request failed.';
@@ -148,7 +191,7 @@
 		simulation = null;
 
 		try {
-			simulation = await simulateAction(buildContext(), actionId, $actorStore);
+			simulation = await simulateAction(buildContext(), actionId, selectedActor());
 			selectedActionId = actionId;
 		} catch (err) {
 			simulationError = err instanceof Error ? err.message : 'Simulate request failed.';
@@ -163,7 +206,7 @@
 		decision = null;
 
 		try {
-			decision = await decide(buildContext(), $actorStore);
+			decision = await decide(buildContext(), selectedActor());
 		} catch (err) {
 			decisionError = err instanceof Error ? err.message : 'Decide request failed.';
 		} finally {
@@ -180,7 +223,7 @@
 		const actionToExecute = candidateAction ? candidateAction : undefined;
 
 		try {
-			execution = await executeAction(buildContext(), actionToExecute, $actorStore);
+			execution = await executeAction(buildContext(), actionToExecute, selectedActor());
 		} catch (err) {
 			executionError = err instanceof Error ? err.message : 'Execute request failed.';
 		} finally {
@@ -195,9 +238,9 @@
 
 <section class="glass-panel p-6">
 	<h2 class="text-2xl font-semibold">Navigator AI</h2>
-	<p class="muted mt-2 text-sm">Run the full Navigator workflow: load canonical state, propose ranked actions, explain, simulate, decide, and execute.</p>
+	<p class="muted mt-2 text-sm">Run the full Navigator workflow with domain-aligned dropdowns and Postman-compatible fixture values.</p>
 
-	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 		<div>
 			<label class="mb-1 block text-xs text-white/70" for="nav-domain">Domain</label>
 			<select
@@ -213,32 +256,46 @@
 
 		<div>
 			<label class="mb-1 block text-xs text-white/70" for="nav-aggregate-type">Aggregate Type</label>
-			<input
+			<select
 				id="nav-aggregate-type"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-				placeholder="e.g. SalesOrder"
 				bind:value={aggregateType}
-			/>
+			>
+				{#each aggregateTypeOptions as type (type)}
+					<option value={type}>{type}</option>
+				{/each}
+			</select>
 		</div>
 
 		<div>
 			<label class="mb-1 block text-xs text-white/70" for="nav-aggregate-id">Aggregate ID</label>
-			<input
+			<select
 				id="nav-aggregate-id"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-				placeholder="e.g. so-001"
 				bind:value={aggregateId}
-			/>
+			>
+				{#each aggregateIdOptions as id (id)}
+					<option value={id}>{id}</option>
+				{/each}
+			</select>
 		</div>
 
 		<div>
 			<label class="mb-1 block text-xs text-white/70" for="nav-actor-id">Actor ID</label>
-			<input
+			<select
 				id="nav-actor-id"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-				placeholder="e.g. principal.controller"
 				bind:value={actorId}
-			/>
+			>
+				{#each actorOptions as actor (actor.actorId)}
+					<option value={actor.actorId}>{actor.actorId}</option>
+				{/each}
+			</select>
+		</div>
+
+		<div class="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
+			<p class="font-semibold text-white/80">Selected Actor Tier</p>
+			<p class="mt-1">{selectedActor().authorityTier}</p>
 		</div>
 
 		<div class="flex items-end">
@@ -261,6 +318,10 @@
 			</button>
 		</div>
 	</div>
+
+	<p class="mt-3 text-xs text-white/55">
+		Default values are aligned to the working Navigator Postman flow for P2P requisition ranking.
+	</p>
 
 	{#if resourceError}
 		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{resourceError}</p>

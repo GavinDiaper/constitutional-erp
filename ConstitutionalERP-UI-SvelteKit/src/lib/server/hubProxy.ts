@@ -24,6 +24,15 @@ export interface SubsystemConfig {
 	apiKey: string;
 }
 
+function buildProxyErrorResponse(status: number, message: string): Response {
+	return new Response(JSON.stringify({ detail: message }), {
+		status,
+		headers: {
+			'content-type': 'application/json'
+		}
+	});
+}
+
 export function resolveHubConfig(source: Record<string, string | undefined> = privateEnv): HubConfig {
 	return {
 		baseUrl: source.HUB_BASE_URL ?? 'http://localhost:3000/api/v1',
@@ -65,7 +74,7 @@ export function resolveSubsystemConfig(
 			apiKey: source.PROCESS_GRAPH_API_KEY ?? 'change-me'
 		},
 		'navigator-ai': {
-			baseUrl: source.NAVIGATOR_AI_URL ?? 'http://localhost:4006/api/v1',
+			baseUrl: source.NAVIGATOR_AI_URL ?? 'http://localhost:4016/api/v1',
 			apiKey: source.NAVIGATOR_AI_API_KEY ?? 'change-me'
 		}
 	};
@@ -134,10 +143,16 @@ export async function proxySubsystemGet(
 	const requestUrl = `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 	const headers = buildSubsystemHeaders(incomingHeaders, config);
 
-	const response = await fetch(requestUrl, {
-		method: 'GET',
-		headers
-	});
+	let response: Response;
+	try {
+		response = await fetch(requestUrl, {
+			method: 'GET',
+			headers
+		});
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+		return buildProxyErrorResponse(502, `Navigator proxy GET failed for ${requestUrl}: ${detail}`);
+	}
 
 	const responseBody = await response.text();
 	const contentType = response.headers.get('content-type') ?? 'application/json';
@@ -162,11 +177,17 @@ export async function proxySubsystemPost(
 	const headers = buildSubsystemHeaders(incomingHeaders, config);
 	headers.set('content-type', 'application/json');
 
-	const response = await fetch(requestUrl, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify(body ?? {})
-	});
+	let response: Response;
+	try {
+		response = await fetch(requestUrl, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(body ?? {})
+		});
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+		return buildProxyErrorResponse(502, `Navigator proxy POST failed for ${requestUrl}: ${detail}`);
+	}
 
 	const responseBody = await response.text();
 	const contentType = response.headers.get('content-type') ?? 'application/json';

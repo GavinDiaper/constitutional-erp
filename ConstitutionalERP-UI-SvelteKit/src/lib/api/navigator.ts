@@ -85,6 +85,38 @@ function actorHeaders(actor: ActorContext): HeadersInit {
 	};
 }
 
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+	const text = await response.text();
+
+	if (!text) {
+		return fallback;
+	}
+
+	try {
+		const parsed = JSON.parse(text) as {
+			detail?: unknown;
+			message?: unknown;
+			title?: unknown;
+		};
+
+		if (typeof parsed.detail === 'string' && parsed.detail.trim().length > 0) {
+			return parsed.detail;
+		}
+
+		if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+			return parsed.message;
+		}
+
+		if (typeof parsed.title === 'string' && parsed.title.trim().length > 0) {
+			return parsed.title;
+		}
+	} catch {
+		// Fall through to raw text.
+	}
+
+	return text;
+}
+
 export async function rankActions(
 	context: NavigatorContext,
 	actor: ActorContext
@@ -96,8 +128,7 @@ export async function rankActions(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator rank request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator rank request failed'));
 	}
 
 	return (await response.json()) as RankResponse;
@@ -115,8 +146,7 @@ export async function explainAction(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator explain request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator explain request failed'));
 	}
 
 	return (await response.json()) as ExplainResponse;
@@ -139,8 +169,7 @@ export async function getResource(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator resource request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator resource request failed'));
 	}
 
 	return (await response.json()) as CanonicalResource;
@@ -163,8 +192,7 @@ export async function getActions(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator actions request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator actions request failed'));
 	}
 
 	const data = (await response.json()) as { data?: ActionOption[] };
@@ -183,8 +211,7 @@ export async function simulateAction(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator simulate request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator simulate request failed'));
 	}
 
 	return (await response.json()) as SimulationResult;
@@ -201,8 +228,7 @@ export async function decide(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator decide request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator decide request failed'));
 	}
 
 	return (await response.json()) as DecisionOutcome;
@@ -220,8 +246,7 @@ export async function executeAction(
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || 'Navigator execute request failed');
+		throw new Error(await readErrorMessage(response, 'Navigator execute request failed'));
 	}
 
 	return (await response.json()) as ExecutionResult;
