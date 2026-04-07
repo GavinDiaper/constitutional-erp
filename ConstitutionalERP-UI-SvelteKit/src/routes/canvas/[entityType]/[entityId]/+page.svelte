@@ -369,6 +369,11 @@
 			merged.legalEntityId = fallback.legalEntityId;
 		}
 
+		// Deduplicate: if snake_case legal_entity_id is present, drop the camelCase duplicate
+		if (merged.legal_entity_id !== null && merged.legal_entity_id !== undefined && merged.legal_entity_id !== '') {
+			delete merged.legalEntityId;
+		}
+
 		return merged;
 	}
 

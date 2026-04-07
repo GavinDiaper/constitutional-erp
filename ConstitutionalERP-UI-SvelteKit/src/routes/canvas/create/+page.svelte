@@ -138,6 +138,7 @@
 		customerId: '',
 		customerName: '',
 		customerEmail: '',
+		legalEntityId: '',
 		currencyCode: 'USD',
 		lineSku: '',
 		lineQuantity: 1,
@@ -473,6 +474,12 @@
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company name" bind:value={quoteForm.customerName} />
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Company email" bind:value={quoteForm.customerEmail} />
 					{/if}
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={quoteForm.legalEntityId}>
+						<option value="">Select legal entity</option>
+						{#each legalEntities as entity (entity.legal_entity_id)}
+							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
+						{/each}
+					</select>
 					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={quoteForm.currencyCode} />
 					<div class="grid grid-cols-3 gap-2">
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="SKU (optional)" bind:value={quoteForm.lineSku} />
@@ -480,7 +487,7 @@
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Unit price" bind:value={quoteForm.lineUnitPrice} />
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-quote', quoteForm)}>
+				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || !quoteForm.legalEntityId} on:click={() => runOperation('create-quote', quoteForm)}>
 					{runningKey === 'create-quote' ? 'Creating...' : 'Create Quote'}
 				</button>
 			</div>

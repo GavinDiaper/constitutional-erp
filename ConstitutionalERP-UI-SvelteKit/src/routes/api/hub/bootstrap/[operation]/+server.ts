@@ -137,11 +137,16 @@ async function createQuote(headers: Headers, payload: BootstrapPayload): Promise
 	}
 
 	const currencyCode = asCurrency(payload.currencyCode) ?? 'USD';
+	const legalEntityId = asNonEmptyString(payload.legalEntityId);
+	if (!legalEntityId) {
+		throw new Error('legalEntityId is required to create a quote.');
+	}
 
 	const quote = await asJson(
 		await proxyHubRequest('/o2c/quotes', headers, 'POST', {
 			customerId,
-			currencyCode
+			currencyCode,
+			legalEntityId
 		})
 	) as Record<string, unknown>;
 
