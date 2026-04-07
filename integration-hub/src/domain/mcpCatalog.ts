@@ -129,7 +129,18 @@ const FUNCTION_DEFS = [
       properties: {
         sku: { type: "string", description: "SKU / product code", minLength: 1 },
         quantity: { type: "number", description: "Quantity", minimum: 0.000001 },
-        unitPrice: { type: "number", description: "Unit price", minimum: 0 }
+        unitPrice: { type: "number", description: "Unit price", minimum: 0 },
+        taxTreatment: {
+          type: "string",
+          description: "UAE VAT treatment for this line",
+          enum: [
+            "Standard Rate (5%)",
+            "Zero-Rated Supplies (0%)",
+            "Exempt Supplies"
+          ]
+        },
+        taxCodeId: { type: "string", description: "Optional explicit tax code override (e.g. TCOD-VAT5)" },
+        countryCode: { type: "string", description: "Country code for tax determination (defaults to AE)" }
       }
     }
   },
@@ -139,7 +150,26 @@ const FUNCTION_DEFS = [
   { id: "o2c_confirm_order", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "confirm", operationType: "transition", description: "Confirm order", riskLevel: "Medium", governanceTag: "O2C.Order.Confirm" },
   { id: "o2c_allocate_stock", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "allocate", operationType: "transition", description: "Allocate stock", riskLevel: "Medium", governanceTag: "O2C.Order.Allocate" },
   { id: "o2c_ship_order", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "ship", operationType: "transition", description: "Ship order", riskLevel: "Medium", governanceTag: "O2C.Order.Ship" },
-  { id: "o2c_generate_invoice_from_order", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "generate-invoice", actionAliases: ["generate_invoice", "invoice"], operationType: "transition", description: "Generate invoice from shipped order", riskLevel: "Medium", governanceTag: "O2C.Invoice.Generate" },
+  {
+    id: "o2c_generate_invoice_from_order",
+    entity: "SalesOrder",
+    domain: "o2c",
+    aggregateType: "sales-order",
+    action: "generate-invoice",
+    actionAliases: ["generate_invoice", "invoice"],
+    operationType: "transition",
+    description: "Generate invoice from shipped order",
+    riskLevel: "Medium",
+    governanceTag: "O2C.Invoice.Generate",
+    inputSchema: {
+      type: "object",
+      required: [],
+      properties: {
+        taxCodeId: { type: "string", description: "Optional header-level tax code fallback" },
+        countryCode: { type: "string", description: "Country code for tax determination (defaults to AE)" }
+      }
+    }
+  },
   { id: "o2c_generate_invoice", entity: "ArInvoice", domain: "o2c", aggregateType: "ar-invoice", action: "generate_invoice", operationType: "create", description: "Generate invoice", riskLevel: "Medium", governanceTag: "O2C.Invoice.Generate" },
   { id: "o2c_post_invoice", entity: "ArInvoice", domain: "o2c", aggregateType: "ar-invoice", action: "post_invoice", operationType: "transition", description: "Post invoice", riskLevel: "Medium", governanceTag: "O2C.Invoice.Post" },
   { id: "o2c_register_payment", entity: "ArPayment", domain: "o2c", aggregateType: "ar-payment", action: "register_payment", operationType: "create", description: "Register payment", riskLevel: "Medium", governanceTag: "O2C.Payment.Register" },

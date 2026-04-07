@@ -84,7 +84,19 @@
 		invoice_id: string;
 		state?: string;
 		order_id?: string;
+		order_amount?: number | string;
+		tax_amount?: number | string;
+		total_payable?: number | string;
+		amount_due?: number | string;
 		created_at?: string;
+	}
+
+	function asMoney(value: number | string | undefined): string {
+		const numeric = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+		if (!Number.isFinite(numeric)) {
+			return '0.00';
+		}
+		return numeric.toFixed(2);
 	}
 
 	interface SupplierRow {
@@ -253,7 +265,12 @@
 		invoices,
 		(row) => String(row.invoice_id ?? ''),
 		(row) => String(row.state ?? ''),
-		(row) => String(row.order_id ?? ''),
+		(row) => {
+			const subtotal = asMoney(row.order_amount);
+			const tax = asMoney(row.tax_amount);
+			const payable = asMoney(row.total_payable ?? row.amount_due);
+			return `${String(row.order_id ?? '')} • Order ${subtotal} • Tax ${tax} • Payable ${payable}`;
+		},
 		'o2c_invoice',
 		(row) => row.created_at as string | undefined
 	);

@@ -100,6 +100,10 @@
 		return schema?.type === 'number' || schema?.type === 'integer' ? 'number' : 'text';
 	}
 
+		function hasEnum(schema: { enum?: string[] } | undefined): boolean {
+			return Array.isArray(schema?.enum) && schema.enum.length > 0;
+		}
+
 	function handleRun(action: { name: string; link: HubActionLink }): void {
 		const payload: Record<string, unknown> = {};
 		for (const field of Object.keys(action.link.inputSchema?.properties ?? {})) {
@@ -138,7 +142,19 @@
 											<span class="mb-0.5 block text-xs font-medium text-white/80"
 												>{field} <span class="text-red-400">*</span></span
 											>
-											{#if xLookup && fetchedOptions === undefined}
+												{#if hasEnum(fieldSchema)}
+													<select
+														class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
+														value={getInput(action.name, field)}
+														on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+														on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+													>
+														<option value="">— select —</option>
+														{#each fieldSchema?.enum ?? [] as enumValue}
+															<option value={enumValue}>{enumValue}</option>
+														{/each}
+													</select>
+												{:else if xLookup && fetchedOptions === undefined}
 												<select
 													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
 													disabled
@@ -182,7 +198,19 @@
 										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>
-											{#if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
+												{#if hasEnum(fieldSchema)}
+													<select
+														class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
+														value={getInput(action.name, field)}
+														on:change={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+														on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
+													>
+														<option value="">— optional —</option>
+														{#each fieldSchema?.enum ?? [] as enumValue}
+															<option value={enumValue}>{enumValue}</option>
+														{/each}
+													</select>
+												{:else if xLookup && fetchedOptions !== null && fetchedOptions !== undefined && fetchedOptions.length > 0}
 												<select
 													class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
 													value={getInput(action.name, field)}

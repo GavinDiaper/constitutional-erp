@@ -33,9 +33,11 @@
 		normalizedEntityType === 'journal';
 	$: hasStructuredLines = supportsLineLayout && lineRows.length > 0;
 	$: isJournalLineLayout = normalizedEntityType === 'r2r_journal' || normalizedEntityType === 'journal';
+	$: isInvoiceLayout = normalizedEntityType === 'o2c_invoice' || normalizedEntityType === 'invoice' || normalizedEntityType === 'ar-invoice';
 	$: headerEntries = Object.entries(attributes).filter(([key]) => {
 		if (key.startsWith('__')) return false;
 		if (key === 'total_amount' || key === 'totalAmount') return false;
+		if (isInvoiceLayout && ['order_amount', 'orderAmount', 'tax_amount', 'taxAmount', 'total_payable', 'totalPayable', 'amount_due', 'amountDue'].includes(key)) return false;
 		if (!hasStructuredLines) return true;
 		return !lineFieldKeys.has(key);
 	});
@@ -55,6 +57,10 @@
 		asNumber(attributes.total_amount) ??
 		asNumber(attributes.totalAmount) ??
 		computedLineTotal;
+	$: orderAmount = asNumber(attributes.order_amount ?? attributes.orderAmount);
+	$: taxAmount = asNumber(attributes.tax_amount ?? attributes.taxAmount);
+	$: totalPayable = asNumber(attributes.total_payable ?? attributes.totalPayable ?? attributes.amount_due ?? attributes.amountDue);
+	$: hasLineTaxDetails = lineRows.some((line) => line.tax_code_id || line.tax_amount !== undefined || line.taxAmount !== undefined);
 
 	function formatLabel(key: string): string {
 		return key
@@ -105,6 +111,26 @@
 		<p class="muted mt-2 text-sm">No attributes available.</p>
 	{:else if hasStructuredLines}
 		<div class="mt-3 space-y-3">
+			{#if isInvoiceLayout}
+				<div class="rounded-md border border-emerald-300/35 bg-emerald-500/10 p-3">
+					<p class="text-xs uppercase tracking-[0.16em] text-emerald-100/85">Invoice Totals</p>
+					<div class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+						<div class="rounded border border-emerald-200/30 bg-emerald-950/20 p-2">
+							<p class="text-[11px] uppercase tracking-[0.12em] text-emerald-100/70">Order Amount</p>
+							<p class="mt-1 text-sm font-semibold">{formatCurrency(orderAmount ?? 0)}</p>
+						</div>
+						<div class="rounded border border-emerald-200/30 bg-emerald-950/20 p-2">
+							<p class="text-[11px] uppercase tracking-[0.12em] text-emerald-100/70">Tax Amount</p>
+							<p class="mt-1 text-sm font-semibold">{formatCurrency(taxAmount ?? 0)}</p>
+						</div>
+						<div class="rounded border border-emerald-200/30 bg-emerald-950/20 p-2">
+							<p class="text-[11px] uppercase tracking-[0.12em] text-emerald-100/70">Total Payable</p>
+							<p class="mt-1 text-sm font-semibold">{formatCurrency(totalPayable ?? 0)}</p>
+						</div>
+					</div>
+				</div>
+			{/if}
+
 			<div>
 				<p class="text-xs uppercase tracking-[0.16em] text-white/65">Header</p>
 				{#if headerEntries.length === 0}
@@ -152,15 +178,23 @@
 									<th class="px-3 py-2">Description</th>
 									<th class="px-3 py-2 text-right">Quantity</th>
 									<th class="px-3 py-2 text-right">Unit Price</th>
+									{#if hasLineTaxDetails}
+										<th class="px-3 py-2">Tax Code</th>
+										<th class="px-3 py-2 text-right">Tax Amount</th>
+									{/if}
 									<th class="px-3 py-2 text-right">Line Total</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each lineRows as line, index (`${String(line.quote_line_id ?? line.requisition_line_id ?? line.po_line_id ?? index)}`)}
 									<tr class="border-t border-white/10">
-										<td class="px-3 py-2">{String(line.description ?? '')}</td>
+										<td class="px-3 py-2">{String(line.description ?? line.sku ?? '')}</td>
 										<td class="px-3 py-2 text-right">{String(line.quantity ?? '')}</td>
 										<td class="px-3 py-2 text-right">{formatCurrency(line.unit_price ?? line.unitPrice ?? '')}</td>
+										{#if hasLineTaxDetails}
+											<td class="px-3 py-2">{String(line.tax_code_id ?? line.taxCodeId ?? '—')}</td>
+											<td class="px-3 py-2 text-right">{formatCurrency(line.tax_amount ?? line.taxAmount ?? 0)}</td>
+										{/if}
 										<td class="px-3 py-2 text-right">{formatCurrency(line.line_total ?? line.lineTotal ?? '')}</td>
 									</tr>
 								{/each}
