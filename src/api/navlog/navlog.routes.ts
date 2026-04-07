@@ -104,6 +104,38 @@ navlogRouter.get("/sessions/:sessionId", (req: Request, res: Response) => {
   }
 });
 
+navlogRouter.get("/sessions", (req: Request, res: Response) => {
+  const { actor_id, status, limit = "100" } = req.query;
+
+  try {
+    let query = "SELECT * FROM repl_session WHERE 1=1";
+    const params: unknown[] = [];
+
+    if (actor_id) {
+      query += " AND actor_id = ?";
+      params.push(actor_id);
+    }
+
+    if (status === "open") {
+      query += " AND ended_at IS NULL";
+    } else if (status === "closed") {
+      query += " AND ended_at IS NOT NULL";
+    }
+
+    query += " ORDER BY started_at DESC LIMIT ?";
+    params.push(parseInt(limit as string, 10));
+
+    const sessions = db.prepare(query).all(...params);
+
+    res.json({
+      data: sessions,
+      count: (sessions as unknown[]).length
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch sessions", detail: String(err) });
+  }
+});
+
 // ── Navlog Queries ───────────────────────────────────────────────────────────
 
 const addNavlogEntrySchema = z.object({
