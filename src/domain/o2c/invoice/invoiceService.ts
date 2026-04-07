@@ -8,6 +8,22 @@ import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
 
 type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled" | "Cancelled";
 
+interface InvoiceLineRow {
+  invoice_line_id: string;
+  invoice_id: string;
+  order_line_id: string | null;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  tax_code_id: string | null;
+  tax_applicability: string | null;
+  tax_rate_percent: number | null;
+  tax_amount: number;
+  line_payable: number;
+  created_at: string;
+}
+
 const transitions: Record<InvoiceState, InvoiceState[]> = {
   Draft: ["Posted", "Cancelled"],
   Posted: ["Paid", "Cancelled"],
@@ -46,6 +62,29 @@ export function listInvoices() {
   return db.prepare("SELECT * FROM o2c_invoice ORDER BY created_at DESC LIMIT 100").all();
 }
 
+export function listInvoiceLines(invoiceId: string): InvoiceLineRow[] {
+  getInvoiceById(invoiceId);
+  return db.prepare(
+    `SELECT
+       invoice_line_id,
+       invoice_id,
+       order_line_id,
+       sku,
+       quantity,
+       unit_price,
+       line_total,
+       tax_code_id,
+       tax_applicability,
+       tax_rate_percent,
+       tax_amount,
+       line_payable,
+       created_at
+     FROM o2c_invoice_line
+     WHERE invoice_id = ?
+     ORDER BY created_at ASC`
+  ).all(invoiceId) as InvoiceLineRow[];
+}
+
 function assertTransition(fromState: InvoiceState, toState: InvoiceState) {
   if (!transitions[fromState].includes(toState)) {
     throw new HttpError(409, "invalid_transition", `Cannot transition invoice from ${fromState} to ${toState}`);
@@ -76,13 +115,33 @@ export function generateInvoice(orderId: string, options?: { taxCodeId?: string;
   const timestamp = now();
   const invoiceDate = new Date().toISOString().slice(0, 10);
   const lineRows = db.prepare(
-    "SELECT order_line_id, line_total, tax_code_id FROM o2c_sales_order_line WHERE order_id = ? ORDER BY created_at ASC"
-  ).all(orderId) as Array<{ order_line_id: string; line_total: number; tax_code_id: string | null }>;
+    `SELECT
+       order_line_id,
+       sku,
+       quantity,
+       unit_price,
+       line_total,
+       tax_code_id
+     FROM o2c_sales_order_line
+     WHERE order_id = ?
+     ORDER BY created_at ASC`
+  ).all(orderId) as Array<{
+    order_line_id: string;
+    sku: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    tax_code_id: string | null;
+  }>;
 
   const computedOrderAmount = lineRows.reduce((sum, line) => sum + line.line_total, 0);
   const orderAmount = computedOrderAmount > 0 ? computedOrderAmount : order.total_amount;
   let totalTaxAmount = 0;
   const calculatedLineTaxes: Array<{
+    orderLineId: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
     lineTotal: number;
     taxDetermination: NonNullable<ReturnType<typeof determineTaxByCode>>;
     taxableAmount: number;
@@ -107,6 +166,10 @@ export function generateInvoice(orderId: string, options?: { taxCodeId?: string;
     const taxCalc = calculateTax(line.line_total, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
     totalTaxAmount += taxCalc.taxAmount;
     calculatedLineTaxes.push({
+      orderLineId: line.order_line_id,
+      sku: line.sku,
+      quantity: line.quantity,
+      unitPrice: line.unit_price,
       lineTotal: line.line_total,
       taxDetermination,
       taxableAmount: taxCalc.taxableAmount,
@@ -168,6 +231,49 @@ export function generateInvoice(orderId: string, options?: { taxCodeId?: string;
       version: 1,
       payload: { orderId, orderAmount, taxAmount: totalTaxAmount, totalPayable, amountDue }
     });
+
+    const insertInvoiceLine = db.prepare(
+      `INSERT INTO o2c_invoice_line(
+         invoice_line_id,
+         invoice_id,
+         order_line_id,
+         sku,
+         quantity,
+         unit_price,
+         line_total,
+         tax_code_id,
+         tax_applicability,
+         tax_rate_percent,
+         tax_amount,
+         line_payable,
+         created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    const calculatedByOrderLine = new Map(
+      calculatedLineTaxes.map((item) => [item.orderLineId, item] as const)
+    );
+
+    for (const line of lineRows) {
+      const calculated = calculatedByOrderLine.get(line.order_line_id);
+      const lineTax = calculated?.taxAmount ?? 0;
+      const linePayable = line.line_total + lineTax;
+      insertInvoiceLine.run(
+        newId("INVL-"),
+        invoiceId,
+        line.order_line_id,
+        line.sku,
+        line.quantity,
+        line.unit_price,
+        line.line_total,
+        calculated?.taxDetermination.taxCodeId ?? line.tax_code_id,
+        calculated?.taxDetermination.taxApplicability ?? null,
+        calculated?.taxDetermination.ratePercent ?? null,
+        lineTax,
+        linePayable,
+        timestamp
+      );
+    }
   });
 
   for (const lineTax of calculatedLineTaxes) {

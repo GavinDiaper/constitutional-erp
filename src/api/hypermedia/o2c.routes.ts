@@ -13,6 +13,7 @@ import {
   createQuote,
   getQuoteById,
   listQuoteLines,
+  listQuoteTaxOptions,
   listQuotes,
   sendQuote,
   acceptQuote,
@@ -33,6 +34,7 @@ import {
 import {
   generateInvoice,
   getInvoiceById,
+  listInvoiceLines,
   listInvoices,
   postARInvoice,
   cancelARInvoice
@@ -399,6 +401,11 @@ o2cRouter.get("/quotes/:quoteId/lines", (req, res) => {
   res.json({ data: lines });
 });
 
+o2cRouter.get("/quotes/:quoteId/tax-options", (req, res) => {
+  const options = listQuoteTaxOptions(req.params.quoteId);
+  res.json({ data: options });
+});
+
 o2cRouter.post("/quotes/:quoteId/lines", validateBody(addQuoteLineSchema), (req, res) => {
   const quote = addQuoteLine({
     quoteId: req.params.quoteId,
@@ -529,6 +536,11 @@ o2cRouter.get("/invoices", (_req, res) => {
 o2cRouter.get("/invoices/:invoiceId", (req, res) => {
   const invoice = getInvoiceById(req.params.invoiceId);
   res.json(entityWithLinks(invoice as any, invoiceLinks(req.params.invoiceId, (invoice as any).state)));
+});
+
+o2cRouter.get("/invoices/:invoiceId/lines", (req, res) => {
+  const lines = listInvoiceLines(req.params.invoiceId);
+  res.json({ data: lines });
 });
 
 o2cRouter.post("/invoices/:invoiceId/post", (req, res) => {

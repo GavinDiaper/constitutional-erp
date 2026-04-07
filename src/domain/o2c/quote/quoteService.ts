@@ -66,6 +66,25 @@ interface QuoteLineRow {
   created_at: string;
 }
 
+interface QuoteTaxOptionRow {
+  tax_code_id: string;
+  code: string;
+  tax_applicability: string;
+  rate_percent: number;
+}
+
+function buildTaxOptionLabel(input: { taxApplicability: string; ratePercent: number }): string {
+  if (input.taxApplicability === "exempt") {
+    return "Exempt Supplies";
+  }
+
+  if (input.taxApplicability === "zero-rated" || input.ratePercent === 0) {
+    return "Zero-Rated Supplies (0%)";
+  }
+
+  return `Standard Rate (${input.ratePercent}%)`;
+}
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -218,6 +237,44 @@ export function listQuoteLines(quoteId: string): QuoteLineRow[] {
       "SELECT quote_line_id, quote_id, sku, quantity, unit_price, line_total, tax_code_id, tax_applicability, tax_rate_percent, tax_amount, created_at FROM o2c_quote_line WHERE quote_id = ? ORDER BY created_at ASC"
     )
     .all(quoteId) as QuoteLineRow[];
+}
+
+export function listQuoteTaxOptions(quoteId: string) {
+  const quote = getQuote(quoteId);
+  if (!quote.legal_entity_id) {
+    return [];
+  }
+
+  const asOfDate = new Date().toISOString();
+  const rows = db
+    .prepare(
+      `SELECT
+         tc.tax_code_id,
+         tc.code,
+         tc.tax_applicability,
+         COALESCE(MAX(tr.rate_percent), 0) AS rate_percent
+       FROM tax_account_mapping tam
+       JOIN tax_code tc ON tc.tax_code_id = tam.tax_code_id
+       LEFT JOIN tax_rate tr
+         ON tr.tax_code_id = tc.tax_code_id
+        AND tr.effective_from <= ?
+        AND (tr.effective_to IS NULL OR tr.effective_to > ?)
+       WHERE tam.legal_entity_id = ?
+         AND tam.transaction_type = 'ar-invoice'
+         AND tam.is_active = 1
+         AND tc.is_active = 1
+       GROUP BY tc.tax_code_id, tc.code, tc.tax_applicability
+       ORDER BY tc.code ASC`
+    )
+    .all(asOfDate, asOfDate, quote.legal_entity_id) as QuoteTaxOptionRow[];
+
+  return rows.map((row) => ({
+    taxCodeId: row.tax_code_id,
+    code: row.code,
+    taxApplicability: row.tax_applicability,
+    ratePercent: row.rate_percent,
+    label: buildTaxOptionLabel({ taxApplicability: row.tax_applicability, ratePercent: row.rate_percent })
+  }));
 }
 
 function ensureQuoteExists(quoteId: string): void {
