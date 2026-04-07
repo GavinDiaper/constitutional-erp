@@ -23,32 +23,279 @@
 		type SimulationResult
 	} from '$lib/api/navigator';
 
+	interface QuickCreatePreset {
+		id: string;
+		label: string;
+		domain: (typeof DOMAINS)[number];
+		aggregateType: string;
+		description: string;
+		samplePayload: Record<string, unknown>;
+	}
+
+	interface CreateResult {
+		operation: string;
+		entityType?: string;
+		entityId?: string;
+		data: unknown;
+	}
+
 	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R'] as const;
 	const AGGREGATE_TYPES: Record<(typeof DOMAINS)[number], string[]> = {
-		P2P: ['requisition', 'purchase-order', 'supplier-invoice', 'ap-payment'],
+		P2P: ['requisition', 'supplier', 'purchase-order', 'goods-receipt', 'supplier-invoice', 'ap-payment'],
 		O2C: ['quote', 'sales-order', 'ar-invoice', 'ar-payment'],
-		R2R: ['journal', 'fiscal-period'],
-		H2R: ['employee', 'leave-request']
+		R2R: ['account', 'fiscal-year', 'fiscal-period', 'journal'],
+		H2R: ['employee', 'position', 'assignment', 'credential', 'authority-rule']
 	};
-	const AGGREGATE_IDS: Record<string, string[]> = {
+	const DEFAULT_AGGREGATE_IDS: Record<string, string[]> = {
 		requisition: ['REQ-1775572652080-38928', 'REQ-1775570608743-95731', 'REQ-1'],
+		supplier: [],
 		'purchase-order': ['PO-1775570609188-27416', 'PO-1', 'PO-001'],
+		'goods-receipt': [],
 		'supplier-invoice': ['SI-1'],
 		'ap-payment': ['APP-1'],
 		quote: ['Q-1'],
 		'sales-order': ['SO-1', 'SO-402'],
 		'ar-invoice': ['ARI-1'],
 		'ar-payment': ['ARP-1'],
+		account: [],
+		'fiscal-year': [],
 		journal: ['JNL-1775570617772-73064'],
 		'fiscal-period': ['FP-1'],
 		employee: ['EMP-1'],
-		'leave-request': ['LV-1']
+		position: [],
+		assignment: [],
+		credential: [],
+		'authority-rule': []
 	};
+	const QUICK_CREATE_PRESETS: QuickCreatePreset[] = [
+		{
+			id: 'create-requisition',
+			label: 'P2P Requisition',
+			domain: 'P2P',
+			aggregateType: 'requisition',
+			description: 'Create a draft requisition and continue with Navigator actions on the new aggregate.',
+			samplePayload: {
+				requester: 'principal.system',
+				department: 'Operations',
+				currencyCode: 'USD'
+			}
+		},
+		{
+			id: 'create-supplier',
+			label: 'P2P Supplier',
+			domain: 'P2P',
+			aggregateType: 'supplier',
+			description: 'Create a supplier record that can then be activated or governed through Navigator.',
+			samplePayload: {
+				supplierName: 'Navigator Supplier',
+				email: 'navigator.supplier@example.local',
+				paymentTerms: 'NET30',
+				currencyCode: 'USD'
+			}
+		},
+		{
+			id: 'create-purchase-order',
+			label: 'P2P Purchase Order',
+			domain: 'P2P',
+			aggregateType: 'purchase-order',
+			description: 'Create a purchase order. Set supplierId and any optional requisition linkage before running it.',
+			samplePayload: {
+				supplierId: 'SUP-REQUIRED',
+				requisitionId: '',
+				totalAmount: 1000,
+				currencyCode: 'USD',
+				deliveryAddress: '1 Constitutional Way'
+			}
+		},
+		{
+			id: 'create-goods-receipt',
+			label: 'P2P Goods Receipt',
+			domain: 'P2P',
+			aggregateType: 'goods-receipt',
+			description: 'Create a goods receipt against an existing purchase order.',
+			samplePayload: {
+				poId: 'PO-REQUIRED'
+			}
+		},
+		{
+			id: 'create-supplier-invoice',
+			label: 'P2P Supplier Invoice',
+			domain: 'P2P',
+			aggregateType: 'supplier-invoice',
+			description: 'Create a supplier invoice from an existing goods receipt.',
+			samplePayload: {
+				receiptId: 'GR-REQUIRED',
+				currencyCode: 'USD'
+			}
+		},
+		{
+			id: 'create-ap-payment',
+			label: 'P2P AP Payment',
+			domain: 'P2P',
+			aggregateType: 'ap-payment',
+			description: 'Create an AP payment for an existing supplier invoice.',
+			samplePayload: {
+				supplierInvoiceId: 'SI-REQUIRED',
+				amount: 100,
+				currencyCode: 'USD',
+				method: 'bank-transfer'
+			}
+		},
+		{
+			id: 'create-quote',
+			label: 'O2C Quote',
+			domain: 'O2C',
+			aggregateType: 'quote',
+			description: 'Create a quote. Set legalEntityId and optional line details before running it.',
+			samplePayload: {
+				customerName: 'Navigator Customer',
+				customerEmail: 'navigator.customer@example.local',
+				legalEntityId: 'LE-REQUIRED',
+				currencyCode: 'USD'
+			}
+		},
+		{
+			id: 'create-payment',
+			label: 'O2C AR Payment',
+			domain: 'O2C',
+			aggregateType: 'ar-payment',
+			description: 'Register a payment against an existing AR invoice.',
+			samplePayload: {
+				invoiceId: 'ARI-REQUIRED',
+				amount: 100,
+				currencyCode: 'USD',
+				method: 'bank-transfer'
+			}
+		},
+		{
+			id: 'create-account',
+			label: 'R2R Account',
+			domain: 'R2R',
+			aggregateType: 'account',
+			description: 'Create a chart-of-accounts entry.',
+			samplePayload: {
+				ledgerId: 'LEDGER-REQUIRED',
+				accountCode: '6100',
+				accountName: 'Navigator Expense Account'
+			}
+		},
+		{
+			id: 'create-fiscal-year',
+			label: 'R2R Fiscal Year',
+			domain: 'R2R',
+			aggregateType: 'fiscal-year',
+			description: 'Create a fiscal year anchor for accounting periods.',
+			samplePayload: {
+				ledgerId: 'LEDGER-REQUIRED',
+				year: 2026,
+				startDate: '2026-01-01',
+				endDate: '2026-12-31'
+			}
+		},
+		{
+			id: 'create-fiscal-period',
+			label: 'R2R Fiscal Period',
+			domain: 'R2R',
+			aggregateType: 'fiscal-period',
+			description: 'Create a fiscal period under an existing fiscal year.',
+			samplePayload: {
+				fiscalYearId: 'FY-REQUIRED',
+				periodNumber: 1,
+				startDate: '2026-01-01',
+				endDate: '2026-01-31'
+			}
+		},
+		{
+			id: 'create-journal',
+			label: 'R2R Journal',
+			domain: 'R2R',
+			aggregateType: 'journal',
+			description: 'Create a journal. Set legal entity, ledger, fiscal period, and account IDs before running it.',
+			samplePayload: {
+				legalEntityId: 'LE-REQUIRED',
+				ledgerId: 'LEDGER-REQUIRED',
+				fiscalPeriodId: 'FP-REQUIRED',
+				description: 'Navigator bootstrap journal',
+				debitAccountId: 'ACC-DEBIT-REQUIRED',
+				creditAccountId: 'ACC-CREDIT-REQUIRED',
+				amount: 100,
+				memo: 'Navigator quick create'
+			}
+		},
+		{
+			id: 'create-employee',
+			label: 'H2R Employee',
+			domain: 'H2R',
+			aggregateType: 'employee',
+			description: 'Create an employee and optionally auto-activate it.',
+			samplePayload: {
+				name: 'Navigator Employee',
+				email: 'navigator.employee@example.local',
+				autoActivate: true
+			}
+		},
+		{
+			id: 'create-position',
+			label: 'H2R Position',
+			domain: 'H2R',
+			aggregateType: 'position',
+			description: 'Create an H2R position. Edit the JSON with the required org fields for your environment.',
+			samplePayload: {
+				title: 'Navigator Position'
+			}
+		},
+		{
+			id: 'create-assignment',
+			label: 'H2R Assignment',
+			domain: 'H2R',
+			aggregateType: 'assignment',
+			description: 'Create an assignment between employee and position.',
+			samplePayload: {
+				employeeId: 'EMP-REQUIRED',
+				positionId: 'POS-REQUIRED'
+			}
+		},
+		{
+			id: 'create-credential',
+			label: 'H2R Credential',
+			domain: 'H2R',
+			aggregateType: 'credential',
+			description: 'Issue a credential for an employee.',
+			samplePayload: {
+				employeeId: 'EMP-REQUIRED',
+				credentialType: 'safety-training'
+			}
+		},
+		{
+			id: 'create-authority-rule',
+			label: 'H2R Authority Rule',
+			domain: 'H2R',
+			aggregateType: 'authority-rule',
+			description: 'Create an authority rule for governance and approvals.',
+			samplePayload: {
+				ruleName: 'Navigator Authority Rule'
+			}
+		}
+	];
 
 	let domain: (typeof DOMAINS)[number] = 'P2P';
 	let aggregateType = 'requisition';
 	let aggregateId = 'REQ-1775572652080-38928';
 	let actorId = 'principal.system';
+	let userNote = '';
+	let aggregateIdsByType: Record<string, string[]> = Object.fromEntries(
+		Object.entries(DEFAULT_AGGREGATE_IDS).map(([key, value]) => [key, [...value]])
+	);
+	let createPresetId = 'create-requisition';
+	let lastCreatePresetId = createPresetId;
+	let createPayloadText = JSON.stringify(
+		QUICK_CREATE_PRESETS.find((preset) => preset.id === createPresetId)?.samplePayload ?? {},
+		null,
+		2
+	);
+	let createLoading = false;
+	let createError = '';
+	let createResult: CreateResult | null = null;
 
 	let loading = false;
 	let errorMessage = '';
@@ -80,6 +327,12 @@
 		aggregateId = getAggregateIdOptions(aggregateType)[0] ?? '';
 	}
 
+	$: if (createPresetId !== lastCreatePresetId) {
+		createPayloadText = JSON.stringify(selectedCreatePreset()?.samplePayload ?? {}, null, 2);
+		lastCreatePresetId = createPresetId;
+		createError = '';
+	}
+
 	$: if ($actorStore.actorId !== actorId) {
 		setActorById(actorId);
 	}
@@ -89,7 +342,8 @@
 			domain,
 			aggregateType: aggregateType.trim(),
 			aggregateId: aggregateId.trim(),
-			actorId: actorId.trim()
+			actorId: actorId.trim(),
+			userNote: userNote.trim() ? userNote.trim() : undefined
 		};
 	}
 
@@ -98,7 +352,23 @@
 	}
 
 	function getAggregateIdOptions(currentAggregateType: string): string[] {
-		return AGGREGATE_IDS[currentAggregateType] ?? [];
+		return aggregateIdsByType[currentAggregateType] ?? [];
+	}
+
+	function selectedCreatePreset(): QuickCreatePreset | undefined {
+		return QUICK_CREATE_PRESETS.find((preset) => preset.id === createPresetId);
+	}
+
+	function registerAggregateId(targetAggregateType: string, id: string): void {
+		const existing = aggregateIdsByType[targetAggregateType] ?? [];
+		if (existing.includes(id)) {
+			return;
+		}
+
+		aggregateIdsByType = {
+			...aggregateIdsByType,
+			[targetAggregateType]: [id, ...existing]
+		};
 	}
 
 	function clearDownstreamState(): void {
@@ -157,6 +427,82 @@
 
 	function isStructuredValue(value: unknown): boolean {
 		return typeof value === 'object' && value !== null;
+	}
+
+	async function readCreateError(response: Response): Promise<string> {
+		const text = await response.text();
+
+		if (!text) {
+			return 'Create operation failed.';
+		}
+
+		try {
+			const parsed = JSON.parse(text) as { error?: unknown; detail?: unknown; message?: unknown };
+			if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+				return parsed.error;
+			}
+			if (typeof parsed.detail === 'string' && parsed.detail.trim().length > 0) {
+				return parsed.detail;
+			}
+			if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+				return parsed.message;
+			}
+		} catch {
+			// Fall through to raw text.
+		}
+
+		return text;
+	}
+
+	async function handleCreateEntity(): Promise<void> {
+		const preset = selectedCreatePreset();
+		if (!preset) {
+			createError = 'Select a create operation.';
+			return;
+		}
+
+		let payload: Record<string, unknown>;
+		try {
+			payload = JSON.parse(createPayloadText || '{}') as Record<string, unknown>;
+		} catch {
+			createError = 'Create payload must be valid JSON.';
+			return;
+		}
+
+		createLoading = true;
+		createError = '';
+		createResult = null;
+		resourceError = '';
+
+		try {
+			const actor = selectedActor();
+			const response = await fetch(resolve(`/api/hub/bootstrap/${preset.id}`), {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					'x-actor-id': actor.actorId,
+					'x-actor-tier': String(actor.authorityTier)
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				throw new Error(await readCreateError(response));
+			}
+
+			createResult = (await response.json()) as CreateResult;
+			if (createResult.entityId) {
+				registerAggregateId(preset.aggregateType, createResult.entityId);
+				domain = preset.domain;
+				aggregateType = preset.aggregateType;
+				aggregateId = createResult.entityId;
+				await handleLoadResource();
+			}
+		} catch (err) {
+			createError = err instanceof Error ? err.message : 'Create operation failed.';
+		} finally {
+			createLoading = false;
+		}
 	}
 
 	async function handleLoadResource(): Promise<void> {
@@ -316,9 +662,13 @@
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={aggregateId}
 			>
-				{#each getAggregateIdOptions(aggregateType) as id (id)}
-					<option value={id}>{id}</option>
-				{/each}
+				{#if getAggregateIdOptions(aggregateType).length > 0}
+					{#each getAggregateIdOptions(aggregateType) as id (id)}
+						<option value={id}>{id}</option>
+					{/each}
+				{:else}
+					<option value="">No known IDs yet</option>
+				{/if}
 			</select>
 		</div>
 
@@ -364,6 +714,82 @@
 	<p class="mt-3 text-xs text-white/55">
 		Default values are aligned to the working Navigator Postman flow for P2P requisition ranking.
 	</p>
+
+	<div class="mt-6 rounded-md border border-white/15 bg-white/5 p-4">
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+			<div>
+				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Quick Create</h3>
+				<p class="mt-2 text-sm text-white/75">
+					Create a new aggregate through the existing bootstrap flow, then continue directly in Navigator on the created entity.
+				</p>
+			</div>
+			<a class="text-xs text-white/60 hover:text-white" href={resolve('/canvas/create')}>
+				Open Full Create Workspace &rarr;
+			</a>
+		</div>
+
+		<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
+			<div>
+				<label class="mb-1 block text-xs text-white/70" for="nav-create-preset">Entity Preset</label>
+				<select
+					id="nav-create-preset"
+					class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+					bind:value={createPresetId}
+				>
+					{#each QUICK_CREATE_PRESETS as preset (preset.id)}
+						<option value={preset.id}>{preset.label}</option>
+					{/each}
+				</select>
+				<p class="mt-2 text-xs text-white/55">{selectedCreatePreset()?.description}</p>
+			</div>
+
+			<div>
+				<label class="mb-1 block text-xs text-white/70" for="nav-create-payload">Create Payload JSON</label>
+				<textarea
+					id="nav-create-payload"
+					class="min-h-[164px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 font-mono text-sm text-white"
+					bind:value={createPayloadText}
+				></textarea>
+				<p class="mt-1 text-xs text-white/55">
+					Edit prerequisite IDs as needed. Successful creates automatically register the new ID into the Navigator context above.
+				</p>
+			</div>
+		</div>
+
+		<div class="mt-4 flex flex-wrap gap-3">
+			<button
+				class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+				disabled={createLoading}
+				on:click={handleCreateEntity}
+			>
+				{createLoading ? 'Creating...' : 'Create Entity In Navigator'}
+			</button>
+		</div>
+
+		{#if createError}
+			<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{createError}</p>
+		{/if}
+
+		{#if createResult}
+			<div class="mt-4 rounded-md border border-emerald-500/35 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+				<p class="font-semibold">Create Succeeded</p>
+				<p class="mt-1">{createResult.operation} created {createResult.entityType ?? 'entity'} / {createResult.entityId ?? 'unknown-id'}.</p>
+			</div>
+		{/if}
+	</div>
+
+	<div class="mt-4">
+		<label class="mb-1 block text-xs text-white/70" for="nav-user-note">Operator Note</label>
+		<textarea
+			id="nav-user-note"
+			class="min-h-[92px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+			placeholder="Optional context for the AI, e.g. 'Line for X missing for N at Y AED; likely next action is add-line.'"
+			bind:value={userNote}
+		></textarea>
+		<p class="mt-1 text-xs text-white/55">
+			This note is sent to Navigator and can influence ranking, explanation, simulation, decisioning, and execution payload context.
+		</p>
+	</div>
 
 	{#if resourceError}
 		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{resourceError}</p>

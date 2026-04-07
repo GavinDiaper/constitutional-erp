@@ -58,7 +58,11 @@ export async function executeDecision(input: {
     aggregateId: input.context.aggregateId,
     actionId,
     actorId: input.context.actorId,
-    payload: {}
+    payload: input.context.userNote
+      ? {
+          navigatorUserNote: input.context.userNote
+        }
+      : {}
   });
 
   const mode =

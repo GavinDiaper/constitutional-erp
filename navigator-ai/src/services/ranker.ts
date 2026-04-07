@@ -19,9 +19,10 @@ function buildPrompt(context: NavigatorContext): string {
     `Aggregate: ${context.resource.type}/${context.resource.id}`,
     `State: ${context.resource.state}`,
     `Actor: ${context.actorId}`,
+    context.userNote ? `Operator note: ${context.userNote}` : undefined,
     `Available actions: ${context.actionOptions.map((a) => a.id).join(", ")}`,
     "Return strict JSON array of objects with fields actionId, score (0..1), rationale."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function parseRankedActions(text: string): RankedAction[] | undefined {

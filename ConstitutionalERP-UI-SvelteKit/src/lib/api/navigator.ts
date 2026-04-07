@@ -5,6 +5,7 @@ export interface NavigatorContext {
 	aggregateType: string;
 	aggregateId: string;
 	actorId: string;
+	userNote?: string;
 }
 
 export interface RankedAction {

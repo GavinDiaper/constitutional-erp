@@ -38,8 +38,9 @@ export async function simulateAction(
         `Action: ${action.id}`,
         `Predicted state: ${predictedState}`,
         `Risk summary: ${riskSummary}`,
+        context.userNote ? `Operator note: ${context.userNote}` : undefined,
         "Describe likely business impact in 1-2 sentences."
-      ].join("\n")
+      ].filter(Boolean).join("\n")
     }
   ]);
 

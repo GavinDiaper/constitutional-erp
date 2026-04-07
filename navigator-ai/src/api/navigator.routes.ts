@@ -10,7 +10,8 @@ const contextSchema = z.object({
   domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema),
   aggregateType: z.string().min(1),
   aggregateId: z.string().min(1),
-  actorId: z.string().min(1)
+  actorId: z.string().min(1),
+  userNote: z.string().trim().max(4000).optional()
 });
 
 const optionalActionSchema = z.object({

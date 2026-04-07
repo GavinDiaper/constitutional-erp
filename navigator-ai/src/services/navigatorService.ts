@@ -39,6 +39,7 @@ export class NavigatorService {
       resource,
       actionOptions,
       actorId: ctx.actorId,
+      userNote: ctx.userNote,
       recentHistory,
       riskProfile: {
         hasApprovalActions: actionOptions.some((a) => a.requiresApproval)

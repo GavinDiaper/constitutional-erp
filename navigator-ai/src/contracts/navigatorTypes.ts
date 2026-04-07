@@ -5,6 +5,7 @@ export interface SessionContext {
   aggregateType: string;
   aggregateId: string;
   actorId: string;
+  userNote?: string;
 }
 
 export interface CanonicalResource {
@@ -43,6 +44,7 @@ export interface NavigatorContext {
   resource: CanonicalResource;
   actionOptions: ActionOption[];
   actorId: string;
+  userNote?: string;
   recentHistory: Array<Record<string, unknown>>;
   riskProfile: Record<string, unknown>;
 }

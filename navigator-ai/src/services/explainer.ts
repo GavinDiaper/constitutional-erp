@@ -21,10 +21,11 @@ export async function explainDecision(input: {
         `State: ${input.context.resource.state}`,
         `Action: ${input.chosenAction.actionId}`,
         `Score: ${input.chosenAction.score}`,
+        input.context.userNote ? `Operator note: ${input.context.userNote}` : undefined,
         `Governance mode: ${input.governance.mode}`,
         `Governance explanation: ${input.governance.explanation}`,
         "Provide a concise explanation for operators."
-      ].join("\n")
+      ].filter(Boolean).join("\n")
     }
   ]);
 
