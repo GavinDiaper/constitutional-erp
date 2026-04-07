@@ -14,13 +14,67 @@ export interface RankedAction {
 	rationale?: string;
 }
 
+export interface ActionOption {
+	id: string;
+	href: string;
+	method: 'POST' | 'GET';
+	domain: string;
+	aggregateType: string;
+	aggregateId: string;
+	currentState: string;
+	requiresApproval: boolean;
+	requiredTier?: number;
+	riskSignals?: Record<string, unknown>;
+}
+
+export interface CanonicalResource {
+	id: string;
+	domain: string;
+	type: string;
+	state: string;
+	attributes: Record<string, unknown>;
+	links: Record<
+		string,
+		{
+			href: string;
+			method: 'POST' | 'GET';
+			requiresApproval?: boolean;
+			requiredTier?: number;
+			riskLevel?: string;
+		}
+	>;
+}
+
 export interface RankResponse {
 	rankedActions: RankedAction[];
-	actionOptions?: unknown[];
+	actionOptions?: ActionOption[];
 }
 
 export interface ExplainResponse {
 	explanation: string;
+}
+
+export interface SimulationResult {
+	predictedState: string;
+	predictedTransitions: string[];
+	riskSummary: string;
+	financialImpact?: number;
+	narrative: string;
+}
+
+export type DecisionMode = 'EXECUTE' | 'REQUEST_APPROVAL' | 'REJECT' | 'NO_ACTION';
+
+export interface DecisionOutcome {
+	action: RankedAction | null;
+	mode: DecisionMode;
+	explanation: string;
+}
+
+export interface ExecutionResult {
+	mode: DecisionMode;
+	actionId: string;
+	statusCode: number;
+	responseBody: Record<string, unknown>;
 }
 
 function actorHeaders(actor: ActorContext): HeadersInit {
@@ -66,4 +120,109 @@ export async function explainAction(
 	}
 
 	return (await response.json()) as ExplainResponse;
+}
+
+export async function getResource(
+	context: NavigatorContext,
+	actor: ActorContext
+): Promise<CanonicalResource> {
+	const query = new URLSearchParams({
+		domain: context.domain,
+		aggregateType: context.aggregateType,
+		aggregateId: context.aggregateId,
+		actorId: context.actorId
+	});
+
+	const response = await fetch(`/api/navigator/resource?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || 'Navigator resource request failed');
+	}
+
+	return (await response.json()) as CanonicalResource;
+}
+
+export async function getActions(
+	context: NavigatorContext,
+	actor: ActorContext
+): Promise<ActionOption[]> {
+	const query = new URLSearchParams({
+		domain: context.domain,
+		aggregateType: context.aggregateType,
+		aggregateId: context.aggregateId,
+		actorId: context.actorId
+	});
+
+	const response = await fetch(`/api/navigator/actions?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || 'Navigator actions request failed');
+	}
+
+	const data = (await response.json()) as { data?: ActionOption[] };
+	return data.data ?? [];
+}
+
+export async function simulateAction(
+	context: NavigatorContext,
+	actionId: string,
+	actor: ActorContext
+): Promise<SimulationResult> {
+	const response = await fetch('/api/navigator/simulate', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify({ context, actionId })
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || 'Navigator simulate request failed');
+	}
+
+	return (await response.json()) as SimulationResult;
+}
+
+export async function decide(
+	context: NavigatorContext,
+	actor: ActorContext
+): Promise<DecisionOutcome> {
+	const response = await fetch('/api/navigator/decide', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify(context)
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || 'Navigator decide request failed');
+	}
+
+	return (await response.json()) as DecisionOutcome;
+}
+
+export async function executeAction(
+	context: NavigatorContext,
+	actionId: string | undefined,
+	actor: ActorContext
+): Promise<ExecutionResult> {
+	const response = await fetch('/api/navigator/execute', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify({ context, actionId })
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || 'Navigator execute request failed');
+	}
+
+	return (await response.json()) as ExecutionResult;
 }

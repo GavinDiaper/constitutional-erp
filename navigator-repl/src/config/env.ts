@@ -7,6 +7,8 @@ export interface ReplConfig {
   integrationHubApiKey: string;
   eventProcessorUrl: string;
   eventProcessorApiKey: string;
+  navigatorAiUrl: string;
+  navigatorAiApiKey: string;
 }
 
 function loadLocalEnv() {
@@ -39,6 +41,8 @@ export function loadConfig(): ReplConfig {
     integrationHubUrl: process.env.INTEGRATION_HUB_URL ?? process.env.HUB_URL ?? "http://localhost:4017",
     integrationHubApiKey: required("INTEGRATION_HUB_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me"),
     eventProcessorUrl: process.env.EVENT_PROCESSOR_URL ?? "http://localhost:4004",
-    eventProcessorApiKey: required("EVENT_PROCESSOR_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me")
+    eventProcessorApiKey: required("EVENT_PROCESSOR_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me"),
+    navigatorAiUrl: process.env.NAVIGATOR_AI_URL ?? "http://localhost:4006/api/v1",
+    navigatorAiApiKey: required("NAVIGATOR_AI_API_KEY", process.env.NAVIGATOR_API_KEY ?? "change-me")
   };
 }

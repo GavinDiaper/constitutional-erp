@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { IntegrationHubClient } from "./client/integrationHubClient";
+import { NavigatorClient } from "./client/navigatorClient";
 import { loadConfig } from "./config/env";
 import { render } from "./format/renderer";
 import { contextString, SessionContext } from "./state/session";
@@ -30,15 +31,24 @@ function printHelp() {
     "Hub Discovery:",
     "  mcp                          List MCP functions",
     "  mcp <functionId>             Show one MCP function",
-    "  process                      Fetch process state + hypermedia links",
+    "  process                      Fetch process state + hypermedia links (Integration Hub)",
+    "  show                         Fetch canonical resource (Navigator AI)",
     "  links                        Show available hypermedia actions",
     "",
+    "Navigator AI Decisions:",
+    "  propose                      Rank recommended actions",
+    "  explain [actionId]           Explain top or selected action",
+    "  simulate <actionId>          Simulate action outcome",
+    "  decide                       Run governance-aware decision",
+    "  execute [actionId]           Execute chosen action through Navigator AI",
+    "",
     "Governed Execution:",
-    "  exec <action> [json]         Execute hypermedia action via Hub",
+    "  exec <action> [json]         Execute hypermedia action via Hub (legacy)",
     "",
     "Observability:",
-    "  navlog                       Show hub session navlog",
-    "  events [limit]               Show recent aggregate events",
+    "  navlog [limit]               Show Navigator event log",
+    "  history [limit]              Show aggregate event history via Navigator",
+    "  events [limit]               Show recent aggregate events via Event Processor",
     "  transcript                   Show current session transcript",
     "",
     "Utilities:",
@@ -53,8 +63,11 @@ function printHelp() {
 async function main() {
   const config = loadConfig();
   const client = new IntegrationHubClient(config);
+  const navigatorClient = new NavigatorClient(config);
   const rl = createInterface({ input, output, terminal: true });
   const session: SessionContext = {};
+  let lastRankedActions: Array<{ actionId?: string }> = [];
+  let lastDecisionActionId: string | undefined;
 
   output.write("\n╔════════════════════════════════╗\n");
   output.write("║    Navigator REPL v2           ║\n");
@@ -159,6 +172,8 @@ async function main() {
           session.aggregateId = args[2];
           session.sessionId = undefined;
           session.lastLinks = undefined;
+          lastRankedActions = [];
+          lastDecisionActionId = undefined;
           result = contextString(session);
         } else if (args.length > 0) {
           result = "Invalid use command. Use 'use domain type id' or just 'use' for interactive menu.";
@@ -172,6 +187,8 @@ async function main() {
           session.aggregateId = await selectAggregateId(rl, aggregateType);
           session.sessionId = undefined;
           session.lastLinks = undefined;
+          lastRankedActions = [];
+          lastDecisionActionId = undefined;
           result = contextString(session);
         }
       } else if (cmd === "session" && args[0] === "start") {
@@ -193,6 +210,8 @@ async function main() {
         } else {
           result = data;
         }
+      } else if (cmd === "show") {
+        result = await navigatorClient.getResource(session);
       } else if (cmd === "process") {
         result = await client.process(session);
         session.lastLinks = extractLinks(result);
@@ -212,6 +231,27 @@ async function main() {
             governanceTag: link.governance?.governanceTag
           }))
         };
+      } else if (cmd === "propose") {
+        const ranked = await navigatorClient.rankActions(session) as { rankedActions?: Array<{ actionId?: string }> };
+        lastRankedActions = ranked.rankedActions ?? [];
+        result = ranked;
+      } else if (cmd === "explain") {
+        const actionId = args[0] ?? lastRankedActions[0]?.actionId;
+        result = await navigatorClient.explainDecision(session, actionId);
+      } else if (cmd === "simulate") {
+        const actionId = args[0] ?? lastRankedActions[0]?.actionId;
+        if (!actionId) {
+          result = "No action specified. Use: simulate <actionId>";
+        } else {
+          result = await navigatorClient.simulateAction(session, actionId);
+        }
+      } else if (cmd === "decide") {
+        const decided = await navigatorClient.decide(session) as { action?: { actionId?: string } };
+        lastDecisionActionId = decided.action?.actionId;
+        result = decided;
+      } else if (cmd === "execute") {
+        const actionId = args[0] ?? lastDecisionActionId ?? lastRankedActions[0]?.actionId;
+        result = await navigatorClient.execute(session, actionId);
       } else if (cmd === "exec" && args[0]) {
         const action = args[0];
         let payload: Record<string, unknown> = {};
@@ -233,8 +273,11 @@ async function main() {
 
         result = execution;
       } else if (cmd === "navlog") {
-        const sessionId = await ensureSession("offline");
-        result = await client.navlog(sessionId);
+        const limit = args[0] ? Number(args[0]) : 50;
+        result = await navigatorClient.getNavigatorEvents(session, Number.isFinite(limit) && limit > 0 ? limit : 50);
+      } else if (cmd === "history") {
+        const limit = args[0] ? Number(args[0]) : 50;
+        result = await navigatorClient.getHistory(session, Number.isFinite(limit) && limit > 0 ? limit : 50);
       } else if (cmd === "transcript") {
         if (!session.sessionId) {
           result = "No active session.";
