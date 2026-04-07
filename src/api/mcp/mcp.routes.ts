@@ -151,7 +151,10 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           quoteId: input.quoteId,
           sku: input.sku,
           quantity: Number(input.quantity),
-          unitPrice: Number(input.unitPrice)
+          unitPrice: Number(input.unitPrice),
+          taxTreatment: input.taxTreatment,
+          taxCodeId: input.taxCodeId,
+          countryCode: input.countryCode
         });
         break;
       case "o2c_send_quote":
@@ -185,7 +188,10 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = cancelOrder(input.orderId, actor);
         break;
       case "o2c_generate_invoice":
-        result = generateInvoice(input.orderId);
+        result = generateInvoice(input.orderId, {
+          taxCodeId: input.taxCodeId,
+          countryCode: input.countryCode
+        });
         break;
       case "o2c_create_shipment":
         result = createShipment(input.orderId, actor);

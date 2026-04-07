@@ -26,6 +26,9 @@ export function getInvoiceById(invoiceId: string) {
         invoice_id: string;
         order_id: string;
         state: InvoiceState;
+        order_amount: number;
+        tax_amount: number;
+        total_payable: number;
         amount_due: number;
         amount_paid: number;
         version: number;
@@ -51,7 +54,14 @@ function assertTransition(fromState: InvoiceState, toState: InvoiceState) {
 
 export function generateInvoice(orderId: string, options?: { taxCodeId?: string; countryCode?: string }) {
   const order = db.prepare("SELECT * FROM o2c_sales_order WHERE order_id = ?").get(orderId) as
-    | { order_id: string; total_amount: number; state: string; version: number }
+    | {
+        order_id: string;
+        total_amount: number;
+        currency_code: string;
+        legal_entity_id: string | null;
+        state: string;
+        version: number;
+      }
     | undefined;
 
   if (!order) {
@@ -64,28 +74,81 @@ export function generateInvoice(orderId: string, options?: { taxCodeId?: string;
 
   const invoiceId = newId("INV-");
   const timestamp = now();
-  // Determine tax if explicit taxCodeId provided
-  let amountDue = order.total_amount;
-  let taxDetermination: ReturnType<typeof determineTaxByCode> = null;
-  if (options?.taxCodeId) {
-    const invoiceDate = new Date().toISOString().slice(0, 10);
-    taxDetermination = determineTaxByCode({
+  const invoiceDate = new Date().toISOString().slice(0, 10);
+  const lineRows = db.prepare(
+    "SELECT order_line_id, line_total, tax_code_id FROM o2c_sales_order_line WHERE order_id = ? ORDER BY created_at ASC"
+  ).all(orderId) as Array<{ order_line_id: string; line_total: number; tax_code_id: string | null }>;
+
+  const computedOrderAmount = lineRows.reduce((sum, line) => sum + line.line_total, 0);
+  const orderAmount = computedOrderAmount > 0 ? computedOrderAmount : order.total_amount;
+  let totalTaxAmount = 0;
+  const calculatedLineTaxes: Array<{
+    lineTotal: number;
+    taxDetermination: NonNullable<ReturnType<typeof determineTaxByCode>>;
+    taxableAmount: number;
+    taxAmount: number;
+  }> = [];
+
+  for (const line of lineRows) {
+    if (!line.tax_code_id) {
+      continue;
+    }
+
+    const taxDetermination = determineTaxByCode({
+      taxCodeId: line.tax_code_id,
+      countryCode: options?.countryCode ?? "AE",
+      invoiceDate
+    });
+
+    if (!taxDetermination) {
+      continue;
+    }
+
+    const taxCalc = calculateTax(line.line_total, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+    totalTaxAmount += taxCalc.taxAmount;
+    calculatedLineTaxes.push({
+      lineTotal: line.line_total,
+      taxDetermination,
+      taxableAmount: taxCalc.taxableAmount,
+      taxAmount: taxCalc.taxAmount
+    });
+  }
+
+  // Backward-compatible fallback: header-level tax code if no line-level tax codes were selected.
+  let headerTaxDetermination: ReturnType<typeof determineTaxByCode> = null;
+  if (calculatedLineTaxes.length === 0 && options?.taxCodeId) {
+    headerTaxDetermination = determineTaxByCode({
       taxCodeId: options.taxCodeId,
       countryCode: options.countryCode ?? "AE",
       invoiceDate
     });
-    if (taxDetermination) {
-      const taxCalc = calculateTax(order.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
-      amountDue = taxCalc.grossAmount;
+
+    if (headerTaxDetermination) {
+      const taxCalc = calculateTax(order.total_amount, headerTaxDetermination.ratePercent, headerTaxDetermination.inclusiveFlag);
+      totalTaxAmount = taxCalc.taxAmount;
     }
   }
+
+  const totalPayable = orderAmount + totalTaxAmount;
+  const amountDue = totalPayable;
 
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO o2c_invoice(invoice_id, order_id, state, amount_due, amount_paid, version, created_at, updated_at)
-       VALUES (?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(invoiceId, orderId, amountDue, timestamp, timestamp);
+      `INSERT INTO o2c_invoice(
+        invoice_id,
+        order_id,
+        state,
+        order_amount,
+        tax_amount,
+        total_payable,
+        amount_due,
+        amount_paid,
+        version,
+        created_at,
+        updated_at
+       ) VALUES (?, ?, 'Draft', ?, ?, ?, ?, 0, 1, ?, ?)`
+      ).run(invoiceId, orderId, orderAmount, totalTaxAmount, totalPayable, amountDue, timestamp, timestamp);
 
     db.prepare("UPDATE o2c_sales_order SET state = 'Invoiced', version = version + 1, updated_at = ? WHERE order_id = ?")
       .run(timestamp, orderId);
@@ -103,26 +166,46 @@ export function generateInvoice(orderId: string, options?: { taxCodeId?: string;
       entityType: "Invoice",
       eventType: "ar-invoice.generated",
       version: 1,
-      payload: { orderId, amountDue }
+      payload: { orderId, orderAmount, taxAmount: totalTaxAmount, totalPayable, amountDue }
     });
   });
 
-  if (taxDetermination) {
-    const taxCalc = calculateTax(order.total_amount, taxDetermination.ratePercent, taxDetermination.inclusiveFlag);
+  for (const lineTax of calculatedLineTaxes) {
     persistTaxLine({
       sourceDomain: "o2c",
       sourceEntityType: "Invoice",
       sourceEntityId: invoiceId,
-      taxRegimeId: taxDetermination.taxRegimeId,
-      taxJurisdictionId: taxDetermination.jurisdictionId ?? undefined,
-      taxCodeId: taxDetermination.taxCodeId,
-      taxRateId: taxDetermination.taxRateId ?? undefined,
-      taxRuleId: taxDetermination.taxRuleId ?? undefined,
+      legalEntityId: order.legal_entity_id ?? undefined,
+      taxRegimeId: lineTax.taxDetermination.taxRegimeId,
+      taxJurisdictionId: lineTax.taxDetermination.jurisdictionId ?? undefined,
+      taxCodeId: lineTax.taxDetermination.taxCodeId,
+      taxRateId: lineTax.taxDetermination.taxRateId ?? undefined,
+      taxRuleId: lineTax.taxDetermination.taxRuleId ?? undefined,
       transactionType: "ar-invoice",
-      taxApplicability: taxDetermination.taxApplicability,
+      taxApplicability: lineTax.taxDetermination.taxApplicability,
+      taxableAmount: lineTax.taxableAmount,
+      taxAmount: lineTax.taxAmount,
+      currencyCode: order.currency_code ?? "USD"
+    });
+  }
+
+  if (calculatedLineTaxes.length === 0 && headerTaxDetermination) {
+    const taxCalc = calculateTax(order.total_amount, headerTaxDetermination.ratePercent, headerTaxDetermination.inclusiveFlag);
+    persistTaxLine({
+      sourceDomain: "o2c",
+      sourceEntityType: "Invoice",
+      sourceEntityId: invoiceId,
+      legalEntityId: order.legal_entity_id ?? undefined,
+      taxRegimeId: headerTaxDetermination.taxRegimeId,
+      taxJurisdictionId: headerTaxDetermination.jurisdictionId ?? undefined,
+      taxCodeId: headerTaxDetermination.taxCodeId,
+      taxRateId: headerTaxDetermination.taxRateId ?? undefined,
+      taxRuleId: headerTaxDetermination.taxRuleId ?? undefined,
+      transactionType: "ar-invoice",
+      taxApplicability: headerTaxDetermination.taxApplicability,
       taxableAmount: taxCalc.taxableAmount,
       taxAmount: taxCalc.taxAmount,
-      currencyCode: "USD"
+      currencyCode: order.currency_code ?? "USD"
     });
   }
 
@@ -166,7 +249,7 @@ export function postARInvoice(invoiceId: string, actor?: EventActor) {
   if (taxLines.length > 0) {
     createAndPostTaxAwareJournal({
       eventType: "ar-invoice.posted",
-      baseAmount: invoice.amount_due,
+      baseAmount: invoice.order_amount,
       debitAccountCode: "SYS-110-ASSET-AR",
       creditAccountCode: "SYS-400-REV-SALES",
       sourceEntityId: invoiceId,

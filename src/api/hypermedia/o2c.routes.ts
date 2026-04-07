@@ -72,7 +72,10 @@ const createQuoteSchema = z.object({
 const addQuoteLineSchema = z.object({
   sku: z.string().min(1),
   quantity: z.number().positive(),
-  unitPrice: z.number().nonnegative()
+  unitPrice: z.number().nonnegative(),
+  taxTreatment: z.enum(["Standard Rate (5%)", "Zero-Rated Supplies (0%)", "Exempt Supplies"]).optional(),
+  taxCodeId: z.string().min(1).optional(),
+  countryCode: z.string().length(2).optional()
 });
 
 const convertQuoteSchema = z.object({
@@ -401,7 +404,10 @@ o2cRouter.post("/quotes/:quoteId/lines", validateBody(addQuoteLineSchema), (req,
     quoteId: req.params.quoteId,
     sku: req.body.sku,
     quantity: req.body.quantity,
-    unitPrice: req.body.unitPrice
+    unitPrice: req.body.unitPrice,
+    taxTreatment: req.body.taxTreatment,
+    taxCodeId: req.body.taxCodeId,
+    countryCode: req.body.countryCode
   });
   res.status(201).json(entityWithLinks(quote as any, quoteLinks(req.params.quoteId, (quote as any).state)));
 });

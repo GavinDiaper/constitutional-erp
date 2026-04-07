@@ -82,6 +82,10 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
     quantity: number;
     unit_price: number;
     line_total: number;
+    tax_code_id: string | null;
+    tax_applicability: string | null;
+    tax_rate_percent: number | null;
+    tax_amount: number;
   }>;
 
   const orderId = newId("SO-");
@@ -94,12 +98,35 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
     ).run(orderId, quoteId, quote.customer_id, effectiveLegalEntityId, quote.currency_code, quote.total_amount, timestamp, timestamp);
 
     const insertLine = db.prepare(
-      `INSERT INTO o2c_sales_order_line(order_line_id, order_id, sku, quantity, unit_price, line_total, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO o2c_sales_order_line(
+         order_line_id,
+         order_id,
+         sku,
+         quantity,
+         unit_price,
+         line_total,
+         tax_code_id,
+         tax_applicability,
+         tax_rate_percent,
+         tax_amount,
+         created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const line of quoteLines) {
-      insertLine.run(newId("SOL-"), orderId, line.sku, line.quantity, line.unit_price, line.line_total, timestamp);
+      insertLine.run(
+        newId("SOL-"),
+        orderId,
+        line.sku,
+        line.quantity,
+        line.unit_price,
+        line.line_total,
+        line.tax_code_id,
+        line.tax_applicability,
+        line.tax_rate_percent,
+        line.tax_amount ?? 0,
+        timestamp
+      );
     }
 
     db.prepare("UPDATE o2c_quote SET state = 'ConvertedToOrder', version = version + 1, updated_at = ? WHERE quote_id = ?")

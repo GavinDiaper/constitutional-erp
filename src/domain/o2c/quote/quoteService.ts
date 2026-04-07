@@ -4,6 +4,7 @@ import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { ensureCustomerExists } from "../customer/customerService";
 import { ensureLegalEntityExists } from "../../r2r/legalEntity/legalEntityService";
+import { calculateTax, determineTaxByCode } from "../../tax/taxService";
 
 type QuoteState = "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired" | "ConvertedToOrder";
 
@@ -27,6 +28,28 @@ interface QuoteLineInput {
   sku: string;
   quantity: number;
   unitPrice: number;
+  taxTreatment?: string;
+  taxCodeId?: string;
+  countryCode?: string;
+}
+
+function mapTaxTreatmentToCode(taxTreatment?: string): string | undefined {
+  if (!taxTreatment) {
+    return undefined;
+  }
+
+  const normalized = taxTreatment.trim().toLowerCase();
+  if (normalized === "standard rate (5%)") {
+    return "TCOD-VAT5";
+  }
+  if (normalized === "zero-rated supplies (0%)") {
+    return "TCOD-VAT0";
+  }
+  if (normalized === "exempt supplies") {
+    return "TCOD-EXEMPT";
+  }
+
+  return undefined;
 }
 
 interface QuoteLineRow {
@@ -36,6 +59,10 @@ interface QuoteLineRow {
   quantity: number;
   unit_price: number;
   line_total: number;
+  tax_code_id: string | null;
+  tax_applicability: string | null;
+  tax_rate_percent: number | null;
+  tax_amount: number;
   created_at: string;
 }
 
@@ -108,14 +135,50 @@ export function addQuoteLine(input: QuoteLineInput) {
 
   const quoteLineId = newId("QL-");
   const lineTotal = input.quantity * input.unitPrice;
+  const effectiveTaxCodeId = input.taxCodeId ?? mapTaxTreatmentToCode(input.taxTreatment);
+  const invoiceDate = new Date().toISOString().slice(0, 10);
+  const taxDetermination = effectiveTaxCodeId
+    ? determineTaxByCode({
+        taxCodeId: effectiveTaxCodeId,
+        countryCode: input.countryCode ?? "AE",
+        invoiceDate
+      })
+    : null;
+  const taxCalc = taxDetermination
+    ? calculateTax(lineTotal, taxDetermination.ratePercent, taxDetermination.inclusiveFlag)
+    : null;
+  const lineTaxAmount = taxCalc?.taxAmount ?? 0;
   const timestamp = now();
   const nextVersion = quote.version + 1;
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO o2c_quote_line(quote_line_id, quote_id, sku, quantity, unit_price, line_total, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(quoteLineId, input.quoteId, input.sku, input.quantity, input.unitPrice, lineTotal, timestamp);
+      `INSERT INTO o2c_quote_line(
+         quote_line_id,
+         quote_id,
+         sku,
+         quantity,
+         unit_price,
+         line_total,
+         tax_code_id,
+         tax_applicability,
+         tax_rate_percent,
+         tax_amount,
+         created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      quoteLineId,
+      input.quoteId,
+      input.sku,
+      input.quantity,
+      input.unitPrice,
+      lineTotal,
+      taxDetermination?.taxCodeId ?? null,
+      taxDetermination?.taxApplicability ?? null,
+      taxDetermination?.ratePercent ?? null,
+      lineTaxAmount,
+      timestamp
+    );
 
     db.prepare("UPDATE o2c_quote SET total_amount = total_amount + ?, version = ?, updated_at = ? WHERE quote_id = ?")
       .run(lineTotal, nextVersion, timestamp, input.quoteId);
@@ -130,7 +193,9 @@ export function addQuoteLine(input: QuoteLineInput) {
         sku: input.sku,
         quantity: input.quantity,
         unitPrice: input.unitPrice,
-        lineTotal
+        lineTotal,
+        taxCodeId: taxDetermination?.taxCodeId ?? null,
+        taxAmount: lineTaxAmount
       }
     });
   });
@@ -150,7 +215,7 @@ export function listQuoteLines(quoteId: string): QuoteLineRow[] {
   ensureQuoteExists(quoteId);
   return db
     .prepare(
-      "SELECT quote_line_id, quote_id, sku, quantity, unit_price, line_total, created_at FROM o2c_quote_line WHERE quote_id = ? ORDER BY created_at ASC"
+      "SELECT quote_line_id, quote_id, sku, quantity, unit_price, line_total, tax_code_id, tax_applicability, tax_rate_percent, tax_amount, created_at FROM o2c_quote_line WHERE quote_id = ? ORDER BY created_at ASC"
     )
     .all(quoteId) as QuoteLineRow[];
 }
