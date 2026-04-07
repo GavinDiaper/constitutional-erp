@@ -23,6 +23,9 @@
 	$: normalizedEntityType = entityTypeValue.toLowerCase();
 	$: supportsLineLayout =
 		normalizedEntityType === 'o2c_quote' ||
+		normalizedEntityType === 'o2c_invoice' ||
+		normalizedEntityType === 'invoice' ||
+		normalizedEntityType === 'ar-invoice' ||
 		normalizedEntityType === 'quote' ||
 		normalizedEntityType === 'p2p_requisition' ||
 		normalizedEntityType === 'p2p_purchase_order' ||

@@ -10,22 +10,64 @@
 	// undefined = not yet fetched; null = fetch failed/empty; [...] = fetched with results
 	let lookupOptions: Record<string, Array<{ value: string; label: string }> | null> = {};
 
+	function parseEntityIdFromActionHref(href: string): string | null {
+		const match = href.match(/\/process\/[^/]+\/([^/]+)\/actions\//i);
+		if (!match || !match[1]) {
+			return null;
+		}
+		return decodeURIComponent(match[1]);
+	}
+
+	function resolveLookupUrl(lookup: string | undefined, action: { name: string; link: HubActionLink }): string | undefined {
+		if (!lookup) {
+			return undefined;
+		}
+
+		let resolved = lookup;
+		if (resolved.includes('{entityId}')) {
+			const entityId = parseEntityIdFromActionHref(action.link.href);
+			if (!entityId) {
+				return undefined;
+			}
+			resolved = resolved.replaceAll('{entityId}', encodeURIComponent(entityId));
+		}
+
+		if (resolved === 'p2p/suppliers') {
+			return `${resolved}?activeOnly=true`;
+		}
+
+		return resolved;
+	}
+
 	function mapLookupRows(rows: unknown[]): Array<{ value: string; label: string }> {
 		return (rows as Record<string, string>[])
 			.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
-			.map((r) => ({
-				value: r.supplier_id ?? r.id ?? String(r),
-				label: r.supplier_name
-					? `${r.supplier_name} (${r.supplier_id ?? r.id})`
-					: String(r.supplier_id ?? r.id ?? r)
-			}));
+			.map((r) => {
+				const value =
+					r.value ??
+					r.taxCodeId ??
+					r.tax_code_id ??
+					r.supplier_id ??
+					r.id ??
+					String(r);
+
+				const label =
+					r.label ??
+					(r.supplier_name
+						? `${r.supplier_name} (${r.supplier_id ?? r.id})`
+						: r.code && r.ratePercent
+							? `${r.label ?? r.code} [${r.code}]`
+							: String(value));
+
+				return { value: String(value), label: String(label) };
+			});
 	}
 
 	async function fetchLookups(currentActions: typeof actions): Promise<void> {
 		for (const action of currentActions) {
 			for (const schema of Object.values(action.link.inputSchema?.properties ?? {})) {
 				const lookup = schema['x-lookup'];
-				const lookupUrl = lookup === 'p2p/suppliers' ? `${lookup}?activeOnly=true` : lookup;
+				const lookupUrl = resolveLookupUrl(lookup, action);
 				// Skip if already fetched (key present in lookupOptions, even as null)
 				if (!lookup || !lookupUrl || lookupUrl in lookupOptions) {
 					continue;
@@ -136,7 +178,7 @@
 									{#each requiredFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const lookupKey = xLookup === 'p2p/suppliers' ? `${xLookup}?activeOnly=true` : xLookup}
+										{@const lookupKey = resolveLookupUrl(xLookup, action)}
 										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/80"
@@ -194,7 +236,7 @@
 									{#each optionalFields as field}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
-										{@const lookupKey = xLookup === 'p2p/suppliers' ? `${xLookup}?activeOnly=true` : xLookup}
+										{@const lookupKey = resolveLookupUrl(xLookup, action)}
 										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
 											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>

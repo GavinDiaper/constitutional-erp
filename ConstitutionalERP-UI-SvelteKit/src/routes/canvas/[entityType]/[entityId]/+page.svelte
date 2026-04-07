@@ -297,6 +297,9 @@
 		if (normalized === 'o2c_quote' || normalized === 'quote') {
 			return `/api/v1/o2c/quotes/${entityIdValue}/lines`;
 		}
+		if (normalized === 'o2c_invoice' || normalized === 'invoice' || normalized === 'ar-invoice') {
+			return `/api/v1/o2c/invoices/${entityIdValue}/lines`;
+		}
 		if (normalized === 'p2p_requisition' || normalized === 'requisition') {
 			return `/api/v1/p2p/requisitions/${entityIdValue}/lines`;
 		}

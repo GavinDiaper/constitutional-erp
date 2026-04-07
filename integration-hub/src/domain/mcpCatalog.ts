@@ -130,16 +130,11 @@ const FUNCTION_DEFS = [
         sku: { type: "string", description: "SKU / product code", minLength: 1 },
         quantity: { type: "number", description: "Quantity", minimum: 0.000001 },
         unitPrice: { type: "number", description: "Unit price", minimum: 0 },
-        taxTreatment: {
+        taxCodeId: {
           type: "string",
-          description: "UAE VAT treatment for this line",
-          enum: [
-            "Standard Rate (5%)",
-            "Zero-Rated Supplies (0%)",
-            "Exempt Supplies"
-          ]
+          description: "Tax code for this line (dynamically filtered by quote legal entity)",
+          "x-lookup": "o2c/quotes/{entityId}/tax-options"
         },
-        taxCodeId: { type: "string", description: "Optional explicit tax code override (e.g. TCOD-VAT5)" },
         countryCode: { type: "string", description: "Country code for tax determination (defaults to AE)" }
       }
     }
