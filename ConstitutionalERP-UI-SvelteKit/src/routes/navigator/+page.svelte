@@ -27,6 +27,7 @@
 		type RankedAction,
 		type SimulationResult
 	} from '$lib/api/navigator';
+	import { queryTable } from '$lib/api/query';
 
 	interface QuickCreatePreset {
 		operation: NavigatorCreateOperation;
@@ -108,6 +109,28 @@
 			description: 'Register AR payment using live invoice lookup.'
 		}
 	];
+
+	const AGGREGATE_TABLE_MAP: Record<string, { table: string; idField: string }> = {
+		requisition: { table: 'p2p_requisition', idField: 'requisition_id' },
+		supplier: { table: 'p2p_supplier', idField: 'supplier_id' },
+		'purchase-order': { table: 'p2p_purchase_order', idField: 'po_id' },
+		'goods-receipt': { table: 'p2p_goods_receipt', idField: 'receipt_id' },
+		'supplier-invoice': { table: 'p2p_supplier_invoice', idField: 'supplier_invoice_id' },
+		'ap-payment': { table: 'p2p_ap_payment', idField: 'ap_payment_id' },
+		quote: { table: 'o2c_quote', idField: 'quote_id' },
+		'sales-order': { table: 'o2c_sales_order', idField: 'order_id' },
+		'ar-invoice': { table: 'o2c_invoice', idField: 'invoice_id' },
+		'ar-payment': { table: 'o2c_payment', idField: 'payment_id' },
+		account: { table: 'r2r_account', idField: 'account_id' },
+		'fiscal-year': { table: 'r2r_fiscal_year', idField: 'fiscal_year_id' },
+		'fiscal-period': { table: 'r2r_fiscal_period', idField: 'fiscal_period_id' },
+		journal: { table: 'r2r_journal', idField: 'journal_id' },
+		employee: { table: 'h2r_employee', idField: 'employee_id' },
+		position: { table: 'h2r_position', idField: 'position_id' },
+		assignment: { table: 'h2r_assignment', idField: 'assignment_id' },
+		credential: { table: 'h2r_credential', idField: 'credential_id' },
+		'authority-rule': { table: 'h2r_authority_rule', idField: 'authority_rule_id' }
+	};
 
 	let domain: (typeof DOMAINS)[number] = 'P2P';
 	let aggregateType = 'requisition';
@@ -191,6 +214,8 @@
 	let execution: ExecutionResult | null = null;
 	let executionLoading = false;
 	let executionError = '';
+	let aggregateIdLookupInFlight = false;
+	let lastAggregateLookupKey = '';
 
 	$: if (!getAggregateTypeOptions(domain).includes(aggregateType)) {
 		aggregateType = getAggregateTypeOptions(domain)[0] ?? '';
@@ -218,6 +243,14 @@
 
 	$: if ($actorStore.actorId !== actorId) {
 		setActorById(actorId);
+	}
+
+	$: {
+		const lookupKey = `${actorId}::${aggregateType}`;
+		if (lookupKey !== lastAggregateLookupKey) {
+			lastAggregateLookupKey = lookupKey;
+			void loadAggregateIdsForType(aggregateType);
+		}
 	}
 
 	function buildContext(): NavigatorContext {
@@ -316,8 +349,42 @@
 		}
 	}
 
+	async function loadAggregateIdsForType(targetType: string): Promise<void> {
+		const mapping = AGGREGATE_TABLE_MAP[targetType];
+		if (!mapping || aggregateIdLookupInFlight) {
+			return;
+		}
+
+		aggregateIdLookupInFlight = true;
+		try {
+			const actor = selectedActor();
+			const response = await queryTable<Record<string, unknown>>(mapping.table, actor, 500, 0);
+			const ids = (response.data ?? [])
+				.map((row) => String(row[mapping.idField] ?? ''))
+				.filter((id) => id.length > 0);
+			if (ids.length === 0) {
+				return;
+			}
+
+			const existing = aggregateIdsByType[targetType] ?? [];
+			const merged = Array.from(new Set([...ids, ...existing]));
+			aggregateIdsByType = {
+				...aggregateIdsByType,
+				[targetType]: merged
+			};
+		} catch {
+			// Keep default IDs when lookup fails.
+		} finally {
+			aggregateIdLookupInFlight = false;
+		}
+	}
+
 	onMount(() => {
-		void loadCreateLookups();
+		void Promise.all([
+			loadCreateLookups(),
+			loadAggregateIdsForType('requisition'),
+			loadAggregateIdsForType(aggregateType)
+		]);
 	});
 
 	function registerAggregateId(targetAggregateType: string, id: string): void {
