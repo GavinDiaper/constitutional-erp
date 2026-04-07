@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import {
 		actorOptions,
 		actorStore,
@@ -252,6 +253,8 @@
 			void loadAggregateIdsForType(aggregateType);
 		}
 	}
+
+
 
 	function buildContext(): NavigatorContext {
 		return {
@@ -604,6 +607,35 @@
 	function optionForAction(actionId: string): ActionOption | undefined {
 		return actionOptions.find((option) => option.id === actionId);
 	}
+
+	function generateMermaidSankey(): string {
+		if (!rankedActions || rankedActions.length === 0) {
+			return '';
+		}
+
+		// Normalize scores to visible widths (0.1 to 10 scale for better visualization)
+		const maxScore = Math.max(...rankedActions.map((a) => a.score || 0), 0.01);
+		const minScore = Math.min(...rankedActions.map((a) => a.score || 0), 0.01);
+		const scoreRange = maxScore - minScore || 0.01;
+
+		const lines: string[] = [
+			'---',
+			'config:',
+			'  sankey:',
+			'    showValues: false',
+			'---',
+			'sankey-beta'
+		];
+
+		// Create flows from aggregateType to each action with score as thickness
+		for (const action of rankedActions) {
+			const normalizedScore = ((action.score || 0) - minScore) / scoreRange * 9 + 1;
+			const roundedScore = Math.round(normalizedScore * 10) / 10;
+			lines.push(`${aggregateType},${action.actionId},${roundedScore}`);
+		}
+
+		return lines.join('\n');
+	}
 </script>
 
 <section class="glass-panel p-6">
@@ -896,6 +928,14 @@
 	{#if rankedActions.length > 0}
 		<div class="mt-6">
 			<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Ranked Actions</h3>
+			
+			<!-- Mermaid Sankey Diagram -->
+			<div class="mb-6 rounded-md border border-white/10 bg-white/5 p-4">
+				<p class="mb-3 text-xs uppercase tracking-[0.15em] text-white/60">Action Flow (Score Distribution)</p>
+				<MermaidDiagram definition={generateMermaidSankey()} title="Action Score Distribution" showFullscreenToggle={false} />
+				<p class="mt-2 text-xs text-white/50">Flow width represents normalized action score (thickness = recommendation strength)</p>
+			</div>
+
 			<div class="overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>

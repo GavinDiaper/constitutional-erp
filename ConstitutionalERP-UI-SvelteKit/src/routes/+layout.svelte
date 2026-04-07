@@ -19,6 +19,23 @@
 		name="description"
 		content="ConstitutionalERP SvelteKit canvas UI for process-first, graph-native operations."
 	/>
+	<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" async></script>
+	<script>
+		// Initialize Mermaid after it loads
+		const initMermaid = () => {
+			if (typeof window !== 'undefined' && window.mermaid) {
+				window.mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+				window.mermaid.contentLoaded();
+			}
+		};
+		
+		// Try immediately
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initMermaid);
+		} else {
+			initMermaid();
+		}
+	</script>
 </svelte:head>
 <div class="page-shell">
 	<TopBar />
