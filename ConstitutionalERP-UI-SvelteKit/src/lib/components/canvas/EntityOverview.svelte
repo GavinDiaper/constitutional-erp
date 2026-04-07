@@ -1,4 +1,5 @@
 <script lang="ts">
+	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
 	export let attributes: Record<string, unknown> = {};
 
 	const lineFieldKeys = new Set([
@@ -143,7 +144,7 @@
 						{#each headerEntries as [key, value] (key)}
 							<div class="rounded-md border border-white/10 bg-white/5 p-3">
 								<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
-								<dd class="mt-1 text-sm">{formatValue(value)}</dd>
+								<dd class="mt-1 text-sm"><JsonFieldValue {value} /></dd>
 							</div>
 						{/each}
 					</dl>
@@ -230,7 +231,7 @@
 			{#each Object.entries(attributes).filter(([key]) => !key.startsWith('__')) as [key, value] (key)}
 				<div class="rounded-md border border-white/10 bg-white/5 p-3">
 					<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
-					<dd class="mt-1 text-sm">{formatValue(value)}</dd>
+				<dd class="mt-1 text-sm"><JsonFieldValue {value} /></dd>
 				</div>
 			{/each}
 		</dl>
