@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
+	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
 	import {
 		actorOptions,
 		actorStore,
@@ -199,6 +201,7 @@
 	let resourceLoading = false;
 	let resourceError = '';
 	let resource: CanonicalResource | null = null;
+	let resourceLines: Array<Record<string, unknown>> = [];
 	let actionOptions: ActionOption[] = [];
 
 	let rankedActions: RankedAction[] = [];
@@ -403,6 +406,7 @@
 	}
 
 	function clearDownstreamState(): void {
+		resourceLines = [];
 		actionOptions = [];
 		rankedActions = [];
 		selectedActionId = '';
@@ -420,44 +424,66 @@
 		return actorOptions.find((actor) => actor.actorId === actorId) ?? actorOptions[0];
 	}
 
-	function formatAttributeValue(value: unknown): string {
-		if (value == null) {
-			return 'null';
+	function resolveLinesHref(resourceType: string, resourceId: string): string | null {
+		const normalized = resourceType.toLowerCase();
+		if (normalized === 'quote' || normalized === 'o2c_quote') {
+			return `/api/v1/o2c/quotes/${resourceId}/lines`;
+		}
+		if (normalized === 'ar-invoice' || normalized === 'invoice' || normalized === 'o2c_invoice') {
+			return `/api/v1/o2c/invoices/${resourceId}/lines`;
+		}
+		if (normalized === 'requisition' || normalized === 'p2p_requisition') {
+			return `/api/v1/p2p/requisitions/${resourceId}/lines`;
+		}
+		if (normalized === 'purchase-order' || normalized === 'purchaseorder' || normalized === 'p2p_purchase_order') {
+			return `/api/v1/p2p/purchase-orders/${resourceId}/lines`;
+		}
+		if (normalized === 'journal' || normalized === 'r2r_journal') {
+			return '/api/v1/query/r2r_journal_line?limit=500&offset=0';
 		}
 
-		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-			return String(value);
+		return null;
+	}
+
+	async function loadResourceLines(resourceValue: CanonicalResource): Promise<Array<Record<string, unknown>>> {
+		const href = resolveLinesHref(resourceValue.type, resourceValue.id);
+		if (!href) {
+			return [];
 		}
 
 		try {
-			return JSON.stringify(value, null, 2);
+			const actor = selectedActor();
+			const response = await fetch('/api/hub/process/action', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					'x-actor-id': actor.actorId,
+					'x-actor-tier': String(actor.authorityTier)
+				},
+				body: JSON.stringify({ href, method: 'GET' })
+			});
+
+			if (!response.ok) {
+				return [];
+			}
+
+			const payload = await response.json();
+			let rows: Array<Record<string, unknown>> = [];
+			if (Array.isArray(payload)) {
+				rows = payload as Array<Record<string, unknown>>;
+			}
+			if (Array.isArray(payload?.data)) {
+				rows = payload.data as Array<Record<string, unknown>>;
+			}
+
+			if (resourceValue.type.toLowerCase() === 'journal') {
+				return rows.filter((row) => String(row.journal_id ?? '') === resourceValue.id);
+			}
+
+			return rows;
 		} catch {
-			return String(value);
+			return [];
 		}
-	}
-
-	function formatAttributeDisplay(key: string, value: unknown): string {
-		if (
-			key === 'rankedActions' &&
-			Array.isArray(value) &&
-			value.every(
-				(item) =>
-					typeof item === 'object' &&
-					item !== null &&
-					'actionId' in item &&
-					typeof (item as { actionId?: unknown }).actionId === 'string'
-			)
-		) {
-			return value
-				.map((item) => (item as { actionId: string }).actionId)
-				.join(', ');
-		}
-
-		return formatAttributeValue(value);
-	}
-
-	function isStructuredValue(value: unknown): boolean {
-		return typeof value === 'object' && value !== null;
 	}
 
 	async function handleCreateEntity(): Promise<void> {
@@ -505,6 +531,7 @@
 		try {
 			const context = buildContext();
 			resource = await getResource(context, selectedActor());
+			resourceLines = await loadResourceLines(resource);
 			actionOptions = await getActions(context, selectedActor());
 		} catch (err) {
 			resourceError = err instanceof Error ? err.message : 'Resource request failed.';
@@ -874,22 +901,15 @@
 				{resource.domain} / {resource.type} / {resource.id} (state: {resource.state})
 			</p>
 
-			{#if Object.entries(resource.attributes ?? {}).length > 0}
-				<div class="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-					{#each Object.entries(resource.attributes ?? {}) as [key, value] (key)}
-						<div class="rounded border border-white/10 bg-white/5 px-2 py-1">
-							<p class="text-white/60">{key}:</p>
-							{#if key === 'rankedActions'}
-								<p class="mt-1 text-white/90">{formatAttributeDisplay(key, value)}</p>
-							{:else if isStructuredValue(value)}
-								<pre class="mt-1 overflow-x-auto rounded border border-white/10 bg-[#112946] p-2 text-[11px] text-white/90">{formatAttributeDisplay(key, value)}</pre>
-							{:else}
-								<p class="mt-1 text-white/90">{formatAttributeDisplay(key, value)}</p>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{/if}
+			<div class="mt-3">
+				<EntityOverview
+					attributes={{
+						...(resource.attributes ?? {}),
+						__entityType: resource.type,
+						__lines: resourceLines
+					}}
+				/>
+			</div>
 		</div>
 	{/if}
 
@@ -1078,7 +1098,9 @@
 			<p class="text-sm"><span class="text-white/60">Mode:</span> {execution.mode}</p>
 			<p class="text-sm"><span class="text-white/60">Action:</span> {execution.actionId}</p>
 			<p class="text-sm"><span class="text-white/60">Status:</span> {execution.statusCode}</p>
-			<pre class="mt-3 overflow-x-auto rounded border border-white/10 bg-[#112946] p-3 text-xs text-white/85">{JSON.stringify(execution.responseBody, null, 2)}</pre>
+			<div class="mt-3">
+				<JsonFieldValue value={execution.responseBody} />
+			</div>
 		</div>
 	{/if}
 
