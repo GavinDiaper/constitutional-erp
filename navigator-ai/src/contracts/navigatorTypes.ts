@@ -81,3 +81,24 @@ export interface ExecutionResult {
   statusCode: number;
   responseBody: Record<string, unknown>;
 }
+
+export type NavigatorCreateOperation =
+  | "create-supplier"
+  | "create-requisition"
+  | "create-purchase-order"
+  | "create-fiscal-year"
+  | "create-fiscal-period"
+  | "create-payment";
+
+export type NavigatorLookupKind =
+  | "suppliers"
+  | "ledgers"
+  | "fiscal-years"
+  | "invoices";
+
+export interface CreateEntityResult {
+  operation: NavigatorCreateOperation;
+  entityType?: string;
+  entityId?: string;
+  data: unknown;
+}

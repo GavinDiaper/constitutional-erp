@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Request, Router } from "express";
 import { z } from "zod";
 import { ProcessFacade } from "../domain/processFacade";
 import { SessionStore } from "../domain/sessionStore";
@@ -92,6 +92,110 @@ const transcriptEntrySchema = z.object({
   timestamp: z.string().datetime({ offset: true })
 });
 
+const createOperationSchema = z.union([
+  z.literal("create-supplier"),
+  z.literal("create-requisition"),
+  z.literal("create-purchase-order"),
+  z.literal("create-fiscal-year"),
+  z.literal("create-fiscal-period"),
+  z.literal("create-payment")
+]);
+
+const lookupKindSchema = z.union([
+  z.literal("suppliers"),
+  z.literal("ledgers"),
+  z.literal("fiscal-years"),
+  z.literal("invoices")
+]);
+
+type CreateOperation = z.infer<typeof createOperationSchema>;
+type LookupKind = z.infer<typeof lookupKindSchema>;
+
+const CREATE_OPERATION_CONFIG: Record<
+  CreateOperation,
+  { route: string; entityType: string; entityIdField: string }
+> = {
+  "create-supplier": {
+    route: "/api/v1/p2p/suppliers",
+    entityType: "p2p_supplier",
+    entityIdField: "supplier_id"
+  },
+  "create-requisition": {
+    route: "/api/v1/p2p/requisitions",
+    entityType: "p2p_requisition",
+    entityIdField: "requisition_id"
+  },
+  "create-purchase-order": {
+    route: "/api/v1/p2p/purchase-orders",
+    entityType: "p2p_purchase_order",
+    entityIdField: "po_id"
+  },
+  "create-fiscal-year": {
+    route: "/api/v1/r2r/fiscal-years",
+    entityType: "r2r_fiscal_year",
+    entityIdField: "fiscal_year_id"
+  },
+  "create-fiscal-period": {
+    route: "/api/v1/r2r/fiscal-periods",
+    entityType: "r2r_fiscal_period",
+    entityIdField: "fiscal_period_id"
+  },
+  "create-payment": {
+    route: "/api/v1/o2c/payments",
+    entityType: "o2c_payment",
+    entityIdField: "payment_id"
+  }
+};
+
+const LOOKUP_ROUTE_CONFIG: Record<LookupKind, string> = {
+  suppliers: "/api/v1/query/p2p_supplier",
+  ledgers: "/api/v1/query/r2r_ledger",
+  "fiscal-years": "/api/v1/query/r2r_fiscal_year",
+  invoices: "/api/v1/query/o2c_invoice"
+};
+
+function foundationHeaders(req: Request, config: AppConfig): Record<string, string> {
+  const actorId = req.header("x-actor-id") ?? "principal.system";
+  const actorTier = req.header("x-actor-tier") ?? "5";
+
+  return {
+    "accept": "application/json",
+    "x-api-key": config.foundationErpApiKey,
+    [config.foundationErpIngressIdHeader]: config.foundationErpIngressId,
+    "x-actor-id": actorId,
+    "x-actor-tier": actorTier
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function normalizeLookupRows(kind: LookupKind, rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  if (kind === "suppliers") {
+    return rows.filter((row) => String(row.status ?? "").toLowerCase() !== "inactive");
+  }
+
+  if (kind === "invoices") {
+    return rows.filter((row) => {
+      const state = String(row.state ?? "").toLowerCase();
+      const amountDue = Number(row.amount_due ?? 0);
+      const amountPaid = Number(row.amount_paid ?? 0);
+      if (Number.isFinite(amountDue) && Number.isFinite(amountPaid)) {
+        return amountDue > amountPaid;
+      }
+
+      return state !== "paid";
+    });
+  }
+
+  return rows;
+}
+
 export function createHubRouter(deps: {
   processFacade: ProcessFacade;
   catalog: McpCatalog;
@@ -103,19 +207,11 @@ export function createHubRouter(deps: {
   router.get("/lookups/p2p/suppliers", async (req, res, next) => {
     try {
       const activeOnly = String(req.query.activeOnly ?? "false").toLowerCase() === "true";
-      const actorId = req.header("x-actor-id") ?? "principal.system";
-      const actorTier = req.header("x-actor-tier") ?? "5";
       const upstream = await requestJson<{ data?: Array<Record<string, unknown>> }>(
         `${deps.config.foundationErpUrl}/api/v1/p2p/suppliers`,
         {
           method: "GET",
-          headers: {
-            "accept": "application/json",
-            "x-api-key": deps.config.foundationErpApiKey,
-            [deps.config.foundationErpIngressIdHeader]: deps.config.foundationErpIngressId,
-            "x-actor-id": actorId,
-            "x-actor-tier": actorTier
-          }
+          headers: foundationHeaders(req, deps.config)
         }
       );
 
@@ -125,6 +221,53 @@ export function createHubRouter(deps: {
         : suppliers;
 
       res.json({ data: filtered });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/create/lookups/:kind", async (req, res, next) => {
+    try {
+      const kind = lookupKindSchema.parse(req.params.kind);
+      const route = LOOKUP_ROUTE_CONFIG[kind];
+      const upstream = await requestJson<{ data?: Array<Record<string, unknown>> }>(
+        `${deps.config.foundationErpUrl}${route}`,
+        {
+          method: "GET",
+          headers: foundationHeaders(req, deps.config)
+        }
+      );
+
+      const rows = Array.isArray(upstream.data) ? upstream.data : [];
+      res.json({ data: normalizeLookupRows(kind, rows) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/create/:operation", async (req, res, next) => {
+    try {
+      const operation = createOperationSchema.parse(req.params.operation);
+      const config = CREATE_OPERATION_CONFIG[operation];
+      const payload = asRecord(req.body ?? {});
+      const created = await requestJson<Record<string, unknown>>(
+        `${deps.config.foundationErpUrl}${config.route}`,
+        {
+          method: "POST",
+          headers: {
+            ...foundationHeaders(req, deps.config),
+            "content-type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      res.status(201).json({
+        operation,
+        entityType: config.entityType,
+        entityId: String(created[config.entityIdField] ?? ""),
+        data: created
+      });
     } catch (error) {
       next(error);
     }

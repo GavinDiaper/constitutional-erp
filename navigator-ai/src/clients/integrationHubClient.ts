@@ -1,5 +1,11 @@
 import { AppConfig } from "../config/env";
-import { CanonicalResource, SessionContext } from "../contracts/navigatorTypes";
+import {
+  CanonicalResource,
+  CreateEntityResult,
+  NavigatorCreateOperation,
+  NavigatorLookupKind,
+  SessionContext
+} from "../contracts/navigatorTypes";
 import { requestJsonAllowError, requestJson } from "./http";
 
 interface HubProcessLink {
@@ -28,14 +34,18 @@ function normalizeDomain(aggregateType: string): string {
 export class IntegrationHubClient {
   constructor(private readonly config: AppConfig) {}
 
+  private headers(actorId: string): Record<string, string> {
+    return {
+      "x-api-key": this.config.integrationHubApiKey,
+      "x-actor-id": actorId
+    };
+  }
+
   async getResource(ctx: SessionContext): Promise<CanonicalResource> {
     const url = `${this.config.integrationHubUrl}/api/v1/hub/process/${encodeURIComponent(ctx.aggregateType)}/${encodeURIComponent(ctx.aggregateId)}`;
     const response = await requestJson<HubProcessResponse>(url, {
       method: "GET",
-      headers: {
-        "x-api-key": this.config.integrationHubApiKey,
-        "x-actor-id": ctx.actorId
-      }
+      headers: this.headers(ctx.actorId)
     });
 
     const links: CanonicalResource["links"] = {};
@@ -72,10 +82,40 @@ export class IntegrationHubClient {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": this.config.integrationHubApiKey,
-        "x-actor-id": input.actorId
+        ...this.headers(input.actorId)
       },
       body: JSON.stringify(input.payload)
     });
+  }
+
+  async createEntity(input: {
+    operation: NavigatorCreateOperation;
+    payload: Record<string, unknown>;
+    actorId: string;
+  }): Promise<CreateEntityResult> {
+    const url = `${this.config.integrationHubUrl}/api/v1/hub/create/${encodeURIComponent(input.operation)}`;
+    const response = await requestJson<CreateEntityResult>(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...this.headers(input.actorId)
+      },
+      body: JSON.stringify(input.payload ?? {})
+    });
+
+    return response.data;
+  }
+
+  async getCreateLookups(input: {
+    kind: NavigatorLookupKind;
+    actorId: string;
+  }): Promise<Array<Record<string, unknown>>> {
+    const url = `${this.config.integrationHubUrl}/api/v1/hub/create/lookups/${encodeURIComponent(input.kind)}`;
+    const response = await requestJson<{ data?: Array<Record<string, unknown>> }>(url, {
+      method: "GET",
+      headers: this.headers(input.actorId)
+    });
+
+    return Array.isArray(response.data.data) ? response.data.data : [];
   }
 }

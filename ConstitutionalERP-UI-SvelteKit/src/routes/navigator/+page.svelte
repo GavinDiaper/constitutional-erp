@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
 		actorOptions,
@@ -7,9 +8,11 @@
 		type ActorContext
 	} from '$lib/stores/actorStore';
 	import {
+		createEntity,
 		decide,
 		executeAction,
 		explainAction,
+		getCreateLookups,
 		getActions,
 		getResource,
 		rankActions,
@@ -18,25 +21,19 @@
 		type CanonicalResource,
 		type DecisionOutcome,
 		type ExecutionResult,
+		type NavigatorCreateOperation,
+		type NavigatorCreateResult,
 		type NavigatorContext,
 		type RankedAction,
 		type SimulationResult
 	} from '$lib/api/navigator';
 
 	interface QuickCreatePreset {
-		id: string;
+		operation: NavigatorCreateOperation;
 		label: string;
 		domain: (typeof DOMAINS)[number];
 		aggregateType: string;
 		description: string;
-		samplePayload: Record<string, unknown>;
-	}
-
-	interface CreateResult {
-		operation: string;
-		entityType?: string;
-		entityId?: string;
-		data: unknown;
 	}
 
 	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R'] as const;
@@ -69,212 +66,46 @@
 	};
 	const QUICK_CREATE_PRESETS: QuickCreatePreset[] = [
 		{
-			id: 'create-requisition',
-			label: 'P2P Requisition',
-			domain: 'P2P',
-			aggregateType: 'requisition',
-			description: 'Create a draft requisition and continue with Navigator actions on the new aggregate.',
-			samplePayload: {
-				requester: 'principal.system',
-				department: 'Operations',
-				currencyCode: 'USD'
-			}
-		},
-		{
-			id: 'create-supplier',
+			operation: 'create-supplier',
 			label: 'P2P Supplier',
 			domain: 'P2P',
 			aggregateType: 'supplier',
-			description: 'Create a supplier record that can then be activated or governed through Navigator.',
-			samplePayload: {
-				supplierName: 'Navigator Supplier',
-				email: 'navigator.supplier@example.local',
-				paymentTerms: 'NET30',
-				currencyCode: 'USD'
-			}
+			description: 'Create a supplier that can be used in purchase order creation.'
 		},
 		{
-			id: 'create-purchase-order',
+			operation: 'create-requisition',
+			label: 'P2P Requisition',
+			domain: 'P2P',
+			aggregateType: 'requisition',
+			description: 'Create a draft requisition and continue with Navigator actions.'
+		},
+		{
+			operation: 'create-purchase-order',
 			label: 'P2P Purchase Order',
 			domain: 'P2P',
 			aggregateType: 'purchase-order',
-			description: 'Create a purchase order. Set supplierId and any optional requisition linkage before running it.',
-			samplePayload: {
-				supplierId: 'SUP-REQUIRED',
-				requisitionId: '',
-				totalAmount: 1000,
-				currencyCode: 'USD',
-				deliveryAddress: '1 Constitutional Way'
-			}
+			description: 'Create a purchase order using live supplier lookup.'
 		},
 		{
-			id: 'create-goods-receipt',
-			label: 'P2P Goods Receipt',
-			domain: 'P2P',
-			aggregateType: 'goods-receipt',
-			description: 'Create a goods receipt against an existing purchase order.',
-			samplePayload: {
-				poId: 'PO-REQUIRED'
-			}
-		},
-		{
-			id: 'create-supplier-invoice',
-			label: 'P2P Supplier Invoice',
-			domain: 'P2P',
-			aggregateType: 'supplier-invoice',
-			description: 'Create a supplier invoice from an existing goods receipt.',
-			samplePayload: {
-				receiptId: 'GR-REQUIRED',
-				currencyCode: 'USD'
-			}
-		},
-		{
-			id: 'create-ap-payment',
-			label: 'P2P AP Payment',
-			domain: 'P2P',
-			aggregateType: 'ap-payment',
-			description: 'Create an AP payment for an existing supplier invoice.',
-			samplePayload: {
-				supplierInvoiceId: 'SI-REQUIRED',
-				amount: 100,
-				currencyCode: 'USD',
-				method: 'bank-transfer'
-			}
-		},
-		{
-			id: 'create-quote',
-			label: 'O2C Quote',
-			domain: 'O2C',
-			aggregateType: 'quote',
-			description: 'Create a quote. Set legalEntityId and optional line details before running it.',
-			samplePayload: {
-				customerName: 'Navigator Customer',
-				customerEmail: 'navigator.customer@example.local',
-				legalEntityId: 'LE-REQUIRED',
-				currencyCode: 'USD'
-			}
-		},
-		{
-			id: 'create-payment',
-			label: 'O2C AR Payment',
-			domain: 'O2C',
-			aggregateType: 'ar-payment',
-			description: 'Register a payment against an existing AR invoice.',
-			samplePayload: {
-				invoiceId: 'ARI-REQUIRED',
-				amount: 100,
-				currencyCode: 'USD',
-				method: 'bank-transfer'
-			}
-		},
-		{
-			id: 'create-account',
-			label: 'R2R Account',
-			domain: 'R2R',
-			aggregateType: 'account',
-			description: 'Create a chart-of-accounts entry.',
-			samplePayload: {
-				ledgerId: 'LEDGER-REQUIRED',
-				accountCode: '6100',
-				accountName: 'Navigator Expense Account'
-			}
-		},
-		{
-			id: 'create-fiscal-year',
+			operation: 'create-fiscal-year',
 			label: 'R2R Fiscal Year',
 			domain: 'R2R',
 			aggregateType: 'fiscal-year',
-			description: 'Create a fiscal year anchor for accounting periods.',
-			samplePayload: {
-				ledgerId: 'LEDGER-REQUIRED',
-				year: 2026,
-				startDate: '2026-01-01',
-				endDate: '2026-12-31'
-			}
+			description: 'Create a fiscal year using live ledger lookup.'
 		},
 		{
-			id: 'create-fiscal-period',
+			operation: 'create-fiscal-period',
 			label: 'R2R Fiscal Period',
 			domain: 'R2R',
 			aggregateType: 'fiscal-period',
-			description: 'Create a fiscal period under an existing fiscal year.',
-			samplePayload: {
-				fiscalYearId: 'FY-REQUIRED',
-				periodNumber: 1,
-				startDate: '2026-01-01',
-				endDate: '2026-01-31'
-			}
+			description: 'Create a fiscal period using live fiscal-year lookup.'
 		},
 		{
-			id: 'create-journal',
-			label: 'R2R Journal',
-			domain: 'R2R',
-			aggregateType: 'journal',
-			description: 'Create a journal. Set legal entity, ledger, fiscal period, and account IDs before running it.',
-			samplePayload: {
-				legalEntityId: 'LE-REQUIRED',
-				ledgerId: 'LEDGER-REQUIRED',
-				fiscalPeriodId: 'FP-REQUIRED',
-				description: 'Navigator bootstrap journal',
-				debitAccountId: 'ACC-DEBIT-REQUIRED',
-				creditAccountId: 'ACC-CREDIT-REQUIRED',
-				amount: 100,
-				memo: 'Navigator quick create'
-			}
-		},
-		{
-			id: 'create-employee',
-			label: 'H2R Employee',
-			domain: 'H2R',
-			aggregateType: 'employee',
-			description: 'Create an employee and optionally auto-activate it.',
-			samplePayload: {
-				name: 'Navigator Employee',
-				email: 'navigator.employee@example.local',
-				autoActivate: true
-			}
-		},
-		{
-			id: 'create-position',
-			label: 'H2R Position',
-			domain: 'H2R',
-			aggregateType: 'position',
-			description: 'Create an H2R position. Edit the JSON with the required org fields for your environment.',
-			samplePayload: {
-				title: 'Navigator Position'
-			}
-		},
-		{
-			id: 'create-assignment',
-			label: 'H2R Assignment',
-			domain: 'H2R',
-			aggregateType: 'assignment',
-			description: 'Create an assignment between employee and position.',
-			samplePayload: {
-				employeeId: 'EMP-REQUIRED',
-				positionId: 'POS-REQUIRED'
-			}
-		},
-		{
-			id: 'create-credential',
-			label: 'H2R Credential',
-			domain: 'H2R',
-			aggregateType: 'credential',
-			description: 'Issue a credential for an employee.',
-			samplePayload: {
-				employeeId: 'EMP-REQUIRED',
-				credentialType: 'safety-training'
-			}
-		},
-		{
-			id: 'create-authority-rule',
-			label: 'H2R Authority Rule',
-			domain: 'H2R',
-			aggregateType: 'authority-rule',
-			description: 'Create an authority rule for governance and approvals.',
-			samplePayload: {
-				ruleName: 'Navigator Authority Rule'
-			}
+			operation: 'create-payment',
+			label: 'O2C Payment',
+			domain: 'O2C',
+			aggregateType: 'ar-payment',
+			description: 'Register AR payment using live invoice lookup.'
 		}
 	];
 
@@ -286,16 +117,58 @@
 	let aggregateIdsByType: Record<string, string[]> = Object.fromEntries(
 		Object.entries(DEFAULT_AGGREGATE_IDS).map(([key, value]) => [key, [...value]])
 	);
-	let createPresetId = 'create-requisition';
-	let lastCreatePresetId = createPresetId;
-	let createPayloadText = JSON.stringify(
-		QUICK_CREATE_PRESETS.find((preset) => preset.id === createPresetId)?.samplePayload ?? {},
-		null,
-		2
-	);
+	let createPresetId: NavigatorCreateOperation = 'create-requisition';
 	let createLoading = false;
 	let createError = '';
-	let createResult: CreateResult | null = null;
+	let createResult: NavigatorCreateResult | null = null;
+
+	let supplierLookup: Array<Record<string, unknown>> = [];
+	let ledgerLookup: Array<Record<string, unknown>> = [];
+	let fiscalYearLookup: Array<Record<string, unknown>> = [];
+	let invoiceLookup: Array<Record<string, unknown>> = [];
+	let lookupLoading = false;
+
+	let supplierForm = {
+		supplierName: 'Navigator Supplier',
+		email: 'navigator.supplier@example.local',
+		paymentTerms: 'NET30',
+		currencyCode: 'USD'
+	};
+
+	let requisitionForm = {
+		requester: 'principal.system',
+		department: 'Operations',
+		currencyCode: 'USD'
+	};
+
+	let purchaseOrderForm = {
+		supplierId: '',
+		requisitionId: '',
+		totalAmount: 1000,
+		currencyCode: 'USD',
+		deliveryAddress: '1 Constitutional Way'
+	};
+
+	let fiscalYearForm = {
+		ledgerId: '',
+		year: new Date().getFullYear(),
+		startDate: `${new Date().getFullYear()}-01-01`,
+		endDate: `${new Date().getFullYear()}-12-31`
+	};
+
+	let fiscalPeriodForm = {
+		fiscalYearId: '',
+		periodNumber: 1,
+		startDate: `${new Date().getFullYear()}-01-01`,
+		endDate: `${new Date().getFullYear()}-01-31`
+	};
+
+	let paymentForm = {
+		invoiceId: '',
+		amount: 100,
+		currencyCode: 'USD',
+		method: 'bank-transfer'
+	};
 
 	let loading = false;
 	let errorMessage = '';
@@ -327,10 +200,20 @@
 		aggregateId = getAggregateIdOptions(aggregateType)[0] ?? '';
 	}
 
-	$: if (createPresetId !== lastCreatePresetId) {
-		createPayloadText = JSON.stringify(selectedCreatePreset()?.samplePayload ?? {}, null, 2);
-		lastCreatePresetId = createPresetId;
-		createError = '';
+	$: if (createPresetId === 'create-purchase-order' && !purchaseOrderForm.supplierId && supplierLookup.length > 0) {
+		purchaseOrderForm.supplierId = String(supplierLookup[0]?.supplier_id ?? '');
+	}
+
+	$: if (createPresetId === 'create-fiscal-year' && !fiscalYearForm.ledgerId && ledgerLookup.length > 0) {
+		fiscalYearForm.ledgerId = String(ledgerLookup[0]?.ledger_id ?? '');
+	}
+
+	$: if (createPresetId === 'create-fiscal-period' && !fiscalPeriodForm.fiscalYearId && fiscalYearLookup.length > 0) {
+		fiscalPeriodForm.fiscalYearId = String(fiscalYearLookup[0]?.fiscal_year_id ?? '');
+	}
+
+	$: if (createPresetId === 'create-payment' && !paymentForm.invoiceId && invoiceLookup.length > 0) {
+		paymentForm.invoiceId = String(invoiceLookup[0]?.invoice_id ?? '');
 	}
 
 	$: if ($actorStore.actorId !== actorId) {
@@ -356,8 +239,86 @@
 	}
 
 	function selectedCreatePreset(): QuickCreatePreset | undefined {
-		return QUICK_CREATE_PRESETS.find((preset) => preset.id === createPresetId);
+		return QUICK_CREATE_PRESETS.find((preset) => preset.operation === createPresetId);
 	}
+
+	function lookupLabel(row: Record<string, unknown>, idKey: string, nameKeys: string[]): string {
+		const id = String(row[idKey] ?? '');
+		for (const key of nameKeys) {
+			const value = row[key];
+			if (typeof value === 'string' && value.trim().length > 0) {
+				return `${value} (${id})`;
+			}
+		}
+
+		return id;
+	}
+
+	function buildCreatePayload(operation: NavigatorCreateOperation): Record<string, unknown> {
+		switch (operation) {
+			case 'create-supplier':
+				return { ...supplierForm };
+			case 'create-requisition':
+				return { ...requisitionForm };
+			case 'create-purchase-order':
+				return {
+					supplierId: purchaseOrderForm.supplierId,
+					requisitionId: purchaseOrderForm.requisitionId || undefined,
+					totalAmount: Number(purchaseOrderForm.totalAmount),
+					currencyCode: purchaseOrderForm.currencyCode,
+					deliveryAddress: purchaseOrderForm.deliveryAddress
+				};
+			case 'create-fiscal-year':
+				return {
+					ledgerId: fiscalYearForm.ledgerId,
+					year: Number(fiscalYearForm.year),
+					startDate: fiscalYearForm.startDate,
+					endDate: fiscalYearForm.endDate
+				};
+			case 'create-fiscal-period':
+				return {
+					fiscalYearId: fiscalPeriodForm.fiscalYearId,
+					periodNumber: Number(fiscalPeriodForm.periodNumber),
+					startDate: fiscalPeriodForm.startDate,
+					endDate: fiscalPeriodForm.endDate
+				};
+			case 'create-payment':
+				return {
+					invoiceId: paymentForm.invoiceId,
+					amount: Number(paymentForm.amount),
+					currencyCode: paymentForm.currencyCode,
+					method: paymentForm.method
+				};
+		}
+	}
+
+	async function loadCreateLookups(): Promise<void> {
+		lookupLoading = true;
+		createError = '';
+
+		try {
+			const actor = selectedActor();
+			const [suppliers, ledgers, fiscalYears, invoices] = await Promise.all([
+				getCreateLookups('suppliers', actor),
+				getCreateLookups('ledgers', actor),
+				getCreateLookups('fiscal-years', actor),
+				getCreateLookups('invoices', actor)
+			]);
+
+			supplierLookup = suppliers;
+			ledgerLookup = ledgers;
+			fiscalYearLookup = fiscalYears;
+			invoiceLookup = invoices;
+		} catch (err) {
+			createError = err instanceof Error ? err.message : 'Failed to load create lookups.';
+		} finally {
+			lookupLoading = false;
+		}
+	}
+
+	onMount(() => {
+		void loadCreateLookups();
+	});
 
 	function registerAggregateId(targetAggregateType: string, id: string): void {
 		const existing = aggregateIdsByType[targetAggregateType] ?? [];
@@ -429,43 +390,10 @@
 		return typeof value === 'object' && value !== null;
 	}
 
-	async function readCreateError(response: Response): Promise<string> {
-		const text = await response.text();
-
-		if (!text) {
-			return 'Create operation failed.';
-		}
-
-		try {
-			const parsed = JSON.parse(text) as { error?: unknown; detail?: unknown; message?: unknown };
-			if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
-				return parsed.error;
-			}
-			if (typeof parsed.detail === 'string' && parsed.detail.trim().length > 0) {
-				return parsed.detail;
-			}
-			if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
-				return parsed.message;
-			}
-		} catch {
-			// Fall through to raw text.
-		}
-
-		return text;
-	}
-
 	async function handleCreateEntity(): Promise<void> {
 		const preset = selectedCreatePreset();
 		if (!preset) {
 			createError = 'Select a create operation.';
-			return;
-		}
-
-		let payload: Record<string, unknown>;
-		try {
-			payload = JSON.parse(createPayloadText || '{}') as Record<string, unknown>;
-		} catch {
-			createError = 'Create payload must be valid JSON.';
 			return;
 		}
 
@@ -476,26 +404,13 @@
 
 		try {
 			const actor = selectedActor();
-			const response = await fetch(resolve(`/api/hub/bootstrap/${preset.id}`), {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json',
-					'x-actor-id': actor.actorId,
-					'x-actor-tier': String(actor.authorityTier)
-				},
-				body: JSON.stringify(payload)
-			});
-
-			if (!response.ok) {
-				throw new Error(await readCreateError(response));
-			}
-
-			createResult = (await response.json()) as CreateResult;
+			createResult = await createEntity(createPresetId, buildCreatePayload(createPresetId), actor);
 			if (createResult.entityId) {
 				registerAggregateId(preset.aggregateType, createResult.entityId);
 				domain = preset.domain;
 				aggregateType = preset.aggregateType;
 				aggregateId = createResult.entityId;
+				await loadCreateLookups();
 				await handleLoadResource();
 			}
 		} catch (err) {

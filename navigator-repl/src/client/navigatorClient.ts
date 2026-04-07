@@ -168,4 +168,37 @@ export class NavigatorClient {
       }
     });
   }
+
+  async createEntity(input: {
+    operation:
+      | "create-supplier"
+      | "create-requisition"
+      | "create-purchase-order"
+      | "create-fiscal-year"
+      | "create-fiscal-period"
+      | "create-payment";
+    actorId: string;
+    payload: Record<string, unknown>;
+  }): Promise<unknown> {
+    return this.request("/create", {
+      method: "POST",
+      headers: {
+        "x-actor-id": input.actorId
+      },
+      body: JSON.stringify(input)
+    });
+  }
+
+  async getCreateLookups(input: {
+    kind: "suppliers" | "ledgers" | "fiscal-years" | "invoices";
+    actorId: string;
+  }): Promise<unknown> {
+    const query = new URLSearchParams({ actorId: input.actorId });
+    return this.request(`/create/lookups/${encodeURIComponent(input.kind)}?${query.toString()}`, {
+      method: "GET",
+      headers: {
+        "x-actor-id": input.actorId
+      }
+    });
+  }
 }

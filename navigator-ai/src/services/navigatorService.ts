@@ -2,7 +2,17 @@ import { AuthorityClient } from "../clients/authorityClient";
 import { CepClient } from "../clients/cepClient";
 import { GovernanceClient } from "../clients/governanceClient";
 import { IntegrationHubClient } from "../clients/integrationHubClient";
-import { ActionOption, DecisionOutcome, NavigatorContext, RankedAction, SessionContext, SimulationResult } from "../contracts/navigatorTypes";
+import {
+  ActionOption,
+  CreateEntityResult,
+  DecisionOutcome,
+  NavigatorContext,
+  NavigatorCreateOperation,
+  NavigatorLookupKind,
+  RankedAction,
+  SessionContext,
+  SimulationResult
+} from "../contracts/navigatorTypes";
 import { listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
 import { decide } from "./decisionEngine";
@@ -201,5 +211,55 @@ export class NavigatorService {
   async actions(ctx: SessionContext): Promise<ActionOption[]> {
     const resource = await this.integrationHubClient.getResource(ctx);
     return interpretHypermedia(resource, ctx);
+  }
+
+  async createEntity(input: {
+    operation: NavigatorCreateOperation;
+    payload: Record<string, unknown>;
+    actorId: string;
+  }): Promise<CreateEntityResult> {
+    const result = await this.integrationHubClient.createEntity(input);
+
+    if (result.entityId) {
+      const domainByType: Record<string, SessionContext["domain"]> = {
+        p2p_supplier: "P2P",
+        p2p_requisition: "P2P",
+        p2p_purchase_order: "P2P",
+        r2r_fiscal_year: "R2R",
+        r2r_fiscal_period: "R2R",
+        o2c_payment: "O2C"
+      };
+      const aggregateTypeByEntity: Record<string, string> = {
+        p2p_supplier: "supplier",
+        p2p_requisition: "requisition",
+        p2p_purchase_order: "purchase-order",
+        r2r_fiscal_year: "fiscal-year",
+        r2r_fiscal_period: "fiscal-period",
+        o2c_payment: "ar-payment"
+      };
+      const entityType = String(result.entityType ?? "");
+      const domain = domainByType[entityType];
+      const aggregateType = aggregateTypeByEntity[entityType];
+      if (domain && aggregateType) {
+        await this.cepClient.publish({
+          eventType: "Navigator.EntityCreated",
+          actorId: input.actorId,
+          domain,
+          aggregateType,
+          aggregateId: result.entityId,
+          payload: {
+            operation: input.operation,
+            entityType,
+            entityId: result.entityId
+          }
+        });
+      }
+    }
+
+    return result;
+  }
+
+  async createLookups(kind: NavigatorLookupKind, actorId: string): Promise<Array<Record<string, unknown>>> {
+    return this.integrationHubClient.getCreateLookups({ kind, actorId });
   }
 }

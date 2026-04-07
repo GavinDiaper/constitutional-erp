@@ -28,6 +28,22 @@ const transcriptSchema = z.object({
   outputText: z.string().min(1)
 });
 
+const createOperationSchema = z.union([
+  z.literal("create-supplier"),
+  z.literal("create-requisition"),
+  z.literal("create-purchase-order"),
+  z.literal("create-fiscal-year"),
+  z.literal("create-fiscal-period"),
+  z.literal("create-payment")
+]);
+
+const createLookupKindSchema = z.union([
+  z.literal("suppliers"),
+  z.literal("ledgers"),
+  z.literal("fiscal-years"),
+  z.literal("invoices")
+]);
+
 export function createNavigatorRouter(service: NavigatorService) {
   const router = Router();
 
@@ -153,6 +169,36 @@ export function createNavigatorRouter(service: NavigatorService) {
       const context = contextSchema.parse(req.query);
       const actions = await service.actions(context);
       res.json({ data: actions });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/create", async (req, res, next) => {
+    try {
+      const body = z.object({
+        operation: createOperationSchema,
+        actorId: z.string().min(1),
+        payload: z.record(z.unknown()).optional()
+      }).parse(req.body ?? {});
+
+      const result = await service.createEntity({
+        operation: body.operation,
+        actorId: body.actorId,
+        payload: body.payload ?? {}
+      });
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/create/lookups/:kind", async (req, res, next) => {
+    try {
+      const kind = createLookupKindSchema.parse(req.params.kind);
+      const actorId = String(req.query.actorId ?? req.header("x-actor-id") ?? "principal.system");
+      const data = await service.createLookups(kind, actorId);
+      res.json({ data });
     } catch (error) {
       next(error);
     }

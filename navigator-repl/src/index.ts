@@ -36,6 +36,8 @@ function printHelp() {
     "  links                        Show available hypermedia actions",
     "",
     "Navigator AI Decisions:",
+    "  create <operation> [json]    Create entity via Navigator AI",
+    "  lookup <kind>                List prerequisite IDs (suppliers|ledgers|fiscal-years|invoices)",
     "  propose                      Rank recommended actions",
     "  explain [actionId]           Explain top or selected action",
     "  simulate <actionId>          Simulate action outcome",
@@ -235,6 +237,77 @@ async function main() {
         const ranked = await navigatorClient.rankActions(session) as { rankedActions?: Array<{ actionId?: string }> };
         lastRankedActions = ranked.rankedActions ?? [];
         result = ranked;
+      } else if (cmd === "lookup") {
+        const kind = args[0] as "suppliers" | "ledgers" | "fiscal-years" | "invoices" | undefined;
+        if (!kind || !["suppliers", "ledgers", "fiscal-years", "invoices"].includes(kind)) {
+          result = "Usage: lookup <suppliers|ledgers|fiscal-years|invoices>";
+        } else if (!session.actorId) {
+          result = "Set actor first: set actor <actorId>";
+        } else {
+          result = await navigatorClient.getCreateLookups({ kind, actorId: session.actorId });
+        }
+      } else if (cmd === "create") {
+        const operation = args[0] as
+          | "create-supplier"
+          | "create-requisition"
+          | "create-purchase-order"
+          | "create-fiscal-year"
+          | "create-fiscal-period"
+          | "create-payment"
+          | undefined;
+        const validOperations = new Set([
+          "create-supplier",
+          "create-requisition",
+          "create-purchase-order",
+          "create-fiscal-year",
+          "create-fiscal-period",
+          "create-payment"
+        ]);
+
+        if (!operation || !validOperations.has(operation)) {
+          result = "Usage: create <create-supplier|create-requisition|create-purchase-order|create-fiscal-year|create-fiscal-period|create-payment> [json]";
+        } else if (!session.actorId) {
+          result = "Set actor first: set actor <actorId>";
+        } else {
+          let payload: Record<string, unknown> = {};
+          if (args[1]) {
+            payload = JSON.parse(args.slice(1).join(" ")) as Record<string, unknown>;
+          }
+
+          const created = await navigatorClient.createEntity({
+            operation,
+            actorId: session.actorId,
+            payload
+          }) as { entityType?: string; entityId?: string };
+
+          const aggregateTypeByEntityType: Record<string, string> = {
+            p2p_supplier: "supplier",
+            p2p_requisition: "requisition",
+            p2p_purchase_order: "purchase-order",
+            r2r_fiscal_year: "fiscal-year",
+            r2r_fiscal_period: "fiscal-period",
+            o2c_payment: "ar-payment"
+          };
+          const domainByEntityType: Record<string, Domain> = {
+            p2p_supplier: "P2P",
+            p2p_requisition: "P2P",
+            p2p_purchase_order: "P2P",
+            r2r_fiscal_year: "R2R",
+            r2r_fiscal_period: "R2R",
+            o2c_payment: "O2C"
+          };
+
+          const entityType = String(created.entityType ?? "");
+          const entityId = String(created.entityId ?? "");
+          if (entityType && entityId && aggregateTypeByEntityType[entityType] && domainByEntityType[entityType]) {
+            session.domain = domainByEntityType[entityType];
+            session.aggregateType = aggregateTypeByEntityType[entityType];
+            session.aggregateId = entityId;
+            session.lastLinks = undefined;
+          }
+
+          result = created;
+        }
       } else if (cmd === "explain") {
         const actionId = args[0] ?? lastRankedActions[0]?.actionId;
         result = await navigatorClient.explainDecision(session, actionId);

@@ -78,6 +78,23 @@ export interface ExecutionResult {
 	responseBody: Record<string, unknown>;
 }
 
+export type NavigatorCreateOperation =
+	| 'create-supplier'
+	| 'create-requisition'
+	| 'create-purchase-order'
+	| 'create-fiscal-year'
+	| 'create-fiscal-period'
+	| 'create-payment';
+
+export type NavigatorCreateLookupKind = 'suppliers' | 'ledgers' | 'fiscal-years' | 'invoices';
+
+export interface NavigatorCreateResult {
+	operation: NavigatorCreateOperation;
+	entityType?: string;
+	entityId?: string;
+	data: unknown;
+}
+
 function actorHeaders(actor: ActorContext): HeadersInit {
 	return {
 		'content-type': 'application/json',
@@ -251,4 +268,44 @@ export async function executeAction(
 	}
 
 	return (await response.json()) as ExecutionResult;
+}
+
+export async function createEntity(
+	operation: NavigatorCreateOperation,
+	payload: Record<string, unknown>,
+	actor: ActorContext
+): Promise<NavigatorCreateResult> {
+	const response = await fetch('/api/navigator/create', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify({
+			operation,
+			payload,
+			actorId: actor.actorId
+		})
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator create request failed'));
+	}
+
+	return (await response.json()) as NavigatorCreateResult;
+}
+
+export async function getCreateLookups(
+	kind: NavigatorCreateLookupKind,
+	actor: ActorContext
+): Promise<Array<Record<string, unknown>>> {
+	const query = new URLSearchParams({ actorId: actor.actorId });
+	const response = await fetch(`/api/navigator/create/lookups/${encodeURIComponent(kind)}?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator lookup request failed'));
+	}
+
+	const data = (await response.json()) as { data?: Array<Record<string, unknown>> };
+	return data.data ?? [];
 }
