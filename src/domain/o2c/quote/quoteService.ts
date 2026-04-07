@@ -29,6 +29,16 @@ interface QuoteLineInput {
   unitPrice: number;
 }
 
+interface QuoteLineRow {
+  quote_line_id: string;
+  quote_id: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  created_at: string;
+}
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -134,6 +144,19 @@ export function listQuotes() {
 
 export function getQuoteById(quoteId: string) {
   return getQuote(quoteId);
+}
+
+export function listQuoteLines(quoteId: string): QuoteLineRow[] {
+  ensureQuoteExists(quoteId);
+  return db
+    .prepare(
+      "SELECT quote_line_id, quote_id, sku, quantity, unit_price, line_total, created_at FROM o2c_quote_line WHERE quote_id = ? ORDER BY created_at ASC"
+    )
+    .all(quoteId) as QuoteLineRow[];
+}
+
+function ensureQuoteExists(quoteId: string): void {
+  getQuote(quoteId);
 }
 
 export function updateQuoteState(quoteId: string, toState: QuoteState, actor?: EventActor) {

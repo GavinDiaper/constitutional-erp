@@ -12,6 +12,7 @@ import {
   addQuoteLine,
   createQuote,
   getQuoteById,
+  listQuoteLines,
   listQuotes,
   sendQuote,
   acceptQuote,
@@ -388,6 +389,11 @@ o2cRouter.get("/quotes/:quoteId", (req, res) => {
 o2cRouter.post("/quotes", validateBody(createQuoteSchema), (req, res) => {
   const quote = createQuote(req.body);
   res.status(201).json(entityWithLinks(quote as any, quoteLinks((quote as any).quote_id, (quote as any).state)));
+});
+
+o2cRouter.get("/quotes/:quoteId/lines", (req, res) => {
+  const lines = listQuoteLines(req.params.quoteId);
+  res.json({ data: lines });
 });
 
 o2cRouter.post("/quotes/:quoteId/lines", validateBody(addQuoteLineSchema), (req, res) => {
