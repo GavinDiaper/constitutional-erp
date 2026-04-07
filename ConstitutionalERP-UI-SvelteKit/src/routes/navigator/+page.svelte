@@ -135,6 +135,26 @@
 		}
 	}
 
+	function formatAttributeDisplay(key: string, value: unknown): string {
+		if (
+			key === 'rankedActions' &&
+			Array.isArray(value) &&
+			value.every(
+				(item) =>
+					typeof item === 'object' &&
+					item !== null &&
+					'actionId' in item &&
+					typeof (item as { actionId?: unknown }).actionId === 'string'
+			)
+		) {
+			return value
+				.map((item) => (item as { actionId: string }).actionId)
+				.join(', ');
+		}
+
+		return formatAttributeValue(value);
+	}
+
 	function isStructuredValue(value: unknown): boolean {
 		return typeof value === 'object' && value !== null;
 	}
@@ -361,10 +381,12 @@
 					{#each Object.entries(resource.attributes ?? {}) as [key, value] (key)}
 						<div class="rounded border border-white/10 bg-white/5 px-2 py-1">
 							<p class="text-white/60">{key}:</p>
-							{#if isStructuredValue(value)}
-								<pre class="mt-1 overflow-x-auto rounded border border-white/10 bg-[#112946] p-2 text-[11px] text-white/90">{formatAttributeValue(value)}</pre>
+							{#if key === 'rankedActions'}
+								<p class="mt-1 text-white/90">{formatAttributeDisplay(key, value)}</p>
+							{:else if isStructuredValue(value)}
+								<pre class="mt-1 overflow-x-auto rounded border border-white/10 bg-[#112946] p-2 text-[11px] text-white/90">{formatAttributeDisplay(key, value)}</pre>
 							{:else}
-								<p class="mt-1 text-white/90">{formatAttributeValue(value)}</p>
+								<p class="mt-1 text-white/90">{formatAttributeDisplay(key, value)}</p>
 							{/if}
 						</div>
 					{/each}
