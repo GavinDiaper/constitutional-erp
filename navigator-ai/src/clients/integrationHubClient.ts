@@ -12,6 +12,11 @@ interface HubProcessLink {
   rel: string;
   href: string;
   method: string;
+  requiredInput?: {
+    type: string;
+    required?: string[];
+    properties?: Record<string, { type?: string; description?: string; [key: string]: unknown }>;
+  };
   governance?: {
     riskLevel?: string;
     requiredTier?: number;
@@ -55,7 +60,8 @@ export class IntegrationHubClient {
         method: link.method?.toUpperCase() === "GET" ? "GET" : "POST",
         rel: link.rel,
         requiredTier: link.governance?.requiredTier,
-        riskLevel: link.governance?.riskLevel
+        riskLevel: link.governance?.riskLevel,
+        inputSchema: link.requiredInput
       };
     }
 

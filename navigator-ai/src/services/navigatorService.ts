@@ -174,24 +174,35 @@ export class NavigatorService {
 
   async execute(ctx: SessionContext, actionId?: string) {
     let decision: DecisionOutcome;
+    let actionOptions: ActionOption[];
 
     if (actionId) {
-      const { rankedActions } = await this.rank(ctx);
-      const picked = rankedActions.find((item) => item.actionId === actionId);
+      const ranked = await this.rank(ctx);
+      actionOptions = ranked.context.actionOptions;
+      const picked = ranked.rankedActions.find((item) => item.actionId === actionId);
       decision = {
         action: picked ?? { actionId, score: 0.5, rationale: "Action selected by operator." },
         mode: "EXECUTE",
         explanation: "Action forced by operator command."
       };
     } else {
-      decision = await this.decide(ctx);
+      const ranked = await this.rank(ctx);
+      actionOptions = ranked.context.actionOptions;
+      decision = await decide({
+        context: ranked.context,
+        rankedActions: ranked.rankedActions,
+        authorityClient: this.authorityClient,
+        governanceClient: this.governanceClient
+      });
     }
 
     return executeDecision({
       context: ctx,
       decision,
+      actionOptions,
       integrationHubClient: this.integrationHubClient,
-      cepClient: this.cepClient
+      cepClient: this.cepClient,
+      llmClient: this.llmClient
     });
   }
 

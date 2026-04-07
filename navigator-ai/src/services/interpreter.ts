@@ -26,6 +26,7 @@ export function interpretHypermedia(resource: CanonicalResource, ctx: SessionCon
     currentState: resource.state,
     requiresApproval: hasApprovalHint(link),
     requiredTier: link.requiredTier,
-    riskSignals: inferRiskSignals(resource)
+    riskSignals: inferRiskSignals(resource),
+    inputSchema: link.inputSchema
   }));
 }

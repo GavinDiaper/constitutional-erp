@@ -1,5 +1,11 @@
 export type NavigatorMode = "EXECUTE" | "REQUEST_APPROVAL" | "REJECT" | "NO_ACTION";
 
+export interface ActionInputSchema {
+  type: string;
+  required?: string[];
+  properties?: Record<string, { type?: string; description?: string; [key: string]: unknown }>;
+}
+
 export interface SessionContext {
   domain: "P2P" | "O2C" | "R2R" | "H2R";
   aggregateType: string;
@@ -23,6 +29,7 @@ export interface CanonicalResource {
       requiresApproval?: boolean;
       requiredTier?: number;
       riskLevel?: string;
+      inputSchema?: ActionInputSchema;
     }
   >;
 }
@@ -38,6 +45,7 @@ export interface ActionOption {
   requiresApproval: boolean;
   requiredTier?: number;
   riskSignals: Record<string, unknown>;
+  inputSchema?: ActionInputSchema;
 }
 
 export interface NavigatorContext {
