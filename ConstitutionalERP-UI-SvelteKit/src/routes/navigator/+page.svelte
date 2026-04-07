@@ -651,27 +651,85 @@
 					class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 					bind:value={createPresetId}
 				>
-					{#each QUICK_CREATE_PRESETS as preset (preset.id)}
-						<option value={preset.id}>{preset.label}</option>
+					{#each QUICK_CREATE_PRESETS as preset (preset.operation)}
+						<option value={preset.operation}>{preset.label}</option>
 					{/each}
 				</select>
 				<p class="mt-2 text-xs text-white/55">{selectedCreatePreset()?.description}</p>
 			</div>
 
 			<div>
-				<label class="mb-1 block text-xs text-white/70" for="nav-create-payload">Create Payload JSON</label>
-				<textarea
-					id="nav-create-payload"
-					class="min-h-[164px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 font-mono text-sm text-white"
-					bind:value={createPayloadText}
-				></textarea>
-				<p class="mt-1 text-xs text-white/55">
-					Edit prerequisite IDs as needed. Successful creates automatically register the new ID into the Navigator context above.
-				</p>
+				{#if createPresetId === 'create-supplier'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier Name" bind:value={supplierForm.supplierName} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment Terms" bind:value={supplierForm.paymentTerms} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={supplierForm.currencyCode} />
+					</div>
+				{:else if createPresetId === 'create-requisition'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={requisitionForm.currencyCode} />
+					</div>
+				{:else if createPresetId === 'create-purchase-order'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
+							{#each supplierLookup as supplier (String(supplier.supplier_id ?? ''))}
+								<option value={String(supplier.supplier_id ?? '')}>{lookupLabel(supplier, 'supplier_id', ['supplier_name', 'name'])}</option>
+							{/each}
+						</select>
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requisition Id (optional)" bind:value={purchaseOrderForm.requisitionId} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total Amount" bind:value={purchaseOrderForm.totalAmount} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={purchaseOrderForm.currencyCode} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm sm:col-span-2" placeholder="Delivery Address" bind:value={purchaseOrderForm.deliveryAddress} />
+					</div>
+				{:else if createPresetId === 'create-fiscal-year'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalYearForm.ledgerId}>
+							{#each ledgerLookup as ledger (String(ledger.ledger_id ?? ''))}
+								<option value={String(ledger.ledger_id ?? '')}>{lookupLabel(ledger, 'ledger_id', ['name'])}</option>
+							{/each}
+						</select>
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="2000" max="2100" bind:value={fiscalYearForm.year} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
+					</div>
+				{:else if createPresetId === 'create-fiscal-period'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
+							{#each fiscalYearLookup as fiscalYear (String(fiscalYear.fiscal_year_id ?? ''))}
+								<option value={String(fiscalYear.fiscal_year_id ?? '')}>{lookupLabel(fiscalYear, 'fiscal_year_id', ['name'])}</option>
+							{/each}
+						</select>
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="16" bind:value={fiscalPeriodForm.periodNumber} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
+					</div>
+				{:else if createPresetId === 'create-payment'}
+					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
+							{#each invoiceLookup as invoice (String(invoice.invoice_id ?? ''))}
+								<option value={String(invoice.invoice_id ?? '')}>{lookupLabel(invoice, 'invoice_id', ['state'])}</option>
+							{/each}
+						</select>
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" bind:value={paymentForm.amount} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={paymentForm.currencyCode} />
+						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
+					</div>
+				{/if}
+				<p class="mt-1 text-xs text-white/55">Typed fields are backed by Navigator lookup endpoints for prerequisites.</p>
 			</div>
 		</div>
 
 		<div class="mt-4 flex flex-wrap gap-3">
+			<button
+				class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+				disabled={lookupLoading}
+				on:click={() => void loadCreateLookups()}
+			>
+				{lookupLoading ? 'Refreshing lookups...' : 'Refresh Lookups'}
+			</button>
 			<button
 				class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
 				disabled={createLoading}

@@ -19,7 +19,7 @@ Domain Process Flows
 Create Entity
 </a>
 </li>
-<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator')}>Navigator</a></li>
+<li><a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/navigator')}>Navigator AI</a></li>
 <li>
 <a class="block rounded px-3 py-2 text-white hover:bg-white/10" href={resolve('/admin')}>Admin</a>
 <!-- <ul class="mt-1 space-y-1 pl-4 text-xs">
