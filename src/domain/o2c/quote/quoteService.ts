@@ -19,7 +19,7 @@ const transitions: Record<QuoteState, QuoteState[]> = {
 interface QuoteInput {
   customerId: string;
   currencyCode: string;
-  legalEntityId?: string;
+  legalEntityId: string;
 }
 
 interface QuoteLineInput {
@@ -63,7 +63,7 @@ export function createQuote(input: QuoteInput) {
   const quoteId = newId("Q-");
   const timestamp = now();
 
-  const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
+  const effectiveLegalEntityId = input.legalEntityId;
   ensureLegalEntityExists(effectiveLegalEntityId);
 
   transaction(() => {

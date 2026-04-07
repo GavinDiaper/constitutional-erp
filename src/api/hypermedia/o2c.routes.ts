@@ -65,7 +65,7 @@ const createCustomerSchema = z.object({
 const createQuoteSchema = z.object({
   customerId: z.string().min(1),
   currencyCode: z.string().min(3).max(3),
-  legalEntityId: z.string().min(1).optional()
+  legalEntityId: z.string().min(1)
 });
 
 const addQuoteLineSchema = z.object({
