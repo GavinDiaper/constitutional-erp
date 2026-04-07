@@ -203,7 +203,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\"\n}"
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"currencyCode\": \"USD\",\n  \"legalEntityId\": \"LE-SEED-US\"\n}"
             }
           },
           "event": [
