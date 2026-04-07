@@ -14,3 +14,10 @@
 	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/vat-report')}>Open R2R VAT Report</a>
 	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/withholding-tax')}>Open R2R Withholding Tax</a>
 </div>
+
+<div class="mt-6 border-t border-white/10 pt-4">
+	<h3 class="mb-3 text-xs uppercase tracking-[0.15em] text-white/70">Navigator</h3>
+	<div class="flex flex-wrap gap-2">
+		<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Open Navigator Sessions</a>
+	</div>
+</div>

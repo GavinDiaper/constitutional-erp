@@ -150,6 +150,35 @@ export async function proxySubsystemGet(
 	});
 }
 
+export async function proxySubsystemPost(
+	subsystem: SubsystemKey,
+	path: string,
+	incomingHeaders: Headers,
+	body: unknown
+): Promise<Response> {
+	const config = resolveSubsystemConfig(subsystem);
+	const baseUrl = config.baseUrl.replace(/\/$/, '');
+	const requestUrl = `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+	const headers = buildSubsystemHeaders(incomingHeaders, config);
+	headers.set('content-type', 'application/json');
+
+	const response = await fetch(requestUrl, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify(body ?? {})
+	});
+
+	const responseBody = await response.text();
+	const contentType = response.headers.get('content-type') ?? 'application/json';
+
+	return new Response(responseBody, {
+		status: response.status,
+		headers: {
+			'content-type': contentType
+		}
+	});
+}
+
 export async function proxyHubRequest(
 	path: string,
 	incomingHeaders: Headers,
