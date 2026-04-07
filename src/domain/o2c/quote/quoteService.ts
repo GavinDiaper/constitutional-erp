@@ -246,7 +246,9 @@ export function listQuoteTaxOptions(quoteId: string) {
   }
 
   const asOfDate = new Date().toISOString();
-  const rows = db
+
+  // Primary: tax codes configured in account mappings for this legal entity (or global NULL mappings)
+  const mappingRows = db
     .prepare(
       `SELECT
          tc.tax_code_id,
@@ -259,7 +261,7 @@ export function listQuoteTaxOptions(quoteId: string) {
          ON tr.tax_code_id = tc.tax_code_id
         AND tr.effective_from <= ?
         AND (tr.effective_to IS NULL OR tr.effective_to > ?)
-       WHERE tam.legal_entity_id = ?
+       WHERE (tam.legal_entity_id = ? OR tam.legal_entity_id IS NULL)
          AND tam.transaction_type = 'ar-invoice'
          AND tam.is_active = 1
          AND tc.is_active = 1
@@ -268,7 +270,48 @@ export function listQuoteTaxOptions(quoteId: string) {
     )
     .all(asOfDate, asOfDate, quote.legal_entity_id) as QuoteTaxOptionRow[];
 
-  return rows.map((row) => ({
+  if (mappingRows.length > 0) {
+    return mappingRows.map((row) => ({
+      taxCodeId: row.tax_code_id,
+      code: row.code,
+      taxApplicability: row.tax_applicability,
+      ratePercent: row.rate_percent,
+      label: buildTaxOptionLabel({ taxApplicability: row.tax_applicability, ratePercent: row.rate_percent })
+    }));
+  }
+
+  // Fallback: derive applicable tax codes directly from the tax regime whose jurisdiction
+  // matches the legal entity's country code (extracted from locale, e.g. 'en-AE' → 'AE').
+  // Also accepts currency-code hint: AED → 'AE'.
+  const regimeRows = db
+    .prepare(
+      `SELECT
+         tc.tax_code_id,
+         tc.code,
+         tc.tax_applicability,
+         COALESCE(MAX(tr.rate_percent), 0) AS rate_percent
+       FROM r2r_legal_entity le
+       JOIN tax_jurisdiction tj
+         ON (
+               UPPER(SUBSTR(le.locale, INSTR(le.locale, '-') + 1)) = tj.country_code
+            OR (le.currency_code = 'AED' AND tj.country_code = 'AE')
+            OR (le.currency_code = 'USD' AND tj.country_code = 'US')
+         )
+         AND tj.is_active = 1
+       JOIN tax_code tc ON tc.tax_regime_id = tj.tax_regime_id AND tc.is_active = 1
+         AND tc.tax_applicability NOT IN ('withholding')
+       LEFT JOIN tax_rate tr
+         ON tr.tax_code_id = tc.tax_code_id
+        AND tr.tax_jurisdiction_id = tj.tax_jurisdiction_id
+        AND tr.effective_from <= ?
+        AND (tr.effective_to IS NULL OR tr.effective_to > ?)
+       WHERE le.legal_entity_id = ?
+       GROUP BY tc.tax_code_id, tc.code, tc.tax_applicability
+       ORDER BY tc.code ASC`
+    )
+    .all(asOfDate, asOfDate, quote.legal_entity_id) as QuoteTaxOptionRow[];
+
+  return regimeRows.map((row) => ({
     taxCodeId: row.tax_code_id,
     code: row.code,
     taxApplicability: row.tax_applicability,
