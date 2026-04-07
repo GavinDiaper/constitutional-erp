@@ -125,11 +125,11 @@ const FUNCTION_DEFS = [
     governanceTag: "O2C.Quote.Update",
     inputSchema: {
       type: "object",
-      required: ["description", "quantity", "unitPrice"],
+      required: ["sku", "quantity", "unitPrice"],
       properties: {
-        description: { type: "string", minLength: 1 },
-        quantity: { type: "number", minimum: 0.000001 },
-        unitPrice: { type: "number", minimum: 0 }
+        sku: { type: "string", description: "SKU / product code", minLength: 1 },
+        quantity: { type: "number", description: "Quantity", minimum: 0.000001 },
+        unitPrice: { type: "number", description: "Unit price", minimum: 0 }
       }
     }
   },
