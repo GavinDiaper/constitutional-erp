@@ -161,11 +161,13 @@ async function createQuote(headers: Headers, payload: BootstrapPayload): Promise
 	let line: unknown = null;
 
 	if (lineSku && lineQuantity !== null && lineUnitPrice !== null) {
+		const lineTaxTreatment = asNonEmptyString(payload.lineTaxTreatment);
 		line = await asJson(
 			await proxyHubRequest(`/o2c/quotes/${quoteId}/lines`, headers, 'POST', {
 				sku: lineSku,
 				quantity: lineQuantity,
-				unitPrice: lineUnitPrice
+				unitPrice: lineUnitPrice,
+				...(lineTaxTreatment ? { taxTreatment: lineTaxTreatment } : {})
 			})
 		);
 	}

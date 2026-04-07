@@ -142,7 +142,8 @@
 		currencyCode: 'USD',
 		lineSku: '',
 		lineQuantity: 1,
-		lineUnitPrice: 0
+		lineUnitPrice: 0,
+		lineTaxTreatment: ''
 	};
 
 	let paymentForm = {
@@ -427,6 +428,29 @@
 		<Tabs {tabs} selected={activeTab} onSelect={setActiveTab} />
 	</div>
 
+	{#if errorMessage}
+		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{errorMessage}</p>
+	{/if}
+
+	{#if lastResult}
+		<div class="mt-4 rounded-md border border-emerald-500/45 bg-emerald-500/10 p-4 text-sm">
+			<p class="font-semibold">{lastResult.operation} completed.</p>
+			{#if lastResult.entityType && lastResult.entityId}
+				<p class="mt-1">Created {lastResult.entityType} / {lastResult.entityId}</p>
+			{/if}
+			<div class="mt-3 flex flex-wrap gap-2">
+				{#if lastResult.entityType && lastResult.entityId}
+					<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve(`/canvas/${lastResult.entityType}/${lastResult.entityId}`)}>
+						Open Process
+					</a>
+				{/if}
+				<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/dashboard')}>
+					Back to Dashboard
+				</a>
+			</div>
+		</div>
+	{/if}
+
 	{#if activeTab === 'O2C'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
 			<div class="rounded-lg border border-white/15 bg-white/5 p-4 xl:col-span-2">
@@ -486,6 +510,12 @@
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Qty" bind:value={quoteForm.lineQuantity} />
 						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Unit price" bind:value={quoteForm.lineUnitPrice} />
 					</div>
+					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={quoteForm.lineTaxTreatment}>
+						<option value="">No tax</option>
+						<option value="Standard Rate (5%)">Standard Rate (5%)</option>
+						<option value="Zero-Rated Supplies (0%)">Zero-Rated Supplies (0%)</option>
+						<option value="Exempt Supplies">Exempt Supplies</option>
+					</select>
 				</div>
 				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || !quoteForm.legalEntityId} on:click={() => runOperation('create-quote', quoteForm)}>
 					{runningKey === 'create-quote' ? 'Creating...' : 'Create Quote'}
@@ -727,26 +757,4 @@
 		</div>
 	{/if}
 
-	{#if errorMessage}
-		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{errorMessage}</p>
-	{/if}
-
-	{#if lastResult}
-		<div class="mt-4 rounded-md border border-emerald-500/45 bg-emerald-500/10 p-4 text-sm">
-			<p class="font-semibold">{lastResult.operation} completed.</p>
-			{#if lastResult.entityType && lastResult.entityId}
-				<p class="mt-1">Created {lastResult.entityType} / {lastResult.entityId}</p>
-			{/if}
-			<div class="mt-3 flex flex-wrap gap-2">
-				{#if lastResult.entityType && lastResult.entityId}
-					<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve(`/canvas/${lastResult.entityType}/${lastResult.entityId}`)}>
-						Open Process
-					</a>
-				{/if}
-				<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/dashboard')}>
-					Back to Dashboard
-				</a>
-			</div>
-		</div>
-	{/if}
 </section>
