@@ -55,7 +55,13 @@ const FUNCTION_DEFS = [
       properties: {
         description: { type: "string", minLength: 1 },
         quantity: { type: "number", minimum: 0.000001 },
-        unitPrice: { type: "number", minimum: 0 }
+        unitPrice: { type: "number", minimum: 0 },
+        taxCodeId: {
+          type: "string",
+          description: "Tax code for this line (filtered by requisition legal entity)",
+          "x-lookup": "p2p/requisitions/{entityId}/tax-options"
+        },
+        countryCode: { type: "string", description: "Country code for tax determination override" }
       }
     }
   },
