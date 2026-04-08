@@ -750,7 +750,7 @@ export class NavigatorService {
     const trackedAuthorityPending = tracked.find((item) =>
       item.actionId === authorityTrackingActionId &&
       item.status === "PENDING" &&
-      item.context["source"] === "authority-dashboard"
+      item.context?.["source"] === "authority-dashboard"
     );
 
     if (authorityDecision.required && !trackedAuthorityPending) {
@@ -782,7 +782,7 @@ export class NavigatorService {
         if (
           item.actionId === authorityTrackingActionId &&
           item.status === "PENDING" &&
-          item.context["source"] === "authority-dashboard"
+          item.context?.["source"] === "authority-dashboard"
         ) {
           updateApprovalRequest({
             approvalRequestId: item.approvalRequestId,

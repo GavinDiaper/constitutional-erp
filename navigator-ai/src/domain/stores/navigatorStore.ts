@@ -1,6 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../db/connection";
 import { ApprovalRequestRecord, ApprovalRequestStatus, DecisionOutcome, ExecutionResult, RankedAction, SessionContext, SimulationResult } from "../../contracts/navigatorTypes";
+function parseJsonObject(value: string, fallback: Record<string, unknown> = {}): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function parseJsonArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function recordLlmInteraction(input: {
   id: string;
@@ -189,9 +208,9 @@ export function getApprovalRequest(approvalRequestId: string): ApprovalRequestRe
     actionId: row.action_id,
     status: row.status,
     requiredTier: row.required_tier ?? undefined,
-    reasons: JSON.parse(row.reasons_json) as string[],
-    context: JSON.parse(row.context_json) as Record<string, unknown>,
-    responseBody: JSON.parse(row.response_json) as Record<string, unknown>,
+      reasons: parseJsonArray(row.reasons_json),
+      context: parseJsonObject(row.context_json),
+      responseBody: parseJsonObject(row.response_json),
     resolvedAt: row.resolved_at ?? undefined,
     resolvedBy: row.resolved_by ?? undefined,
     createdAt: row.created_at,
@@ -267,9 +286,9 @@ export function listApprovalRequests(input: {
       actionId: row.action_id,
       status: row.status,
       requiredTier: row.required_tier ?? undefined,
-      reasons: JSON.parse(row.reasons_json) as string[],
-      context: JSON.parse(row.context_json) as Record<string, unknown>,
-      responseBody: JSON.parse(row.response_json) as Record<string, unknown>,
+      reasons: parseJsonArray(row.reasons_json),
+      context: parseJsonObject(row.context_json),
+      responseBody: parseJsonObject(row.response_json),
       resolvedAt: row.resolved_at ?? undefined,
       resolvedBy: row.resolved_by ?? undefined,
       createdAt: row.created_at,
