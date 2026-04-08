@@ -39,6 +39,8 @@ function normalizeDomain(aggregateType: string): string {
 export class IntegrationHubClient {
   constructor(private readonly config: AppConfig) {}
 
+  private static readonly defaultQueryLimit = 500;
+
   private headers(actorId: string): Record<string, string> {
     return {
       "x-api-key": this.config.integrationHubApiKey,
@@ -123,5 +125,36 @@ export class IntegrationHubClient {
     });
 
     return Array.isArray(response.data.data) ? response.data.data : [];
+  }
+
+  async queryTable<T extends Record<string, unknown>>(input: {
+    table: string;
+    actorId: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<T[]> {
+    const limit = input.limit ?? IntegrationHubClient.defaultQueryLimit;
+    const offset = input.offset ?? 0;
+    const url = `${this.config.integrationHubUrl}/api/v1/hub/query/${encodeURIComponent(input.table)}?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
+    const response = await requestJson<{ data?: T[] }>(url, {
+      method: "GET",
+      headers: this.headers(input.actorId)
+    });
+
+    return Array.isArray(response.data.data) ? response.data.data : [];
+  }
+
+  async queryRow<T extends Record<string, unknown>>(input: {
+    table: string;
+    id: string;
+    actorId: string;
+  }): Promise<T | undefined> {
+    const url = `${this.config.integrationHubUrl}/api/v1/hub/query/${encodeURIComponent(input.table)}/${encodeURIComponent(input.id)}`;
+    const response = await requestJson<{ data?: T }>(url, {
+      method: "GET",
+      headers: this.headers(input.actorId)
+    });
+
+    return response.data.data;
   }
 }

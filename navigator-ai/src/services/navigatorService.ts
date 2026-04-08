@@ -21,7 +21,7 @@ import {
   SessionContext,
   SimulationResult
 } from "../contracts/navigatorTypes";
-import { getApprovalRequest, listApprovalRequests, listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
+import { getApprovalRequest, listApprovalRequests, listNavigatorEvents, recordApprovalRequest, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
 import { updateApprovalRequest } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
 import { HttpError } from "../utils/errors";
@@ -65,6 +65,57 @@ const nextStepPlaybook: Record<string, Array<{ operation: NavigatorCreateOperati
     }
   ]
 };
+
+const authorityTrackingActionId = "authority-required";
+const authorityTrackingActorId = "principal.system";
+
+interface AuthorityRequisitionRow {
+  requisition_id?: string;
+  state?: string;
+  status?: string;
+}
+
+interface AuthorityCustomerRow {
+  customer_id?: string;
+  state?: string;
+  status?: string;
+}
+
+interface AuthorityJournalRow {
+  journal_id?: string;
+  state?: string;
+  status?: string;
+}
+
+function normalizeLifecycleToken(value: string | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+}
+
+function isSubmittedRequisitionForApproval(requisition: AuthorityRequisitionRow): boolean {
+  const lifecycle = normalizeLifecycleToken(requisition.state ?? requisition.status);
+  return ["submitted", "pendingapproval", "awaitingapproval", "inreview"].includes(lifecycle);
+}
+
+function isDraftCustomerForApproval(customer: AuthorityCustomerRow): boolean {
+  const lifecycle = normalizeLifecycleToken(customer.status ?? customer.state);
+  return lifecycle === "draft";
+}
+
+function isPendingJournalForApproval(journal: AuthorityJournalRow): boolean {
+  const lifecycle = normalizeLifecycleToken(journal.state ?? journal.status);
+  if (!lifecycle) {
+    return true;
+  }
+
+  if (["posted", "closed", "locked", "cancelled", "canceled", "reversed"].includes(lifecycle)) {
+    return false;
+  }
+
+  return ["draft", "pending", "pendingapproval", "awaitingapproval", "readytopost", "unposted"].includes(lifecycle);
+}
 
 export function extractJsonObject(text: string): Record<string, unknown> | undefined {
   const start = text.indexOf("{");
@@ -401,7 +452,133 @@ export class NavigatorService {
     status?: ApprovalRequestStatus;
     limit?: number;
   }) {
+    await this.syncAuthorityDrivenApprovals(input);
     return listApprovalRequests(input);
+  }
+
+  private async syncAuthorityDrivenApprovals(input: {
+    domain: SessionContext["domain"];
+    aggregateType: string;
+    aggregateId: string;
+  }) {
+    const authorityDecision = await this.isAuthorityApprovalRequired(input);
+    if (authorityDecision === undefined) {
+      return;
+    }
+
+    const tracked = listApprovalRequests({
+      domain: input.domain,
+      aggregateType: input.aggregateType,
+      aggregateId: input.aggregateId,
+      limit: 1000
+    });
+
+    const trackedAuthorityPending = tracked.find((item) =>
+      item.actionId === authorityTrackingActionId &&
+      item.status === "PENDING" &&
+      item.context["source"] === "authority-dashboard"
+    );
+
+    if (authorityDecision.required && !trackedAuthorityPending) {
+      recordApprovalRequest({
+        domain: input.domain,
+        aggregateType: input.aggregateType,
+        aggregateId: input.aggregateId,
+        actorId: authorityTrackingActorId,
+        actionId: authorityTrackingActionId,
+        requiredTier: authorityDecision.requiredTier,
+        reasons: [authorityDecision.reason],
+        context: {
+          source: "authority-dashboard",
+          basis: authorityDecision.basis,
+          aggregateType: input.aggregateType,
+          aggregateId: input.aggregateId
+        },
+        responseBody: {
+          detail: authorityDecision.reason,
+          source: "authority-engine",
+          tracking: "navigator"
+        }
+      });
+      return;
+    }
+
+    if (!authorityDecision.required) {
+      for (const item of tracked) {
+        if (
+          item.actionId === authorityTrackingActionId &&
+          item.status === "PENDING" &&
+          item.context["source"] === "authority-dashboard"
+        ) {
+          updateApprovalRequest({
+            approvalRequestId: item.approvalRequestId,
+            status: "EXPIRED",
+            resolvedBy: authorityTrackingActorId,
+            note: "Authority source no longer flags this item for approval.",
+            requiredTier: item.requiredTier
+          });
+        }
+      }
+    }
+  }
+
+  private async isAuthorityApprovalRequired(input: {
+    domain: SessionContext["domain"];
+    aggregateType: string;
+    aggregateId: string;
+  }): Promise<{ required: boolean; requiredTier: number; reason: string; basis: string } | undefined> {
+    try {
+      const aggregateTypeToken = input.aggregateType.trim().toLowerCase();
+
+      if (input.domain === "O2C" && ["o2c_customer", "customer"].includes(aggregateTypeToken)) {
+        const row = await this.integrationHubClient.queryRow<AuthorityCustomerRow>({
+          table: "o2c_customer",
+          id: input.aggregateId,
+          actorId: authorityTrackingActorId
+        });
+        const required = row ? isDraftCustomerForApproval(row) : false;
+        return {
+          required,
+          requiredTier: 2,
+          reason: "Authority/constitution requires approval for draft customer activation.",
+          basis: "o2c_customer:draft"
+        };
+      }
+
+      if (input.domain === "P2P" && ["p2p_requisition", "requisition"].includes(aggregateTypeToken)) {
+        const row = await this.integrationHubClient.queryRow<AuthorityRequisitionRow>({
+          table: "p2p_requisition",
+          id: input.aggregateId,
+          actorId: authorityTrackingActorId
+        });
+        const required = row ? isSubmittedRequisitionForApproval(row) : false;
+        return {
+          required,
+          requiredTier: 2,
+          reason: "Authority/constitution requires approval for submitted requisitions.",
+          basis: "p2p_requisition:submitted"
+        };
+      }
+
+      if (input.domain === "R2R" && ["r2r_journal", "journal"].includes(aggregateTypeToken)) {
+        const row = await this.integrationHubClient.queryRow<AuthorityJournalRow>({
+          table: "r2r_journal",
+          id: input.aggregateId,
+          actorId: authorityTrackingActorId
+        });
+        const required = row ? isPendingJournalForApproval(row) : false;
+        return {
+          required,
+          requiredTier: 3,
+          reason: "Authority/constitution requires approval for pending journals.",
+          basis: "r2r_journal:pending"
+        };
+      }
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   async approval(approvalRequestId: string) {
