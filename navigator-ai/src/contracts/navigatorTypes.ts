@@ -112,6 +112,12 @@ export interface ApprovalRequestRecord {
   resolvedBy?: string;
 }
 
+export interface ApprovalResolutionInput {
+  actorId: string;
+  note?: string;
+  requiredTier?: number;
+}
+
 export type NavigatorCreateOperation =
   | "create-supplier"
   | "create-requisition"

@@ -45,6 +45,11 @@ function printHelp() {
     "  decide                       Run governance-aware decision",
     "  execute [actionId]           Execute chosen action through Navigator AI",
     "  next-steps [limit]           Suggest history-aware next steps",
+    "  approvals [limit] [status]   List approval requests for current context",
+    "  approval <id>                Show one approval request",
+    "  approve <id> [note]          Approve a pending approval request",
+    "  reject <id> [note]           Reject a pending approval request",
+    "  escalate <id> [tier] [note]  Escalate an approval request to a higher tier",
     "",
     "Governed Execution:",
     "  exec <action> [json]         Execute hypermedia action via Hub (legacy)",
@@ -383,6 +388,49 @@ async function main() {
       } else if (cmd === "next-steps") {
         const limit = args[0] ? Number(args[0]) : 6;
         result = await navigatorClient.nextSteps(session, Number.isFinite(limit) && limit > 0 ? limit : 6);
+      } else if (cmd === "approvals") {
+        const limit = args[0] ? Number(args[0]) : 50;
+        const maybeStatus = args[1]?.toUpperCase();
+        const status = maybeStatus && ["PENDING", "APPROVED", "REJECTED", "ESCALATED", "EXPIRED"].includes(maybeStatus)
+          ? maybeStatus as "PENDING" | "APPROVED" | "REJECTED" | "ESCALATED" | "EXPIRED"
+          : undefined;
+        result = await navigatorClient.listApprovals(session, Number.isFinite(limit) && limit > 0 ? limit : 50, status);
+      } else if (cmd === "approval") {
+        if (!args[0]) {
+          result = "Usage: approval <approvalRequestId>";
+        } else {
+          result = await navigatorClient.getApproval(args[0]);
+        }
+      } else if (cmd === "approve" || cmd === "reject") {
+        if (!session.actorId) {
+          result = "Set actor first: set actor <actorId>";
+        } else if (!args[0]) {
+          result = `Usage: ${cmd} <approvalRequestId> [note]`;
+        } else {
+          result = await navigatorClient.resolveApproval({
+            approvalRequestId: args[0],
+            action: cmd,
+            actorId: session.actorId,
+            note: args.slice(1).join(" ") || undefined
+          });
+        }
+      } else if (cmd === "escalate") {
+        if (!session.actorId) {
+          result = "Set actor first: set actor <actorId>";
+        } else if (!args[0]) {
+          result = "Usage: escalate <approvalRequestId> [tier] [note]";
+        } else {
+          const parsedTier = args[1] ? Number(args[1]) : undefined;
+          const requiredTier = Number.isFinite(parsedTier) && (parsedTier as number) > 0 ? parsedTier : undefined;
+          const noteStartIndex = requiredTier ? 2 : 1;
+          result = await navigatorClient.resolveApproval({
+            approvalRequestId: args[0],
+            action: "escalate",
+            actorId: session.actorId,
+            requiredTier,
+            note: args.slice(noteStartIndex).join(" ") || undefined
+          });
+        }
       } else if (cmd === "transcript") {
         if (!session.sessionId) {
           result = "No active session.";

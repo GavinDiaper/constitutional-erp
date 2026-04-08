@@ -230,4 +230,51 @@ export class NavigatorClient {
       })
     });
   }
+
+  async listApprovals(ctx: SessionContext, limit = 50, status?: "PENDING" | "APPROVED" | "REJECTED" | "ESCALATED" | "EXPIRED"): Promise<unknown> {
+    const ready = requireContext(ctx);
+    const query = new URLSearchParams({
+      domain: ready.domain,
+      aggregateType: ready.aggregateType,
+      aggregateId: ready.aggregateId,
+      limit: String(limit)
+    });
+
+    if (status) {
+      query.set("status", status);
+    }
+
+    return this.request(`/approvals?${query.toString()}`, {
+      method: "GET",
+      headers: {
+        "x-actor-id": ready.actorId
+      }
+    });
+  }
+
+  async getApproval(approvalRequestId: string): Promise<unknown> {
+    return this.request(`/approvals/${encodeURIComponent(approvalRequestId)}`, {
+      method: "GET"
+    });
+  }
+
+  async resolveApproval(input: {
+    approvalRequestId: string;
+    action: "approve" | "reject" | "escalate";
+    actorId: string;
+    note?: string;
+    requiredTier?: number;
+  }): Promise<unknown> {
+    return this.request(`/approvals/${encodeURIComponent(input.approvalRequestId)}/${input.action}`, {
+      method: "POST",
+      headers: {
+        "x-actor-id": input.actorId
+      },
+      body: JSON.stringify({
+        actorId: input.actorId,
+        note: input.note,
+        requiredTier: input.requiredTier
+      })
+    });
+  }
 }

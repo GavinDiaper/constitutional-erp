@@ -315,3 +315,75 @@ test("execute creates persistent approval request when governance requires appro
   assert.equal(detail?.requiredTier, 2);
   assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalRequested"));
 });
+
+test("approval request can be approved and emits approval-approved event", async () => {
+  const { service, published } = buildService({
+    governanceMode: "REQUEST_APPROVAL",
+    governanceReasons: ["Tier 2 approval required."],
+    governanceRequiredTier: 2
+  });
+
+  const aggregateId = `SUP-APPROVE-${Date.now()}`;
+  const created = await service.execute({
+    domain: "P2P",
+    aggregateType: "supplier",
+    aggregateId,
+    actorId: "principal.requestor"
+  });
+
+  const approvalRequest = created.responseBody["approvalRequest"] as Record<string, unknown>;
+  const approvalRequestId = String(approvalRequest["approvalRequestId"]);
+
+  const approved = await service.approveApprovalRequest(approvalRequestId, {
+    actorId: "principal.approver",
+    note: "Approved within delegated authority."
+  });
+
+  assert.equal(approved.status, "APPROVED");
+  assert.equal(approved.resolvedBy, "principal.approver");
+  assert.ok(approved.resolvedAt);
+  assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalApproved"));
+
+  const reloaded = await service.approval(approvalRequestId);
+  assert.equal(reloaded?.status, "APPROVED");
+});
+
+test("approval request can be escalated then rejected at higher tier", async () => {
+  const { service, published } = buildService({
+    governanceMode: "REQUEST_APPROVAL",
+    governanceReasons: ["Initial approval required."],
+    governanceRequiredTier: 1
+  });
+
+  const aggregateId = `SUP-ESCALATE-${Date.now()}`;
+  const created = await service.execute({
+    domain: "P2P",
+    aggregateType: "supplier",
+    aggregateId,
+    actorId: "principal.requestor"
+  });
+
+  const approvalRequest = created.responseBody["approvalRequest"] as Record<string, unknown>;
+  const approvalRequestId = String(approvalRequest["approvalRequestId"]);
+
+  const escalated = await service.escalateApprovalRequest(approvalRequestId, {
+    actorId: "principal.supervisor",
+    requiredTier: 3,
+    note: "Escalating due to policy exception."
+  });
+
+  assert.equal(escalated.status, "ESCALATED");
+  assert.equal(escalated.requiredTier, 3);
+  assert.equal(escalated.resolvedAt, undefined);
+
+  const rejected = await service.rejectApprovalRequest(approvalRequestId, {
+    actorId: "principal.executive",
+    note: "Rejected after executive review."
+  });
+
+  assert.equal(rejected.status, "REJECTED");
+  assert.equal(rejected.requiredTier, 3);
+  assert.equal(rejected.resolvedBy, "principal.executive");
+  assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalEscalated"));
+  assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalRejected"));
+});

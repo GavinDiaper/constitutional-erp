@@ -264,6 +264,54 @@ export function listApprovalRequests(input: {
   });
 }
 
+export function updateApprovalRequest(input: {
+  approvalRequestId: string;
+  status: ApprovalRequestStatus;
+  resolvedBy: string;
+  note?: string;
+  requiredTier?: number;
+}): ApprovalRequestRecord | undefined {
+  const existing = getApprovalRequest(input.approvalRequestId);
+  if (!existing) {
+    return undefined;
+  }
+
+  const timestamp = new Date().toISOString();
+  const reasons = input.note ? [...existing.reasons, input.note] : existing.reasons;
+  const responseBody = {
+    ...existing.responseBody,
+    status: input.status,
+    note: input.note ?? existing.responseBody["note"] ?? null,
+    requiredTier: input.requiredTier ?? existing.requiredTier ?? null
+  };
+
+  db.prepare(
+    `UPDATE navigator_approval_request
+     SET status = ?, required_tier = ?, reasons_json = ?, response_json = ?, resolved_at = ?, resolved_by = ?, updated_at = ?
+     WHERE approval_request_id = ?`
+  ).run(
+    input.status,
+    input.requiredTier ?? existing.requiredTier ?? null,
+    JSON.stringify(reasons),
+    JSON.stringify(responseBody),
+    input.status === "ESCALATED" ? null : timestamp,
+    input.resolvedBy,
+    timestamp,
+    input.approvalRequestId
+  );
+
+  return {
+    ...existing,
+    status: input.status,
+    requiredTier: input.requiredTier ?? existing.requiredTier,
+    reasons,
+    responseBody,
+    resolvedAt: input.status === "ESCALATED" ? undefined : timestamp,
+    resolvedBy: input.resolvedBy,
+    updatedAt: timestamp
+  };
+}
+
 export function recordTranscript(actorId: string | undefined, commandText: string, outputText: string) {
   db.prepare(
     `INSERT INTO navigator_repl_transcript(actor_id, command_text, output_text, created_at)

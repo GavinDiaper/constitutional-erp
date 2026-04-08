@@ -4,6 +4,7 @@ import { GovernanceClient } from "../clients/governanceClient";
 import { IntegrationHubClient } from "../clients/integrationHubClient";
 import {
   ActionOption,
+  ApprovalResolutionInput,
   ApprovalRequestStatus,
   CreateEntityResult,
   DecisionOutcome,
@@ -20,7 +21,9 @@ import {
   SimulationResult
 } from "../contracts/navigatorTypes";
 import { getApprovalRequest, listApprovalRequests, listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
+import { updateApprovalRequest } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
+import { HttpError } from "../utils/errors";
 import { decide } from "./decisionEngine";
 import { executeDecision } from "./executor";
 import { explainDecision } from "./explainer";
@@ -402,6 +405,95 @@ export class NavigatorService {
 
   async approval(approvalRequestId: string) {
     return getApprovalRequest(approvalRequestId);
+  }
+
+  private async transitionApproval(input: {
+    approvalRequestId: string;
+    resolution: ApprovalResolutionInput;
+    status: ApprovalRequestStatus;
+    eventType: string;
+  }) {
+    const existing = getApprovalRequest(input.approvalRequestId);
+    if (!existing) {
+      throw new HttpError(404, "approval_not_found", `Approval request '${input.approvalRequestId}' was not found`);
+    }
+
+    if (existing.status !== "PENDING" && !(existing.status === "ESCALATED" && input.status !== "ESCALATED")) {
+      throw new HttpError(409, "approval_not_pending", `Approval request '${input.approvalRequestId}' is already ${existing.status}`);
+    }
+
+    const updated = updateApprovalRequest({
+      approvalRequestId: input.approvalRequestId,
+      status: input.status,
+      resolvedBy: input.resolution.actorId,
+      note: input.resolution.note,
+      requiredTier: input.status === "ESCALATED"
+        ? Math.max(input.resolution.requiredTier ?? (existing.requiredTier ?? 1) + 1, (existing.requiredTier ?? 1) + 1)
+        : existing.requiredTier
+    });
+
+    if (!updated) {
+      throw new HttpError(404, "approval_not_found", `Approval request '${input.approvalRequestId}' was not found`);
+    }
+
+    recordNavigatorEvent({
+      eventType: input.eventType,
+      domain: updated.domain,
+      aggregateType: updated.aggregateType,
+      aggregateId: updated.aggregateId,
+      actorId: input.resolution.actorId,
+      payload: {
+        approvalRequestId: updated.approvalRequestId,
+        actionId: updated.actionId,
+        status: updated.status,
+        requiredTier: updated.requiredTier,
+        note: input.resolution.note ?? null
+      }
+    });
+
+    await this.cepClient.publish({
+      eventType: input.eventType,
+      actorId: input.resolution.actorId,
+      domain: updated.domain as SessionContext["domain"],
+      aggregateType: updated.aggregateType,
+      aggregateId: updated.aggregateId,
+      payload: {
+        approvalRequestId: updated.approvalRequestId,
+        actionId: updated.actionId,
+        status: updated.status,
+        requiredTier: updated.requiredTier,
+        note: input.resolution.note ?? null
+      }
+    });
+
+    return updated;
+  }
+
+  async approveApprovalRequest(approvalRequestId: string, resolution: ApprovalResolutionInput) {
+    return this.transitionApproval({
+      approvalRequestId,
+      resolution,
+      status: "APPROVED",
+      eventType: "Navigator.ApprovalApproved"
+    });
+  }
+
+  async rejectApprovalRequest(approvalRequestId: string, resolution: ApprovalResolutionInput) {
+    return this.transitionApproval({
+      approvalRequestId,
+      resolution,
+      status: "REJECTED",
+      eventType: "Navigator.ApprovalRejected"
+    });
+  }
+
+  async escalateApprovalRequest(approvalRequestId: string, resolution: ApprovalResolutionInput) {
+    return this.transitionApproval({
+      approvalRequestId,
+      resolution,
+      status: "ESCALATED",
+      eventType: "Navigator.ApprovalEscalated"
+    });
   }
 
   async actions(ctx: SessionContext): Promise<ActionOption[]> {

@@ -71,6 +71,12 @@ const approvalListSchema = z.object({
   status: approvalStatusSchema.optional()
 });
 
+const approvalResolutionSchema = z.object({
+  actorId: z.string().min(1),
+  note: z.string().trim().min(1).max(4000).optional(),
+  requiredTier: z.number().int().positive().max(12).optional()
+});
+
 export function createNavigatorRouter(service: NavigatorService) {
   const router = Router();
 
@@ -211,6 +217,39 @@ export function createNavigatorRouter(service: NavigatorService) {
         throw new HttpError(404, "approval_not_found", `Approval request '${approvalRequestId}' was not found`);
       }
 
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/approvals/:approvalRequestId/approve", async (req, res, next) => {
+    try {
+      const approvalRequestId = z.string().uuid().parse(req.params.approvalRequestId);
+      const body = approvalResolutionSchema.parse(req.body ?? {});
+      const result = await service.approveApprovalRequest(approvalRequestId, body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/approvals/:approvalRequestId/reject", async (req, res, next) => {
+    try {
+      const approvalRequestId = z.string().uuid().parse(req.params.approvalRequestId);
+      const body = approvalResolutionSchema.parse(req.body ?? {});
+      const result = await service.rejectApprovalRequest(approvalRequestId, body);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/approvals/:approvalRequestId/escalate", async (req, res, next) => {
+    try {
+      const approvalRequestId = z.string().uuid().parse(req.params.approvalRequestId);
+      const body = approvalResolutionSchema.parse(req.body ?? {});
+      const result = await service.escalateApprovalRequest(approvalRequestId, body);
       res.json(result);
     } catch (error) {
       next(error);
