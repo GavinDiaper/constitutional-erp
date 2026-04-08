@@ -71,10 +71,26 @@ const approvalStatusSchema = z.union([
 ]);
 
 const approvalListSchema = z.object({
-  domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema),
-  aggregateType: z.string().min(1),
-  aggregateId: z.string().min(1),
+  scope: z.union([z.literal("current"), z.literal("all")]).optional(),
+  domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema).optional(),
+  aggregateType: z.string().min(1).optional(),
+  aggregateId: z.string().min(1).optional(),
   status: approvalStatusSchema.optional()
+}).superRefine((value, ctx) => {
+  const scope = value.scope ?? "current";
+  if (scope === "current") {
+    if (!value.domain) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Query parameter 'domain' is required for current scope" });
+    }
+
+    if (!value.aggregateType) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Query parameter 'aggregateType' is required for current scope" });
+    }
+
+    if (!value.aggregateId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Query parameter 'aggregateId' is required for current scope" });
+    }
+  }
 });
 
 const approvalResolutionSchema = z.object({
@@ -203,6 +219,7 @@ export function createNavigatorRouter(service: NavigatorService) {
       }
 
       const result = await service.approvals({
+        scope: query.scope ?? "current",
         domain: query.domain,
         aggregateType: query.aggregateType,
         aggregateId: query.aggregateId,

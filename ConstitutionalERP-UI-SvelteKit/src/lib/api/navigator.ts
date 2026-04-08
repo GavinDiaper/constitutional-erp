@@ -421,14 +421,20 @@ export async function getApprovalRequests(
 	context: NavigatorContext,
 	actor: ActorContext,
 	limit = 50,
-	status?: ApprovalRequestStatus
+	status?: ApprovalRequestStatus,
+	options?: { scope?: 'current' | 'all' }
 ): Promise<ApprovalRequestRecord[]> {
+	const scope = options?.scope ?? 'current';
 	const query = new URLSearchParams({
-		domain: context.domain,
-		aggregateType: context.aggregateType,
-		aggregateId: context.aggregateId,
+		scope,
 		limit: String(limit)
 	});
+
+	if (scope === 'current') {
+		query.set('domain', context.domain);
+		query.set('aggregateType', context.aggregateType);
+		query.set('aggregateId', context.aggregateId);
+	}
 
 	if (status) {
 		query.set('status', status);

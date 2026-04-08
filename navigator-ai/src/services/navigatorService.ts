@@ -70,21 +70,31 @@ const authorityTrackingActionId = "authority-required";
 const authorityTrackingActorId = "principal.system";
 
 interface AuthorityRequisitionRow {
+  [key: string]: unknown;
   requisition_id?: string;
   state?: string;
   status?: string;
 }
 
 interface AuthorityCustomerRow {
+  [key: string]: unknown;
   customer_id?: string;
   state?: string;
   status?: string;
 }
 
 interface AuthorityJournalRow {
+  [key: string]: unknown;
   journal_id?: string;
   state?: string;
   status?: string;
+}
+
+interface AuthorityDecision {
+  required: boolean;
+  requiredTier: number;
+  reason: string;
+  basis: string;
 }
 
 interface PromptRequisitionLineInput {
@@ -615,13 +625,24 @@ export class NavigatorService {
   }
 
   async approvals(input: {
-    domain: SessionContext["domain"];
-    aggregateType: string;
-    aggregateId: string;
+    scope?: "current" | "all";
+    domain?: SessionContext["domain"];
+    aggregateType?: string;
+    aggregateId?: string;
     status?: ApprovalRequestStatus;
     limit?: number;
   }) {
-    await this.syncAuthorityDrivenApprovals(input);
+    const scope = input.scope ?? "current";
+    if (scope === "all") {
+      await this.syncAuthorityDrivenApprovalsQueue();
+    } else if (input.domain && input.aggregateType && input.aggregateId) {
+      await this.syncAuthorityDrivenApprovals({
+        domain: input.domain,
+        aggregateType: input.aggregateType,
+        aggregateId: input.aggregateId
+      });
+    }
+
     return listApprovalRequests(input);
   }
 
@@ -634,6 +655,90 @@ export class NavigatorService {
     if (authorityDecision === undefined) {
       return;
     }
+
+    this.applyAuthorityDecision(input, authorityDecision);
+  }
+
+  private async syncAuthorityDrivenApprovalsQueue(): Promise<void> {
+    try {
+      const [customers, requisitions, journals] = await Promise.all([
+        this.integrationHubClient.queryTable<AuthorityCustomerRow>({
+          table: "o2c_customer",
+          actorId: authorityTrackingActorId,
+          limit: 2000
+        }),
+        this.integrationHubClient.queryTable<AuthorityRequisitionRow>({
+          table: "p2p_requisition",
+          actorId: authorityTrackingActorId,
+          limit: 2000
+        }),
+        this.integrationHubClient.queryTable<AuthorityJournalRow>({
+          table: "r2r_journal",
+          actorId: authorityTrackingActorId,
+          limit: 2000
+        })
+      ]);
+
+      for (const customer of customers) {
+        const aggregateId = String(customer.customer_id ?? "").trim();
+        if (!aggregateId) {
+          continue;
+        }
+
+        this.applyAuthorityDecision(
+          { domain: "O2C", aggregateType: "o2c_customer", aggregateId },
+          {
+            required: isDraftCustomerForApproval(customer),
+            requiredTier: 2,
+            reason: "Authority/constitution requires approval for draft customer activation.",
+            basis: "o2c_customer:draft"
+          }
+        );
+      }
+
+      for (const requisition of requisitions) {
+        const aggregateId = String(requisition.requisition_id ?? "").trim();
+        if (!aggregateId) {
+          continue;
+        }
+
+        this.applyAuthorityDecision(
+          { domain: "P2P", aggregateType: "p2p_requisition", aggregateId },
+          {
+            required: isSubmittedRequisitionForApproval(requisition),
+            requiredTier: 2,
+            reason: "Authority/constitution requires approval for submitted requisitions.",
+            basis: "p2p_requisition:submitted"
+          }
+        );
+      }
+
+      for (const journal of journals) {
+        const aggregateId = String(journal.journal_id ?? "").trim();
+        if (!aggregateId) {
+          continue;
+        }
+
+        this.applyAuthorityDecision(
+          { domain: "R2R", aggregateType: "r2r_journal", aggregateId },
+          {
+            required: isPendingJournalForApproval(journal),
+            requiredTier: 3,
+            reason: "Authority/constitution requires approval for pending journals.",
+            basis: "r2r_journal:pending"
+          }
+        );
+      }
+    } catch {
+      // Queue sync is best-effort and should not block approval list rendering.
+    }
+  }
+
+  private applyAuthorityDecision(input: {
+    domain: SessionContext["domain"];
+    aggregateType: string;
+    aggregateId: string;
+  }, authorityDecision: AuthorityDecision): void {
 
     const tracked = listApprovalRequests({
       domain: input.domain,
@@ -695,7 +800,7 @@ export class NavigatorService {
     domain: SessionContext["domain"];
     aggregateType: string;
     aggregateId: string;
-  }): Promise<{ required: boolean; requiredTier: number; reason: string; basis: string } | undefined> {
+  }): Promise<AuthorityDecision | undefined> {
     try {
       const aggregateTypeToken = input.aggregateType.trim().toLowerCase();
 

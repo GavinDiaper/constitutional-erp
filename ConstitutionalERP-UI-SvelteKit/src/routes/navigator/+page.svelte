@@ -155,6 +155,7 @@
 	let approvalItems: ApprovalRequestRecord[] = [];
 	let selectedApproval: ApprovalRequestRecord | null = null;
 	let selectedApprovalStatus: '' | ApprovalRequestStatus = 'PENDING';
+	let approvalScope: 'current' | 'all' = 'all';
 	let approvalActionLoading = false;
 	let approvalActionError = '';
 	let approvalActionNote = '';
@@ -787,7 +788,8 @@
 				buildContext(),
 				selectedActor(),
 				25,
-				selectedApprovalStatus || undefined
+				selectedApprovalStatus || undefined,
+				{ scope: approvalScope }
 			);
 
 			if (selectedApproval && !approvalItems.some((item) => item.approvalRequestId === selectedApproval?.approvalRequestId)) {
@@ -1328,10 +1330,17 @@
 			<div>
 				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Approval Queue</h3>
 				<p class="mt-2 text-sm text-white/75">
-					Review pending or resolved Navigator approval requests for the current aggregate and resolve them directly from the UI.
+					Review pending or resolved Navigator approval requests and resolve them directly from the UI.
 				</p>
 			</div>
 			<div class="flex flex-wrap gap-3">
+				<select
+					class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+					bind:value={approvalScope}
+				>
+					<option value="all">ALL MONITORED AGGREGATES</option>
+					<option value="current">CURRENT AGGREGATE</option>
+				</select>
 				<select
 					class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 					bind:value={selectedApprovalStatus}
@@ -1360,7 +1369,7 @@
 		<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
 			<div>
 				{#if approvalItems.length === 0}
-					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No approval requests loaded for this aggregate and filter.</p>
+					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No approval requests loaded for the selected scope and filter.</p>
 				{:else}
 					<ul class="space-y-2">
 						{#each approvalItems as approval (approval.approvalRequestId)}

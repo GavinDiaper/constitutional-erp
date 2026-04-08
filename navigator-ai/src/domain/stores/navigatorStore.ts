@@ -200,30 +200,44 @@ export function getApprovalRequest(approvalRequestId: string): ApprovalRequestRe
 }
 
 export function listApprovalRequests(input: {
-  domain: string;
-  aggregateType: string;
-  aggregateId: string;
+  domain?: string;
+  aggregateType?: string;
+  aggregateId?: string;
   status?: ApprovalRequestStatus;
   limit?: number;
 }): ApprovalRequestRecord[] {
   const limit = input.limit ?? 100;
-  const rows = input.status
-    ? db.prepare(
-        `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
-                required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
-         FROM navigator_approval_request
-         WHERE domain = ? AND aggregate_type = ? AND aggregate_id = ? AND status = ?
-         ORDER BY created_at DESC
-         LIMIT ?`
-      ).all(input.domain, input.aggregateType, input.aggregateId, input.status, limit)
-    : db.prepare(
-        `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
-                required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
-         FROM navigator_approval_request
-         WHERE domain = ? AND aggregate_type = ? AND aggregate_id = ?
-         ORDER BY created_at DESC
-         LIMIT ?`
-      ).all(input.domain, input.aggregateType, input.aggregateId, limit);
+  const whereClauses: string[] = [];
+  const params: unknown[] = [];
+
+  if (input.domain) {
+    whereClauses.push("domain = ?");
+    params.push(input.domain);
+  }
+
+  if (input.aggregateType) {
+    whereClauses.push("aggregate_type = ?");
+    params.push(input.aggregateType);
+  }
+
+  if (input.aggregateId) {
+    whereClauses.push("aggregate_id = ?");
+    params.push(input.aggregateId);
+  }
+
+  if (input.status) {
+    whereClauses.push("status = ?");
+    params.push(input.status);
+  }
+
+  const whereSql = whereClauses.length > 0 ? ` WHERE ${whereClauses.join(" AND ")}` : "";
+  const rows = db.prepare(
+    `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
+            required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
+     FROM navigator_approval_request${whereSql}
+     ORDER BY created_at DESC
+     LIMIT ?`
+  ).all(...params, limit);
 
   return rows.map((entry) => {
     const row = entry as {
