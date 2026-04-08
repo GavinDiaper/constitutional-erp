@@ -114,6 +114,30 @@ export class IntegrationHubClient {
     return response.data;
   }
 
+  async addRequisitionLine(input: {
+    requisitionId: string;
+    actorId: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+  }): Promise<Record<string, unknown>> {
+    const url = `${this.config.integrationHubUrl}/api/v1/hub/p2p/requisitions/${encodeURIComponent(input.requisitionId)}/lines`;
+    const response = await requestJson<Record<string, unknown>>(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...this.headers(input.actorId)
+      },
+      body: JSON.stringify({
+        description: input.description,
+        quantity: input.quantity,
+        unitPrice: input.unitPrice
+      })
+    });
+
+    return response.data;
+  }
+
   async getCreateLookups(input: {
     kind: NavigatorLookupKind;
     actorId: string;

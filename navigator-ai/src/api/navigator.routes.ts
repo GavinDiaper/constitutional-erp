@@ -48,6 +48,12 @@ const promptCreateSchema = z.object({
   prompt: z.string().trim().min(1).max(4000),
   actorId: z.string().min(1),
   domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema).optional(),
+  context: z.object({
+    domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema).optional(),
+    aggregateType: z.string().min(1).optional(),
+    aggregateId: z.string().min(1).optional(),
+    resource: z.record(z.unknown()).optional()
+  }).optional(),
   dryRun: z.boolean().optional()
 });
 

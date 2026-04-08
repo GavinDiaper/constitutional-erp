@@ -6,7 +6,6 @@
 	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
 	import {
 		actorOptions,
-		actorStore,
 		setActorById,
 		type ActorContext
 	} from '$lib/stores/actorStore';
@@ -49,33 +48,19 @@
 		description: string;
 	}
 
+		interface QueryTableDescriptor {
+			name?: string;
+			primaryKey?: string;
+		}
+
+	type CreatePanelTab = 'prompt' | 'quick';
+
 	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R'] as const;
 	const AGGREGATE_TYPES: Record<(typeof DOMAINS)[number], string[]> = {
 		P2P: ['requisition', 'supplier', 'purchase-order', 'goods-receipt', 'supplier-invoice', 'ap-payment'],
 		O2C: ['quote', 'sales-order', 'ar-invoice', 'ar-payment'],
 		R2R: ['account', 'fiscal-year', 'fiscal-period', 'journal'],
 		H2R: ['employee', 'position', 'assignment', 'credential', 'authority-rule']
-	};
-	const DEFAULT_AGGREGATE_IDS: Record<string, string[]> = {
-		requisition: ['REQ-1775572652080-38928', 'REQ-1775570608743-95731', 'REQ-1'],
-		supplier: [],
-		'purchase-order': ['PO-1775570609188-27416', 'PO-1', 'PO-001'],
-		'goods-receipt': [],
-		'supplier-invoice': ['SI-1'],
-		'ap-payment': ['APP-1'],
-		quote: ['Q-1'],
-		'sales-order': ['SO-1', 'SO-402'],
-		'ar-invoice': ['ARI-1'],
-		'ar-payment': ['ARP-1'],
-		account: [],
-		'fiscal-year': [],
-		journal: ['JNL-1775570617772-73064'],
-		'fiscal-period': ['FP-1'],
-		employee: ['EMP-1'],
-		position: [],
-		assignment: [],
-		credential: [],
-		'authority-rule': []
 	};
 	const QUICK_CREATE_PRESETS: QuickCreatePreset[] = [
 		{
@@ -146,12 +131,14 @@
 
 	let domain: (typeof DOMAINS)[number] = 'P2P';
 	let aggregateType = 'requisition';
-	let aggregateId = 'REQ-1775572652080-38928';
+	let aggregateId = '';
 	let actorId = 'principal.system';
 	let userNote = '';
-	let aggregateIdsByType: Record<string, string[]> = Object.fromEntries(
-		Object.entries(DEFAULT_AGGREGATE_IDS).map(([key, value]) => [key, [...value]])
-	);
+	let aggregateIdsByLookupKey: Record<string, string[]> = {};
+	let aggregateIdLoadingByLookupKey: Record<string, boolean> = {};
+	let aggregateIdErrorByLookupKey: Record<string, string> = {};
+	let queryTablePrimaryKeys: Record<string, string> = {};
+	let createPanelTab: CreatePanelTab = 'prompt';
 	let createPresetId: NavigatorCreateOperation = 'create-requisition';
 	let createLoading = false;
 	let createError = '';
@@ -243,7 +230,6 @@
 	let execution: ExecutionResult | null = null;
 	let executionLoading = false;
 	let executionError = '';
-	let aggregateIdLookupInFlight = false;
 
 	$: if (!getAggregateTypeOptions(domain).includes(aggregateType)) {
 		aggregateType = getAggregateTypeOptions(domain)[0] ?? '';
@@ -269,14 +255,8 @@
 		paymentForm.invoiceId = String(invoiceLookup[0]?.invoice_id ?? '');
 	}
 
-	$: if ($actorStore.actorId !== actorId) {
-		setActorById(actorId);
-	}
-
-	$: {
-		const lookupDependency = `${actorId}::${aggregateType}`;
-		void lookupDependency;
-		void loadAggregateIdsForType(aggregateType);
+	function buildAggregateLookupKey(targetAggregateType: string, targetActorId = actorId): string {
+		return `${targetActorId}::${targetAggregateType}`;
 	}
 
 
@@ -295,8 +275,117 @@
 		return AGGREGATE_TYPES[currentDomain] ?? [];
 	}
 
+	function getAllAggregateTypes(): string[] {
+		const all = Object.values(AGGREGATE_TYPES).flat();
+		return Array.from(new Set(all));
+	}
+
 	function getAggregateIdOptions(currentAggregateType: string): string[] {
-		return aggregateIdsByType[currentAggregateType] ?? [];
+		return aggregateIdsByLookupKey[buildAggregateLookupKey(currentAggregateType)] ?? [];
+	}
+
+	function getAggregateIdLoading(currentAggregateType: string): boolean {
+		return aggregateIdLoadingByLookupKey[buildAggregateLookupKey(currentAggregateType)] ?? false;
+	}
+
+	function getAggregateIdError(currentAggregateType: string): string {
+		return aggregateIdErrorByLookupKey[buildAggregateLookupKey(currentAggregateType)] ?? '';
+	}
+
+	function idFromRowByKey(row: Record<string, unknown>, key: string): string {
+		const direct = row[key];
+		if (typeof direct === 'string' && direct.trim().length > 0) {
+			return direct;
+		}
+
+		const normalizedKey = key.replace(/_/g, '').toLowerCase();
+		for (const [candidateKey, candidateValue] of Object.entries(row)) {
+			if (candidateKey.replace(/_/g, '').toLowerCase() === normalizedKey && typeof candidateValue === 'string' && candidateValue.trim().length > 0) {
+				return candidateValue;
+			}
+		}
+
+		return '';
+	}
+
+	function inferRowId(row: Record<string, unknown>): string {
+		for (const [key, value] of Object.entries(row)) {
+			if (/(_id|Id)$/.test(key) && typeof value === 'string' && value.trim().length > 0) {
+				return value;
+			}
+		}
+
+		if (typeof row.id === 'string' && row.id.trim().length > 0) {
+			return row.id;
+		}
+
+		return '';
+	}
+
+	async function loadQueryTableMetadata(): Promise<void> {
+		try {
+			const actor = selectedActor();
+			const response = await queryTable<QueryTableDescriptor>('tables', actor, 500, 0);
+			const tableRows = response.data ?? [];
+			const primaryKeyMap: Record<string, string> = {};
+
+			for (const row of tableRows) {
+				const tableName = typeof row.name === 'string' ? row.name : '';
+				const primaryKey = typeof row.primaryKey === 'string' ? row.primaryKey : '';
+				if (tableName && primaryKey) {
+					primaryKeyMap[tableName] = primaryKey;
+				}
+			}
+
+			if (Object.keys(primaryKeyMap).length > 0) {
+				queryTablePrimaryKeys = primaryKeyMap;
+			}
+		} catch {
+			// Table metadata is optional; ID extraction falls back to static map and key inference.
+		}
+	}
+
+	function shouldRetryAggregateIdLookup(currentAggregateType: string): boolean {
+		return !getAggregateIdLoading(currentAggregateType) && getAggregateIdOptions(currentAggregateType).length === 0;
+	}
+
+	async function handleAggregateIdInteract(): Promise<void> {
+		if (!shouldRetryAggregateIdLookup(aggregateType)) {
+			return;
+		}
+
+		await loadAggregateIdsForType(aggregateType);
+	}
+
+	async function handleAggregateIdRefresh(): Promise<void> {
+		if (!aggregateType.trim()) {
+			return;
+		}
+
+		await loadAggregateIdsForType(aggregateType);
+	}
+
+	async function handleDomainChange(): Promise<void> {
+		const domainTypes = getAggregateTypeOptions(domain);
+		if (!domainTypes.includes(aggregateType)) {
+			aggregateType = domainTypes[0] ?? '';
+		}
+
+		await handleAggregateTypeChange();
+	}
+
+	async function handleAggregateTypeChange(): Promise<void> {
+		aggregateId = '';
+		if (!aggregateType.trim()) {
+			return;
+		}
+
+		await loadAggregateIdsForType(aggregateType);
+	}
+
+	async function handleActorChange(): Promise<void> {
+		setActorById(actorId);
+		await handleAggregateTypeChange();
 	}
 
 	function selectedCreatePreset(): QuickCreatePreset | undefined {
@@ -379,51 +468,89 @@
 
 	async function loadAggregateIdsForType(targetType: string): Promise<void> {
 		const mapping = AGGREGATE_TABLE_MAP[targetType];
-		if (!mapping || aggregateIdLookupInFlight) {
+		const lookupKey = buildAggregateLookupKey(targetType);
+		if (!mapping || aggregateIdLoadingByLookupKey[lookupKey]) {
 			return;
 		}
 
-		aggregateIdLookupInFlight = true;
+		aggregateIdLoadingByLookupKey = {
+			...aggregateIdLoadingByLookupKey,
+			[lookupKey]: true
+		};
+		aggregateIdErrorByLookupKey = {
+			...aggregateIdErrorByLookupKey,
+			[lookupKey]: ''
+		};
 		try {
 			const actor = selectedActor();
 			const response = await queryTable<Record<string, unknown>>(mapping.table, actor, 500, 0);
+			const effectiveIdField = queryTablePrimaryKeys[mapping.table] ?? mapping.idField;
 			const ids = (response.data ?? [])
-				.map((row) => String(row[mapping.idField] ?? ''))
-				.filter((id) => id.length > 0);
-			if (ids.length === 0) {
-				return;
-			}
+				.map((row) => {
+					const byConfiguredKey = idFromRowByKey(row, effectiveIdField);
+					if (byConfiguredKey) {
+						return byConfiguredKey;
+					}
 
-			const existing = aggregateIdsByType[targetType] ?? [];
-			const merged = Array.from(new Set([...ids, ...existing]));
-			aggregateIdsByType = {
-				...aggregateIdsByType,
-				[targetType]: merged
+					return inferRowId(row);
+				})
+				.filter((id) => id.length > 0);
+			aggregateIdsByLookupKey = {
+				...aggregateIdsByLookupKey,
+				[lookupKey]: Array.from(new Set(ids))
 			};
-		} catch {
-			// Keep default IDs when lookup fails.
+
+			if (buildAggregateLookupKey(aggregateType) === lookupKey) {
+				aggregateId = ids[0] ?? '';
+			}
+		} catch (err) {
+			aggregateIdsByLookupKey = {
+				...aggregateIdsByLookupKey,
+				[lookupKey]: []
+			};
+			aggregateIdErrorByLookupKey = {
+				...aggregateIdErrorByLookupKey,
+				[lookupKey]: err instanceof Error ? err.message : 'Failed to load live aggregate IDs.'
+			};
+			if (buildAggregateLookupKey(aggregateType) === lookupKey) {
+				aggregateId = '';
+			}
 		} finally {
-			aggregateIdLookupInFlight = false;
+			aggregateIdLoadingByLookupKey = {
+				...aggregateIdLoadingByLookupKey,
+				[lookupKey]: false
+			};
 		}
 	}
 
 	onMount(() => {
-		void Promise.all([
-			loadCreateLookups(),
-			loadAggregateIdsForType('requisition'),
-			loadAggregateIdsForType(aggregateType)
-		]);
+		setActorById(actorId);
+		void Promise.all([loadCreateLookups(), loadQueryTableMetadata()]).then(async () => {
+			const allTypes = getAllAggregateTypes();
+			for (const type of allTypes) {
+				await loadAggregateIdsForType(type);
+			}
+
+			if (!aggregateId && aggregateType.trim()) {
+				await loadAggregateIdsForType(aggregateType);
+			}
+		});
 	});
 
 	function registerAggregateId(targetAggregateType: string, id: string): void {
-		const existing = aggregateIdsByType[targetAggregateType] ?? [];
+		const lookupKey = buildAggregateLookupKey(targetAggregateType);
+		const existing = aggregateIdsByLookupKey[lookupKey] ?? [];
 		if (existing.includes(id)) {
 			return;
 		}
 
-		aggregateIdsByType = {
-			...aggregateIdsByType,
-			[targetAggregateType]: [id, ...existing]
+		aggregateIdsByLookupKey = {
+			...aggregateIdsByLookupKey,
+			[lookupKey]: [id, ...existing]
+		};
+		aggregateIdErrorByLookupKey = {
+			...aggregateIdErrorByLookupKey,
+			[lookupKey]: ''
 		};
 	}
 
@@ -595,11 +722,25 @@
 
 		try {
 			const actor = selectedActor();
+			const context = buildContext();
 			promptCreateResult = await promptCreateEntity(
 				{
 					prompt: promptCreateText.trim(),
 					actorId: actor.actorId,
 					domain,
+					context: {
+						domain: context.domain,
+						aggregateType: context.aggregateType,
+						aggregateId: context.aggregateId,
+						resource: resource
+							? {
+								id: resource.id,
+								type: resource.type,
+								state: resource.state,
+								attributes: resource.attributes
+							}
+							: undefined
+					},
 					dryRun
 				},
 				actor
@@ -842,6 +983,7 @@
 				id="nav-domain"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={domain}
+				on:change={() => void handleDomainChange()}
 			>
 					{#each DOMAINS as d (d)}
 						<option value={d}>{d}</option>
@@ -855,6 +997,7 @@
 				id="nav-aggregate-type"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={aggregateType}
+				on:change={() => void handleAggregateTypeChange()}
 			>
 				{#each getAggregateTypeOptions(domain) as type (type)}
 					<option value={type}>{type}</option>
@@ -863,20 +1006,48 @@
 		</div>
 
 		<div>
-			<label class="mb-1 block text-xs text-white/70" for="nav-aggregate-id">Aggregate ID</label>
+			<div class="mb-1 flex items-center gap-2">
+				<label class="block text-xs text-white/70" for="nav-aggregate-id">Aggregate ID</label>
+				<button
+					type="button"
+					class="rounded border border-white/25 px-2 py-0.5 text-[11px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+					disabled={getAggregateIdLoading(aggregateType)}
+					on:click={() => void handleAggregateIdRefresh()}
+				>
+					{getAggregateIdLoading(aggregateType) ? 'Refreshing...' : 'Refresh IDs'}
+				</button>
+				{#if getAggregateIdLoading(aggregateType)}
+					<span class="inline-flex items-center gap-2 text-[11px] text-white/55">
+						<span class="h-3 w-3 animate-spin rounded-full border border-white/25 border-t-white/80"></span>
+						Loading live data
+					</span>
+				{/if}
+			</div>
 			<select
 				id="nav-aggregate-id"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+				disabled={getAggregateIdLoading(aggregateType)}
 				bind:value={aggregateId}
+				on:click={() => void handleAggregateIdInteract()}
+				on:focus={() => void handleAggregateIdInteract()}
 			>
-				{#if getAggregateIdOptions(aggregateType).length > 0}
+				{#if getAggregateIdLoading(aggregateType)}
+					<option value="">Loading live aggregate IDs...</option>
+				{:else if getAggregateIdOptions(aggregateType).length > 0}
 					{#each getAggregateIdOptions(aggregateType) as id (id)}
 						<option value={id}>{id}</option>
 					{/each}
+				{:else if getAggregateIdError(aggregateType)}
+					<option value="">Unable to load aggregate IDs</option>
 				{:else}
-					<option value="">No known IDs yet</option>
+					<option value="">No live aggregates found</option>
 				{/if}
 			</select>
+			{#if getAggregateIdError(aggregateType)}
+				<p class="mt-2 text-xs text-red-200">{getAggregateIdError(aggregateType)}</p>
+			{:else if !getAggregateIdLoading(aggregateType) && getAggregateIdOptions(aggregateType).length === 0}
+				<p class="mt-2 text-xs text-white/55">No live aggregate IDs are available for this type yet. Click the dropdown to retry.</p>
+			{/if}
 		</div>
 
 		<div>
@@ -885,6 +1056,7 @@
 				id="nav-actor-id"
 				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
 				bind:value={actorId}
+				on:change={() => void handleActorChange()}
 			>
 				{#each actorOptions as actor (actor.actorId)}
 					<option value={actor.actorId}>{actor.actorId}</option>
@@ -900,7 +1072,7 @@
 		<div class="flex items-end">
 			<button
 				class="w-full rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
-				disabled={resourceLoading}
+				disabled={resourceLoading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
 				on:click={handleLoadResource}
 			>
 				{resourceLoading ? 'Loading...' : 'Load Resource'}
@@ -910,7 +1082,7 @@
 		<div class="flex items-end">
 			<button
 				class="w-full rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
-				disabled={loading}
+				disabled={loading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
 				on:click={handleRank}
 			>
 				{loading ? 'Ranking...' : 'Propose Actions'}
@@ -919,176 +1091,194 @@
 	</div>
 
 	<p class="mt-3 text-xs text-white/55">
-		Default values are aligned to the working Navigator Postman flow for P2P requisition ranking.
+		Aggregate IDs load from live data for the selected actor and aggregate type.
 	</p>
-
-	<div class="mt-6 rounded-md border border-white/15 bg-white/5 p-4">
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-			<div>
-				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Quick Create</h3>
-				<p class="mt-2 text-sm text-white/75">
-					Create a new aggregate through the existing bootstrap flow, then continue directly in Navigator on the created entity.
-				</p>
-			</div>
-			<a class="text-xs text-white/60 hover:text-white" href={resolve('/canvas/create')}>
-				Open Full Create Workspace &rarr;
-			</a>
-		</div>
-
-		<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-			<div>
-				<label class="mb-1 block text-xs text-white/70" for="nav-create-preset">Entity Preset</label>
-				<select
-					id="nav-create-preset"
-					class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-					bind:value={createPresetId}
-				>
-					{#each QUICK_CREATE_PRESETS as preset (preset.operation)}
-						<option value={preset.operation}>{preset.label}</option>
-					{/each}
-				</select>
-				<p class="mt-2 text-xs text-white/55">{selectedCreatePreset()?.description}</p>
-			</div>
-
-			<div>
-				{#if createPresetId === 'create-supplier'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier Name" bind:value={supplierForm.supplierName} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment Terms" bind:value={supplierForm.paymentTerms} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={supplierForm.currencyCode} />
-					</div>
-				{:else if createPresetId === 'create-requisition'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={requisitionForm.currencyCode} />
-					</div>
-				{:else if createPresetId === 'create-purchase-order'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
-							{#each supplierLookup as supplier (String(supplier.supplier_id ?? ''))}
-								<option value={String(supplier.supplier_id ?? '')}>{lookupLabel(supplier, 'supplier_id', ['supplier_name', 'name'])}</option>
-							{/each}
-						</select>
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requisition Id (optional)" bind:value={purchaseOrderForm.requisitionId} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total Amount" bind:value={purchaseOrderForm.totalAmount} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={purchaseOrderForm.currencyCode} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm sm:col-span-2" placeholder="Delivery Address" bind:value={purchaseOrderForm.deliveryAddress} />
-					</div>
-				{:else if createPresetId === 'create-fiscal-year'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalYearForm.ledgerId}>
-							{#each ledgerLookup as ledger (String(ledger.ledger_id ?? ''))}
-								<option value={String(ledger.ledger_id ?? '')}>{lookupLabel(ledger, 'ledger_id', ['name'])}</option>
-							{/each}
-						</select>
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="2000" max="2100" bind:value={fiscalYearForm.year} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
-					</div>
-				{:else if createPresetId === 'create-fiscal-period'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
-							{#each fiscalYearLookup as fiscalYear (String(fiscalYear.fiscal_year_id ?? ''))}
-								<option value={String(fiscalYear.fiscal_year_id ?? '')}>{lookupLabel(fiscalYear, 'fiscal_year_id', ['name'])}</option>
-							{/each}
-						</select>
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="16" bind:value={fiscalPeriodForm.periodNumber} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
-					</div>
-				{:else if createPresetId === 'create-payment'}
-					<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
-							{#each invoiceLookup as invoice (String(invoice.invoice_id ?? ''))}
-								<option value={String(invoice.invoice_id ?? '')}>{lookupLabel(invoice, 'invoice_id', ['state'])}</option>
-							{/each}
-						</select>
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" bind:value={paymentForm.amount} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={paymentForm.currencyCode} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
-					</div>
-				{/if}
-				<p class="mt-1 text-xs text-white/55">Typed fields are backed by Navigator lookup endpoints for prerequisites.</p>
-			</div>
-		</div>
-
-		<div class="mt-4 flex flex-wrap gap-3">
-			<button
-				class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
-				disabled={lookupLoading}
-				on:click={() => void loadCreateLookups()}
-			>
-				{lookupLoading ? 'Refreshing lookups...' : 'Refresh Lookups'}
-			</button>
-			<button
-				class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
-				disabled={createLoading}
-				on:click={handleCreateEntity}
-			>
-				{createLoading ? 'Creating...' : 'Create Entity In Navigator'}
-			</button>
-		</div>
-
-		{#if createError}
-			<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{createError}</p>
-		{/if}
-
-		{#if createResult}
-			<div class="mt-4 rounded-md border border-emerald-500/35 bg-emerald-500/10 p-3 text-sm text-emerald-100">
-				<p class="font-semibold">Create Succeeded</p>
-				<p class="mt-1">{createResult.operation} created {createResult.entityType ?? 'entity'} / {createResult.entityId ?? 'unknown-id'}.</p>
-			</div>
-		{/if}
-	</div>
 
 	<div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<div class="rounded-md border border-white/15 bg-white/5 p-4">
-			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Prompt Create</h3>
-			<p class="mt-2 text-sm text-white/75">
-				Use natural language to resolve a create operation and payload. Example: create a new supplier in UAE named Gulf Trading with NET45 terms in AED.
-			</p>
-			<textarea
-				class="mt-3 min-h-[88px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
-				placeholder="Describe what to create..."
-				bind:value={promptCreateText}
-			></textarea>
-			<div class="mt-3 flex flex-wrap gap-3">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div>
+					<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Create</h3>
+					<p class="mt-2 text-sm text-white/75">
+						Use natural language or typed fields to create a new aggregate, then continue directly in Navigator on the created entity.
+					</p>
+				</div>
+				<a class="text-xs text-white/60 hover:text-white" href={resolve('/canvas/create')}>
+					Open Full Create Workspace &rarr;
+				</a>
+			</div>
+
+			<div class="mt-4 inline-flex rounded-md border border-white/15 bg-[#0e2038] p-1">
 				<button
-					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
-					disabled={promptCreateLoading}
-					on:click={() => void handlePromptCreate(true)}
+					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'prompt' ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}
+					on:click={() => (createPanelTab = 'prompt')}
 				>
-					{promptCreateLoading ? 'Resolving...' : 'Resolve Only'}
+					Prompt Create
 				</button>
 				<button
-					class="rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
-					disabled={promptCreateLoading}
-					on:click={() => void handlePromptCreate(false)}
+					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'quick' ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}
+					on:click={() => (createPanelTab = 'quick')}
 				>
-					{promptCreateLoading ? 'Creating...' : 'Resolve + Create'}
+					Quick Create
 				</button>
 			</div>
 
-			{#if promptCreateError}
-				<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{promptCreateError}</p>
-			{/if}
-
-			{#if promptCreateResult}
-				<div class="mt-3 rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm text-white/90">
-					<p><span class="text-white/65">Status:</span> {promptCreateResult.status}</p>
-					<p><span class="text-white/65">Operation:</span> {promptCreateResult.resolution.operation}</p>
-					{#if promptCreateResult.resolution.missingFields.length > 0}
-						<p><span class="text-white/65">Missing:</span> {promptCreateResult.resolution.missingFields.join(', ')}</p>
-					{/if}
-					{#if promptCreateResult.resolution.clarification}
-						<p class="mt-1 text-amber-200">{promptCreateResult.resolution.clarification}</p>
-					{/if}
-					{#if promptCreateResult.created?.entityId}
-						<p class="mt-1 text-emerald-200">Created: {promptCreateResult.created.entityType} / {promptCreateResult.created.entityId}</p>
-					{/if}
+			{#if createPanelTab === 'prompt'}
+				<p class="mt-3 text-sm text-white/75">
+					Use natural language to resolve a create operation and payload. Example: create a new supplier in UAE named Gulf Trading with NET45 terms in AED.
+				</p>
+				<textarea
+					class="mt-3 min-h-[88px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+					placeholder="Describe what to create..."
+					bind:value={promptCreateText}
+				></textarea>
+				<div class="mt-3 flex flex-wrap gap-3">
+					<button
+						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						disabled={promptCreateLoading}
+						on:click={() => void handlePromptCreate(true)}
+					>
+						{promptCreateLoading ? 'Resolving...' : 'Resolve Only'}
+					</button>
+					<button
+						class="rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
+						disabled={promptCreateLoading}
+						on:click={() => void handlePromptCreate(false)}
+					>
+						{promptCreateLoading ? 'Creating...' : 'Resolve + Create'}
+					</button>
 				</div>
+
+				{#if promptCreateError}
+					<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{promptCreateError}</p>
+				{/if}
+
+				{#if promptCreateResult}
+					<div class="mt-3 rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm text-white/90">
+						<p><span class="text-white/65">Status:</span> {promptCreateResult.status}</p>
+						<p><span class="text-white/65">Operation:</span> {promptCreateResult.resolution.operation}</p>
+						{#if promptCreateResult.resolution.missingFields.length > 0}
+							<p><span class="text-white/65">Missing:</span> {promptCreateResult.resolution.missingFields.join(', ')}</p>
+						{/if}
+						{#if promptCreateResult.resolution.clarification}
+							<p class="mt-1 text-amber-200">{promptCreateResult.resolution.clarification}</p>
+						{/if}
+						{#if promptCreateResult.created?.entityId}
+							<p class="mt-1 text-emerald-200">Created: {promptCreateResult.created.entityType} / {promptCreateResult.created.entityId}</p>
+						{/if}
+					</div>
+				{/if}
+			{:else}
+				<p class="mt-3 text-sm text-white/75">
+					Create a new aggregate through the existing bootstrap flow, then continue directly in Navigator on the created entity.
+				</p>
+
+				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+					<div>
+						<label class="mb-1 block text-xs text-white/70" for="nav-create-preset">Entity Preset</label>
+						<select
+							id="nav-create-preset"
+							class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+							bind:value={createPresetId}
+						>
+							{#each QUICK_CREATE_PRESETS as preset (preset.operation)}
+								<option value={preset.operation}>{preset.label}</option>
+							{/each}
+						</select>
+						<p class="mt-2 text-xs text-white/55">{selectedCreatePreset()?.description}</p>
+					</div>
+
+					<div>
+						{#if createPresetId === 'create-supplier'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier Name" bind:value={supplierForm.supplierName} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment Terms" bind:value={supplierForm.paymentTerms} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={supplierForm.currencyCode} />
+							</div>
+						{:else if createPresetId === 'create-requisition'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={requisitionForm.currencyCode} />
+							</div>
+						{:else if createPresetId === 'create-purchase-order'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
+									{#each supplierLookup as supplier (String(supplier.supplier_id ?? ''))}
+										<option value={String(supplier.supplier_id ?? '')}>{lookupLabel(supplier, 'supplier_id', ['supplier_name', 'name'])}</option>
+									{/each}
+								</select>
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requisition Id (optional)" bind:value={purchaseOrderForm.requisitionId} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total Amount" bind:value={purchaseOrderForm.totalAmount} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={purchaseOrderForm.currencyCode} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm sm:col-span-2" placeholder="Delivery Address" bind:value={purchaseOrderForm.deliveryAddress} />
+							</div>
+						{:else if createPresetId === 'create-fiscal-year'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalYearForm.ledgerId}>
+									{#each ledgerLookup as ledger (String(ledger.ledger_id ?? ''))}
+										<option value={String(ledger.ledger_id ?? '')}>{lookupLabel(ledger, 'ledger_id', ['name'])}</option>
+									{/each}
+								</select>
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="2000" max="2100" bind:value={fiscalYearForm.year} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
+							</div>
+						{:else if createPresetId === 'create-fiscal-period'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
+									{#each fiscalYearLookup as fiscalYear (String(fiscalYear.fiscal_year_id ?? ''))}
+										<option value={String(fiscalYear.fiscal_year_id ?? '')}>{lookupLabel(fiscalYear, 'fiscal_year_id', ['name'])}</option>
+									{/each}
+								</select>
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="16" bind:value={fiscalPeriodForm.periodNumber} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
+							</div>
+						{:else if createPresetId === 'create-payment'}
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
+									{#each invoiceLookup as invoice (String(invoice.invoice_id ?? ''))}
+										<option value={String(invoice.invoice_id ?? '')}>{lookupLabel(invoice, 'invoice_id', ['state'])}</option>
+									{/each}
+								</select>
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" bind:value={paymentForm.amount} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={paymentForm.currencyCode} />
+								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
+							</div>
+						{/if}
+						<p class="mt-1 text-xs text-white/55">Typed fields are backed by Navigator lookup endpoints for prerequisites.</p>
+					</div>
+				</div>
+
+				<div class="mt-4 flex flex-wrap gap-3">
+					<button
+						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						disabled={lookupLoading}
+						on:click={() => void loadCreateLookups()}
+					>
+						{lookupLoading ? 'Refreshing lookups...' : 'Refresh Lookups'}
+					</button>
+					<button
+						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						disabled={createLoading}
+						on:click={handleCreateEntity}
+					>
+						{createLoading ? 'Creating...' : 'Create Entity In Navigator'}
+					</button>
+				</div>
+
+				{#if createError}
+					<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{createError}</p>
+				{/if}
+
+				{#if createResult}
+					<div class="mt-4 rounded-md border border-emerald-500/35 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+						<p class="font-semibold">Create Succeeded</p>
+						<p class="mt-1">{createResult.operation} created {createResult.entityType ?? 'entity'} / {createResult.entityId ?? 'unknown-id'}.</p>
+					</div>
+				{/if}
 			{/if}
 		</div>
 

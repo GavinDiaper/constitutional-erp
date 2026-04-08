@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  extractRequisitionLinesFromPrompt,
   adjustSuggestionScore,
+  extractCurrencyCodeFromPrompt,
   inferOperationFromPrompt,
   missingRequiredFields,
   normalizeCreatePayload
@@ -11,6 +13,24 @@ import { NextStepSuggestion } from "../src/contracts/navigatorTypes";
 test("inferOperationFromPrompt detects supplier intent", () => {
   const operation = inferOperationFromPrompt("create a new supplier in UAE");
   assert.equal(operation, "create-supplier");
+});
+
+test("inferOperationFromPrompt prioritizes requisition over supplier reference", () => {
+  const operation = inferOperationFromPrompt("Create a requisition for 5 chairs at 100 AED for this supplier");
+  assert.equal(operation, "create-requisition");
+});
+
+test("extractCurrencyCodeFromPrompt detects AED token", () => {
+  const currency = extractCurrencyCodeFromPrompt("Create a requisition for 5 chairs at 100 AED for this supplier");
+  assert.equal(currency, "AED");
+});
+
+test("extractRequisitionLinesFromPrompt parses quantity and unit price", () => {
+  const lines = extractRequisitionLinesFromPrompt("Create a requisition for 5 Chairs at 100 AED for this supplier");
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0]?.description.toLowerCase(), "chairs");
+  assert.equal(lines[0]?.quantity, 5);
+  assert.equal(lines[0]?.unitPrice, 100);
 });
 
 test("normalizeCreatePayload maps UAE country and uppercases fields", () => {

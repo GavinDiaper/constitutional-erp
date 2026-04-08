@@ -87,6 +87,12 @@ interface AuthorityJournalRow {
   status?: string;
 }
 
+interface PromptRequisitionLineInput {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 function normalizeLifecycleToken(value: string | undefined): string {
   return (value ?? "")
     .trim()
@@ -173,13 +179,176 @@ export function missingRequiredFields(operation: NavigatorCreateOperation, paylo
 
 export function inferOperationFromPrompt(prompt: string): NavigatorCreateOperation | undefined {
   const lower = prompt.toLowerCase();
-  if (lower.includes("supplier")) return "create-supplier";
   if (lower.includes("requisition")) return "create-requisition";
-  if (lower.includes("purchase order") || lower.includes("purchase-order") || lower.includes("po")) return "create-purchase-order";
+  if (lower.includes("purchase order") || lower.includes("purchase-order") || /\bpo\b/.test(lower)) return "create-purchase-order";
   if (lower.includes("fiscal year")) return "create-fiscal-year";
   if (lower.includes("fiscal period")) return "create-fiscal-period";
   if (lower.includes("payment")) return "create-payment";
+  if (lower.includes("supplier")) return "create-supplier";
   return undefined;
+}
+
+function resourceFieldAsString(resource: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+  if (!resource) {
+    return undefined;
+  }
+
+  for (const key of keys) {
+    const direct = resource[key];
+    if (typeof direct === "string" && direct.trim().length > 0) {
+      return direct;
+    }
+  }
+
+  const attributesValue = resource["attributes"];
+  if (!attributesValue || typeof attributesValue !== "object" || Array.isArray(attributesValue)) {
+    return undefined;
+  }
+
+  const attributes = attributesValue as Record<string, unknown>;
+  for (const key of keys) {
+    const attributeValue = attributes[key];
+    if (typeof attributeValue === "string" && attributeValue.trim().length > 0) {
+      return attributeValue;
+    }
+  }
+
+  return undefined;
+}
+
+export function extractCurrencyCodeFromPrompt(prompt: string): string | undefined {
+  const match = prompt.match(/\b(AED|USD|EUR|GBP|SAR)\b/i);
+  return match?.[1]?.toUpperCase();
+}
+
+function defaultLegalEntityIdFromCurrency(currencyCode: string | undefined): string {
+  const token = String(currencyCode ?? "").trim().toUpperCase();
+  if (token === "AED") {
+    return "LE-SEED-AE";
+  }
+  if (token === "AUD") {
+    return "LE-SEED-AU";
+  }
+
+  return "LE-SEED-US";
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function extractRequisitionLinesFromPrompt(prompt: string): PromptRequisitionLineInput[] {
+  const normalized = prompt.replace(/[\r\n]+/g, " ");
+  const pattern = /(?:for|need|requires?)\s+(\d+(?:\.\d+)?)\s+([a-z][a-z\s\-]{1,60}?)\s+(?:at|@)\s+(\d+(?:\.\d+)?)/i;
+  const match = normalized.match(pattern);
+  if (!match) {
+    return [];
+  }
+
+  const quantity = Number(match[1]);
+  const unitPrice = Number(match[3]);
+  const description = String(match[2] ?? "").trim();
+  if (!description || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+    return [];
+  }
+
+  return [
+    {
+      description,
+      quantity,
+      unitPrice
+    }
+  ];
+}
+
+function extractPromptRequisitionLines(payload: Record<string, unknown>): PromptRequisitionLineInput[] {
+  const rawLines = payload["lines"];
+  if (!Array.isArray(rawLines)) {
+    return [];
+  }
+
+  const parsed: PromptRequisitionLineInput[] = [];
+  for (const candidate of rawLines) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      continue;
+    }
+
+    const line = candidate as Record<string, unknown>;
+    const description = String(line["description"] ?? "").trim();
+    const quantity = Number(line["quantity"]);
+    const unitPrice = Number(line["unitPrice"]);
+    if (!description || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      continue;
+    }
+
+    parsed.push({ description, quantity, unitPrice });
+  }
+
+  return parsed;
+}
+
+function applyPromptContextDefaults(input: PromptCreateRequest, operation: NavigatorCreateOperation, payload: Record<string, unknown>): Record<string, unknown> {
+  const enriched = { ...payload };
+  const context = input.context;
+
+  if (operation === "create-requisition") {
+    if (!enriched["requester"]) {
+      enriched["requester"] = input.actorId;
+    }
+
+    if (!enriched["department"]) {
+      enriched["department"] = "Operations";
+    }
+
+    if (!enriched["supplierId"] && context?.aggregateType?.toLowerCase() === "supplier" && context.aggregateId) {
+      enriched["supplierId"] = context.aggregateId;
+    }
+
+    if (!enriched["currencyCode"]) {
+      const currencyFromResource = resourceFieldAsString(context?.resource, [
+        "currencyCode",
+        "currency",
+        "defaultCurrency",
+        "preferredCurrency"
+      ]);
+      if (currencyFromResource) {
+        enriched["currencyCode"] = currencyFromResource;
+      } else {
+        const currencyFromPrompt = extractCurrencyCodeFromPrompt(input.prompt);
+        if (currencyFromPrompt) {
+          enriched["currencyCode"] = currencyFromPrompt;
+        }
+      }
+    }
+
+    if (!enriched["legalEntityId"]) {
+      const legalEntityFromResource = resourceFieldAsString(context?.resource, ["legalEntityId", "legal_entity_id"]);
+      if (legalEntityFromResource) {
+        enriched["legalEntityId"] = legalEntityFromResource;
+      } else {
+        enriched["legalEntityId"] = defaultLegalEntityIdFromCurrency(String(enriched["currencyCode"] ?? ""));
+      }
+    }
+
+    if (!enriched["neededByDate"]) {
+      enriched["neededByDate"] = todayIsoDate();
+    }
+
+    if (!Array.isArray(enriched["lines"])) {
+      const lines = extractRequisitionLinesFromPrompt(input.prompt);
+      if (lines.length > 0) {
+        enriched["lines"] = lines;
+      }
+    }
+  }
+
+  if (operation === "create-purchase-order") {
+    if (!enriched["supplierId"] && context?.aggregateType?.toLowerCase() === "supplier" && context.aggregateId) {
+      enriched["supplierId"] = context.aggregateId;
+    }
+  }
+
+  return enriched;
 }
 
 export function heuristicSupplierPayload(prompt: string): Record<string, unknown> {
@@ -797,7 +966,39 @@ export class NavigatorService {
     payload: Record<string, unknown>;
     actorId: string;
   }): Promise<CreateEntityResult> {
-    const result = await this.integrationHubClient.createEntity(input);
+    let requisitionLines: PromptRequisitionLineInput[] = [];
+    const payloadForCreate = { ...input.payload };
+    if (input.operation === "create-requisition") {
+      requisitionLines = extractPromptRequisitionLines(payloadForCreate);
+      delete payloadForCreate["lines"];
+    }
+
+    const result = await this.integrationHubClient.createEntity({
+      operation: input.operation,
+      actorId: input.actorId,
+      payload: payloadForCreate
+    });
+
+    if (input.operation === "create-requisition" && result.entityId && requisitionLines.length > 0) {
+      const lineResults: Record<string, unknown>[] = [];
+      for (const line of requisitionLines) {
+        const createdLine = await this.integrationHubClient.addRequisitionLine({
+          requisitionId: result.entityId,
+          actorId: input.actorId,
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice
+        });
+        lineResults.push(createdLine);
+      }
+
+      if (result.data && typeof result.data === "object" && !Array.isArray(result.data)) {
+        result.data = {
+          ...(result.data as Record<string, unknown>),
+          createdLines: lineResults
+        };
+      }
+    }
 
     if (result.entityId) {
       const domainByType: Record<string, SessionContext["domain"]> = {
@@ -895,6 +1096,7 @@ export class NavigatorService {
       };
     }
 
+    resolution.payload = applyPromptContextDefaults(input, resolution.operation, resolution.payload);
     resolution.payload = normalizeCreatePayload(resolution.operation, resolution.payload);
     resolution.missingFields = missingRequiredFields(resolution.operation, resolution.payload);
 

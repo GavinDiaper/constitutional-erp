@@ -108,6 +108,12 @@ const lookupKindSchema = z.union([
   z.literal("invoices")
 ]);
 
+const requisitionLineSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative()
+});
+
 type CreateOperation = z.infer<typeof createOperationSchema>;
 type LookupKind = z.infer<typeof lookupKindSchema>;
 
@@ -268,6 +274,32 @@ export function createHubRouter(deps: {
         entityId: String(created[config.entityIdField] ?? ""),
         data: created
       });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/p2p/requisitions/:requisitionId/lines", async (req, res, next) => {
+    try {
+      const requisitionId = String(req.params.requisitionId ?? "").trim();
+      if (!requisitionId) {
+        throw new Error("requisitionId is required");
+      }
+
+      const payload = requisitionLineSchema.parse(req.body ?? {});
+      const created = await requestJson<Record<string, unknown>>(
+        `${deps.config.foundationErpUrl}/api/v1/p2p/requisitions/${encodeURIComponent(requisitionId)}/lines`,
+        {
+          method: "POST",
+          headers: {
+            ...foundationHeaders(req, deps.config),
+            "content-type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      res.status(201).json(created);
     } catch (error) {
       next(error);
     }

@@ -143,6 +143,12 @@ export interface PromptCreateRequest {
   prompt: string;
   actorId: string;
   domain?: SessionContext["domain"];
+  context?: {
+    domain?: SessionContext["domain"];
+    aggregateType?: string;
+    aggregateId?: string;
+    resource?: Record<string, unknown>;
+  };
   dryRun?: boolean;
 }
 

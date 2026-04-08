@@ -20,6 +20,7 @@ function buildService(input?: {
   const published: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   let createCalls = 0;
   let executeCalls = 0;
+  const addRequisitionLineCalls: Array<{ requisitionId: string; description: string; quantity: number; unitPrice: number }> = [];
 
   const integrationHubClient = {
     getResource: async (_ctx: SessionContext) => ({
@@ -40,9 +41,19 @@ function buildService(input?: {
       createCalls += 1;
       return {
         operation: payload.operation,
-        entityType: "p2p_supplier",
-        entityId: input?.createdEntityId ?? "SUP-NEW-1",
+        entityType: payload.operation === "create-requisition" ? "p2p_requisition" : "p2p_supplier",
+        entityId: input?.createdEntityId ?? (payload.operation === "create-requisition" ? "REQ-NEW-1" : "SUP-NEW-1"),
         data: payload.payload
+      };
+    },
+    addRequisitionLine: async (line: { requisitionId: string; description: string; quantity: number; unitPrice: number }) => {
+      addRequisitionLineCalls.push(line);
+      return {
+        requisition_line_id: `RL-${addRequisitionLineCalls.length}`,
+        requisition_id: line.requisitionId,
+        description: line.description,
+        quantity: line.quantity,
+        unit_price: line.unitPrice
       };
     },
     executeAction: async () => {
@@ -108,7 +119,13 @@ function buildService(input?: {
     llmClient
   );
 
-  return { service, published, getCreateCalls: () => createCalls, getExecuteCalls: () => executeCalls };
+  return {
+    service,
+    published,
+    getCreateCalls: () => createCalls,
+    getExecuteCalls: () => executeCalls,
+    getAddRequisitionLineCalls: () => addRequisitionLineCalls
+  };
 }
 
 test("promptCreate dry-run resolves but does not create", async () => {
@@ -212,6 +229,44 @@ test("promptCreate publishes normalized supplier payload fields for UAE prompt",
   assert.equal(payload["countryCode"], "AE");
   assert.equal(payload["currencyCode"], "AED");
   assert.equal(payload["paymentTerms"], "NET45");
+});
+
+test("promptCreate requisition prompt defaults legal entity/date and adds requisition line", async () => {
+  const { service, getAddRequisitionLineCalls, published } = buildService();
+
+  const result = await service.promptCreate({
+    prompt: "Create a requisition for 5 Chairs at 100 AED for this supplier",
+    actorId: "principal.system",
+    domain: "P2P",
+    context: {
+      domain: "P2P",
+      aggregateType: "supplier",
+      aggregateId: "SUP-CTX-1",
+      resource: {
+        id: "SUP-CTX-1",
+        type: "supplier",
+        state: "Active",
+        attributes: {
+          currencyCode: "AED"
+        }
+      }
+    }
+  });
+
+  assert.equal(result.status, "READY");
+  assert.equal(result.resolution.operation, "create-requisition");
+  assert.equal(result.resolution.payload["currencyCode"], "AED");
+  assert.equal(result.resolution.payload["legalEntityId"], "LE-SEED-AE");
+  assert.equal(typeof result.resolution.payload["neededByDate"], "string");
+  const lineCalls = getAddRequisitionLineCalls();
+  assert.equal(lineCalls.length, 1);
+  assert.equal(lineCalls[0]?.description.toLowerCase(), "chairs");
+  assert.equal(lineCalls[0]?.quantity, 5);
+  assert.equal(lineCalls[0]?.unitPrice, 100);
+
+  const promptCreateEvent = published.find((event) => event.eventType === "Navigator.PromptCreateExecuted");
+  assert.ok(promptCreateEvent);
+  assert.equal(promptCreateEvent?.payload["operation"], "create-requisition");
 });
 
 test("nextSteps publishes recommendation event and boosts create flow after entity creation history", async () => {

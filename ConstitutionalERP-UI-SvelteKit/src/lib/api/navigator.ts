@@ -373,6 +373,12 @@ export async function promptCreateEntity(
 		prompt: string;
 		actorId: string;
 		domain?: string;
+		context?: {
+			domain?: string;
+			aggregateType?: string;
+			aggregateId?: string;
+			resource?: Record<string, unknown>;
+		};
 		dryRun?: boolean;
 	},
 	actor: ActorContext
