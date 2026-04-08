@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
+		getApprovalAttentionItems,
 		getDashboardSummary,
 		isActiveEmployee,
 		isDraftCustomer,
@@ -144,11 +145,16 @@
 			employeeStatusData = aggregateStates((employeeResult.data ?? []).map(resolveEmployeeStatus), 'Unknown');
 			journalsByPeriod = aggregateJournalsByPeriod(journalResult.data ?? []);
 			poValueByState = aggregatePoValueByState(poResult.data ?? []);
-			approvalQueueItems = buildApprovalQueue(
-				customerResult.data ?? [],
-				requisitionResult.data ?? [],
-				journalResult.data ?? []
-			);
+			const attentionItems = await getApprovalAttentionItems($actorStore, 12);
+			approvalQueueItems = attentionItems.map((item) => ({
+				...item,
+				href:
+					item.entityType === 'o2c_customer'
+						? resolve(`/canvas/o2c_customer/${item.id}`)
+						: item.entityType === 'p2p_requisition'
+							? resolve(`/canvas/p2p_requisition/${item.id}`)
+							: resolve(`/canvas/r2r_journal/${item.id}`)
+			}));
 		} catch (error) {
 			chartErrorMessage = error instanceof Error ? error.message : 'Unable to load dashboard analytics.';
 		} finally {

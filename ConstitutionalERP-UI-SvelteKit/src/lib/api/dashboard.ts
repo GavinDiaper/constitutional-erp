@@ -29,12 +29,33 @@ interface RequisitionRow {
 	requisition_id: string;
 	state?: string;
 	status?: string;
+	requester?: string;
+	created_at?: string;
 }
 
 interface CustomerRow {
 	customer_id: string;
 	state?: string;
 	status?: string;
+	customer_name?: string;
+	email?: string;
+	created_at?: string;
+}
+
+interface ApprovalJournalRow extends JournalRow {
+	description?: string;
+	created_at?: string;
+	fiscal_period_id?: string;
+	period_id?: string;
+	fiscal_period?: string;
+}
+
+export interface ApprovalAttentionItem {
+	id: string;
+	entityType: 'o2c_customer' | 'p2p_requisition' | 'r2r_journal';
+	ownerLabel: string;
+	stateLabel: string;
+	createdAt: string;
 }
 
 function normalizeLifecycleToken(value: string | undefined): string {
@@ -42,6 +63,75 @@ function normalizeLifecycleToken(value: string | undefined): string {
 		.trim()
 		.toLowerCase()
 		.replace(/[\s_-]+/g, '');
+}
+
+function normalizeLabel(value: string): string {
+	return value
+		.trim()
+		.replace(/[_-]+/g, ' ')
+		.toLowerCase()
+		.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function sortByCreatedAtDesc(left: string, right: string): number {
+	const leftTime = Date.parse(left);
+	const rightTime = Date.parse(right);
+
+	if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) {
+		return 0;
+	}
+
+	if (Number.isNaN(leftTime)) {
+		return 1;
+	}
+
+	if (Number.isNaN(rightTime)) {
+		return -1;
+	}
+
+	return rightTime - leftTime;
+}
+
+export async function getApprovalAttentionItems(actor: ActorContext, limit = 12): Promise<ApprovalAttentionItem[]> {
+	const [customerResult, requisitionResult, journalResult] = await Promise.all([
+		queryTable<CustomerRow>('o2c_customer', actor),
+		queryTable<RequisitionRow>('p2p_requisition', actor),
+		queryTable<ApprovalJournalRow>('r2r_journal', actor)
+	]);
+
+	const customerActivations = (customerResult.data ?? [])
+		.filter(isDraftCustomer)
+		.map((customer) => ({
+			id: customer.customer_id,
+			entityType: 'o2c_customer' as const,
+			ownerLabel: customer.customer_name || customer.email || 'n/a',
+			stateLabel: normalizeLabel(customer.status || customer.state || 'Draft'),
+			createdAt: customer.created_at ?? ''
+		}));
+
+	const submittedRequisitions = (requisitionResult.data ?? [])
+		.filter(isSubmittedRequisition)
+		.map((requisition) => ({
+			id: requisition.requisition_id,
+			entityType: 'p2p_requisition' as const,
+			ownerLabel: requisition.requester ?? 'n/a',
+			stateLabel: normalizeLabel(requisition.state || requisition.status || 'Submitted'),
+			createdAt: requisition.created_at ?? ''
+		}));
+
+	const pendingJournals = (journalResult.data ?? [])
+		.filter(isPendingJournal)
+		.map((journal) => ({
+			id: journal.journal_id,
+			entityType: 'r2r_journal' as const,
+			ownerLabel: journal.description || journal.fiscal_period_id || journal.period_id || journal.fiscal_period || 'n/a',
+			stateLabel: normalizeLabel(journal.state || journal.status || 'Pending'),
+			createdAt: journal.created_at ?? ''
+		}));
+
+	return [...customerActivations, ...submittedRequisitions, ...pendingJournals]
+		.sort((a, b) => sortByCreatedAtDesc(a.createdAt, b.createdAt))
+		.slice(0, limit);
 }
 
 export function isDraftQuote(quote: O2CQuote): boolean {

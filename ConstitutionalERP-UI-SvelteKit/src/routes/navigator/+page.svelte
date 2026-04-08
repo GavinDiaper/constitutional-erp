@@ -9,9 +9,8 @@
 		setActorById,
 		type ActorContext
 	} from '$lib/stores/actorStore';
+	import { getApprovalAttentionItems, type ApprovalAttentionItem } from '$lib/api/dashboard';
 	import {
-		getApprovalRequest,
-		getApprovalRequests,
 		createEntity,
 		decide,
 		executeAction,
@@ -22,10 +21,7 @@
 		getResource,
 		promptCreateEntity,
 		rankActions,
-		resolveApprovalRequest,
 		simulateAction,
-		type ApprovalRequestRecord,
-		type ApprovalRequestStatus,
 		type ActionOption,
 		type CanonicalResource,
 		type DecisionOutcome,
@@ -152,14 +148,8 @@
 	let nextStepsResult: NextStepResult | null = null;
 	let approvalsLoading = false;
 	let approvalsError = '';
-	let approvalItems: ApprovalRequestRecord[] = [];
-	let selectedApproval: ApprovalRequestRecord | null = null;
-	let selectedApprovalStatus: '' | ApprovalRequestStatus = 'PENDING';
-	let approvalScope: 'current' | 'all' = 'all';
-	let approvalActionLoading = false;
-	let approvalActionError = '';
-	let approvalActionNote = '';
-	let approvalEscalationTier = 2;
+	let approvalItems: ApprovalAttentionItem[] = [];
+	let selectedApproval: ApprovalAttentionItem | null = null;
 
 	let supplierLookup: Array<Record<string, unknown>> = [];
 	let ledgerLookup: Array<Record<string, unknown>> = [];
@@ -571,7 +561,6 @@
 		approvalItems = [];
 		selectedApproval = null;
 		approvalsError = '';
-		approvalActionError = '';
 	}
 
 	function selectedActor(): ActorContext {
@@ -784,15 +773,9 @@
 		approvalsError = '';
 
 		try {
-			approvalItems = await getApprovalRequests(
-				buildContext(),
-				selectedActor(),
-				25,
-				selectedApprovalStatus || undefined,
-				{ scope: approvalScope }
-			);
+			approvalItems = await getApprovalAttentionItems(selectedActor(), 25);
 
-			if (selectedApproval && !approvalItems.some((item) => item.approvalRequestId === selectedApproval?.approvalRequestId)) {
+			if (selectedApproval && !approvalItems.some((item) => item.entityType === selectedApproval?.entityType && item.id === selectedApproval?.id)) {
 				selectedApproval = null;
 			}
 		} catch (err) {
@@ -802,42 +785,21 @@
 		}
 	}
 
-	async function handleSelectApproval(approvalRequestId: string): Promise<void> {
-		approvalActionError = '';
-		try {
-			selectedApproval = await getApprovalRequest(approvalRequestId, selectedActor());
-			approvalEscalationTier = Math.max((selectedApproval.requiredTier ?? 1) + 1, approvalEscalationTier);
-		} catch (err) {
-			approvalActionError = err instanceof Error ? err.message : 'Approval detail request failed.';
-		}
-	}
-
-	async function handleResolveApproval(action: 'approve' | 'reject' | 'escalate'): Promise<void> {
-		if (!selectedApproval) {
-			approvalActionError = 'Select an approval request first.';
+	async function handleSelectApproval(item: ApprovalAttentionItem): Promise<void> {
+		selectedApproval = item;
+		if (item.entityType === 'p2p_requisition') {
+			domain = 'P2P';
+			aggregateType = 'requisition';
+			aggregateId = item.id;
+			await handleLoadResource();
 			return;
 		}
 
-		approvalActionLoading = true;
-		approvalActionError = '';
-
-		try {
-			selectedApproval = await resolveApprovalRequest(
-				{
-					approvalRequestId: selectedApproval.approvalRequestId,
-					action,
-					actorId: actorId,
-					note: approvalActionNote.trim() || undefined,
-					requiredTier: action === 'escalate' ? Number(approvalEscalationTier) : undefined
-				},
-				selectedActor()
-			);
-			approvalActionNote = '';
-			await handleLoadApprovals();
-		} catch (err) {
-			approvalActionError = err instanceof Error ? err.message : 'Approval resolution failed.';
-		} finally {
-			approvalActionLoading = false;
+		if (item.entityType === 'r2r_journal') {
+			domain = 'R2R';
+			aggregateType = 'journal';
+			aggregateId = item.id;
+			await handleLoadResource();
 		}
 	}
 
@@ -925,13 +887,8 @@
 
 		try {
 			execution = await executeAction(buildContext(), actionToExecute, selectedActor());
-			const approvalRequest = execution.responseBody?.approvalRequest as ApprovalRequestRecord | undefined;
 			if (execution.mode === 'REQUEST_APPROVAL') {
 				await handleLoadApprovals();
-				if (approvalRequest?.approvalRequestId) {
-					selectedApproval = approvalRequest;
-					approvalEscalationTier = Math.max((approvalRequest.requiredTier ?? 1) + 1, approvalEscalationTier);
-				}
 			}
 		} catch (err) {
 			executionError = err instanceof Error ? err.message : 'Execute request failed.';
@@ -1330,28 +1287,11 @@
 			<div>
 				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Approval Queue</h3>
 				<p class="mt-2 text-sm text-white/75">
-					Review pending or resolved Navigator approval requests and resolve them directly from the UI.
+					Draft customer activations, submitted requisitions, and pending journals requiring operator attention.
 				</p>
 			</div>
 			<div class="flex flex-wrap gap-3">
-				<select
-					class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-					bind:value={approvalScope}
-				>
-					<option value="all">ALL MONITORED AGGREGATES</option>
-					<option value="current">CURRENT AGGREGATE</option>
-				</select>
-				<select
-					class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
-					bind:value={selectedApprovalStatus}
-				>
-					<option value="PENDING">PENDING</option>
-					<option value="APPROVED">APPROVED</option>
-					<option value="REJECTED">REJECTED</option>
-					<option value="ESCALATED">ESCALATED</option>
-					<option value="EXPIRED">EXPIRED</option>
-					<option value="">ALL</option>
-				</select>
+				<span class="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white/85">Dashboard Method</span>
 				<button
 					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
 					disabled={approvalsLoading}
@@ -1369,18 +1309,21 @@
 		<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
 			<div>
 				{#if approvalItems.length === 0}
-					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No approval requests loaded for the selected scope and filter.</p>
+					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No entities currently requiring attention.</p>
 				{:else}
 					<ul class="space-y-2">
-						{#each approvalItems as approval (approval.approvalRequestId)}
+						{#each approvalItems as approval (approval.entityType + '-' + approval.id)}
 							<li>
 								<button
-									class={`w-full rounded-md border px-3 py-3 text-left text-sm transition hover:bg-white/10 ${selectedApproval?.approvalRequestId === approval.approvalRequestId ? 'border-emerald-400/55 bg-emerald-500/10' : 'border-white/15 bg-[#0e2038]'}`}
-									on:click={() => void handleSelectApproval(approval.approvalRequestId)}
+									class={`w-full rounded-md border px-3 py-3 text-left text-sm transition hover:bg-white/10 ${selectedApproval?.entityType === approval.entityType && selectedApproval?.id === approval.id ? 'border-emerald-400/55 bg-emerald-500/10' : 'border-white/15 bg-[#0e2038]'}`}
+									on:click={() => void handleSelectApproval(approval)}
 								>
-									<p class="font-mono text-xs text-white/80">{approval.approvalRequestId}</p>
-									<p class="mt-1 text-white/90">{approval.actionId} <span class="ml-2 text-xs text-white/55">{approval.status}</span></p>
-									<p class="mt-1 text-xs text-white/60">Tier {approval.requiredTier ?? '—'} | Updated {approval.updatedAt}</p>
+									<p class="font-mono text-xs text-white/80">{approval.id}</p>
+									<p class="mt-1 text-white/90">
+										{approval.entityType === 'o2c_customer' ? 'Customer Activation' : approval.entityType === 'p2p_requisition' ? 'Submitted Requisition' : 'Pending Journal'}
+									</p>
+									<p class="mt-1 text-xs text-white/65">{approval.ownerLabel}</p>
+									<p class="mt-1 text-xs text-white/60">State {approval.stateLabel}</p>
 								</button>
 							</li>
 						{/each}
@@ -1389,63 +1332,22 @@
 			</div>
 
 			<div class="rounded-md border border-white/15 bg-[#0e2038] p-4">
-				<h4 class="text-sm font-semibold text-white/90">Approval Detail</h4>
+				<h4 class="text-sm font-semibold text-white/90">Attention Detail</h4>
 				{#if selectedApproval}
 					<div class="mt-3 space-y-2 text-sm">
-						<p><span class="text-white/60">Action:</span> {selectedApproval.actionId}</p>
-						<p><span class="text-white/60">Status:</span> {selectedApproval.status}</p>
-						<p><span class="text-white/60">Required Tier:</span> {selectedApproval.requiredTier ?? '—'}</p>
-						<p><span class="text-white/60">Requested By:</span> {selectedApproval.actorId}</p>
-						{#if selectedApproval.resolvedBy}
-							<p><span class="text-white/60">Resolved By:</span> {selectedApproval.resolvedBy}</p>
-						{/if}
-						{#if selectedApproval.reasons.length > 0}
-							<p><span class="text-white/60">Reasons:</span> {selectedApproval.reasons.join(' | ')}</p>
+						<p><span class="text-white/60">Entity:</span> {selectedApproval.entityType}</p>
+						<p><span class="text-white/60">ID:</span> {selectedApproval.id}</p>
+						<p><span class="text-white/60">Owner/Context:</span> {selectedApproval.ownerLabel}</p>
+						<p><span class="text-white/60">State:</span> {selectedApproval.stateLabel}</p>
+						{#if selectedApproval.createdAt}
+							<p><span class="text-white/60">Created:</span> {selectedApproval.createdAt}</p>
 						{/if}
 					</div>
-
-					<div class="mt-4 space-y-3">
-						<textarea
-							class="min-h-[84px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
-							placeholder="Optional approval note"
-							bind:value={approvalActionNote}
-						></textarea>
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
-							<input
-								class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
-								type="number"
-								min="1"
-								bind:value={approvalEscalationTier}
-							/>
-							<button
-								class="rounded-md border border-emerald-400/55 px-3 py-2 text-xs text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
-								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING' && selectedApproval.status !== 'ESCALATED'}
-								on:click={() => void handleResolveApproval('approve')}
-							>
-								Approve
-							</button>
-							<button
-								class="rounded-md border border-amber-400/55 px-3 py-2 text-xs text-amber-100 hover:bg-amber-500/10 disabled:opacity-50"
-								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING'}
-								on:click={() => void handleResolveApproval('escalate')}
-							>
-								Escalate
-							</button>
-							<button
-								class="rounded-md border border-red-400/55 px-3 py-2 text-xs text-red-100 hover:bg-red-500/10 disabled:opacity-50"
-								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING' && selectedApproval.status !== 'ESCALATED'}
-								on:click={() => void handleResolveApproval('reject')}
-							>
-								Reject
-							</button>
-						</div>
-					</div>
-
-					{#if approvalActionError}
-						<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{approvalActionError}</p>
-					{/if}
+					<p class="mt-4 text-xs text-white/60">
+						Navigator now uses the dashboard attention queue method for this panel. Approval resolution actions will be added next.
+					</p>
 				{:else}
-					<p class="mt-3 text-sm text-white/65">Select an approval request to inspect and resolve it.</p>
+					<p class="mt-3 text-sm text-white/65">Select an attention entity to inspect it.</p>
 				{/if}
 			</div>
 		</div>
