@@ -162,6 +162,12 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
 		return fallback;
 	}
 
+	// Detect HTML responses (likely error page or server down)
+	if (text.trim().toLowerCase().startsWith('<!doctype html') || text.includes('<html')) {
+		const statusText = response.statusText || 'Unknown Error';
+		return `${fallback} (HTTP ${response.status} ${statusText}). Received HTML response instead of JSON. Navigator API may not be running or is misconfigured. Check that NAVIGATOR_AI_URL is set correctly and the service is listening on port 4016.`;
+	}
+
 	try {
 		const parsed = JSON.parse(text) as {
 			detail?: unknown;
