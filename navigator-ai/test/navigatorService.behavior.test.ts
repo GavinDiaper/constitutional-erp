@@ -11,9 +11,15 @@ function buildService(input?: {
   llmResponse?: string;
   history?: Array<Record<string, unknown>>;
   createdEntityId?: string;
+  executeStatus?: number;
+  executeData?: Record<string, unknown>;
+  governanceMode?: "EXECUTE" | "REQUEST_APPROVAL" | "REJECT";
+  governanceReasons?: string[];
+  governanceRequiredTier?: number;
 }) {
   const published: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   let createCalls = 0;
+  let executeCalls = 0;
 
   const integrationHubClient = {
     getResource: async (_ctx: SessionContext) => ({
@@ -39,7 +45,13 @@ function buildService(input?: {
         data: payload.payload
       };
     },
-    executeAction: async () => ({ status: 200, data: {} }),
+    executeAction: async () => {
+      executeCalls += 1;
+      return {
+        status: input?.executeStatus ?? 200,
+        data: input?.executeData ?? {}
+      };
+    },
     getCreateLookups: async () => []
   };
 
@@ -48,7 +60,11 @@ function buildService(input?: {
   };
 
   const governanceClient = {
-    evaluate: async () => ({ mode: "EXECUTE" as const, reasons: [] })
+    evaluate: async () => ({
+      mode: input?.governanceMode ?? ("EXECUTE" as const),
+      reasons: input?.governanceReasons ?? [],
+      requiredTier: input?.governanceRequiredTier
+    })
   };
 
   const cepClient = {
@@ -92,7 +108,7 @@ function buildService(input?: {
     llmClient
   );
 
-  return { service, published, getCreateCalls: () => createCalls };
+  return { service, published, getCreateCalls: () => createCalls, getExecuteCalls: () => executeCalls };
 }
 
 test("promptCreate dry-run resolves but does not create", async () => {
@@ -254,4 +270,48 @@ test("nextSteps respects limit and publishes bounded suggestions payload", async
   assert.ok(Array.isArray(eventTypes));
   assert.ok(eventTypes.includes("Navigator.EntityCreated"));
   assert.ok(eventTypes.includes("Navigator.ActionRecommended"));
+});
+
+test("execute creates persistent approval request when governance requires approval", async () => {
+  const { service, published, getExecuteCalls } = buildService({
+    governanceMode: "REQUEST_APPROVAL",
+    governanceReasons: ["Amount exceeds delegated authority."],
+    governanceRequiredTier: 2
+  });
+
+  const context = {
+    domain: "P2P" as const,
+    aggregateType: "supplier",
+    aggregateId: `SUP-APPROVAL-${Date.now()}`,
+    actorId: "principal.system",
+    userNote: "approve spend over limit"
+  };
+
+  const result = await service.execute(context);
+
+  assert.equal(result.mode, "REQUEST_APPROVAL");
+  assert.equal(result.statusCode, 202);
+  assert.equal(getExecuteCalls(), 0);
+
+  const approvalRequest = result.responseBody["approvalRequest"] as Record<string, unknown>;
+  assert.equal(approvalRequest["status"], "PENDING");
+  assert.equal(approvalRequest["requiredTier"], 2);
+
+  const list = await service.approvals({
+    domain: context.domain,
+    aggregateType: context.aggregateType,
+    aggregateId: context.aggregateId,
+    limit: 10
+  });
+
+  assert.equal(list.length, 1);
+  assert.equal(list[0]?.approvalRequestId, approvalRequest["approvalRequestId"]);
+  assert.equal(list[0]?.status, "PENDING");
+  assert.deepEqual(list[0]?.reasons, ["Amount exceeds delegated authority."]);
+
+  const detail = await service.approval(String(approvalRequest["approvalRequestId"]));
+  assert.ok(detail);
+  assert.equal(detail?.aggregateId, context.aggregateId);
+  assert.equal(detail?.requiredTier, 2);
+  assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalRequested"));
 });

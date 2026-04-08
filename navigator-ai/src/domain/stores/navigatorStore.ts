@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../db/connection";
-import { DecisionOutcome, ExecutionResult, RankedAction, SessionContext, SimulationResult } from "../../contracts/navigatorTypes";
+import { ApprovalRequestRecord, ApprovalRequestStatus, DecisionOutcome, ExecutionResult, RankedAction, SessionContext, SimulationResult } from "../../contracts/navigatorTypes";
 
 export function recordLlmInteraction(input: {
   id: string;
@@ -92,6 +92,176 @@ export function recordExecution(ctx: SessionContext, actionId: string, result: E
     JSON.stringify(result.responseBody),
     new Date().toISOString()
   );
+}
+
+export function recordApprovalRequest(input: {
+  domain: string;
+  aggregateType: string;
+  aggregateId: string;
+  actorId: string;
+  actionId: string;
+  requiredTier?: number;
+  reasons: string[];
+  context: Record<string, unknown>;
+  responseBody: Record<string, unknown>;
+  status?: ApprovalRequestStatus;
+}): ApprovalRequestRecord {
+  const approvalRequestId = randomUUID();
+  const timestamp = new Date().toISOString();
+  const status = input.status ?? "PENDING";
+
+  db.prepare(
+    `INSERT INTO navigator_approval_request(
+      approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
+      required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    approvalRequestId,
+    input.domain,
+    input.aggregateType,
+    input.aggregateId,
+    input.actorId,
+    input.actionId,
+    status,
+    input.requiredTier ?? null,
+    JSON.stringify(input.reasons),
+    JSON.stringify(input.context),
+    JSON.stringify(input.responseBody),
+    null,
+    null,
+    timestamp,
+    timestamp
+  );
+
+  return {
+    approvalRequestId,
+    domain: input.domain,
+    aggregateType: input.aggregateType,
+    aggregateId: input.aggregateId,
+    actorId: input.actorId,
+    actionId: input.actionId,
+    status,
+    requiredTier: input.requiredTier,
+    reasons: input.reasons,
+    context: input.context,
+    responseBody: input.responseBody,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+export function getApprovalRequest(approvalRequestId: string): ApprovalRequestRecord | undefined {
+  const row = db.prepare(
+    `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
+            required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
+     FROM navigator_approval_request
+     WHERE approval_request_id = ?`
+  ).get(approvalRequestId) as
+    | {
+        approval_request_id: string;
+        domain: string;
+        aggregate_type: string;
+        aggregate_id: string;
+        actor_id: string;
+        action_id: string;
+        status: ApprovalRequestStatus;
+        required_tier: number | null;
+        reasons_json: string;
+        context_json: string;
+        response_json: string;
+        resolved_at: string | null;
+        resolved_by: string | null;
+        created_at: string;
+        updated_at: string;
+      }
+    | undefined;
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    approvalRequestId: row.approval_request_id,
+    domain: row.domain,
+    aggregateType: row.aggregate_type,
+    aggregateId: row.aggregate_id,
+    actorId: row.actor_id,
+    actionId: row.action_id,
+    status: row.status,
+    requiredTier: row.required_tier ?? undefined,
+    reasons: JSON.parse(row.reasons_json) as string[],
+    context: JSON.parse(row.context_json) as Record<string, unknown>,
+    responseBody: JSON.parse(row.response_json) as Record<string, unknown>,
+    resolvedAt: row.resolved_at ?? undefined,
+    resolvedBy: row.resolved_by ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export function listApprovalRequests(input: {
+  domain: string;
+  aggregateType: string;
+  aggregateId: string;
+  status?: ApprovalRequestStatus;
+  limit?: number;
+}): ApprovalRequestRecord[] {
+  const limit = input.limit ?? 100;
+  const rows = input.status
+    ? db.prepare(
+        `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
+                required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
+         FROM navigator_approval_request
+         WHERE domain = ? AND aggregate_type = ? AND aggregate_id = ? AND status = ?
+         ORDER BY created_at DESC
+         LIMIT ?`
+      ).all(input.domain, input.aggregateType, input.aggregateId, input.status, limit)
+    : db.prepare(
+        `SELECT approval_request_id, domain, aggregate_type, aggregate_id, actor_id, action_id, status,
+                required_tier, reasons_json, context_json, response_json, resolved_at, resolved_by, created_at, updated_at
+         FROM navigator_approval_request
+         WHERE domain = ? AND aggregate_type = ? AND aggregate_id = ?
+         ORDER BY created_at DESC
+         LIMIT ?`
+      ).all(input.domain, input.aggregateType, input.aggregateId, limit);
+
+  return rows.map((entry) => {
+    const row = entry as {
+      approval_request_id: string;
+      domain: string;
+      aggregate_type: string;
+      aggregate_id: string;
+      actor_id: string;
+      action_id: string;
+      status: ApprovalRequestStatus;
+      required_tier: number | null;
+      reasons_json: string;
+      context_json: string;
+      response_json: string;
+      resolved_at: string | null;
+      resolved_by: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+
+    return {
+      approvalRequestId: row.approval_request_id,
+      domain: row.domain,
+      aggregateType: row.aggregate_type,
+      aggregateId: row.aggregate_id,
+      actorId: row.actor_id,
+      actionId: row.action_id,
+      status: row.status,
+      requiredTier: row.required_tier ?? undefined,
+      reasons: JSON.parse(row.reasons_json) as string[],
+      context: JSON.parse(row.context_json) as Record<string, unknown>,
+      responseBody: JSON.parse(row.response_json) as Record<string, unknown>,
+      resolvedAt: row.resolved_at ?? undefined,
+      resolvedBy: row.resolved_by ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    } satisfies ApprovalRequestRecord;
+  });
 }
 
 export function recordTranscript(actorId: string | undefined, commandText: string, outputText: string) {

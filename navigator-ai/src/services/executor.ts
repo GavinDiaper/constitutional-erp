@@ -1,7 +1,7 @@
 import { CepClient } from "../clients/cepClient";
 import { IntegrationHubClient } from "../clients/integrationHubClient";
 import { ActionInputSchema, ActionOption, DecisionOutcome, ExecutionResult, SessionContext } from "../contracts/navigatorTypes";
-import { recordExecution, recordNavigatorEvent } from "../domain/stores/navigatorStore";
+import { recordApprovalRequest, recordExecution, recordNavigatorEvent } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
 
 async function extractPayloadFromNote(input: {
@@ -123,6 +123,72 @@ export async function executeDecision(input: {
     return denied;
   }
 
+  const selectedAction = input.actionOptions.find((candidate) => candidate.id === actionId);
+
+  if (input.decision.mode === "REQUEST_APPROVAL") {
+    const approvalRequest = recordApprovalRequest({
+      domain: input.context.domain,
+      aggregateType: input.context.aggregateType,
+      aggregateId: input.context.aggregateId,
+      actorId: input.context.actorId,
+      actionId,
+      requiredTier: input.decision.requiredTier ?? selectedAction?.requiredTier,
+      reasons: input.decision.reasons ?? [input.decision.explanation],
+      context: {
+        userNote: input.context.userNote ?? null,
+        actionId,
+        currentState: selectedAction?.currentState ?? null
+      },
+      responseBody: {
+        detail: input.decision.explanation,
+        mode: "REQUEST_APPROVAL"
+      }
+    });
+
+    const approvalResult: ExecutionResult = {
+      mode: "REQUEST_APPROVAL",
+      actionId,
+      statusCode: 202,
+      responseBody: {
+        detail: input.decision.explanation,
+        approvalRequest
+      }
+    };
+
+    recordExecution(input.context, actionId, approvalResult);
+    recordNavigatorEvent({
+      eventType: "Navigator.ApprovalRequested",
+      domain: input.context.domain,
+      aggregateType: input.context.aggregateType,
+      aggregateId: input.context.aggregateId,
+      actorId: input.context.actorId,
+      payload: {
+        approvalRequestId: approvalRequest.approvalRequestId,
+        actionId,
+        requiredTier: approvalRequest.requiredTier,
+        reasons: approvalRequest.reasons,
+        status: approvalRequest.status
+      }
+    });
+
+    await input.cepClient.publish({
+      eventType: "Navigator.ApprovalRequested",
+      actorId: input.context.actorId,
+      domain: input.context.domain,
+      aggregateType: input.context.aggregateType,
+      aggregateId: input.context.aggregateId,
+      payload: {
+        approvalRequestId: approvalRequest.approvalRequestId,
+        actionId,
+        requiredTier: approvalRequest.requiredTier,
+        reasons: approvalRequest.reasons,
+        status: approvalRequest.status
+      }
+    });
+
+    return approvalResult;
+  }
+
   const result = await input.integrationHubClient.executeAction({
     aggregateType: input.context.aggregateType,
     aggregateId: input.context.aggregateId,
@@ -149,6 +215,35 @@ export async function executeDecision(input: {
     statusCode: result.status,
     responseBody: result.data
   };
+
+  if (mode === "REQUEST_APPROVAL") {
+    const requiredTier = typeof result.data["requiredTier"] === "number"
+      ? (result.data["requiredTier"] as number)
+      : selectedAction?.requiredTier;
+    const detail = typeof result.data["detail"] === "string"
+      ? result.data["detail"]
+      : "Approval requested by integration hub.";
+    const approvalRequest = recordApprovalRequest({
+      domain: input.context.domain,
+      aggregateType: input.context.aggregateType,
+      aggregateId: input.context.aggregateId,
+      actorId: input.context.actorId,
+      actionId,
+      requiredTier,
+      reasons: [detail],
+      context: {
+        userNote: input.context.userNote ?? null,
+        actionId,
+        currentState: selectedAction?.currentState ?? null
+      },
+      responseBody: result.data
+    });
+
+    executionResult.responseBody = {
+      ...result.data,
+      approvalRequest
+    };
+  }
 
   recordExecution(input.context, actionId, executionResult);
 

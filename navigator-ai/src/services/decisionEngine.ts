@@ -12,7 +12,8 @@ export async function decide(input: {
     return {
       action: null,
       mode: "NO_ACTION",
-      explanation: "No actions are available in the current canonical state."
+      explanation: "No actions are available in the current canonical state.",
+      reasons: []
     };
   }
 
@@ -33,7 +34,8 @@ export async function decide(input: {
     return {
       action: top,
       mode: "REJECT",
-      explanation: authority.reasons?.join("; ") || "Action denied by authority engine."
+      explanation: authority.reasons?.join("; ") || "Action denied by authority engine.",
+      reasons: authority.reasons ?? []
     };
   }
 
@@ -54,7 +56,9 @@ export async function decide(input: {
     return {
       action: top,
       mode: "REJECT",
-      explanation: governance.reasons.join("; ") || "Action denied by governance engine."
+      explanation: governance.reasons.join("; ") || "Action denied by governance engine.",
+      reasons: governance.reasons,
+      requiredTier: governance.requiredTier
     };
   }
 
@@ -64,13 +68,17 @@ export async function decide(input: {
       mode: "REQUEST_APPROVAL",
       explanation:
         governance.reasons.join("; ") ||
-        `Approval required${governance.requiredTier ? ` at tier ${governance.requiredTier}` : ""}.`
+        `Approval required${governance.requiredTier ? ` at tier ${governance.requiredTier}` : ""}.`,
+      reasons: governance.reasons,
+      requiredTier: governance.requiredTier
     };
   }
 
   return {
     action: top,
     mode: "EXECUTE",
-    explanation: governance.reasons.join("; ") || "Action approved for execution."
+    explanation: governance.reasons.join("; ") || "Action approved for execution.",
+    reasons: governance.reasons,
+    requiredTier: governance.requiredTier
   };
 }

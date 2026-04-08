@@ -4,6 +4,7 @@ import { GovernanceClient } from "../clients/governanceClient";
 import { IntegrationHubClient } from "../clients/integrationHubClient";
 import {
   ActionOption,
+  ApprovalRequestStatus,
   CreateEntityResult,
   DecisionOutcome,
   NextStepResult,
@@ -18,7 +19,7 @@ import {
   SessionContext,
   SimulationResult
 } from "../contracts/navigatorTypes";
-import { listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
+import { getApprovalRequest, listApprovalRequests, listNavigatorEvents, recordGovernanceOutcome, recordNavigatorEvent, recordRanking, recordSimulation } from "../domain/stores/navigatorStore";
 import { LlmClient } from "../llm/types";
 import { decide } from "./decisionEngine";
 import { executeDecision } from "./executor";
@@ -387,6 +388,20 @@ export class NavigatorService {
 
   async navlog(ctx: SessionContext, limit = 100) {
     return listNavigatorEvents(ctx.domain, ctx.aggregateType, ctx.aggregateId, limit);
+  }
+
+  async approvals(input: {
+    domain: SessionContext["domain"];
+    aggregateType: string;
+    aggregateId: string;
+    status?: ApprovalRequestStatus;
+    limit?: number;
+  }) {
+    return listApprovalRequests(input);
+  }
+
+  async approval(approvalRequestId: string) {
+    return getApprovalRequest(approvalRequestId);
   }
 
   async actions(ctx: SessionContext): Promise<ActionOption[]> {

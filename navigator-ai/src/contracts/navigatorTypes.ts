@@ -81,6 +81,8 @@ export interface DecisionOutcome {
   action: RankedAction | null;
   mode: NavigatorMode;
   explanation: string;
+  reasons?: string[];
+  requiredTier?: number;
 }
 
 export interface ExecutionResult {
@@ -88,6 +90,26 @@ export interface ExecutionResult {
   actionId: string;
   statusCode: number;
   responseBody: Record<string, unknown>;
+}
+
+export type ApprovalRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "ESCALATED" | "EXPIRED";
+
+export interface ApprovalRequestRecord {
+  approvalRequestId: string;
+  domain: string;
+  aggregateType: string;
+  aggregateId: string;
+  actorId: string;
+  actionId: string;
+  status: ApprovalRequestStatus;
+  requiredTier?: number;
+  reasons: string[];
+  context: Record<string, unknown>;
+  responseBody: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
 }
 
 export type NavigatorCreateOperation =

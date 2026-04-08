@@ -56,6 +56,21 @@ const nextStepsSchema = z.object({
   limit: z.number().int().positive().max(20).optional()
 });
 
+const approvalStatusSchema = z.union([
+  z.literal("PENDING"),
+  z.literal("APPROVED"),
+  z.literal("REJECTED"),
+  z.literal("ESCALATED"),
+  z.literal("EXPIRED")
+]);
+
+const approvalListSchema = z.object({
+  domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema),
+  aggregateType: z.string().min(1),
+  aggregateId: z.string().min(1),
+  status: approvalStatusSchema.optional()
+});
+
 export function createNavigatorRouter(service: NavigatorService) {
   const router = Router();
 
@@ -161,6 +176,42 @@ export function createNavigatorRouter(service: NavigatorService) {
 
       const result = await service.navlog(context, limit);
       res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/approvals", async (req, res, next) => {
+    try {
+      const query = approvalListSchema.parse(req.query);
+      const limitValue = req.query["limit"];
+      const limit = limitValue ? Number(limitValue) : 100;
+      if (!Number.isFinite(limit) || limit <= 0) {
+        throw new HttpError(400, "invalid_limit", "Query parameter 'limit' must be a positive number");
+      }
+
+      const result = await service.approvals({
+        domain: query.domain,
+        aggregateType: query.aggregateType,
+        aggregateId: query.aggregateId,
+        status: query.status,
+        limit
+      });
+      res.json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/approvals/:approvalRequestId", async (req, res, next) => {
+    try {
+      const approvalRequestId = z.string().uuid().parse(req.params.approvalRequestId);
+      const result = await service.approval(approvalRequestId);
+      if (!result) {
+        throw new HttpError(404, "approval_not_found", `Approval request '${approvalRequestId}' was not found`);
+      }
+
+      res.json(result);
     } catch (error) {
       next(error);
     }
