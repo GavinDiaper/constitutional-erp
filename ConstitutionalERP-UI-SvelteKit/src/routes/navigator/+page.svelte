@@ -15,18 +15,22 @@
 		decide,
 		executeAction,
 		explainAction,
+		getNextSteps,
 		getCreateLookups,
 		getActions,
 		getResource,
+		promptCreateEntity,
 		rankActions,
 		simulateAction,
 		type ActionOption,
 		type CanonicalResource,
 		type DecisionOutcome,
 		type ExecutionResult,
+		type NextStepResult,
 		type NavigatorCreateOperation,
 		type NavigatorCreateResult,
 		type NavigatorContext,
+		type PromptCreateResult,
 		type RankedAction,
 		type SimulationResult
 	} from '$lib/api/navigator';
@@ -147,6 +151,13 @@
 	let createLoading = false;
 	let createError = '';
 	let createResult: NavigatorCreateResult | null = null;
+	let promptCreateText = '';
+	let promptCreateLoading = false;
+	let promptCreateError = '';
+	let promptCreateResult: PromptCreateResult | null = null;
+	let nextStepsLoading = false;
+	let nextStepsError = '';
+	let nextStepsResult: NextStepResult | null = null;
 
 	let supplierLookup: Array<Record<string, unknown>> = [];
 	let ledgerLookup: Array<Record<string, unknown>> = [];
@@ -540,6 +551,77 @@
 		}
 	}
 
+	function inferContextFromEntityType(entityType: string | undefined): { domain: (typeof DOMAINS)[number]; aggregateType: string } | null {
+		const map: Record<string, { domain: (typeof DOMAINS)[number]; aggregateType: string }> = {
+			p2p_supplier: { domain: 'P2P', aggregateType: 'supplier' },
+			p2p_requisition: { domain: 'P2P', aggregateType: 'requisition' },
+			p2p_purchase_order: { domain: 'P2P', aggregateType: 'purchase-order' },
+			r2r_fiscal_year: { domain: 'R2R', aggregateType: 'fiscal-year' },
+			r2r_fiscal_period: { domain: 'R2R', aggregateType: 'fiscal-period' },
+			o2c_payment: { domain: 'O2C', aggregateType: 'ar-payment' }
+		};
+
+		if (!entityType) {
+			return null;
+		}
+
+		return map[entityType] ?? null;
+	}
+
+	async function handlePromptCreate(dryRun = false): Promise<void> {
+		if (!promptCreateText.trim()) {
+			promptCreateError = 'Enter a natural-language create prompt first.';
+			return;
+		}
+
+		promptCreateLoading = true;
+		promptCreateError = '';
+		promptCreateResult = null;
+
+		try {
+			const actor = selectedActor();
+			promptCreateResult = await promptCreateEntity(
+				{
+					prompt: promptCreateText.trim(),
+					actorId: actor.actorId,
+					domain,
+					dryRun
+				},
+				actor
+			);
+
+			if (promptCreateResult.created?.entityId) {
+				const inferred = inferContextFromEntityType(promptCreateResult.created.entityType);
+				if (inferred) {
+					registerAggregateId(inferred.aggregateType, promptCreateResult.created.entityId);
+					domain = inferred.domain;
+					aggregateType = inferred.aggregateType;
+					aggregateId = promptCreateResult.created.entityId;
+					await loadCreateLookups();
+					await handleLoadResource();
+				}
+			}
+		} catch (err) {
+			promptCreateError = err instanceof Error ? err.message : 'Prompt create request failed.';
+		} finally {
+			promptCreateLoading = false;
+		}
+	}
+
+	async function handleLoadNextSteps(): Promise<void> {
+		nextStepsLoading = true;
+		nextStepsError = '';
+		nextStepsResult = null;
+
+		try {
+			nextStepsResult = await getNextSteps(buildContext(), selectedActor(), 6);
+		} catch (err) {
+			nextStepsError = err instanceof Error ? err.message : 'Next-step recommendation request failed.';
+		} finally {
+			nextStepsLoading = false;
+		}
+	}
+
 	async function handleRank(): Promise<void> {
 		if (!aggregateType.trim() || !aggregateId.trim() || !actorId.trim()) {
 			errorMessage = 'Aggregate type, aggregate ID, and actor ID are required.';
@@ -875,6 +957,96 @@
 				<p class="mt-1">{createResult.operation} created {createResult.entityType ?? 'entity'} / {createResult.entityId ?? 'unknown-id'}.</p>
 			</div>
 		{/if}
+	</div>
+
+	<div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Prompt Create</h3>
+			<p class="mt-2 text-sm text-white/75">
+				Use natural language to resolve a create operation and payload. Example: create a new supplier in UAE named Gulf Trading with NET45 terms in AED.
+			</p>
+			<textarea
+				class="mt-3 min-h-[88px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+				placeholder="Describe what to create..."
+				bind:value={promptCreateText}
+			></textarea>
+			<div class="mt-3 flex flex-wrap gap-3">
+				<button
+					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+					disabled={promptCreateLoading}
+					on:click={() => void handlePromptCreate(true)}
+				>
+					{promptCreateLoading ? 'Resolving...' : 'Resolve Only'}
+				</button>
+				<button
+					class="rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
+					disabled={promptCreateLoading}
+					on:click={() => void handlePromptCreate(false)}
+				>
+					{promptCreateLoading ? 'Creating...' : 'Resolve + Create'}
+				</button>
+			</div>
+
+			{#if promptCreateError}
+				<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{promptCreateError}</p>
+			{/if}
+
+			{#if promptCreateResult}
+				<div class="mt-3 rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm text-white/90">
+					<p><span class="text-white/65">Status:</span> {promptCreateResult.status}</p>
+					<p><span class="text-white/65">Operation:</span> {promptCreateResult.resolution.operation}</p>
+					{#if promptCreateResult.resolution.missingFields.length > 0}
+						<p><span class="text-white/65">Missing:</span> {promptCreateResult.resolution.missingFields.join(', ')}</p>
+					{/if}
+					{#if promptCreateResult.resolution.clarification}
+						<p class="mt-1 text-amber-200">{promptCreateResult.resolution.clarification}</p>
+					{/if}
+					{#if promptCreateResult.created?.entityId}
+						<p class="mt-1 text-emerald-200">Created: {promptCreateResult.created.entityType} / {promptCreateResult.created.entityId}</p>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Next Step Recommender</h3>
+			<p class="mt-2 text-sm text-white/75">
+				Generate history-aware recommendations that combine available actions and logical create-operation progression.
+			</p>
+			<div class="mt-3 flex flex-wrap gap-3">
+				<button
+					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+					disabled={nextStepsLoading}
+					on:click={handleLoadNextSteps}
+				>
+					{nextStepsLoading ? 'Analyzing...' : 'Suggest Next Steps'}
+				</button>
+			</div>
+
+			{#if nextStepsError}
+				<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{nextStepsError}</p>
+			{/if}
+
+			{#if nextStepsResult}
+				<p class="mt-3 text-xs text-white/60">
+					Events analyzed: {nextStepsResult.historySignals.eventCount} | Recent entity created: {nextStepsResult.historySignals.hasRecentEntityCreated ? 'yes' : 'no'}
+				</p>
+				<ul class="mt-3 space-y-2">
+					{#each nextStepsResult.suggestions as suggestion (suggestion.stepId)}
+						<li class="rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm">
+							<p class="font-semibold text-white/90">
+								{suggestion.kind === 'ACTION' ? `Action: ${suggestion.actionId}` : `Create: ${suggestion.operation}`}
+								<span class="ml-2 text-xs text-white/60">score {suggestion.score.toFixed(2)}</span>
+							</p>
+							<p class="mt-1 text-white/75">{suggestion.rationale}</p>
+							{#if suggestion.prerequisites.length > 0}
+								<p class="mt-1 text-xs text-white/55">Prerequisites: {suggestion.prerequisites.join(', ')}</p>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
 	</div>
 
 	<div class="mt-4">

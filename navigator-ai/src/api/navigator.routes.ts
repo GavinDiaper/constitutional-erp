@@ -44,6 +44,18 @@ const createLookupKindSchema = z.union([
   z.literal("invoices")
 ]);
 
+const promptCreateSchema = z.object({
+  prompt: z.string().trim().min(1).max(4000),
+  actorId: z.string().min(1),
+  domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema).optional(),
+  dryRun: z.boolean().optional()
+});
+
+const nextStepsSchema = z.object({
+  context: contextSchema,
+  limit: z.number().int().positive().max(20).optional()
+});
+
 export function createNavigatorRouter(service: NavigatorService) {
   const router = Router();
 
@@ -199,6 +211,26 @@ export function createNavigatorRouter(service: NavigatorService) {
       const actorId = String(req.query.actorId ?? req.header("x-actor-id") ?? "principal.system");
       const data = await service.createLookups(kind, actorId);
       res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/create/prompt", async (req, res, next) => {
+    try {
+      const body = promptCreateSchema.parse(req.body ?? {});
+      const result = await service.promptCreate(body);
+      res.status(result.created ? 201 : 200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/next-steps", async (req, res, next) => {
+    try {
+      const body = nextStepsSchema.parse(req.body ?? {});
+      const result = await service.nextSteps(body.context, body.limit);
+      res.json(result);
     } catch (error) {
       next(error);
     }

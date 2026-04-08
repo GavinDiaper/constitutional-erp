@@ -110,3 +110,42 @@ export interface CreateEntityResult {
   entityId?: string;
   data: unknown;
 }
+
+export interface PromptCreateRequest {
+  prompt: string;
+  actorId: string;
+  domain?: SessionContext["domain"];
+  dryRun?: boolean;
+}
+
+export interface PromptCreateResolution {
+  operation: NavigatorCreateOperation;
+  payload: Record<string, unknown>;
+  missingFields: string[];
+  clarification?: string;
+}
+
+export interface PromptCreateResult {
+  status: "READY" | "NEEDS_CLARIFICATION";
+  resolution: PromptCreateResolution;
+  created?: CreateEntityResult;
+}
+
+export interface NextStepSuggestion {
+  stepId: string;
+  kind: "ACTION" | "CREATE_OPERATION";
+  score: number;
+  rationale: string;
+  actionId?: string;
+  operation?: NavigatorCreateOperation;
+  prerequisites: string[];
+}
+
+export interface NextStepResult {
+  suggestions: NextStepSuggestion[];
+  historySignals: {
+    eventCount: number;
+    recentEventTypes: string[];
+    hasRecentEntityCreated: boolean;
+  };
+}

@@ -95,6 +95,38 @@ export interface NavigatorCreateResult {
 	data: unknown;
 }
 
+export interface PromptCreateResolution {
+	operation: NavigatorCreateOperation;
+	payload: Record<string, unknown>;
+	missingFields: string[];
+	clarification?: string;
+}
+
+export interface PromptCreateResult {
+	status: 'READY' | 'NEEDS_CLARIFICATION';
+	resolution: PromptCreateResolution;
+	created?: NavigatorCreateResult;
+}
+
+export interface NextStepSuggestion {
+	stepId: string;
+	kind: 'ACTION' | 'CREATE_OPERATION';
+	score: number;
+	rationale: string;
+	actionId?: string;
+	operation?: NavigatorCreateOperation;
+	prerequisites: string[];
+}
+
+export interface NextStepResult {
+	suggestions: NextStepSuggestion[];
+	historySignals: {
+		eventCount: number;
+		recentEventTypes: string[];
+		hasRecentEntityCreated: boolean;
+	};
+}
+
 function actorHeaders(actor: ActorContext): HeadersInit {
 	return {
 		'content-type': 'application/json',
@@ -308,4 +340,47 @@ export async function getCreateLookups(
 
 	const data = (await response.json()) as { data?: Array<Record<string, unknown>> };
 	return data.data ?? [];
+}
+
+export async function promptCreateEntity(
+	input: {
+		prompt: string;
+		actorId: string;
+		domain?: string;
+		dryRun?: boolean;
+	},
+	actor: ActorContext
+): Promise<PromptCreateResult> {
+	const response = await fetch('/api/navigator/create/prompt', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify(input)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator prompt create request failed'));
+	}
+
+	return (await response.json()) as PromptCreateResult;
+}
+
+export async function getNextSteps(
+	context: NavigatorContext,
+	actor: ActorContext,
+	limit = 5
+): Promise<NextStepResult> {
+	const response = await fetch('/api/navigator/next-steps', {
+		method: 'POST',
+		headers: actorHeaders(actor),
+		body: JSON.stringify({
+			context,
+			limit
+		})
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator next steps request failed'));
+	}
+
+	return (await response.json()) as NextStepResult;
 }
