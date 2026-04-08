@@ -61,7 +61,7 @@ const nextStepPlaybook: Record<string, Array<{ operation: NavigatorCreateOperati
   ]
 };
 
-function extractJsonObject(text: string): Record<string, unknown> | undefined {
+export function extractJsonObject(text: string): Record<string, unknown> | undefined {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) {
@@ -75,7 +75,7 @@ function extractJsonObject(text: string): Record<string, unknown> | undefined {
   }
 }
 
-function normalizeCreatePayload(operation: NavigatorCreateOperation, payload: Record<string, unknown>): Record<string, unknown> {
+export function normalizeCreatePayload(operation: NavigatorCreateOperation, payload: Record<string, unknown>): Record<string, unknown> {
   const normalized = { ...payload };
 
   if (operation === "create-supplier") {
@@ -101,7 +101,7 @@ function normalizeCreatePayload(operation: NavigatorCreateOperation, payload: Re
   return normalized;
 }
 
-function missingRequiredFields(operation: NavigatorCreateOperation, payload: Record<string, unknown>): string[] {
+export function missingRequiredFields(operation: NavigatorCreateOperation, payload: Record<string, unknown>): string[] {
   const required = createOperationRequirements[operation] ?? [];
   return required.filter((field) => {
     const value = payload[field];
@@ -115,7 +115,7 @@ function missingRequiredFields(operation: NavigatorCreateOperation, payload: Rec
   });
 }
 
-function inferOperationFromPrompt(prompt: string): NavigatorCreateOperation | undefined {
+export function inferOperationFromPrompt(prompt: string): NavigatorCreateOperation | undefined {
   const lower = prompt.toLowerCase();
   if (lower.includes("supplier")) return "create-supplier";
   if (lower.includes("requisition")) return "create-requisition";
@@ -126,7 +126,7 @@ function inferOperationFromPrompt(prompt: string): NavigatorCreateOperation | un
   return undefined;
 }
 
-function heuristicSupplierPayload(prompt: string): Record<string, unknown> {
+export function heuristicSupplierPayload(prompt: string): Record<string, unknown> {
   const lower = prompt.toLowerCase();
   const nameMatch = prompt.match(/named\s+([a-z0-9\s\-.'&]+)/i);
   const emailMatch = prompt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -146,6 +146,50 @@ function heuristicSupplierPayload(prompt: string): Record<string, unknown> {
   }
 
   return payload;
+}
+
+export function clampScore(value: number): number {
+  return Math.max(0.05, Math.min(0.99, Number(value.toFixed(3))));
+}
+
+export function adjustSuggestionScore(input: {
+  suggestion: NextStepSuggestion;
+  historySignals: {
+    eventCount: number;
+    recentEventTypes: string[];
+    hasRecentEntityCreated: boolean;
+  };
+  aggregateType: string;
+}): number {
+  let score = input.suggestion.score;
+
+  if (input.suggestion.kind === "CREATE_OPERATION") {
+    if (input.historySignals.hasRecentEntityCreated) {
+      score += 0.06;
+    }
+
+    if (
+      input.aggregateType === "supplier" &&
+      input.suggestion.operation === "create-requisition" &&
+      input.historySignals.recentEventTypes.includes("Navigator.EntityCreated")
+    ) {
+      score += 0.08;
+    }
+
+    if (
+      input.aggregateType === "requisition" &&
+      input.suggestion.operation === "create-purchase-order" &&
+      input.historySignals.recentEventTypes.some((eventType) => eventType.includes("Approved"))
+    ) {
+      score += 0.07;
+    }
+  }
+
+  if (input.suggestion.kind === "ACTION" && input.historySignals.eventCount > 20) {
+    score += 0.02;
+  }
+
+  return clampScore(score);
 }
 
 export class NavigatorService {
@@ -491,6 +535,20 @@ export class NavigatorService {
       }
     });
 
+    await this.cepClient.publish({
+      eventType: "Navigator.PromptCreateExecuted",
+      actorId: input.actorId,
+      domain: input.domain ?? "P2P",
+      aggregateType: created.entityType ?? resolution.operation,
+      aggregateId: created.entityId ?? "pending",
+      payload: {
+        prompt: input.prompt,
+        operation: resolution.operation,
+        payload: resolution.payload,
+        entityId: created.entityId
+      }
+    });
+
     return {
       status: "READY",
       resolution,
@@ -533,7 +591,16 @@ export class NavigatorService {
       prerequisites: item.prerequisites
     }));
 
-    const suggestions = [...actionSuggestions, ...createSuggestions]
+    const scoredSuggestions = [...actionSuggestions, ...createSuggestions].map((suggestion) => ({
+      ...suggestion,
+      score: adjustSuggestionScore({
+        suggestion,
+        historySignals,
+        aggregateType: ctx.aggregateType
+      })
+    }));
+
+    const suggestions = scoredSuggestions
       .sort((a, b) => b.score - a.score)
       .slice(0, safeLimit);
 
@@ -543,6 +610,18 @@ export class NavigatorService {
       aggregateType: ctx.aggregateType,
       aggregateId: ctx.aggregateId,
       actorId: ctx.actorId,
+      payload: {
+        suggestions,
+        historySignals
+      }
+    });
+
+    await this.cepClient.publish({
+      eventType: "Navigator.NextStepsRecommended",
+      actorId: ctx.actorId,
+      domain: ctx.domain,
+      aggregateType: ctx.aggregateType,
+      aggregateId: ctx.aggregateId,
       payload: {
         suggestions,
         historySignals

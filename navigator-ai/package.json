@@ -10,7 +10,7 @@
     "start": "node scripts/start-server.js",
     "migrate": "tsx src/db/migrate.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"No tests configured yet\"",
+    "test": "tsx --test test/**/*.test.ts",
     "test:postman": "node scripts/run-postman.js"
   },
   "engines": {

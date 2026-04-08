@@ -1,7 +1,7 @@
 import { ActionOption, NavigatorContext, RankedAction } from "../contracts/navigatorTypes";
 import { LlmClient } from "../llm/types";
 
-function heuristicScore(action: ActionOption): number {
+export function heuristicScore(action: ActionOption): number {
   const highValue = action.riskSignals["highValue"] === true;
   const approvalPenalty = action.requiresApproval ? 0.25 : 0;
   const highValuePenalty = highValue ? 0.2 : 0;
@@ -9,23 +9,45 @@ function heuristicScore(action: ActionOption): number {
   return Math.max(0.05, Math.min(0.99, base));
 }
 
-function normalizeRankings(actions: RankedAction[]): RankedAction[] {
+export function normalizeRankings(actions: RankedAction[]): RankedAction[] {
   return [...actions].sort((a, b) => b.score - a.score);
 }
 
-function buildPrompt(context: NavigatorContext): string {
+export function historySummary(context: NavigatorContext): string {
+  if (context.recentHistory.length === 0) {
+    return "none";
+  }
+
+  const eventTypes = context.recentHistory
+    .slice(-8)
+    .map((event) => {
+      const eventType = event["eventType"];
+      return typeof eventType === "string" ? eventType : undefined;
+    })
+    .filter((eventType): eventType is string => Boolean(eventType));
+
+  if (eventTypes.length === 0) {
+    return `events=${context.recentHistory.length}; recentTypes=unknown`;
+  }
+
+  return `events=${context.recentHistory.length}; recentTypes=${eventTypes.join(", ")}`;
+}
+
+export function buildPrompt(context: NavigatorContext): string {
   return [
     `Domain: ${context.resource.domain}`,
     `Aggregate: ${context.resource.type}/${context.resource.id}`,
     `State: ${context.resource.state}`,
     `Actor: ${context.actorId}`,
+    `Risk profile: ${JSON.stringify(context.riskProfile)}`,
+    `Recent history: ${historySummary(context)}`,
     context.userNote ? `Operator note: ${context.userNote}` : undefined,
     `Available actions: ${context.actionOptions.map((a) => a.id).join(", ")}`,
     "Return strict JSON array of objects with fields actionId, score (0..1), rationale."
   ].filter(Boolean).join("\n");
 }
 
-function parseRankedActions(text: string): RankedAction[] | undefined {
+export function parseRankedActions(text: string): RankedAction[] | undefined {
   const start = text.indexOf("[");
   const end = text.lastIndexOf("]");
   if (start < 0 || end <= start) {

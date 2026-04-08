@@ -201,4 +201,33 @@ export class NavigatorClient {
       }
     });
   }
+
+  async promptCreate(input: {
+    prompt: string;
+    actorId: string;
+    domain?: "P2P" | "O2C" | "R2R" | "H2R";
+    dryRun?: boolean;
+  }): Promise<unknown> {
+    return this.request("/create/prompt", {
+      method: "POST",
+      headers: {
+        "x-actor-id": input.actorId
+      },
+      body: JSON.stringify(input)
+    });
+  }
+
+  async nextSteps(ctx: SessionContext, limit = 6): Promise<unknown> {
+    const ready = requireContext(ctx);
+    return this.request("/next-steps", {
+      method: "POST",
+      headers: {
+        "x-actor-id": ready.actorId
+      },
+      body: JSON.stringify({
+        context: ready,
+        limit
+      })
+    });
+  }
 }

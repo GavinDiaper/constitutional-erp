@@ -37,12 +37,14 @@ function printHelp() {
     "",
     "Navigator AI Decisions:",
     "  create <operation> [json]    Create entity via Navigator AI",
+    "  prompt-create [--dry-run] <prompt> Resolve NL create intent and optionally execute",
     "  lookup <kind>                List prerequisite IDs (suppliers|ledgers|fiscal-years|invoices)",
     "  propose                      Rank recommended actions",
     "  explain [actionId]           Explain top or selected action",
     "  simulate <actionId>          Simulate action outcome",
     "  decide                       Run governance-aware decision",
     "  execute [actionId]           Execute chosen action through Navigator AI",
+    "  next-steps [limit]           Suggest history-aware next steps",
     "",
     "Governed Execution:",
     "  exec <action> [json]         Execute hypermedia action via Hub (legacy)",
@@ -101,6 +103,34 @@ async function main() {
     return links as SessionContext["lastLinks"];
   }
 
+  function updateContextFromEntity(created: { entityType?: string; entityId?: string }) {
+    const aggregateTypeByEntityType: Record<string, string> = {
+      p2p_supplier: "supplier",
+      p2p_requisition: "requisition",
+      p2p_purchase_order: "purchase-order",
+      r2r_fiscal_year: "fiscal-year",
+      r2r_fiscal_period: "fiscal-period",
+      o2c_payment: "ar-payment"
+    };
+    const domainByEntityType: Record<string, Domain> = {
+      p2p_supplier: "P2P",
+      p2p_requisition: "P2P",
+      p2p_purchase_order: "P2P",
+      r2r_fiscal_year: "R2R",
+      r2r_fiscal_period: "R2R",
+      o2c_payment: "O2C"
+    };
+
+    const entityType = String(created.entityType ?? "");
+    const entityId = String(created.entityId ?? "");
+    if (entityType && entityId && aggregateTypeByEntityType[entityType] && domainByEntityType[entityType]) {
+      session.domain = domainByEntityType[entityType];
+      session.aggregateType = aggregateTypeByEntityType[entityType];
+      session.aggregateId = entityId;
+      session.lastLinks = undefined;
+    }
+  }
+
   while (true) {
     const line = (await rl.question("navigator> ")).trim();
     if (!line) {
@@ -108,6 +138,7 @@ async function main() {
     }
 
     const [cmd, ...args] = line.split(/\s+/);
+    const rawArgText = line.slice(cmd.length).trim();
 
     try {
       if (cmd === "quit" || cmd === "exit") {
@@ -280,33 +311,31 @@ async function main() {
             payload
           }) as { entityType?: string; entityId?: string };
 
-          const aggregateTypeByEntityType: Record<string, string> = {
-            p2p_supplier: "supplier",
-            p2p_requisition: "requisition",
-            p2p_purchase_order: "purchase-order",
-            r2r_fiscal_year: "fiscal-year",
-            r2r_fiscal_period: "fiscal-period",
-            o2c_payment: "ar-payment"
-          };
-          const domainByEntityType: Record<string, Domain> = {
-            p2p_supplier: "P2P",
-            p2p_requisition: "P2P",
-            p2p_purchase_order: "P2P",
-            r2r_fiscal_year: "R2R",
-            r2r_fiscal_period: "R2R",
-            o2c_payment: "O2C"
-          };
-
-          const entityType = String(created.entityType ?? "");
-          const entityId = String(created.entityId ?? "");
-          if (entityType && entityId && aggregateTypeByEntityType[entityType] && domainByEntityType[entityType]) {
-            session.domain = domainByEntityType[entityType];
-            session.aggregateType = aggregateTypeByEntityType[entityType];
-            session.aggregateId = entityId;
-            session.lastLinks = undefined;
-          }
+          updateContextFromEntity(created);
 
           result = created;
+        }
+      } else if (cmd === "prompt-create") {
+        const dryRun = args.includes("--dry-run");
+        const prompt = args.filter((item) => item !== "--dry-run").join(" ") || rawArgText.replace("--dry-run", "").trim();
+
+        if (!session.actorId) {
+          result = "Set actor first: set actor <actorId>";
+        } else if (!prompt) {
+          result = "Usage: prompt-create [--dry-run] <natural language prompt>";
+        } else {
+          const promptResult = await navigatorClient.promptCreate({
+            prompt,
+            actorId: session.actorId,
+            domain: session.domain,
+            dryRun
+          }) as { created?: { entityType?: string; entityId?: string } };
+
+          if (promptResult.created) {
+            updateContextFromEntity(promptResult.created);
+          }
+
+          result = promptResult;
         }
       } else if (cmd === "explain") {
         const actionId = args[0] ?? lastRankedActions[0]?.actionId;
@@ -351,6 +380,9 @@ async function main() {
       } else if (cmd === "history") {
         const limit = args[0] ? Number(args[0]) : 50;
         result = await navigatorClient.getHistory(session, Number.isFinite(limit) && limit > 0 ? limit : 50);
+      } else if (cmd === "next-steps") {
+        const limit = args[0] ? Number(args[0]) : 6;
+        result = await navigatorClient.nextSteps(session, Number.isFinite(limit) && limit > 0 ? limit : 6);
       } else if (cmd === "transcript") {
         if (!session.sessionId) {
           result = "No active session.";
