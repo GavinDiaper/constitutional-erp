@@ -660,77 +660,82 @@ export class NavigatorService {
   }
 
   private async syncAuthorityDrivenApprovalsQueue(): Promise<void> {
-    try {
-      const [customers, requisitions, journals] = await Promise.all([
-        this.integrationHubClient.queryTable<AuthorityCustomerRow>({
-          table: "o2c_customer",
-          actorId: authorityTrackingActorId,
-          limit: 2000
-        }),
-        this.integrationHubClient.queryTable<AuthorityRequisitionRow>({
-          table: "p2p_requisition",
-          actorId: authorityTrackingActorId,
-          limit: 2000
-        }),
-        this.integrationHubClient.queryTable<AuthorityJournalRow>({
-          table: "r2r_journal",
-          actorId: authorityTrackingActorId,
-          limit: 2000
-        })
-      ]);
+    const [customers, requisitions, journals] = await Promise.all([
+      this.integrationHubClient.queryTable<AuthorityCustomerRow>({
+        table: "o2c_customer",
+        actorId: authorityTrackingActorId,
+        limit: 500
+      }).catch((error) => {
+        console.warn("navigator-ai approval queue sync: failed to load o2c_customer", error);
+        return [] as AuthorityCustomerRow[];
+      }),
+      this.integrationHubClient.queryTable<AuthorityRequisitionRow>({
+        table: "p2p_requisition",
+        actorId: authorityTrackingActorId,
+        limit: 500
+      }).catch((error) => {
+        console.warn("navigator-ai approval queue sync: failed to load p2p_requisition", error);
+        return [] as AuthorityRequisitionRow[];
+      }),
+      this.integrationHubClient.queryTable<AuthorityJournalRow>({
+        table: "r2r_journal",
+        actorId: authorityTrackingActorId,
+        limit: 500
+      }).catch((error) => {
+        console.warn("navigator-ai approval queue sync: failed to load r2r_journal", error);
+        return [] as AuthorityJournalRow[];
+      })
+    ]);
 
-      for (const customer of customers) {
-        const aggregateId = String(customer.customer_id ?? "").trim();
-        if (!aggregateId) {
-          continue;
-        }
-
-        this.applyAuthorityDecision(
-          { domain: "O2C", aggregateType: "o2c_customer", aggregateId },
-          {
-            required: isDraftCustomerForApproval(customer),
-            requiredTier: 2,
-            reason: "Authority/constitution requires approval for draft customer activation.",
-            basis: "o2c_customer:draft"
-          }
-        );
+    for (const customer of customers) {
+      const aggregateId = String(customer.customer_id ?? "").trim();
+      if (!aggregateId) {
+        continue;
       }
 
-      for (const requisition of requisitions) {
-        const aggregateId = String(requisition.requisition_id ?? "").trim();
-        if (!aggregateId) {
-          continue;
+      this.applyAuthorityDecision(
+        { domain: "O2C", aggregateType: "o2c_customer", aggregateId },
+        {
+          required: isDraftCustomerForApproval(customer),
+          requiredTier: 2,
+          reason: "Authority/constitution requires approval for draft customer activation.",
+          basis: "o2c_customer:draft"
         }
+      );
+    }
 
-        this.applyAuthorityDecision(
-          { domain: "P2P", aggregateType: "p2p_requisition", aggregateId },
-          {
-            required: isSubmittedRequisitionForApproval(requisition),
-            requiredTier: 2,
-            reason: "Authority/constitution requires approval for submitted requisitions.",
-            basis: "p2p_requisition:submitted"
-          }
-        );
+    for (const requisition of requisitions) {
+      const aggregateId = String(requisition.requisition_id ?? "").trim();
+      if (!aggregateId) {
+        continue;
       }
 
-      for (const journal of journals) {
-        const aggregateId = String(journal.journal_id ?? "").trim();
-        if (!aggregateId) {
-          continue;
+      this.applyAuthorityDecision(
+        { domain: "P2P", aggregateType: "p2p_requisition", aggregateId },
+        {
+          required: isSubmittedRequisitionForApproval(requisition),
+          requiredTier: 2,
+          reason: "Authority/constitution requires approval for submitted requisitions.",
+          basis: "p2p_requisition:submitted"
         }
+      );
+    }
 
-        this.applyAuthorityDecision(
-          { domain: "R2R", aggregateType: "r2r_journal", aggregateId },
-          {
-            required: isPendingJournalForApproval(journal),
-            requiredTier: 3,
-            reason: "Authority/constitution requires approval for pending journals.",
-            basis: "r2r_journal:pending"
-          }
-        );
+    for (const journal of journals) {
+      const aggregateId = String(journal.journal_id ?? "").trim();
+      if (!aggregateId) {
+        continue;
       }
-    } catch {
-      // Queue sync is best-effort and should not block approval list rendering.
+
+      this.applyAuthorityDecision(
+        { domain: "R2R", aggregateType: "r2r_journal", aggregateId },
+        {
+          required: isPendingJournalForApproval(journal),
+          requiredTier: 3,
+          reason: "Authority/constitution requires approval for pending journals.",
+          basis: "r2r_journal:pending"
+        }
+      );
     }
   }
 
