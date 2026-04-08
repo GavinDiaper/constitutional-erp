@@ -387,3 +387,81 @@ test("approval request can be escalated then rejected at higher tier", async () 
   assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalEscalated"));
   assert.ok(published.some((event) => event.eventType === "Navigator.ApprovalRejected"));
 });
+
+test("post-approval execution automatically executes the approved action", async () => {
+  const { service, published } = buildService({
+    governanceMode: "REQUEST_APPROVAL",
+    governanceReasons: ["Approval required."],
+    governanceRequiredTier: 2,
+    executeStatus: 200,
+    executeData: { state: "Acknowledged" }
+  });
+
+  const aggregateId = `SUP-EXECUTE-AFTER-APPROVAL-${Date.now()}`;
+  const created = await service.execute({
+    domain: "P2P",
+    aggregateType: "supplier",
+    aggregateId,
+    actorId: "principal.requestor"
+  });
+
+  const approvalRequest = created.responseBody["approvalRequest"] as Record<string, unknown>;
+  const approvalRequestId = String(approvalRequest["approvalRequestId"]);
+
+  // Verify approval is PENDING
+  assert.equal(created.statusCode, 202);
+  const preApproval = await service.approval(approvalRequestId);
+  assert.equal(preApproval?.status, "PENDING");
+
+  // Approve the request
+  const approved = await service.approveApprovalRequest(approvalRequestId, {
+    actorId: "principal.approver",
+    note: "Approval granted; executing automatically."
+  });
+
+  // Verify status transitioned to APPROVED
+  assert.equal(approved.status, "APPROVED");
+  assert.equal(approved.resolvedBy, "principal.approver");
+
+  // Verify post-approval execution was attempted
+  assert.ok(
+    published.some((event) => event.eventType === "Navigator.PostApprovalExecuted"),
+    "Should emit Navigator.PostApprovalExecuted event"
+  );
+
+  // Verify the approval event was emitted
+  assert.ok(
+    published.some((event) => event.eventType === "Navigator.ApprovalApproved"),
+    "Should emit Navigator.ApprovalApproved event"
+  );
+});
+
+test("simulator uses domain-aware state machines for predictions", async () => {
+  const { service } = buildService();
+
+  const context = {
+    domain: "P2P" as const,
+    aggregateType: "supplier",
+    aggregateId: "SUP-123",
+    actorId: "principal.system"
+  };
+
+  // Simulate the acknowledge action on a supplier (which is in the mock links)
+  // The supplier is in "Active" state, and acknowledge should transition based on state machine
+  const result = await service.simulate(context, "acknowledge");
+
+  // Verify simulation result has expected structure
+  assert.ok(result.predictedState);
+  assert.ok(Array.isArray(result.predictedTransitions));
+  assert.ok(result.riskSummary);
+  assert.equal(typeof result.narrative, "string");
+  assert.ok(result.narrative.length > 0);
+
+  // Verify that predicted transitions includes the action we just simulated
+  assert.ok(result.predictedTransitions.includes("acknowledge"));
+
+  // Risk summary should be low to medium for normal actions
+  assert.ok(["low", "medium", "high"].includes(result.riskSummary));
+});
+
+

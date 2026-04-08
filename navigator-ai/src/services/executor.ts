@@ -137,7 +137,19 @@ export async function executeDecision(input: {
       context: {
         userNote: input.context.userNote ?? null,
         actionId,
-        currentState: selectedAction?.currentState ?? null
+        currentState: selectedAction?.currentState ?? null,
+        // Store complete action details for post-approval execution
+        action: selectedAction ? {
+          id: selectedAction.id,
+          href: selectedAction.href,
+          method: selectedAction.method,
+          domain: selectedAction.domain,
+          aggregateType: selectedAction.aggregateType,
+          aggregateId: selectedAction.aggregateId,
+          currentState: selectedAction.currentState,
+          riskSignals: selectedAction.riskSignals,
+          inputSchema: selectedAction.inputSchema
+        } : null
       },
       responseBody: {
         detail: input.decision.explanation,
@@ -234,7 +246,19 @@ export async function executeDecision(input: {
       context: {
         userNote: input.context.userNote ?? null,
         actionId,
-        currentState: selectedAction?.currentState ?? null
+        currentState: selectedAction?.currentState ?? null,
+        // Store complete action details for post-approval execution
+        action: selectedAction ? {
+          id: selectedAction.id,
+          href: selectedAction.href,
+          method: selectedAction.method,
+          domain: selectedAction.domain,
+          aggregateType: selectedAction.aggregateType,
+          aggregateId: selectedAction.aggregateId,
+          currentState: selectedAction.currentState,
+          riskSignals: selectedAction.riskSignals,
+          inputSchema: selectedAction.inputSchema
+        } : null
       },
       responseBody: result.data
     });

@@ -47,7 +47,7 @@ function printHelp() {
     "  next-steps [limit]           Suggest history-aware next steps",
     "  approvals [limit] [status]   List approval requests for current context",
     "  approval <id>                Show one approval request",
-    "  approve <id> [note]          Approve a pending approval request",
+    "  approve <id> [note]          Approve request and auto-execute approved action",
     "  reject <id> [note]           Reject a pending approval request",
     "  escalate <id> [tier] [note]  Escalate an approval request to a higher tier",
     "",

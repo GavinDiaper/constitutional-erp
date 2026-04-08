@@ -78,6 +78,26 @@ export interface ExecutionResult {
 	responseBody: Record<string, unknown>;
 }
 
+export type ApprovalRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'EXPIRED';
+
+export interface ApprovalRequestRecord {
+	approvalRequestId: string;
+	domain: string;
+	aggregateType: string;
+	aggregateId: string;
+	actorId: string;
+	actionId: string;
+	status: ApprovalRequestStatus;
+	requiredTier?: number;
+	reasons: string[];
+	context: Record<string, unknown>;
+	responseBody: Record<string, unknown>;
+	createdAt: string;
+	updatedAt: string;
+	resolvedAt?: string;
+	resolvedBy?: string;
+}
+
 export type NavigatorCreateOperation =
 	| 'create-supplier'
 	| 'create-requisition'
@@ -383,4 +403,80 @@ export async function getNextSteps(
 	}
 
 	return (await response.json()) as NextStepResult;
+}
+
+export async function getApprovalRequests(
+	context: NavigatorContext,
+	actor: ActorContext,
+	limit = 50,
+	status?: ApprovalRequestStatus
+): Promise<ApprovalRequestRecord[]> {
+	const query = new URLSearchParams({
+		domain: context.domain,
+		aggregateType: context.aggregateType,
+		aggregateId: context.aggregateId,
+		limit: String(limit)
+	});
+
+	if (status) {
+		query.set('status', status);
+	}
+
+	const response = await fetch(`/api/navigator/approvals?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator approval list request failed'));
+	}
+
+	const data = (await response.json()) as { data?: ApprovalRequestRecord[] };
+	return data.data ?? [];
+}
+
+export async function getApprovalRequest(
+	approvalRequestId: string,
+	actor: ActorContext
+): Promise<ApprovalRequestRecord> {
+	const response = await fetch(`/api/navigator/approvals/${encodeURIComponent(approvalRequestId)}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator approval detail request failed'));
+	}
+
+	return (await response.json()) as ApprovalRequestRecord;
+}
+
+export async function resolveApprovalRequest(
+	input: {
+		approvalRequestId: string;
+		action: 'approve' | 'reject' | 'escalate';
+		actorId: string;
+		note?: string;
+		requiredTier?: number;
+	},
+	actor: ActorContext
+): Promise<ApprovalRequestRecord> {
+	const response = await fetch(
+		`/api/navigator/approvals/${encodeURIComponent(input.approvalRequestId)}/${input.action}`,
+		{
+			method: 'POST',
+			headers: actorHeaders(actor),
+			body: JSON.stringify({
+				actorId: input.actorId,
+				note: input.note,
+				requiredTier: input.requiredTier
+			})
+		}
+	);
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator approval resolution request failed'));
+	}
+
+	return (await response.json()) as ApprovalRequestRecord;
 }

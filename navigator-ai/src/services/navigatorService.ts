@@ -4,6 +4,7 @@ import { GovernanceClient } from "../clients/governanceClient";
 import { IntegrationHubClient } from "../clients/integrationHubClient";
 import {
   ActionOption,
+  ApprovalRequestRecord,
   ApprovalResolutionInput,
   ApprovalRequestStatus,
   CreateEntityResult,
@@ -470,11 +471,124 @@ export class NavigatorService {
   }
 
   async approveApprovalRequest(approvalRequestId: string, resolution: ApprovalResolutionInput) {
-    return this.transitionApproval({
+    // Transition the approval to APPROVED
+    const updated = await this.transitionApproval({
       approvalRequestId,
       resolution,
       status: "APPROVED",
       eventType: "Navigator.ApprovalApproved"
+    });
+
+    // Attempt post-approval automatic execution
+    try {
+      await this.executeApprovedAction(updated, resolution);
+    } catch (err) {
+      // Log execution error but don't fail the approval resolution
+      console.error(`Post-approval execution failed for approval ${approvalRequestId}:`, err);
+      recordNavigatorEvent({
+        eventType: "Navigator.PostApprovalExecutionFailed",
+        domain: updated.domain,
+        aggregateType: updated.aggregateType,
+        aggregateId: updated.aggregateId,
+        actorId: resolution.actorId,
+        payload: {
+          approvalRequestId: updated.approvalRequestId,
+          actionId: updated.actionId,
+          error: err instanceof Error ? err.message : "Unknown error"
+        }
+      });
+
+      await this.cepClient.publish({
+        eventType: "Navigator.PostApprovalExecutionFailed",
+        actorId: resolution.actorId,
+        domain: updated.domain as SessionContext["domain"],
+        aggregateType: updated.aggregateType,
+        aggregateId: updated.aggregateId,
+        payload: {
+          approvalRequestId: updated.approvalRequestId,
+          actionId: updated.actionId,
+          error: err instanceof Error ? err.message : "Unknown error"
+        }
+      });
+    }
+
+    return updated;
+  }
+
+  private async executeApprovedAction(approval: ApprovalRequestRecord | undefined, resolution: ApprovalResolutionInput) {
+    if (!approval) {
+      throw new Error("Approval request not found");
+    }
+
+    // Extract action from approval context
+    const actionContext = approval.context as Record<string, unknown>;
+    const action = actionContext["action"] as Record<string, unknown> | null;
+
+    if (!action) {
+      throw new Error("Action context not found in approval request");
+    }
+
+    // Reconstruct SessionContext for re-execution
+    const ctx: SessionContext = {
+      domain: approval.domain as SessionContext["domain"],
+      aggregateType: approval.aggregateType,
+      aggregateId: approval.aggregateId,
+      actorId: resolution.actorId,
+      userNote: typeof actionContext["userNote"] === "string" ? actionContext["userNote"] : undefined
+    };
+
+    // Build execution context
+    const executionContext = await this.buildContext(ctx);
+
+    // Execute the approved action
+    const result = await executeDecision({
+      context: ctx,
+      decision: {
+        action: {
+          actionId: approval.actionId,
+          score: 1.0,
+          rationale: "Auto-execution after approval"
+        },
+        mode: "EXECUTE",
+        explanation: "Approved by governance. Executing automatically."
+      },
+      actionOptions: executionContext.actionOptions,
+      integrationHubClient: this.integrationHubClient,
+      cepClient: this.cepClient,
+      llmClient: this.llmClient
+    });
+
+    // Emit post-approval execution success event
+    recordNavigatorEvent({
+      eventType: "Navigator.PostApprovalExecuted",
+      domain: approval.domain,
+      aggregateType: approval.aggregateType,
+      aggregateId: approval.aggregateId,
+      actorId: resolution.actorId,
+      payload: {
+        approvalRequestId: approval.approvalRequestId,
+        actionId: approval.actionId,
+        executionResult: {
+          mode: result.mode,
+          statusCode: result.statusCode
+        }
+      }
+    });
+
+    await this.cepClient.publish({
+      eventType: "Navigator.PostApprovalExecuted",
+      actorId: resolution.actorId,
+      domain: approval.domain as SessionContext["domain"],
+      aggregateType: approval.aggregateType,
+      aggregateId: approval.aggregateId,
+      payload: {
+        approvalRequestId: approval.approvalRequestId,
+        actionId: approval.actionId,
+        executionResult: {
+          mode: result.mode,
+          statusCode: result.statusCode
+        }
+      }
     });
   }
 

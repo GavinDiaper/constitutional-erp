@@ -11,6 +11,8 @@
 		type ActorContext
 	} from '$lib/stores/actorStore';
 	import {
+		getApprovalRequest,
+		getApprovalRequests,
 		createEntity,
 		decide,
 		executeAction,
@@ -21,7 +23,10 @@
 		getResource,
 		promptCreateEntity,
 		rankActions,
+		resolveApprovalRequest,
 		simulateAction,
+		type ApprovalRequestRecord,
+		type ApprovalRequestStatus,
 		type ActionOption,
 		type CanonicalResource,
 		type DecisionOutcome,
@@ -158,6 +163,15 @@
 	let nextStepsLoading = false;
 	let nextStepsError = '';
 	let nextStepsResult: NextStepResult | null = null;
+	let approvalsLoading = false;
+	let approvalsError = '';
+	let approvalItems: ApprovalRequestRecord[] = [];
+	let selectedApproval: ApprovalRequestRecord | null = null;
+	let selectedApprovalStatus: '' | ApprovalRequestStatus = 'PENDING';
+	let approvalActionLoading = false;
+	let approvalActionError = '';
+	let approvalActionNote = '';
+	let approvalEscalationTier = 2;
 
 	let supplierLookup: Array<Record<string, unknown>> = [];
 	let ledgerLookup: Array<Record<string, unknown>> = [];
@@ -230,7 +244,6 @@
 	let executionLoading = false;
 	let executionError = '';
 	let aggregateIdLookupInFlight = false;
-	let lastAggregateLookupKey = '';
 
 	$: if (!getAggregateTypeOptions(domain).includes(aggregateType)) {
 		aggregateType = getAggregateTypeOptions(domain)[0] ?? '';
@@ -261,11 +274,9 @@
 	}
 
 	$: {
-		const lookupKey = `${actorId}::${aggregateType}`;
-		if (lookupKey !== lastAggregateLookupKey) {
-			lastAggregateLookupKey = lookupKey;
-			void loadAggregateIdsForType(aggregateType);
-		}
+		const lookupDependency = `${actorId}::${aggregateType}`;
+		void lookupDependency;
+		void loadAggregateIdsForType(aggregateType);
 	}
 
 
@@ -429,6 +440,10 @@
 		decisionError = '';
 		execution = null;
 		executionError = '';
+		approvalItems = [];
+		selectedApproval = null;
+		approvalsError = '';
+		approvalActionError = '';
 	}
 
 	function selectedActor(): ActorContext {
@@ -622,6 +637,67 @@
 		}
 	}
 
+	async function handleLoadApprovals(): Promise<void> {
+		approvalsLoading = true;
+		approvalsError = '';
+
+		try {
+			approvalItems = await getApprovalRequests(
+				buildContext(),
+				selectedActor(),
+				25,
+				selectedApprovalStatus || undefined
+			);
+
+			if (selectedApproval && !approvalItems.some((item) => item.approvalRequestId === selectedApproval?.approvalRequestId)) {
+				selectedApproval = null;
+			}
+		} catch (err) {
+			approvalsError = err instanceof Error ? err.message : 'Approval queue request failed.';
+		} finally {
+			approvalsLoading = false;
+		}
+	}
+
+	async function handleSelectApproval(approvalRequestId: string): Promise<void> {
+		approvalActionError = '';
+		try {
+			selectedApproval = await getApprovalRequest(approvalRequestId, selectedActor());
+			approvalEscalationTier = Math.max((selectedApproval.requiredTier ?? 1) + 1, approvalEscalationTier);
+		} catch (err) {
+			approvalActionError = err instanceof Error ? err.message : 'Approval detail request failed.';
+		}
+	}
+
+	async function handleResolveApproval(action: 'approve' | 'reject' | 'escalate'): Promise<void> {
+		if (!selectedApproval) {
+			approvalActionError = 'Select an approval request first.';
+			return;
+		}
+
+		approvalActionLoading = true;
+		approvalActionError = '';
+
+		try {
+			selectedApproval = await resolveApprovalRequest(
+				{
+					approvalRequestId: selectedApproval.approvalRequestId,
+					action,
+					actorId: actorId,
+					note: approvalActionNote.trim() || undefined,
+					requiredTier: action === 'escalate' ? Number(approvalEscalationTier) : undefined
+				},
+				selectedActor()
+			);
+			approvalActionNote = '';
+			await handleLoadApprovals();
+		} catch (err) {
+			approvalActionError = err instanceof Error ? err.message : 'Approval resolution failed.';
+		} finally {
+			approvalActionLoading = false;
+		}
+	}
+
 	async function handleRank(): Promise<void> {
 		if (!aggregateType.trim() || !aggregateId.trim() || !actorId.trim()) {
 			errorMessage = 'Aggregate type, aggregate ID, and actor ID are required.';
@@ -706,6 +782,14 @@
 
 		try {
 			execution = await executeAction(buildContext(), actionToExecute, selectedActor());
+			const approvalRequest = execution.responseBody?.approvalRequest as ApprovalRequestRecord | undefined;
+			if (execution.mode === 'REQUEST_APPROVAL') {
+				await handleLoadApprovals();
+				if (approvalRequest?.approvalRequestId) {
+					selectedApproval = approvalRequest;
+					approvalEscalationTier = Math.max((approvalRequest.requiredTier ?? 1) + 1, approvalEscalationTier);
+				}
+			}
 		} catch (err) {
 			executionError = err instanceof Error ? err.message : 'Execute request failed.';
 		} finally {
@@ -1046,6 +1130,125 @@
 					{/each}
 				</ul>
 			{/if}
+		</div>
+	</div>
+
+	<div class="mt-6 rounded-md border border-white/15 bg-white/5 p-4">
+		<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+			<div>
+				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Approval Queue</h3>
+				<p class="mt-2 text-sm text-white/75">
+					Review pending or resolved Navigator approval requests for the current aggregate and resolve them directly from the UI.
+				</p>
+			</div>
+			<div class="flex flex-wrap gap-3">
+				<select
+					class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+					bind:value={selectedApprovalStatus}
+				>
+					<option value="PENDING">PENDING</option>
+					<option value="APPROVED">APPROVED</option>
+					<option value="REJECTED">REJECTED</option>
+					<option value="ESCALATED">ESCALATED</option>
+					<option value="EXPIRED">EXPIRED</option>
+					<option value="">ALL</option>
+				</select>
+				<button
+					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+					disabled={approvalsLoading}
+					on:click={handleLoadApprovals}
+				>
+					{approvalsLoading ? 'Loading...' : 'Load Approvals'}
+				</button>
+			</div>
+		</div>
+
+		{#if approvalsError}
+			<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{approvalsError}</p>
+		{/if}
+
+		<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
+			<div>
+				{#if approvalItems.length === 0}
+					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No approval requests loaded for this aggregate and filter.</p>
+				{:else}
+					<ul class="space-y-2">
+						{#each approvalItems as approval (approval.approvalRequestId)}
+							<li>
+								<button
+									class={`w-full rounded-md border px-3 py-3 text-left text-sm transition hover:bg-white/10 ${selectedApproval?.approvalRequestId === approval.approvalRequestId ? 'border-emerald-400/55 bg-emerald-500/10' : 'border-white/15 bg-[#0e2038]'}`}
+									on:click={() => void handleSelectApproval(approval.approvalRequestId)}
+								>
+									<p class="font-mono text-xs text-white/80">{approval.approvalRequestId}</p>
+									<p class="mt-1 text-white/90">{approval.actionId} <span class="ml-2 text-xs text-white/55">{approval.status}</span></p>
+									<p class="mt-1 text-xs text-white/60">Tier {approval.requiredTier ?? '—'} | Updated {approval.updatedAt}</p>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+
+			<div class="rounded-md border border-white/15 bg-[#0e2038] p-4">
+				<h4 class="text-sm font-semibold text-white/90">Approval Detail</h4>
+				{#if selectedApproval}
+					<div class="mt-3 space-y-2 text-sm">
+						<p><span class="text-white/60">Action:</span> {selectedApproval.actionId}</p>
+						<p><span class="text-white/60">Status:</span> {selectedApproval.status}</p>
+						<p><span class="text-white/60">Required Tier:</span> {selectedApproval.requiredTier ?? '—'}</p>
+						<p><span class="text-white/60">Requested By:</span> {selectedApproval.actorId}</p>
+						{#if selectedApproval.resolvedBy}
+							<p><span class="text-white/60">Resolved By:</span> {selectedApproval.resolvedBy}</p>
+						{/if}
+						{#if selectedApproval.reasons.length > 0}
+							<p><span class="text-white/60">Reasons:</span> {selectedApproval.reasons.join(' | ')}</p>
+						{/if}
+					</div>
+
+					<div class="mt-4 space-y-3">
+						<textarea
+							class="min-h-[84px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+							placeholder="Optional approval note"
+							bind:value={approvalActionNote}
+						></textarea>
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+							<input
+								class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+								type="number"
+								min="1"
+								bind:value={approvalEscalationTier}
+							/>
+							<button
+								class="rounded-md border border-emerald-400/55 px-3 py-2 text-xs text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
+								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING' && selectedApproval.status !== 'ESCALATED'}
+								on:click={() => void handleResolveApproval('approve')}
+							>
+								Approve
+							</button>
+							<button
+								class="rounded-md border border-amber-400/55 px-3 py-2 text-xs text-amber-100 hover:bg-amber-500/10 disabled:opacity-50"
+								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING'}
+								on:click={() => void handleResolveApproval('escalate')}
+							>
+								Escalate
+							</button>
+							<button
+								class="rounded-md border border-red-400/55 px-3 py-2 text-xs text-red-100 hover:bg-red-500/10 disabled:opacity-50"
+								disabled={approvalActionLoading || selectedApproval.status !== 'PENDING' && selectedApproval.status !== 'ESCALATED'}
+								on:click={() => void handleResolveApproval('reject')}
+							>
+								Reject
+							</button>
+						</div>
+					</div>
+
+					{#if approvalActionError}
+						<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{approvalActionError}</p>
+					{/if}
+				{:else}
+					<p class="mt-3 text-sm text-white/65">Select an approval request to inspect and resolve it.</p>
+				{/if}
+			</div>
 		</div>
 	</div>
 
