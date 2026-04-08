@@ -87,16 +87,27 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
   const requisition = await request(app)
     .post("/api/v1/p2p/requisitions")
     .set(headers)
-    .send({ requester: "ops.user", legalEntityId: "LE-SEED-US" })
+    .send({ requester: "ops.user", legalEntityId: "LE-SEED-AE" })
     .expect(201);
+
+  const requisitionTaxOptions = await request(app)
+    .get(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/tax-options`)
+    .set(headers)
+    .expect(200);
+
+  assert.ok(Array.isArray(requisitionTaxOptions.body.data));
+  assert.ok(requisitionTaxOptions.body.data.some((row: any) => row.taxCodeId === "TCOD-VAT5"));
 
   const requisitionLine = await request(app)
     .post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/lines`)
     .set(headers)
-    .send({ description: "test line", quantity: 2, unitPrice: 125.5 })
+    .send({ description: "test line", quantity: 2, unitPrice: 125.5, taxCodeId: "TCOD-VAT5" })
     .expect(201);
 
   assert.equal(requisitionLine.body.requisition.total_amount, 251);
+  assert.equal(requisitionLine.body.line.tax_code_id, "TCOD-VAT5");
+  assert.equal(requisitionLine.body.line.tax_rate_percent, 5);
+  assert.equal(requisitionLine.body.line.tax_amount, 12.55);
 
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/submit`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/approve`).set(headers).expect(200);
@@ -107,7 +118,17 @@ test("P2P integration flow transitions through canonical lifecycle", async () =>
     .send({ supplierId: supplier.body.supplier_id })
     .expect(201);
 
-  assert.equal(po.body.legal_entity_id, "LE-SEED-US");
+  assert.equal(po.body.legal_entity_id, "LE-SEED-AE");
+
+  const poLines = await request(app)
+    .get(`/api/v1/p2p/purchase-orders/${po.body.po_id}/lines`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(poLines.body.data.length, 1);
+  assert.equal(poLines.body.data[0].tax_code_id, "TCOD-VAT5");
+  assert.equal(poLines.body.data[0].tax_rate_percent, 5);
+  assert.equal(poLines.body.data[0].tax_amount, 12.55);
 
   await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/approve`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/purchase-orders/${po.body.po_id}/send`).set(headers).expect(200);

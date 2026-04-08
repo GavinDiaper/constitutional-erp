@@ -132,7 +132,7 @@ export function createPurchaseOrderFromRequisition(
 
   const requisitionLines = db
     .prepare(
-      `SELECT description, quantity, unit_price, line_total
+      `SELECT description, quantity, unit_price, line_total, tax_code_id, tax_applicability, tax_rate_percent, tax_amount
        FROM p2p_requisition_line
        WHERE requisition_id = ?
        ORDER BY created_at ASC`
@@ -142,6 +142,10 @@ export function createPurchaseOrderFromRequisition(
       quantity: number;
       unit_price: number;
       line_total: number;
+      tax_code_id: string | null;
+      tax_applicability: string | null;
+      tax_rate_percent: number | null;
+      tax_amount: number;
     }>;
 
   const poId = newId("PO-");
@@ -157,8 +161,19 @@ export function createPurchaseOrderFromRequisition(
 
     if (requisitionLines.length > 0) {
       const insertPOLine = db.prepare(
-        `INSERT INTO p2p_purchase_order_line(po_line_id, po_id, description, quantity, unit_price, line_total, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO p2p_purchase_order_line(
+          po_line_id,
+          po_id,
+          description,
+          quantity,
+          unit_price,
+          line_total,
+          tax_code_id,
+          tax_applicability,
+          tax_rate_percent,
+          tax_amount,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
       for (const line of requisitionLines) {
@@ -169,6 +184,10 @@ export function createPurchaseOrderFromRequisition(
           line.quantity,
           line.unit_price,
           line.line_total,
+          line.tax_code_id,
+          line.tax_applicability,
+          line.tax_rate_percent,
+          line.tax_amount,
           timestamp
         );
       }

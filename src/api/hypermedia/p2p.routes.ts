@@ -13,6 +13,7 @@ import {
 } from "../../domain/p2p/requisition/requisitionService";
 import {
   addRequisitionLine,
+  listRequisitionTaxOptions,
   listRequisitionLines,
   removeRequisitionLine,
   updateRequisitionLine
@@ -124,7 +125,9 @@ const convertRequisitionSchema = z.object({
 const requisitionLineSchema = z.object({
   description: z.string().min(1),
   quantity: z.number().positive(),
-  unitPrice: z.number().nonnegative()
+  unitPrice: z.number().nonnegative(),
+  taxCodeId: z.string().min(1).optional(),
+  countryCode: z.string().length(2).optional()
 });
 
 const purchaseOrderLineSchema = z.object({
@@ -160,6 +163,7 @@ function requisitionLinks(requisitionId: string, state: string) {
     self: { href: `/api/v1/p2p/requisitions/${requisitionId}`, method: "GET" }
   };
   if (state === "Draft") {
+    links["tax-options"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/tax-options`, method: "GET" };
     links["list-lines"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/lines`, method: "GET" };
     links["add-line"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/lines`, method: "POST", mcpFunction: "p2p_add_requisition_line", governance: { riskLevel: "Low", requiredTier: 1 } };
     links["submit"] = { href: `/api/v1/p2p/requisitions/${requisitionId}/submit`, method: "POST", mcpFunction: "p2p_submit_requisition", governance: { riskLevel: "Low", requiredTier: 1 } };
@@ -301,13 +305,20 @@ p2pRouter.get("/requisitions/:requisitionId/lines", (req, res) => {
   res.json({ data: lines });
 });
 
+p2pRouter.get("/requisitions/:requisitionId/tax-options", (req, res) => {
+  const options = listRequisitionTaxOptions(req.params.requisitionId);
+  res.json({ data: options });
+});
+
 p2pRouter.post("/requisitions/:requisitionId/lines", validateBody(requisitionLineSchema), (req, res) => {
   const result = addRequisitionLine(
     {
       requisitionId: req.params.requisitionId,
       description: req.body.description,
       quantity: req.body.quantity,
-      unitPrice: req.body.unitPrice
+      unitPrice: req.body.unitPrice,
+      taxCodeId: req.body.taxCodeId,
+      countryCode: req.body.countryCode
     },
     req.actor
   );
@@ -325,7 +336,9 @@ p2pRouter.put("/requisitions/:requisitionId/lines/:requisitionLineId", validateB
       requisitionLineId: req.params.requisitionLineId,
       description: req.body.description,
       quantity: req.body.quantity,
-      unitPrice: req.body.unitPrice
+      unitPrice: req.body.unitPrice,
+      taxCodeId: req.body.taxCodeId,
+      countryCode: req.body.countryCode
     },
     req.actor
   );
