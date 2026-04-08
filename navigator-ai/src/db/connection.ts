@@ -4,7 +4,7 @@ import { loadConfig } from "../config/env";
 const config = loadConfig();
 
 export const db = new Database(config.databasePath, {
-  verbose: config.nodeEnv === "development" ? console.log : undefined
+  verbose: process.env.NAVIGATOR_SQL_DEBUG === "1" ? console.log : undefined
 });
 
 db.pragma("journal_mode = WAL");

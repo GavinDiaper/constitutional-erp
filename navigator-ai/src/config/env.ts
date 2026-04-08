@@ -10,7 +10,7 @@ function loadLocalEnv() {
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
-      dotenv.config({ path: candidate, override: true });
+      dotenv.config({ path: candidate, override: true, quiet: true });
       return;
     }
   }
