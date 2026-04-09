@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ProcessFacade } from "../domain/processFacade";
 import { SessionStore } from "../domain/sessionStore";
 import { McpCatalog } from "../domain/mcpCatalog";
-import { HubNavlogEntry, SessionMode } from "../domain/types";
+import { HubNavlogEntry, McpFunction, SessionMode } from "../domain/types";
 import { AppConfig } from "../config/env";
 import { requestJson } from "../clients/http";
 
@@ -152,6 +152,19 @@ const CREATE_OPERATION_CONFIG: Record<
     entityIdField: "payment_id"
   }
 };
+
+export function serializeMcpFunction(fn: McpFunction) {
+  return {
+    id: fn.id,
+    entity: fn.entity,
+    action: fn.action,
+    riskLevel: fn.riskLevel,
+    governanceTag: fn.governanceTag,
+    requiredTier: fn.requiredTier,
+    inputSchema: fn.inputSchema,
+    outputSchema: fn.outputSchema
+  };
+}
 
 const LOOKUP_ROUTE_CONFIG: Record<LookupKind, string> = {
   suppliers: "/api/v1/query/p2p_supplier",
@@ -323,16 +336,7 @@ export function createHubRouter(deps: {
   });
 
   router.get("/mcp/functions", (_req, res) => {
-    const functions = deps.catalog.list().map((fn) => ({
-      id: fn.id,
-      entity: fn.aggregateType,
-      action: fn.action,
-      riskLevel: fn.riskLevel,
-      governanceTag: fn.governanceTag,
-      requiredTier: fn.requiredTier,
-      inputSchema: fn.inputSchema,
-      outputSchema: fn.outputSchema
-    }));
+    const functions = deps.catalog.list().map(serializeMcpFunction);
 
     res.json(functions);
   });

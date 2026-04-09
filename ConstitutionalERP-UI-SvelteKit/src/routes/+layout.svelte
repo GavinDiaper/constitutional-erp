@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import './layout.css';
 	import { resolve } from '$app/paths';
 	import favicon from '$lib/assets/favicon.svg';
@@ -10,6 +11,57 @@
 	function toggleNavigator(): void {
 		navigatorOpen = !navigatorOpen;
 	}
+
+	onMount(() => {
+		const globalWindow = window as Window & {
+			mermaid?: {
+				initialize: (options: { startOnLoad: boolean; theme: string }) => void;
+				contentLoaded: () => void;
+			};
+			__mermaidInitDone__?: boolean;
+			__mermaidLoadPromise__?: Promise<void>;
+		};
+
+		if (!globalWindow.__mermaidLoadPromise__) {
+			globalWindow.__mermaidLoadPromise__ = new Promise<void>((resolveLoad, rejectLoad) => {
+				const existing = document.querySelector<HTMLScriptElement>('script[data-mermaid-layout-loader="true"]');
+				if (existing) {
+					if (globalWindow.mermaid) {
+						resolveLoad();
+						return;
+					}
+					existing.addEventListener('load', () => resolveLoad(), { once: true });
+					existing.addEventListener('error', () => rejectLoad(new Error('Failed to load Mermaid script.')), {
+						once: true
+					});
+					return;
+				}
+
+				const script = document.createElement('script');
+				script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+				script.async = true;
+				script.dataset.mermaidLayoutLoader = 'true';
+				script.addEventListener('load', () => resolveLoad(), { once: true });
+				script.addEventListener('error', () => rejectLoad(new Error('Failed to load Mermaid script.')), {
+					once: true
+				});
+				document.head.appendChild(script);
+			});
+		}
+
+		void globalWindow.__mermaidLoadPromise__
+			.then(() => {
+				if (!globalWindow.mermaid || globalWindow.__mermaidInitDone__) {
+					return;
+				}
+				globalWindow.mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+				globalWindow.mermaid.contentLoaded();
+				globalWindow.__mermaidInitDone__ = true;
+			})
+			.catch(() => {
+				// Keep layout resilient even if Mermaid fails to load.
+			});
+	});
 </script>
 
 <svelte:head>
@@ -19,23 +71,6 @@
 		name="description"
 		content="ConstitutionalERP SvelteKit canvas UI for process-first, graph-native operations."
 	/>
-	<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" async></script>
-	<script>
-		// Initialize Mermaid after it loads
-		const initMermaid = () => {
-			if (typeof window !== 'undefined' && window.mermaid) {
-				window.mermaid.initialize({ startOnLoad: true, theme: 'dark' });
-				window.mermaid.contentLoaded();
-			}
-		};
-		
-		// Try immediately
-		if (document.readyState === 'loading') {
-			document.addEventListener('DOMContentLoaded', initMermaid);
-		} else {
-			initMermaid();
-		}
-	</script>
 </svelte:head>
 <div class="page-shell">
 	<TopBar />

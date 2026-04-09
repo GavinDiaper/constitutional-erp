@@ -13,6 +13,7 @@
 	} from '$lib/flows/sankey';
 	import { actorStore } from '$lib/stores/actorStore';
 	import type { EntityActionSankeyLink, EntityActionSankeyModel, EntityActionSankeyNode } from '$lib/types/hub';
+	import { toCanvasEntityType } from '$lib/utils/canvasEntityType';
 
 	let isLoadingSankey = false;
 	let sankeyError = '';
@@ -227,22 +228,12 @@
 		return { domain, entity, action };
 	}
 
-	function toCanvasEntityType(domain: string, entity: string): string {
-		const normalizedEntity = entity
-			.trim()
-			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-			.replace(/[^a-zA-Z0-9]+/g, '_')
-			.replace(/^_+|_+$/g, '')
-			.toLowerCase();
-
-		return `${domain.toLowerCase()}_${normalizedEntity}`;
-	}
-
 	async function applyAllowedActionLinkHighlights(
 		model: EntityActionSankeyModel
 	): Promise<{ model: EntityActionSankeyModel; tooltips: Record<string, string> }> {
 		const instanceNodes = model.nodes.filter((node) => node.id.startsWith('instance:'));
 		if (instanceNodes.length === 0) {
+			console.warn('[admin-interactive-map] Aggregate drilldown has no instance nodes; action highlights cannot be evaluated.');
 			return {
 				model,
 				tooltips: {}
