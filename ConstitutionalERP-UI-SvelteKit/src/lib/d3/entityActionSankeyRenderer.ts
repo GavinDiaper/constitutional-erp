@@ -23,6 +23,7 @@ const levelColors: Record<number, string> = {
 export interface EntityActionSankeyRenderOptions {
 	onNodeClick?: (node: EntityActionSankeyNode) => void;
 	clickableLevels?: number[];
+	getNodeTooltip?: (node: EntityActionSankeyNode) => string;
 }
 
 export function renderEntityActionSankey(
@@ -101,7 +102,14 @@ export function renderEntityActionSankey(
 
 	nodeGroup
 		.append('title')
-		.text((node) => `${node.label} (${levelName(node.level)})`);
+		.text((node) => {
+			const renderedNode: EntityActionSankeyNode = {
+				id: node.id,
+				label: node.label,
+				level: node.level
+			};
+			return options?.getNodeTooltip?.(renderedNode) ?? `${node.label} (${levelName(node.level)})`;
+		});
 
 	nodeGroup
 		.append('text')

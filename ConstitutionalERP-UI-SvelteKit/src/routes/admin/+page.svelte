@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { fetchAggregateIds } from '$lib/api/aggregates';
 	import { getMcpFunctions } from '$lib/api/mcp';
-	import { getActions } from '$lib/api/navigator';
+	import { getActions, getResource, type CanonicalResource } from '$lib/api/navigator';
 	import EntityActionSankey from '$lib/components/canvas/EntityActionSankey.svelte';
 	import {
 		buildEntityActionSankeyModel,
@@ -23,6 +23,7 @@
 	let interactiveMapMode: InteractiveMapMode = 'root';
 	let selectedInteractiveDomain = '';
 	let selectedInteractiveAggregate = '';
+	let interactiveNodeTooltipById: Record<string, string> = {};
 	let sankeyModel: EntityActionSankeyModel = {
 		nodes: [],
 		links: []
@@ -55,17 +56,127 @@
 			mcpFunctionCount = functions.length;
 			const aggregateIds = await fetchAggregateIds(functions, actor);
 			sankeyModel = buildEntityActionSankeyModel(functions, aggregateIds);
+			interactiveNodeTooltipById = {};
 			resetInteractiveMap();
 		} catch (error) {
 			sankeyError = error instanceof Error ? error.message : 'Unable to load Sankey source data.';
 			sankeyModel = { nodes: [], links: [] };
 			interactiveMapModel = { nodes: [], links: [] };
+			interactiveNodeTooltipById = {};
 			selectedInteractiveDomain = '';
 			selectedInteractiveAggregate = '';
 			interactiveMapMode = 'root';
 		} finally {
 			isLoadingSankey = false;
 		}
+	}
+
+	function toSingleLine(value: unknown): string | null {
+		if (typeof value === 'string') {
+			const normalized = value.trim().replace(/\s+/g, ' ');
+			return normalized.length > 0 ? normalized : null;
+		}
+
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return String(value);
+		}
+
+		return null;
+	}
+
+	function firstHeaderValue(attributes: Record<string, unknown>, keys: string[]): string | null {
+		for (const key of keys) {
+			const value = toSingleLine(attributes[key]);
+			if (value) {
+				return value;
+			}
+		}
+
+		return null;
+	}
+
+	function derivePrimaryName(attributes: Record<string, unknown>): string | null {
+		const explicitName = firstHeaderValue(attributes, [
+			'customer_name',
+			'customerName',
+			'supplier_name',
+			'supplierName',
+			'employee_name',
+			'employeeName',
+			'vendor_name',
+			'vendorName',
+			'full_name',
+			'fullName',
+			'display_name',
+			'displayName',
+			'name'
+		]);
+		if (explicitName) {
+			return explicitName;
+		}
+
+		const namedEntry = Object.entries(attributes).find(([key, value]) =>
+			key.toLowerCase().includes('name') && toSingleLine(value)
+		);
+
+		return namedEntry ? toSingleLine(namedEntry[1]) : null;
+	}
+
+	function buildInstanceTooltip(meta: { domain: string; entity: string; aggregateId: string }, resource: CanonicalResource): string {
+		const attributes = resource.attributes ?? {};
+		const lines: string[] = [
+			`${meta.entity} ${meta.aggregateId}`,
+			`Domain: ${meta.domain}`,
+			`Status: ${toSingleLine(resource.state) ?? firstHeaderValue(attributes, ['status', 'state', 'lifecycle_state', 'process_state']) ?? 'Unknown'}`
+		];
+
+		const primaryName = derivePrimaryName(attributes);
+		if (primaryName) {
+			lines.push(`Name: ${primaryName}`);
+		}
+
+		const secondaryDetails: Array<[string, string | null]> = [
+			['Email', firstHeaderValue(attributes, ['email', 'email_address'])],
+			['Code', firstHeaderValue(attributes, ['code', 'customer_code', 'supplier_code', 'employee_code'])],
+			['Owner', firstHeaderValue(attributes, ['owner_name', 'owner'])]
+		];
+
+		for (const [label, value] of secondaryDetails) {
+			if (value) {
+				lines.push(`${label}: ${value}`);
+			}
+		}
+
+		lines.push('Click to open Canvas');
+		return lines.join('\n');
+	}
+
+	function getInteractiveMapNodeTooltip(node: EntityActionSankeyNode): string {
+		const enriched = interactiveNodeTooltipById[node.id];
+		if (enriched) {
+			return enriched;
+		}
+
+		if (node.id.startsWith('instance:')) {
+			const meta = parseInstanceNodeId(node.id);
+			if (meta) {
+				return `${meta.entity} ${meta.aggregateId}\nDomain: ${meta.domain}\nHeader details are loading...`;
+			}
+		}
+
+		if (interactiveMapMode === 'root') {
+			return `${node.label}\nClick to drill into aggregate types`;
+		}
+
+		if (interactiveMapMode === 'domain-focused') {
+			return `${node.label}\nClick to drill into aggregate IDs`;
+		}
+
+		if (interactiveMapMode === 'aggregate-focused' && node.id.startsWith('action:')) {
+			return `${node.label}\nAction available for selected aggregate IDs`;
+		}
+
+		return node.label;
 	}
 
 	function normalizeToken(value: string): string {
@@ -127,13 +238,19 @@
 		return `${domain.toLowerCase()}_${normalizedEntity}`;
 	}
 
-	async function applyAllowedActionLinkHighlights(model: EntityActionSankeyModel): Promise<EntityActionSankeyModel> {
+	async function applyAllowedActionLinkHighlights(
+		model: EntityActionSankeyModel
+	): Promise<{ model: EntityActionSankeyModel; tooltips: Record<string, string> }> {
 		const instanceNodes = model.nodes.filter((node) => node.id.startsWith('instance:'));
 		if (instanceNodes.length === 0) {
-			return model;
+			return {
+				model,
+				tooltips: {}
+			};
 		}
 
 		const allowedByInstance = new Map<string, Set<string>>();
+		const tooltips: Record<string, string> = {};
 		await Promise.all(
 			instanceNodes.map(async (node) => {
 				const meta = parseInstanceNodeId(node.id);
@@ -142,18 +259,23 @@
 				}
 
 				try {
-					const actions = await getActions(
-						{
-							domain: meta.domain,
-							aggregateType: meta.entity,
-							aggregateId: meta.aggregateId,
-							actorId: $actorStore.actorId
-						},
-						$actorStore
-					);
+					const context = {
+						domain: meta.domain,
+						aggregateType: meta.entity,
+						aggregateId: meta.aggregateId,
+						actorId: $actorStore.actorId
+					};
+					const [actions, resource] = await Promise.all([
+						getActions(context, $actorStore),
+						getResource(context, $actorStore).catch(() => null)
+					]);
 
 					const actionSet = new Set(actions.map((action) => normalizeToken(action.id)));
 					allowedByInstance.set(node.id, actionSet);
+
+					if (resource) {
+						tooltips[node.id] = buildInstanceTooltip(meta, resource);
+					}
 				} catch {
 					// Keep default rendering when action availability cannot be resolved.
 				}
@@ -175,7 +297,10 @@
 			};
 		});
 
-		return { nodes: model.nodes, links };
+		return {
+			model: { nodes: model.nodes, links },
+			tooltips
+		};
 	}
 
 	async function handleInteractiveNodeClick(node: EntityActionSankeyNode): Promise<void> {
@@ -186,6 +311,7 @@
 
 			selectedInteractiveDomain = node.label;
 			selectedInteractiveAggregate = '';
+			interactiveNodeTooltipById = {};
 			interactiveMapModel = buildInteractiveDomainDrilldownSankeyModel(sankeyModel, selectedInteractiveDomain);
 			interactiveMapMode = 'domain-focused';
 			return;
@@ -198,7 +324,9 @@
 
 			selectedInteractiveAggregate = node.label;
 			const aggregateModel = buildInteractiveAggregateDrilldownSankeyModel(sankeyModel, node.id);
-			interactiveMapModel = await applyAllowedActionLinkHighlights(aggregateModel);
+			const highlighted = await applyAllowedActionLinkHighlights(aggregateModel);
+			interactiveMapModel = highlighted.model;
+			interactiveNodeTooltipById = highlighted.tooltips;
 			interactiveMapMode = 'aggregate-focused';
 			return;
 		}
@@ -224,6 +352,7 @@
 	function resetInteractiveMap(): void {
 		selectedInteractiveDomain = '';
 		selectedInteractiveAggregate = '';
+		interactiveNodeTooltipById = {};
 		interactiveMapMode = 'root';
 		interactiveMapModel = sankeyModel;
 	}
@@ -324,6 +453,7 @@
 					model={interactiveMapMode === 'root' ? sankeyModel : interactiveMapModel}
 					title="Interactive Map"
 					clickableLevels={interactiveMapClickableLevels}
+					getNodeTooltip={getInteractiveMapNodeTooltip}
 					onNodeClick={handleInteractiveNodeClick}
 				/>
 			</div>

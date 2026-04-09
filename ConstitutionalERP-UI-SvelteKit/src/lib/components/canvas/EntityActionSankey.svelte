@@ -7,6 +7,7 @@
 	export let title = 'Entity Action Sankey';
 	export let clickableLevels: number[] = [];
 	export let onNodeClick: ((node: EntityActionSankeyNode) => void) | undefined = undefined;
+	export let getNodeTooltip: ((node: EntityActionSankeyNode) => string) | undefined = undefined;
 
 	let svgEl: SVGSVGElement | undefined;
 
@@ -15,10 +16,16 @@
 			return;
 		}
 
-		renderEntityActionSankey(svgEl, model, {
+		const renderOptions: Parameters<typeof renderEntityActionSankey>[2] = {
 			clickableLevels,
 			onNodeClick
-		});
+		};
+
+		if (getNodeTooltip) {
+			(renderOptions as Record<string, unknown>).getNodeTooltip = getNodeTooltip;
+		}
+
+		renderEntityActionSankey(svgEl, model, renderOptions);
 	}
 
 	onMount(paint);
