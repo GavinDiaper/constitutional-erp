@@ -1,5 +1,48 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { getMcpFunctions } from '$lib/api/mcp';
+	import EntityActionSankey from '$lib/components/canvas/EntityActionSankey.svelte';
+	import { buildEntityActionSankeyModel } from '$lib/flows/sankey';
+	import { actorStore } from '$lib/stores/actorStore';
+	import type { EntityActionSankeyModel } from '$lib/types/hub';
+
+	let isLoadingSankey = false;
+	let sankeyError = '';
+	let mcpFunctionCount = 0;
+	let sankeyModel: EntityActionSankeyModel = {
+		nodes: [],
+		links: []
+	};
+
+	onMount(() => {
+		const unsubscribeActor = actorStore.subscribe(() => {
+			void loadSankeyData();
+		});
+
+		void loadSankeyData();
+
+		return () => {
+			unsubscribeActor();
+		};
+	});
+
+	async function loadSankeyData(): Promise<void> {
+		isLoadingSankey = true;
+		sankeyError = '';
+
+		try {
+			const result = await getMcpFunctions($actorStore);
+			const functions = result.data ?? [];
+			mcpFunctionCount = functions.length;
+			sankeyModel = buildEntityActionSankeyModel(functions);
+		} catch (error) {
+			sankeyError = error instanceof Error ? error.message : 'Unable to load Sankey source data.';
+			sankeyModel = { nodes: [], links: [] };
+		} finally {
+			isLoadingSankey = false;
+		}
+	}
 </script>
 
 <h2 class="text-2xl font-semibold">Admin Dashboard</h2>
@@ -20,4 +63,27 @@
 	<div class="flex flex-wrap gap-2">
 		<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Open Navigator Sessions</a>
 	</div>
+</div>
+
+<div class="mt-8 border-t border-white/10 pt-6">
+	<h3 class="text-xl font-semibold">System Entity Action Topology</h3>
+	<p class="muted mt-2 text-sm">
+		D3 Sankey grouped by domain, aggregate type, entity, and action. Each parent splits equally across its children, so each outgoing branch is
+		weighted as 1/N and single-child branches are weighted as 1.
+	</p>
+
+	{#if isLoadingSankey}
+		<p class="mt-4 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/80">Loading Sankey data...</p>
+	{:else if sankeyError}
+		<p class="mt-4 rounded-md border border-red-400/40 bg-red-900/20 px-3 py-2 text-sm text-red-100">{sankeyError}</p>
+	{:else if sankeyModel.nodes.length === 0}
+		<p class="mt-4 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/80">No eligible entity actions were returned by MCP catalog.</p>
+	{:else}
+		<p class="mt-3 text-xs text-white/60">
+			Source MCP functions: {mcpFunctionCount} | Sankey nodes: {sankeyModel.nodes.length} | Sankey links: {sankeyModel.links.length}
+		</p>
+		<div class="mt-4">
+			<EntityActionSankey model={sankeyModel} title="Domain -> Aggregate -> Entity -> Action" />
+		</div>
+	{/if}
 </div>

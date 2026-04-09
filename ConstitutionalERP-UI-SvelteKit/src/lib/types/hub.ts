@@ -41,6 +41,32 @@ export interface ProcessGraphModel {
 	edges: ProcessGraphEdge[];
 }
 
+export interface McpFunctionSummary {
+	id: string;
+	entity?: string;
+	domain?: string;
+	aggregateType?: string;
+	action?: string;
+	operationType?: 'create' | 'update' | 'transition' | 'query' | string;
+}
+
+export interface EntityActionSankeyNode {
+	id: string;
+	label: string;
+	level: 0 | 1 | 2 | 3;
+}
+
+export interface EntityActionSankeyLink {
+	source: string;
+	target: string;
+	value: number;
+}
+
+export interface EntityActionSankeyModel {
+	nodes: EntityActionSankeyNode[];
+	links: EntityActionSankeyLink[];
+}
+
 export type CanonicalFlowDomain = 'O2C' | 'P2P' | 'R2R' | 'H2R';
 
 export interface ProcessFlowNode {
