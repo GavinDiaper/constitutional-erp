@@ -72,7 +72,7 @@ export function renderEntityActionSankey(
 		.data(renderedLinks)
 		.join('path')
 		.attr('d', (link) => linkPath(link) ?? '')
-		.attr('stroke', '#9fb8cf')
+		.attr('stroke', (link) => (link.isAllowed ? '#55a630' : '#9fb8cf'))
 		.attr('stroke-width', (link) => Math.max(1, link.width ?? 0));
 
 	const nodeGroup = svg.append('g').selectAll<SVGGElement, SankeyRenderNode>('g').data(renderedNodes).join('g');

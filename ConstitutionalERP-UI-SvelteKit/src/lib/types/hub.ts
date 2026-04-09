@@ -61,6 +61,7 @@ export interface EntityActionSankeyLink {
 	source: string;
 	target: string;
 	value: number;
+	isAllowed?: boolean;
 }
 
 export interface EntityActionSankeyModel {

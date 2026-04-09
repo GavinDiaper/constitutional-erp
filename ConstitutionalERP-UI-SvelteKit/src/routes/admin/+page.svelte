@@ -1,20 +1,28 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { fetchAggregateIds } from '$lib/api/aggregates';
 	import { getMcpFunctions } from '$lib/api/mcp';
+	import { getActions } from '$lib/api/navigator';
 	import EntityActionSankey from '$lib/components/canvas/EntityActionSankey.svelte';
-	import { buildEntityActionSankeyModel, buildInteractiveDomainDrilldownSankeyModel } from '$lib/flows/sankey';
+	import {
+		buildEntityActionSankeyModel,
+		buildInteractiveAggregateDrilldownSankeyModel,
+		buildInteractiveDomainDrilldownSankeyModel
+	} from '$lib/flows/sankey';
 	import { actorStore } from '$lib/stores/actorStore';
-	import type { EntityActionSankeyModel, EntityActionSankeyNode, McpFunctionSummary } from '$lib/types/hub';
+	import type { EntityActionSankeyLink, EntityActionSankeyModel, EntityActionSankeyNode } from '$lib/types/hub';
 
 	let isLoadingSankey = false;
 	let sankeyError = '';
 	let mcpFunctionCount = 0;
 	type TopologyTab = 'diagram' | 'interactive-map';
+	type InteractiveMapMode = 'root' | 'domain-focused' | 'aggregate-focused';
 	let activeTopologyTab: TopologyTab = 'diagram';
+	let interactiveMapMode: InteractiveMapMode = 'root';
 	let selectedInteractiveDomain = '';
-	let mcpFunctions: McpFunctionSummary[] = [];
+	let selectedInteractiveAggregate = '';
 	let sankeyModel: EntityActionSankeyModel = {
 		nodes: [],
 		links: []
@@ -44,34 +52,179 @@
 			const actor = $actorStore;
 			const result = await getMcpFunctions(actor);
 			const functions = result.data ?? [];
-			mcpFunctions = functions;
 			mcpFunctionCount = functions.length;
 			const aggregateIds = await fetchAggregateIds(functions, actor);
 			sankeyModel = buildEntityActionSankeyModel(functions, aggregateIds);
-			selectedInteractiveDomain = '';
-			interactiveMapModel = sankeyModel;
+			resetInteractiveMap();
 		} catch (error) {
 			sankeyError = error instanceof Error ? error.message : 'Unable to load Sankey source data.';
-			mcpFunctions = [];
 			sankeyModel = { nodes: [], links: [] };
 			interactiveMapModel = { nodes: [], links: [] };
 			selectedInteractiveDomain = '';
+			selectedInteractiveAggregate = '';
+			interactiveMapMode = 'root';
 		} finally {
 			isLoadingSankey = false;
 		}
 	}
 
-	function handleInteractiveNodeClick(node: EntityActionSankeyNode): void {
-		if (selectedInteractiveDomain || node.level !== 0 || !node.id.startsWith('domain:')) {
+	function normalizeToken(value: string): string {
+		return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+	}
+
+	function parseInstanceNodeId(nodeId: string): { domain: string; entity: string; aggregateId: string } | null {
+		if (!nodeId.startsWith('instance:')) {
+			return null;
+		}
+
+		const content = nodeId.slice('instance:'.length);
+		const segments = content.split('|');
+		if (segments.length < 3) {
+			return null;
+		}
+
+		const domain = segments[0]?.trim();
+		const aggregateId = segments[segments.length - 1]?.trim();
+		const entity = segments.slice(1, segments.length - 1).join('|').trim();
+
+		if (!domain || !entity || !aggregateId) {
+			return null;
+		}
+
+		return { domain, entity, aggregateId };
+	}
+
+	function parseActionNodeId(nodeId: string): { domain: string; entity: string; action: string } | null {
+		if (!nodeId.startsWith('action:')) {
+			return null;
+		}
+
+		const content = nodeId.slice('action:'.length);
+		const segments = content.split('|');
+		if (segments.length < 3) {
+			return null;
+		}
+
+		const domain = segments[0]?.trim();
+		const action = segments[segments.length - 1]?.trim();
+		const entity = segments.slice(1, segments.length - 1).join('|').trim();
+
+		if (!domain || !entity || !action) {
+			return null;
+		}
+
+		return { domain, entity, action };
+	}
+
+	function toCanvasEntityType(domain: string, entity: string): string {
+		const normalizedEntity = entity
+			.trim()
+			.replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+			.replace(/[^a-zA-Z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '')
+			.toLowerCase();
+
+		return `${domain.toLowerCase()}_${normalizedEntity}`;
+	}
+
+	async function applyAllowedActionLinkHighlights(model: EntityActionSankeyModel): Promise<EntityActionSankeyModel> {
+		const instanceNodes = model.nodes.filter((node) => node.id.startsWith('instance:'));
+		if (instanceNodes.length === 0) {
+			return model;
+		}
+
+		const allowedByInstance = new Map<string, Set<string>>();
+		await Promise.all(
+			instanceNodes.map(async (node) => {
+				const meta = parseInstanceNodeId(node.id);
+				if (!meta) {
+					return;
+				}
+
+				try {
+					const actions = await getActions(
+						{
+							domain: meta.domain,
+							aggregateType: meta.entity,
+							aggregateId: meta.aggregateId,
+							actorId: $actorStore.actorId
+						},
+						$actorStore
+					);
+
+					const actionSet = new Set(actions.map((action) => normalizeToken(action.id)));
+					allowedByInstance.set(node.id, actionSet);
+				} catch {
+					// Keep default rendering when action availability cannot be resolved.
+				}
+			})
+		);
+
+		const links: EntityActionSankeyLink[] = model.links.map((link) => {
+			if (!link.source.startsWith('instance:') || !link.target.startsWith('action:')) {
+				return { ...link };
+			}
+
+			const actionMeta = parseActionNodeId(link.target);
+			const allowedActions = allowedByInstance.get(link.source);
+			const isAllowed = !!(actionMeta && allowedActions?.has(normalizeToken(actionMeta.action)));
+
+			return {
+				...link,
+				isAllowed
+			};
+		});
+
+		return { nodes: model.nodes, links };
+	}
+
+	async function handleInteractiveNodeClick(node: EntityActionSankeyNode): Promise<void> {
+		if (interactiveMapMode === 'root') {
+			if (node.level !== 0 || !node.id.startsWith('domain:')) {
+				return;
+			}
+
+			selectedInteractiveDomain = node.label;
+			selectedInteractiveAggregate = '';
+			interactiveMapModel = buildInteractiveDomainDrilldownSankeyModel(sankeyModel, selectedInteractiveDomain);
+			interactiveMapMode = 'domain-focused';
 			return;
 		}
 
-		selectedInteractiveDomain = node.label;
-		interactiveMapModel = buildInteractiveDomainDrilldownSankeyModel(sankeyModel, mcpFunctions, selectedInteractiveDomain);
+		if (interactiveMapMode === 'domain-focused') {
+			if (node.level !== 0 || !node.id.startsWith('aggregate:')) {
+				return;
+			}
+
+			selectedInteractiveAggregate = node.label;
+			const aggregateModel = buildInteractiveAggregateDrilldownSankeyModel(sankeyModel, node.id);
+			interactiveMapModel = await applyAllowedActionLinkHighlights(aggregateModel);
+			interactiveMapMode = 'aggregate-focused';
+			return;
+		}
+
+		if (interactiveMapMode === 'aggregate-focused') {
+			if (node.level !== 1 || !node.id.startsWith('instance:')) {
+				return;
+			}
+
+			const meta = parseInstanceNodeId(node.id);
+			if (!meta) {
+				return;
+			}
+
+			const entityType = toCanvasEntityType(meta.domain, meta.entity);
+			await goto(resolve(`/canvas/${entityType}/${encodeURIComponent(meta.aggregateId)}`));
+		}
 	}
+
+	$: interactiveMapClickableLevels =
+		interactiveMapMode === 'root' ? [0] : interactiveMapMode === 'domain-focused' ? [0] : [1];
 
 	function resetInteractiveMap(): void {
 		selectedInteractiveDomain = '';
+		selectedInteractiveAggregate = '';
+		interactiveMapMode = 'root';
 		interactiveMapModel = sankeyModel;
 	}
 </script>
@@ -144,23 +297,33 @@
 		{:else}
 			<div class="mt-4" role="tabpanel" aria-label="Interactive Map">
 				<div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
-					{#if selectedInteractiveDomain}
-						<span>Focused domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span></span>
+					{#if interactiveMapMode === 'root'}
+						<span>Click a domain node to drill to aggregate types.</span>
+					{:else if interactiveMapMode === 'domain-focused'}
+						<span>
+							Domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span> | Click an aggregate type to focus aggregate IDs.
+						</span>
+					{:else}
+						<span>
+							Domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span> |
+							Aggregate: <span class="font-semibold text-white">{selectedInteractiveAggregate}</span> | Click an aggregate ID to open Canvas.
+						</span>
+					{/if}
+
+					{#if interactiveMapMode !== 'root'}
 						<button
 							type="button"
 							class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
 							on:click={resetInteractiveMap}
 						>
-							Back to domains
+							Reset map
 						</button>
-					{:else}
-						<span>Click a domain node to drill in.</span>
 					{/if}
 				</div>
 				<EntityActionSankey
-					model={selectedInteractiveDomain ? interactiveMapModel : sankeyModel}
+					model={interactiveMapMode === 'root' ? sankeyModel : interactiveMapModel}
 					title="Interactive Map"
-					clickableLevels={selectedInteractiveDomain ? [] : [0]}
+					clickableLevels={interactiveMapClickableLevels}
 					onNodeClick={handleInteractiveNodeClick}
 				/>
 			</div>
