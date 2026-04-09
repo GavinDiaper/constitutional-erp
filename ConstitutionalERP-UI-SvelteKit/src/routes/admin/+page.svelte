@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { fetchAggregateIds } from '$lib/api/aggregates';
 	import { getMcpFunctions } from '$lib/api/mcp';
 	import EntityActionSankey from '$lib/components/canvas/EntityActionSankey.svelte';
 	import { buildEntityActionSankeyModel } from '$lib/flows/sankey';
@@ -32,10 +33,12 @@
 		sankeyError = '';
 
 		try {
-			const result = await getMcpFunctions($actorStore);
+			const actor = $actorStore;
+			const result = await getMcpFunctions(actor);
 			const functions = result.data ?? [];
 			mcpFunctionCount = functions.length;
-			sankeyModel = buildEntityActionSankeyModel(functions);
+			const aggregateIds = await fetchAggregateIds(functions, actor);
+			sankeyModel = buildEntityActionSankeyModel(functions, aggregateIds);
 		} catch (error) {
 			sankeyError = error instanceof Error ? error.message : 'Unable to load Sankey source data.';
 			sankeyModel = { nodes: [], links: [] };
@@ -68,8 +71,7 @@
 <div class="mt-8 border-t border-white/10 pt-6">
 	<h3 class="text-xl font-semibold">System Entity Action Topology</h3>
 	<p class="muted mt-2 text-sm">
-		D3 Sankey grouped by domain, aggregate type, entity, and action. Each parent splits equally across its children, so each outgoing branch is
-		weighted as 1/N and single-child branches are weighted as 1.
+		D3 Sankey showing domain → aggregate type → live instance ID → action. Create operations link directly from type to action (no instance ID). Each parent splits equally across its outgoing paths.
 	</p>
 
 	{#if isLoadingSankey}
@@ -83,7 +85,7 @@
 			Source MCP functions: {mcpFunctionCount} | Sankey nodes: {sankeyModel.nodes.length} | Sankey links: {sankeyModel.links.length}
 		</p>
 		<div class="mt-4">
-			<EntityActionSankey model={sankeyModel} title="Domain -> Aggregate -> Entity -> Action" />
+			<EntityActionSankey model={sankeyModel} title="Domain → Aggregate Type → Instance ID → Action" />
 		</div>
 	{/if}
 </div>
