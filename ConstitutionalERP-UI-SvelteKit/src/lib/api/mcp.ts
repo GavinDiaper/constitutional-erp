@@ -7,6 +7,16 @@ interface McpFunctionsPayload {
 	functions?: unknown[];
 }
 
+function asStringArray(value: unknown): string[] {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	return value
+		.map((entry) => asString(entry))
+		.filter((entry): entry is string => entry !== undefined);
+}
+
 function toKebabCase(value: string): string {
 	return value
 		.trim()
@@ -84,6 +94,8 @@ function normalizeMcpFunction(value: unknown): McpFunctionSummary | null {
 	const entity = asString(record.entity) ?? asString(record.entityType);
 	const aggregateType = deriveAggregateType(record);
 	const action = deriveAction(record);
+	const inputSchema = asRecord(record.inputSchema);
+	const requiredInputs = asStringArray(inputSchema.required);
 
 	if (!id || !domain || !action) {
 		return null;
@@ -95,17 +107,20 @@ function normalizeMcpFunction(value: unknown): McpFunctionSummary | null {
 		domain,
 		aggregateType,
 		action,
-		operationType: asString(record.operationType)
+		operationType: asString(record.operationType),
+		requiredInputs
 	};
 }
 
 export async function getMcpFunctions(actor: ActorContext): Promise<{ data: McpFunctionSummary[] }> {
-	const payload = await fetchHubJson<McpFunctionsPayload>('/api/hub/mcp/functions', actor);
-	const raw = Array.isArray(payload.data)
-		? payload.data
-		: Array.isArray(payload.functions)
-			? payload.functions
-			: [];
+	const payload = await fetchHubJson<McpFunctionsPayload | unknown[]>('/api/hub/mcp/functions', actor);
+	const raw = Array.isArray(payload)
+		? payload
+		: Array.isArray(payload.data)
+			? payload.data
+			: Array.isArray(payload.functions)
+				? payload.functions
+				: [];
 
 	const data = raw
 		.map((entry) => normalizeMcpFunction(entry))

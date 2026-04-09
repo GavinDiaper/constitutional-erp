@@ -48,6 +48,7 @@ export interface McpFunctionSummary {
 	aggregateType?: string;
 	action?: string;
 	operationType?: 'create' | 'update' | 'transition' | 'query' | string;
+	requiredInputs?: string[];
 }
 
 export interface EntityActionSankeyNode {

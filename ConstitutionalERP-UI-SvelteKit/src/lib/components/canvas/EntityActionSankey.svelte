@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { afterUpdate, onMount } from 'svelte';
 	import { renderEntityActionSankey } from '$lib/d3/entityActionSankeyRenderer';
-	import type { EntityActionSankeyModel } from '$lib/types/hub';
+	import type { EntityActionSankeyModel, EntityActionSankeyNode } from '$lib/types/hub';
 
 	export let model: EntityActionSankeyModel;
 	export let title = 'Entity Action Sankey';
+	export let clickableLevels: number[] = [];
+	export let onNodeClick: ((node: EntityActionSankeyNode) => void) | undefined = undefined;
 
 	let svgEl: SVGSVGElement | undefined;
 
@@ -13,7 +15,10 @@
 			return;
 		}
 
-		renderEntityActionSankey(svgEl, model);
+		renderEntityActionSankey(svgEl, model, {
+			clickableLevels,
+			onNodeClick
+		});
 	}
 
 	onMount(paint);

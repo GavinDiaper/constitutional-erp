@@ -4,16 +4,22 @@
 	import { fetchAggregateIds } from '$lib/api/aggregates';
 	import { getMcpFunctions } from '$lib/api/mcp';
 	import EntityActionSankey from '$lib/components/canvas/EntityActionSankey.svelte';
-	import { buildEntityActionSankeyModel } from '$lib/flows/sankey';
+	import { buildEntityActionSankeyModel, buildInteractiveDomainDrilldownSankeyModel } from '$lib/flows/sankey';
 	import { actorStore } from '$lib/stores/actorStore';
-	import type { EntityActionSankeyModel } from '$lib/types/hub';
+	import type { EntityActionSankeyModel, EntityActionSankeyNode, McpFunctionSummary } from '$lib/types/hub';
 
 	let isLoadingSankey = false;
 	let sankeyError = '';
 	let mcpFunctionCount = 0;
 	type TopologyTab = 'diagram' | 'interactive-map';
 	let activeTopologyTab: TopologyTab = 'diagram';
+	let selectedInteractiveDomain = '';
+	let mcpFunctions: McpFunctionSummary[] = [];
 	let sankeyModel: EntityActionSankeyModel = {
+		nodes: [],
+		links: []
+	};
+	let interactiveMapModel: EntityActionSankeyModel = {
 		nodes: [],
 		links: []
 	};
@@ -38,15 +44,35 @@
 			const actor = $actorStore;
 			const result = await getMcpFunctions(actor);
 			const functions = result.data ?? [];
+			mcpFunctions = functions;
 			mcpFunctionCount = functions.length;
 			const aggregateIds = await fetchAggregateIds(functions, actor);
 			sankeyModel = buildEntityActionSankeyModel(functions, aggregateIds);
+			selectedInteractiveDomain = '';
+			interactiveMapModel = sankeyModel;
 		} catch (error) {
 			sankeyError = error instanceof Error ? error.message : 'Unable to load Sankey source data.';
+			mcpFunctions = [];
 			sankeyModel = { nodes: [], links: [] };
+			interactiveMapModel = { nodes: [], links: [] };
+			selectedInteractiveDomain = '';
 		} finally {
 			isLoadingSankey = false;
 		}
+	}
+
+	function handleInteractiveNodeClick(node: EntityActionSankeyNode): void {
+		if (selectedInteractiveDomain || node.level !== 0 || !node.id.startsWith('domain:')) {
+			return;
+		}
+
+		selectedInteractiveDomain = node.label;
+		interactiveMapModel = buildInteractiveDomainDrilldownSankeyModel(sankeyModel, mcpFunctions, selectedInteractiveDomain);
+	}
+
+	function resetInteractiveMap(): void {
+		selectedInteractiveDomain = '';
+		interactiveMapModel = sankeyModel;
 	}
 </script>
 
@@ -117,7 +143,26 @@
 			</div>
 		{:else}
 			<div class="mt-4" role="tabpanel" aria-label="Interactive Map">
-				<EntityActionSankey model={sankeyModel} title="Interactive Map" />
+				<div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
+					{#if selectedInteractiveDomain}
+						<span>Focused domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span></span>
+						<button
+							type="button"
+							class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+							on:click={resetInteractiveMap}
+						>
+							Back to domains
+						</button>
+					{:else}
+						<span>Click a domain node to drill in.</span>
+					{/if}
+				</div>
+				<EntityActionSankey
+					model={selectedInteractiveDomain ? interactiveMapModel : sankeyModel}
+					title="Interactive Map"
+					clickableLevels={selectedInteractiveDomain ? [] : [0]}
+					onNodeClick={handleInteractiveNodeClick}
+				/>
 			</div>
 		{/if}
 	{/if}

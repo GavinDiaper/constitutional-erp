@@ -32,6 +32,57 @@ function isCreateAction(fn: McpFunctionSummary): boolean {
 	return fn.action === 'create' || fn.operationType === 'create';
 }
 
+function parseActionNodeId(nodeId: string): { domain: string; entity: string; action: string } | null {
+	if (!nodeId.startsWith('action:')) {
+		return null;
+	}
+
+	const content = nodeId.slice('action:'.length);
+	const segments = content.split('|');
+	if (segments.length < 3) {
+		return null;
+	}
+
+	const domain = segments[0]?.trim();
+	const action = segments[segments.length - 1]?.trim();
+	const entity = segments.slice(1, segments.length - 1).join('|').trim();
+
+	if (!domain || !entity || !action) {
+		return null;
+	}
+
+	return { domain, entity, action };
+}
+
+function buildRequiredInputsByAction(functions: McpFunctionSummary[]): Map<string, string[]> {
+	const inputsByAction = new Map<string, Set<string>>();
+
+	for (const fn of functions) {
+		if (!fn.domain || !fn.action) {
+			continue;
+		}
+
+		const entity = fn.entity?.trim() || fn.aggregateType?.trim() || 'Unknown';
+		const key = `${normalizeDomain(fn.domain)}|${entity}|${fn.action}`;
+		if (!inputsByAction.has(key)) {
+			inputsByAction.set(key, new Set<string>());
+		}
+
+		for (const inputName of fn.requiredInputs ?? []) {
+			if (inputName.trim()) {
+				inputsByAction.get(key)?.add(inputName.trim());
+			}
+		}
+	}
+
+	const result = new Map<string, string[]>();
+	for (const [key, values] of inputsByAction.entries()) {
+		result.set(key, Array.from(values).sort((left, right) => left.localeCompare(right)));
+	}
+
+	return result;
+}
+
 interface EntityGroup {
 	domain: string;       // uppercase, e.g. 'O2C'
 	entity: string;       // PascalCase, e.g. 'Customer'
@@ -164,4 +215,107 @@ export function buildEntityActionSankeyModel(
 	}
 
 	return { nodes, links };
+}
+
+export function buildInteractiveDomainDrilldownSankeyModel(
+	baseModel: EntityActionSankeyModel,
+	functions: McpFunctionSummary[],
+	selectedDomain: string
+): EntityActionSankeyModel {
+	const normalizedDomain = normalizeDomain(selectedDomain);
+	const rootDomainNodeId = `domain:${normalizedDomain}`;
+
+	const aggregateRoots = baseModel.links
+		.filter((link) => link.source === rootDomainNodeId && link.target.startsWith('aggregate:'))
+		.map((link) => link.target);
+
+	if (aggregateRoots.length === 0) {
+		return { nodes: [], links: [] };
+	}
+
+	const adjacency = new Map<string, string[]>();
+	for (const link of baseModel.links) {
+		if (!adjacency.has(link.source)) {
+			adjacency.set(link.source, []);
+		}
+		adjacency.get(link.source)?.push(link.target);
+	}
+
+	const reachable = new Set<string>();
+	const queue = [...aggregateRoots];
+	while (queue.length > 0) {
+		const current = queue.shift();
+		if (!current || reachable.has(current)) {
+			continue;
+		}
+
+		reachable.add(current);
+		for (const neighbor of adjacency.get(current) ?? []) {
+			if (!reachable.has(neighbor)) {
+				queue.push(neighbor);
+			}
+		}
+	}
+
+	const nodesById = new Map(baseModel.nodes.map((node) => [node.id, node]));
+	const remappedNodes: EntityActionSankeyNode[] = [];
+	for (const nodeId of reachable) {
+		const node = nodesById.get(nodeId);
+		if (!node) {
+			continue;
+		}
+
+		remappedNodes.push({
+			id: node.id,
+			label: node.label,
+			level: Math.max(0, node.level - 1) as SankeyLevel
+		});
+	}
+
+	const remappedLinks = baseModel.links
+		.filter((link) => reachable.has(link.source) && reachable.has(link.target))
+		.map((link) => ({ ...link }));
+
+	const requiredInputsByAction = buildRequiredInputsByAction(functions);
+	const nodeSet = new Set(remappedNodes.map((node) => node.id));
+	const actionToParams = new Map<string, string[]>();
+
+	for (const node of remappedNodes) {
+		if (node.level !== 2) {
+			continue;
+		}
+
+		const actionMeta = parseActionNodeId(node.id);
+		if (!actionMeta || actionMeta.domain !== normalizedDomain) {
+			continue;
+		}
+
+		const inputs =
+			requiredInputsByAction.get(`${actionMeta.domain}|${actionMeta.entity}|${actionMeta.action}`) ?? [];
+
+		if (inputs.length === 0) {
+			continue;
+		}
+
+		const paramNodeIds: string[] = [];
+		for (const inputName of inputs) {
+			const paramNodeId = `param:${actionMeta.domain}|${actionMeta.entity}|${actionMeta.action}|${inputName}`;
+			if (!nodeSet.has(paramNodeId)) {
+				nodeSet.add(paramNodeId);
+				remappedNodes.push({ id: paramNodeId, label: inputName, level: 3 });
+			}
+			paramNodeIds.push(paramNodeId);
+		}
+
+		actionToParams.set(node.id, paramNodeIds);
+	}
+
+	for (const [actionNodeId, paramNodeIds] of actionToParams.entries()) {
+		addEqualSplitEdges(remappedLinks, actionNodeId, paramNodeIds);
+	}
+
+	return {
+		nodes: remappedNodes,
+		links: remappedLinks
+	};
 }

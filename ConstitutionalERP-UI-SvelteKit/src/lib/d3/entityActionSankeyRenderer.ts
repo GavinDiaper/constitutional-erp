@@ -20,7 +20,16 @@ const levelColors: Record<number, string> = {
 	3: '#f8961e'
 };
 
-export function renderEntityActionSankey(svgEl: SVGSVGElement, model: EntityActionSankeyModel): void {
+export interface EntityActionSankeyRenderOptions {
+	onNodeClick?: (node: EntityActionSankeyNode) => void;
+	clickableLevels?: number[];
+}
+
+export function renderEntityActionSankey(
+	svgEl: SVGSVGElement,
+	model: EntityActionSankeyModel,
+	options?: EntityActionSankeyRenderOptions
+): void {
 	const width = svgEl.clientWidth || 1100;
 	const levelCounts = countByLevel(model.nodes);
 	const maxColumnCount = Math.max(...Object.values(levelCounts), 1);
@@ -53,6 +62,7 @@ export function renderEntityActionSankey(svgEl: SVGSVGElement, model: EntityActi
 	const linkPath = sankeyLinkHorizontal<SankeyRenderNode, SankeyRenderLink>();
 	const renderedLinks = sankeyGraph.links as SankeyRenderLink[];
 	const renderedNodes = sankeyGraph.nodes as SankeyRenderNode[];
+	const clickableLevels = new Set(options?.clickableLevels ?? []);
 
 	svg
 		.append('g')
@@ -75,7 +85,19 @@ export function renderEntityActionSankey(svgEl: SVGSVGElement, model: EntityActi
 		.attr('width', (node) => Math.max(1, (node.x1 ?? 0) - (node.x0 ?? 0)))
 		.attr('fill', (node) => levelColors[node.level] ?? '#6c757d')
 		.attr('stroke', '#ffffff')
-		.attr('stroke-width', 0.75);
+		.attr('stroke-width', 0.75)
+		.style('cursor', (node) => (clickableLevels.has(node.level) ? 'pointer' : 'default'))
+		.on('click', (_event, node) => {
+			if (!clickableLevels.has(node.level)) {
+				return;
+			}
+
+			options?.onNodeClick?.({
+				id: node.id,
+				label: node.label,
+				level: node.level
+			});
+		});
 
 	nodeGroup
 		.append('title')
