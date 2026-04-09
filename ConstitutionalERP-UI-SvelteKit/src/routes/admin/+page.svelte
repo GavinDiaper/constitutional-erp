@@ -11,6 +11,8 @@
 	let isLoadingSankey = false;
 	let sankeyError = '';
 	let mcpFunctionCount = 0;
+	type TopologyTab = 'diagram' | 'interactive-map';
+	let activeTopologyTab: TopologyTab = 'diagram';
 	let sankeyModel: EntityActionSankeyModel = {
 		nodes: [],
 		links: []
@@ -74,6 +76,31 @@
 		D3 Sankey showing domain → aggregate type → live instance ID → action. Create operations link directly from type to action (no instance ID). Each parent splits equally across its outgoing paths.
 	</p>
 
+	<div class="mt-4 inline-flex rounded-lg border border-white/20 bg-white/5 p-1" role="tablist" aria-label="Topology views">
+		<button
+			type="button"
+			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'diagram' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+			role="tab"
+			aria-selected={activeTopologyTab === 'diagram'}
+			on:click={() => {
+				activeTopologyTab = 'diagram';
+			}}
+		>
+			Diagram
+		</button>
+		<button
+			type="button"
+			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'interactive-map' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+			role="tab"
+			aria-selected={activeTopologyTab === 'interactive-map'}
+			on:click={() => {
+				activeTopologyTab = 'interactive-map';
+			}}
+		>
+			Interactive Map
+		</button>
+	</div>
+
 	{#if isLoadingSankey}
 		<p class="mt-4 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/80">Loading Sankey data...</p>
 	{:else if sankeyError}
@@ -84,8 +111,14 @@
 		<p class="mt-3 text-xs text-white/60">
 			Source MCP functions: {mcpFunctionCount} | Sankey nodes: {sankeyModel.nodes.length} | Sankey links: {sankeyModel.links.length}
 		</p>
-		<div class="mt-4">
-			<EntityActionSankey model={sankeyModel} title="Domain → Aggregate Type → Instance ID → Action" />
-		</div>
+		{#if activeTopologyTab === 'diagram'}
+			<div class="mt-4" role="tabpanel" aria-label="Diagram">
+				<EntityActionSankey model={sankeyModel} title="Domain → Aggregate Type → Instance ID → Action" />
+			</div>
+		{:else}
+			<div class="mt-4" role="tabpanel" aria-label="Interactive Map">
+				<EntityActionSankey model={sankeyModel} title="Interactive Map" />
+			</div>
+		{/if}
 	{/if}
 </div>
