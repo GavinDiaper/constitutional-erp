@@ -406,12 +406,12 @@
 	<p class="muted mt-2 text-sm">
 		Explore all entities by domain and state, then jump directly into each process.
 	</p>
-	<div class="mt-3 rounded-lg border border-emerald-300/35 bg-emerald-500/5 p-3 text-xs text-emerald-100">
+<!-- 	<div class="mt-3 rounded-lg border border-emerald-300/35 bg-emerald-500/5 p-3 text-xs text-emerald-100">
 		Domain process flows have moved to Diagram Explorer.
 		<a class="ml-2 font-semibold text-emerald-100 underline decoration-emerald-200/80 underline-offset-2" href={resolve('/diagrams/process-flows')}>
 			Open Domain Process Flows
 		</a>
-	</div>
+	</div> -->
 
 	<div class="mt-4 flex flex-wrap items-center gap-3">
 		<input
