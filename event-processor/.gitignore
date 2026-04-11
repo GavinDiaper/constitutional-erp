@@ -1,0 +1,10 @@
+node_modules/
+dist/
+event-processor.db
+event-processor.db-wal
+event-processor.db-shm
+*.test.db
+*.test.db-wal
+*.test.db-shm
+reports/
+.env

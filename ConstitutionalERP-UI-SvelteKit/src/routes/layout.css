@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/* Tailwind v4: enable dark: utilities via the .dark class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Design tokens (dark defaults) ─────────────────────────────────────── */
+:root {
+	--racing-red: #e00000;
+	--deep-space-blue: #19304d;
+	--midnight-blue: #10253f;
+	--slate-tint: #d9e3ee;
+	--white: #ffffff;
+	--black: #000000;
+
+	/* Semantic tokens */
+	--bg-body-from: var(--deep-space-blue);
+	--bg-body-to: var(--midnight-blue);
+	--bg-radial-red: rgba(224, 0, 0, 0.35);
+	--bg-radial-blue: rgba(68, 114, 160, 0.35);
+	--text-primary: #ffffff;
+	--text-muted: #d9e3ee;
+	--panel-bg-from: rgba(255, 255, 255, 0.1);
+	--panel-bg-to: rgba(255, 255, 255, 0.04);
+	--panel-border: rgba(255, 255, 255, 0.12);
+	--panel-overlay: rgba(255, 255, 255, 0.06);
+	--shadow-strong: 0 16px 40px rgba(0, 0, 0, 0.35);
+	--input-bg: #112946;
+	--input-border: rgba(255, 255, 255, 0.25);
+	--input-text: #ffffff;
+	--btn-ghost-border: rgba(255, 255, 255, 0.3);
+	--btn-ghost-text: rgba(255, 255, 255, 0.85);
+	--btn-ghost-hover-bg: rgba(255, 255, 255, 0.1);
+	--btn-active-bg: rgba(255, 255, 255, 0.2);
+	--btn-active-border: rgba(255, 255, 255, 1);
+	--btn-active-text: #ffffff;
+	--item-bg: rgba(255, 255, 255, 0.05);
+	--item-border: rgba(255, 255, 255, 0.1);
+	--item-hover-bg: rgba(255, 255, 255, 0.1);
+	--section-bg: rgba(255, 255, 255, 0.05);
+	--section-border: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Light mode overrides ───────────────────────────────────────────────── */
+html.light {
+	--bg-body-from: #dde8f3;
+	--bg-body-to: #f0f4fa;
+	--bg-radial-red: rgba(200, 30, 30, 0.10);
+	--bg-radial-blue: rgba(60, 100, 160, 0.12);
+	--text-primary: #1a2a3a;
+	--text-muted: #4a5a6a;
+	--panel-bg-from: rgba(255, 255, 255, 0.85);
+	--panel-bg-to: rgba(255, 255, 255, 0.70);
+	--panel-border: rgba(0, 50, 100, 0.14);
+	--panel-overlay: rgba(0, 50, 100, 0.04);
+	--shadow-strong: 0 16px 40px rgba(0, 30, 80, 0.12);
+	--input-bg: #ffffff;
+	--input-border: rgba(0, 50, 100, 0.22);
+	--input-text: #1a2a3a;
+	--btn-ghost-border: rgba(0, 50, 100, 0.28);
+	--btn-ghost-text: rgba(26, 42, 58, 0.80);
+	--btn-ghost-hover-bg: rgba(0, 50, 100, 0.07);
+	--btn-active-bg: rgba(0, 50, 100, 0.14);
+	--btn-active-border: rgba(0, 50, 100, 0.6);
+	--btn-active-text: #1a2a3a;
+	--item-bg: rgba(255, 255, 255, 0.6);
+	--item-border: rgba(0, 50, 100, 0.12);
+	--item-hover-bg: rgba(0, 50, 100, 0.06);
+	--section-bg: rgba(255, 255, 255, 0.55);
+	--section-border: rgba(0, 50, 100, 0.15);
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+	background:
+		radial-gradient(circle at 20% -10%, var(--bg-radial-red), transparent 40%),
+		radial-gradient(circle at 85% 10%, var(--bg-radial-blue), transparent 34%),
+		linear-gradient(165deg, var(--bg-body-from), var(--bg-body-to));
+	color: var(--text-primary);
+	font-family: 'Public Sans', 'Segoe UI', sans-serif;
+	transition: background 0.25s ease, color 0.25s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: 'Chakra Petch', 'Segoe UI', sans-serif;
+	letter-spacing: 0.02em;
+}
+
+a {
+	text-decoration: none;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+.page-shell {
+	min-height: 100dvh;
+	padding: 1.25rem;
+}
+
+.glass-panel {
+	background: linear-gradient(160deg, var(--panel-bg-from), var(--panel-bg-to));
+	border: 1px solid var(--panel-border);
+	backdrop-filter: blur(10px);
+	border-radius: 1rem;
+	box-shadow: var(--shadow-strong);
+	transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.muted {
+	color: var(--text-muted);
+}
+
+.accent {
+	color: var(--racing-red);
+}
+
+/* ─── Reusable utility classes ───────────────────────────────────────────── */
+
+/* Form inputs — replaces the repeated bg-[#112946] border-white/25 pattern */
+.input-base {
+	background-color: var(--input-bg);
+	border: 1px solid var(--input-border);
+	color: var(--input-text);
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.875rem;
+	transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.input-base:focus {
+	outline: 2px solid rgba(68, 114, 160, 0.5);
+	outline-offset: 1px;
+}
+
+/* Ghost buttons (nav, tabs) */
+.btn-ghost {
+	border: 1px solid var(--btn-ghost-border);
+	color: var(--btn-ghost-text);
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-ghost:hover {
+	background-color: var(--btn-ghost-hover-bg);
+}
+
+.btn-ghost-active {
+	background-color: var(--btn-active-bg);
+	border-color: var(--btn-active-border);
+	color: var(--btn-active-text);
+}
+
+/* List / card items */
+.item-card {
+	background-color: var(--item-bg);
+	border: 1px solid var(--item-border);
+	transition: background-color 0.15s ease;
+}
+
+.item-card:hover {
+	background-color: var(--item-hover-bg);
+}
+
+.section-card {
+	background-color: var(--section-bg);
+	border: 1px solid var(--section-border);
+	border-radius: 0.5rem;
+}
+
+.grid-auto-fit {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 1rem;
+}
+
+@media (max-width: 860px) {
+	.page-shell {
+		padding: 0.75rem;
+	}
+}

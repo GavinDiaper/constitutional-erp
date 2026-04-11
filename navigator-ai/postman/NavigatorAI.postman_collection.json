@@ -1,0 +1,259 @@
+{
+  "info": {
+    "_postman_id": "da8ea290-b7b8-45cc-a5aa-7db80c34e79e",
+    "name": "Navigator AI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "10 - Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 - Navigator",
+      "item": [
+        {
+          "name": "SETUP Create P2P requisition fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requester\": \"navigator-ai.postman\"\n}"
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/p2p/requisitions",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "p2p", "requisitions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Fixture created (201)', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Requisition id captured', () => pm.expect(json.requisition_id).to.be.a('string').and.not.empty);",
+                  "pm.environment.set('domain', 'P2P');",
+                  "pm.environment.set('aggregateType', 'requisition');",
+                  "pm.environment.set('aggregateId', json.requisition_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/resource",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resource?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "resource"],
+              "query": [
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/actions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/actions?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "actions"],
+              "query": [
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/rank",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"{{domain}}\",\n  \"aggregateType\": \"{{aggregateType}}\",\n  \"aggregateId\": \"{{aggregateId}}\",\n  \"actorId\": \"{{actorId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rank",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rank"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/explain",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/explain",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "explain"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/simulate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "simulate"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/decide",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"{{domain}}\",\n  \"aggregateType\": \"{{aggregateType}}\",\n  \"aggregateId\": \"{{aggregateId}}\",\n  \"actorId\": \"{{actorId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/decide",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "decide"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/execute",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": {\n    \"domain\": \"{{domain}}\",\n    \"aggregateType\": \"{{aggregateType}}\",\n    \"aggregateId\": \"{{aggregateId}}\",\n    \"actorId\": \"{{actorId}}\"\n  },\n  \"actionId\": \"submit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/execute",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "execute"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/history",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/history?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "history"],
+              "query": [
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/navlog",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/navlog?domain={{domain}}&aggregateType={{aggregateType}}&aggregateId={{aggregateId}}&actorId={{actorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "navlog"],
+              "query": [
+                { "key": "domain", "value": "{{domain}}" },
+                { "key": "aggregateType", "value": "{{aggregateType}}" },
+                { "key": "aggregateId", "value": "{{aggregateId}}" },
+                { "key": "actorId", "value": "{{actorId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/transcript",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actorId\": \"{{actorId}}\",\n  \"commandText\": \"propose\",\n  \"outputText\": \"sample output\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "transcript"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

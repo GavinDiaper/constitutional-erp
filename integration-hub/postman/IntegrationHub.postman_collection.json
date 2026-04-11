@@ -1,0 +1,781 @@
+{
+  "info": {
+    "_postman_id": "b2e4a1c7-3f9d-4e8a-a6b5-1d0c2e3f4a5b",
+    "name": "Integration Hub",
+    "description": "Constitutional ERP Integration Hub – MCP function discovery and governed hypermedia process execution",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "10 – Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Body has status ok', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "20 – MCP Discovery",
+      "item": [
+        {
+          "name": "GET /mcp/functions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has version and functions array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('version');",
+                  "  pm.expect(json.functions).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('Each function has id, name, description, domain', () => {",
+                  "  const json = pm.response.json();",
+                  "  json.functions.forEach(fn => {",
+                  "    pm.expect(fn).to.include.keys('id', 'name', 'description', 'domain', 'aggregateType', 'action', 'operationType', 'inputSchema', 'backingRoute');",
+                  "  });",
+                  "  const preferred = json.functions.find(fn => fn.id === 'r2r_post_journal') || json.functions[0];",
+                  "  if (preferred && preferred.id) pm.environment.set('mcpFunctionId', preferred.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mcp/functions/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions/{{mcpFunctionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions", "{{mcpFunctionId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Function id matches request', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.eql(pm.environment.get('mcpFunctionId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /mcp/functions/:id – unknown (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions/unknown_function_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions", "unknown_function_id"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "25 – Foundation Fixture Setup",
+      "item": [
+        {
+          "name": "POST foundation debit account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"IH-DR-{{$timestamp}}\",\n  \"accountName\": \"IH Bootstrap Debit Account\",\n  \"accountType\": \"Asset\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "accounts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('debitAccountId captured', () => pm.expect(json.account_id).to.be.a('string'));",
+                  "pm.environment.set('debitAccountId', json.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation credit account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountCode\": \"IH-CR-{{$timestamp}}\",\n  \"accountName\": \"IH Bootstrap Credit Account\",\n  \"accountType\": \"Equity\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "accounts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('creditAccountId captured', () => pm.expect(json.account_id).to.be.a('string'));",
+                  "pm.environment.set('creditAccountId', json.account_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation fiscal year",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearLabel\": \"IH-FY-{{$timestamp}}\",\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-12-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-years",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "fiscal-years"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('fiscalYearId captured', () => pm.expect(json.fiscal_year_id).to.be.a('string'));",
+                  "pm.environment.set('fiscalYearId', json.fiscal_year_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation fiscal period",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\n  \"periodNumber\": 1,\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-31\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "fiscal-periods"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('fiscalPeriodId captured', () => pm.expect(json.fiscal_period_id).to.be.a('string'));",
+                  "pm.environment.set('fiscalPeriodId', json.fiscal_period_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fiscalPeriodId\": \"{{fiscalPeriodId}}\",\n  \"description\": \"Integration Hub fixture\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('journalId captured', () => pm.expect(json.journal_id).to.be.a('string'));",
+                  "pm.environment.set('journalId', json.journal_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal debit line",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{debitAccountId}}\",\n  \"debitAmount\": 100,\n  \"creditAmount\": 0,\n  \"memo\": \"IH bootstrap debit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals", "{{journalId}}", "lines"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST foundation journal credit line",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-ingress-id", "value": "{{ingressId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{creditAccountId}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 100,\n  \"memo\": \"IH bootstrap credit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{journalId}}/lines",
+              "host": ["{{foundationBaseUrl}}"],
+              "path": ["api", "v1", "r2r", "journals", "{{journalId}}", "lines"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "30 – Process Navigation",
+      "item": [
+        {
+          "name": "GET /process/journal/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
+                  "pm.test('Status is 200 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Response has entity, id, state, links', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('entity');",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json).to.have.property('state');",
+                  "    pm.expect(json).to.have.property('links').that.is.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /process/:entity/:id – unknown entity (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/unknownentity/ID-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "unknownentity", "ID-001"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "40 – Process Action",
+      "item": [
+        {
+          "name": "POST /process/journal/:id/actions/post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}/actions/post",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}", "actions", "post"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
+                  "pm.test('Returns supported outcome', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 202, 403, 404, 409]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /process/:entity/:id/actions/:action – unknown action (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}/actions/unknownaction",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}", "actions", "unknownaction"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "50 – Error Cases",
+      "item": [
+        {
+          "name": "GET /mcp/functions – missing API key (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /process/:entity/:id – missing API key (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "60 – Hub v2 Sessions",
+      "item": [
+        {
+          "name": "GET /api/v1/hub/process/:entityType/:entityId",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "x-actor-id", "value": "{{actorId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/process/journal/{{journalId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "process", "journal", "{{journalId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
+                  "pm.test('Status is 200 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('Hub process response has entityType/entityId/links', () => {",
+                  "    pm.expect(json).to.have.property('entityType');",
+                  "    pm.expect(json).to.have.property('entityId');",
+                  "    pm.expect(json.links).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/v1/hub/mcp/functions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/mcp/functions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "mcp", "functions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hub MCP response is an array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actorId\": \"{{actorId}}\",\n  \"mode\": \"offline\",\n  \"context\": {\n    \"domain\": \"R2R\",\n    \"aggregateType\": \"journal\",\n    \"aggregateId\": \"{{journalId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('journalId is resolved', () => { pm.expect(pm.environment.get('journalId')).to.be.a('string').and.not.empty; });",
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Response has sessionId', () => {",
+                  "  pm.expect(json.sessionId).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('sessionId', json.sessionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/navlog",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"proposal\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"entityType\": \"journal\",\n  \"entityId\": \"{{journalId}}\",\n  \"candidates\": [\n    {\n      \"rel\": \"post_journal\",\n      \"riskLevel\": \"High\",\n      \"requiredTier\": 3,\n      \"score\": 0.9,\n      \"reason\": \"Ready to post\",\n      \"executable\": true\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/navlog",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "navlog"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/transcript",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" },
+              { "key": "content-type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": \"propose\",\n  \"output\": \"receive ranked first\",\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "transcript"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/hub/sessions/:sessionId/end",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hub/sessions/{{sessionId}}/end",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hub", "sessions", "{{sessionId}}", "end"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4017" },
+    { "key": "foundationBaseUrl", "value": "http://localhost:3000" },
+    { "key": "apiKey", "value": "change-me" },
+    { "key": "ingressId", "value": "foundation-ingress" },
+    { "key": "actorId", "value": "principal.system" },
+    { "key": "fiscalYearId", "value": "" },
+    { "key": "fiscalPeriodId", "value": "" },
+    { "key": "journalId", "value": "" },
+    { "key": "mcpFunctionId", "value": "r2r_post_journal" },
+    { "key": "sessionId", "value": "" }
+  ]
+}

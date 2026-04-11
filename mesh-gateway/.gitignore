@@ -1,0 +1,13 @@
+node_modules/
+dist/
+governance.db
+governance.db-wal
+governance.db-shm
+test-governance.db
+test-governance.db-wal
+test-governance.db-shm
+mesh-gateway.db
+mesh-gateway.db-wal
+mesh-gateway.db-shm
+reports/
+.env
