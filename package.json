@@ -1,0 +1,26 @@
+{
+  "name": "constitutional-erp",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@10.9.0",
+  "workspaces": [
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "check": "turbo run check",
+    "migrate": "turbo run migrate",
+    "dev": "turbo run dev --parallel",
+    "start:all": "powershell -ExecutionPolicy Bypass -File ./infra/scripts/run-systems.ps1 start",
+    "stop:all": "powershell -ExecutionPolicy Bypass -File ./infra/scripts/run-systems.ps1 stop",
+    "health:all": "powershell -ExecutionPolicy Bypass -File ./infra/scripts/run-systems.ps1 health",
+    "postman:build": "node postman/build-unified-postman.js",
+    "postman:test": "node postman/newman/run-newman.js all"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.1"
+  }
+}

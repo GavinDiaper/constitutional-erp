@@ -1,0 +1,176 @@
+services:
+  foundation-erp:
+    build:
+      context: ../../services/foundation-erp
+      dockerfile: Dockerfile
+    env_file:
+      - ../../.env.example
+    environment:
+      DATABASE_PATH: /data/foundation.db
+    ports:
+      - "${FOUNDATION_PORT:-3000}:3000"
+    volumes:
+      - foundation-erp-data:/data
+
+  authority-engine:
+    build:
+      context: ../../services/authority-engine
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/authority-engine/.env.example
+    environment:
+      DATABASE_PATH: /data/authority.db
+      FOUNDATION_ERP_URL: http://foundation-erp:3000
+    depends_on:
+      - foundation-erp
+    ports:
+      - "${AUTHORITY_ENGINE_PORT:-4001}:4001"
+    volumes:
+      - authority-engine-data:/data
+
+  governance-engine:
+    build:
+      context: ../../services/governance-engine
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/governance-engine/.env.example
+    environment:
+      DATABASE_PATH: /data/governance.db
+      FOUNDATION_ERP_URL: http://foundation-erp:3000
+    depends_on:
+      - foundation-erp
+    ports:
+      - "${GOVERNANCE_ENGINE_PORT:-4002}:4002"
+    volumes:
+      - governance-engine-data:/data
+
+  mesh-gateway:
+    build:
+      context: ../../services/mesh-gateway
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/mesh-gateway/.env.example
+    environment:
+      DATABASE_PATH: /data/mesh-gateway.db
+      FOUNDATION_ADAPTER_BASE_URL: http://foundation-erp:3000
+      AUTHORITY_ENGINE_URL: http://authority-engine:4001
+      GOVERNANCE_ENGINE_URL: http://governance-engine:4002
+    depends_on:
+      - foundation-erp
+      - authority-engine
+      - governance-engine
+    ports:
+      - "${MESH_GATEWAY_PORT:-4003}:4003"
+    volumes:
+      - mesh-gateway-data:/data
+
+  event-processor:
+    build:
+      context: ../../services/event-processor
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/event-processor/.env.example
+    environment:
+      DATABASE_PATH: /data/event-processor.db
+      FOUNDATION_ERP_URL: http://foundation-erp:3000
+      MESH_GATEWAY_URL: http://mesh-gateway:4003
+      AUTHORITY_ENGINE_URL: http://authority-engine:4001
+      GOVERNANCE_ENGINE_URL: http://governance-engine:4002
+    depends_on:
+      - foundation-erp
+      - mesh-gateway
+      - authority-engine
+      - governance-engine
+    ports:
+      - "${EVENT_PROCESSOR_PORT:-4004}:4004"
+    volumes:
+      - event-processor-data:/data
+
+  process-graph:
+    build:
+      context: ../../services/process-graph
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/process-graph/.env.example
+    environment:
+      DATABASE_PATH: /data/process-graph.db
+      EVENT_PROCESSOR_URL: http://event-processor:4004
+      AUTHORITY_ENGINE_URL: http://authority-engine:4001
+      GOVERNANCE_ENGINE_URL: http://governance-engine:4002
+      MESH_GATEWAY_URL: http://mesh-gateway:4003
+    depends_on:
+      - event-processor
+      - authority-engine
+      - governance-engine
+      - mesh-gateway
+    ports:
+      - "${PROCESS_GRAPH_PORT:-4005}:4005"
+    volumes:
+      - process-graph-data:/data
+
+  integration-hub:
+    build:
+      context: ../../services/integration-hub
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/integration-hub/.env.example
+    environment:
+      PGE_URL: http://process-graph:4005
+      MESH_GATEWAY_URL: http://mesh-gateway:4003
+    depends_on:
+      - process-graph
+      - mesh-gateway
+    ports:
+      - "${INTEGRATION_HUB_PORT:-4017}:4017"
+
+  navigator-ai:
+    build:
+      context: ../../services/navigator-ai
+      dockerfile: Dockerfile
+    env_file:
+      - ../../services/navigator-ai/.env.example
+    environment:
+      DATABASE_PATH: /data/navigator-ai.db
+      PGE_URL: http://process-graph:4005
+      MESH_GATEWAY_URL: http://mesh-gateway:4003
+      AUTHORITY_ENGINE_URL: http://authority-engine:4001
+      GOVERNANCE_ENGINE_URL: http://governance-engine:4002
+      EVENT_PROCESSOR_URL: http://event-processor:4004
+    depends_on:
+      - process-graph
+      - mesh-gateway
+      - authority-engine
+      - governance-engine
+      - event-processor
+    ports:
+      - "${NAVIGATOR_AI_PORT:-4016}:4016"
+    volumes:
+      - navigator-ai-data:/data
+
+  ui-sveltekit:
+    build:
+      context: ../../apps/ui-sveltekit
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4173
+    depends_on:
+      - foundation-erp
+      - authority-engine
+      - governance-engine
+      - mesh-gateway
+      - event-processor
+      - process-graph
+      - integration-hub
+      - navigator-ai
+    ports:
+      - "${UI_PORT:-4173}:4173"
+
+volumes:
+  foundation-erp-data:
+  authority-engine-data:
+  governance-engine-data:
+  mesh-gateway-data:
+  event-processor-data:
+  process-graph-data:
+  navigator-ai-data:

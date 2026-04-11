@@ -7,8 +7,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Root = $PSScriptRoot
-Set-Location $Root
+$ScriptsRoot = $PSScriptRoot
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+Set-Location $RepoRoot
 
 function Invoke-Stage {
   param(
@@ -29,9 +30,9 @@ function Invoke-Stage {
   }
 }
 
-$runSystems = Join-Path $Root "run-systems.ps1"
-$buildUnified = Join-Path $Root "postman\build-unified-postman.js"
-$runNewman = Join-Path $Root "postman\newman\run-newman.js"
+$runSystems = Join-Path $ScriptsRoot "run-systems.ps1"
+$buildUnified = Join-Path $RepoRoot "postman\build-unified-postman.js"
+$runNewman = Join-Path $RepoRoot "postman\newman\run-newman.js"
 
 if (-not (Test-Path $runSystems)) {
   throw "Missing script: $runSystems"

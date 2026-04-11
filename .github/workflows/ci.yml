@@ -1,0 +1,131 @@
+name: Monorepo CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build-matrix.outputs.matrix }}
+      count: ${{ steps.build-matrix.outputs.count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed workspaces
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foundation_erp:
+              - 'services/foundation-erp/**'
+            authority_engine:
+              - 'services/authority-engine/**'
+            governance_engine:
+              - 'services/governance-engine/**'
+            mesh_gateway:
+              - 'services/mesh-gateway/**'
+            event_processor:
+              - 'services/event-processor/**'
+            process_graph:
+              - 'services/process-graph/**'
+            integration_hub:
+              - 'services/integration-hub/**'
+            navigator_ai:
+              - 'services/navigator-ai/**'
+            navigator_repl:
+              - 'apps/navigator-repl/**'
+            ui_sveltekit:
+              - 'apps/ui-sveltekit/**'
+
+      - name: Build matrix from changed workspaces
+        id: build-matrix
+        uses: actions/github-script@v7
+        env:
+          FOUNDATION_ERP: ${{ steps.filter.outputs.foundation_erp }}
+          AUTHORITY_ENGINE: ${{ steps.filter.outputs.authority_engine }}
+          GOVERNANCE_ENGINE: ${{ steps.filter.outputs.governance_engine }}
+          MESH_GATEWAY: ${{ steps.filter.outputs.mesh_gateway }}
+          EVENT_PROCESSOR: ${{ steps.filter.outputs.event_processor }}
+          PROCESS_GRAPH: ${{ steps.filter.outputs.process_graph }}
+          INTEGRATION_HUB: ${{ steps.filter.outputs.integration_hub }}
+          NAVIGATOR_AI: ${{ steps.filter.outputs.navigator_ai }}
+          NAVIGATOR_REPL: ${{ steps.filter.outputs.navigator_repl }}
+          UI_SVELTEKIT: ${{ steps.filter.outputs.ui_sveltekit }}
+        with:
+          script: |
+            const components = [
+              { key: 'FOUNDATION_ERP', workspace: 'foundation-erp', path: 'services/foundation-erp' },
+              { key: 'AUTHORITY_ENGINE', workspace: 'authority-engine', path: 'services/authority-engine' },
+              { key: 'GOVERNANCE_ENGINE', workspace: 'governance-engine', path: 'services/governance-engine' },
+              { key: 'MESH_GATEWAY', workspace: 'mesh-gateway', path: 'services/mesh-gateway' },
+              { key: 'EVENT_PROCESSOR', workspace: 'event-processor', path: 'services/event-processor' },
+              { key: 'PROCESS_GRAPH', workspace: 'process-graph', path: 'services/process-graph' },
+              { key: 'INTEGRATION_HUB', workspace: 'integration-hub', path: 'services/integration-hub' },
+              { key: 'NAVIGATOR_AI', workspace: 'navigator-ai', path: 'services/navigator-ai' },
+              { key: 'NAVIGATOR_REPL', workspace: 'navigator-repl', path: 'apps/navigator-repl' },
+              { key: 'UI_SVELTEKIT', workspace: 'constitutionalerp-ui-sveltekit', path: 'apps/ui-sveltekit' }
+            ];
+
+            const changed = components.filter((component) => process.env[component.key] === 'true');
+            core.setOutput('matrix', JSON.stringify(changed));
+            core.setOutput('count', String(changed.length));
+
+  workspace-ci:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.count != '0' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --workspace ${{ matrix.component.workspace }}
+
+      - name: Build
+        run: npm run build --workspace ${{ matrix.component.workspace }}
+
+      - name: Test
+        if: matrix.component.workspace != 'navigator-ai'
+        run: npm run test --workspace ${{ matrix.component.workspace }}
+
+      - name: Skip navigator-ai test
+        if: matrix.component.workspace == 'navigator-ai'
+        run: echo "Skipping navigator-ai tests in CI baseline. Enable once AZURE_OPENAI_KEY is configured for workflow context."
+
+      - name: Upload Newman reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports-${{ matrix.component.workspace }}
+          path: |
+            services/**/reports/newman/**
+            apps/**/reports/newman/**
+          if-no-files-found: ignore
+
+  no-workspace-changes:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.count == '0' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: No impacted workspaces
+        run: echo "No service or app changes detected for CI matrix execution."

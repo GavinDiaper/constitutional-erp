@@ -1,26 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
-const root = process.cwd();
+const root = path.resolve(__dirname, "..");
 const outDir = path.join(root, 'postman');
 fs.mkdirSync(outDir, { recursive: true });
 
 const foundationCollectionPath = path.join(
   root,
-  'FoundationERP',
-  'ConstitutionalERP-FoundationERP',
+  'services',
+  'foundation-erp',
   'postman',
   'FoundationERP.postman_collection.json'
 );
 const foundationEnvPath = path.join(
   root,
-  'FoundationERP',
-  'ConstitutionalERP-FoundationERP',
+  'services',
+  'foundation-erp',
   'postman',
   'FoundationERP.local.postman_environment.json'
 );
 
-const clRoot = path.join(root, 'ConstitutionalLayer', 'ConstitutionalERP-ConstitutionalLayer');
+const servicesRoot = path.join(root, 'services');
 const clServices = [
   ['authority-engine', 'AuthorityEngine'],
   ['governance-engine', 'GovernanceEngine'],
@@ -95,8 +95,8 @@ const foundationEnv = readJson(foundationEnvPath);
 
 const clCollections = clServices
   .map(([dir, name]) => {
-    const collectionPath = path.join(clRoot, dir, 'postman', `${name}.postman_collection.json`);
-    const environmentPath = path.join(clRoot, dir, 'postman', `${name}.local.postman_environment.json`);
+    const collectionPath = path.join(servicesRoot, dir, 'postman', `${name}.postman_collection.json`);
+    const environmentPath = path.join(servicesRoot, dir, 'postman', `${name}.local.postman_environment.json`);
 
     if (!fs.existsSync(collectionPath) || !fs.existsSync(environmentPath)) {
       console.warn('skipping_service_missing_postman', dir, name);

@@ -7,50 +7,51 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Root = $PSScriptRoot
-$RuntimeDir = Join-Path $Root ".runtime"
-$LogsDir = Join-Path $Root "logs"
+$ScriptsRoot = $PSScriptRoot
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$RuntimeDir = Join-Path $ScriptsRoot ".runtime"
+$LogsDir = Join-Path $ScriptsRoot "logs"
 $StatePath = Join-Path $RuntimeDir "services-state.json"
 
 $ServiceTemplates = @(
   @{
     Name = "foundation-erp"
-    Path = Join-Path $Root "FoundationERP\ConstitutionalERP-FoundationERP"
+    Path = Join-Path $RepoRoot "services\foundation-erp"
     DefaultPort = 3000
   },
   @{
     Name = "authority-engine"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\authority-engine"
+    Path = Join-Path $RepoRoot "services\authority-engine"
     DefaultPort = 4001
   },
   @{
     Name = "governance-engine"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\governance-engine"
+    Path = Join-Path $RepoRoot "services\governance-engine"
     DefaultPort = 4002
   },
   @{
     Name = "mesh-gateway"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\mesh-gateway"
+    Path = Join-Path $RepoRoot "services\mesh-gateway"
     DefaultPort = 4003
   },
   @{
     Name = "event-processor"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\event-processor"
+    Path = Join-Path $RepoRoot "services\event-processor"
     DefaultPort = 4004
   },
   @{
     Name = "process-graph"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\process-graph"
+    Path = Join-Path $RepoRoot "services\process-graph"
     DefaultPort = 4005
   },
   @{
     Name = "integration-hub"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\integration-hub"
+    Path = Join-Path $RepoRoot "services\integration-hub"
     DefaultPort = 4017
   },
   @{
     Name = "navigator-ai"
-    Path = Join-Path $Root "ConstitutionalLayer\ConstitutionalERP-ConstitutionalLayer\navigator-ai"
+    Path = Join-Path $RepoRoot "services\navigator-ai"
     DefaultPort = 4016
   }
 )

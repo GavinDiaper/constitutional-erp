@@ -8,62 +8,62 @@ const root = path.resolve(__dirname, "..", "..");
 const targets = {
   foundation: {
     label: "FoundationERP",
-    cwd: path.join(root, "FoundationERP", "ConstitutionalERP-FoundationERP"),
+    cwd: path.join(root, "services", "foundation-erp"),
     npmScript: "test:postman"
   },
   authority: {
     label: "Authority Engine",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "authority-engine"),
+    cwd: path.join(root, "services", "authority-engine"),
     npmScript: "test:postman"
   },
   governance: {
     label: "Governance Engine",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "governance-engine"),
+    cwd: path.join(root, "services", "governance-engine"),
     npmScript: "test:postman"
   },
   mesh: {
     label: "Mesh Gateway",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "mesh-gateway"),
+    cwd: path.join(root, "services", "mesh-gateway"),
     npmScript: "test:postman"
   },
   eventprocessor: {
     label: "Event Processor",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "event-processor"),
+    cwd: path.join(root, "services", "event-processor"),
     npmScript: "test:postman"
   },
   processgraph: {
     label: "Process Graph",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "process-graph"),
+    cwd: path.join(root, "services", "process-graph"),
     npmScript: "test:postman"
   },
   integrationhub: {
     label: "Integration Hub",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "integration-hub"),
+    cwd: path.join(root, "services", "integration-hub"),
     npmScript: "test:postman"
   },
   navigatorai: {
     label: "Navigator AI",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "navigator-ai"),
+    cwd: path.join(root, "services", "navigator-ai"),
     npmScript: "test:postman"
   },
   "mesh-p2p": {
     label: "Mesh Gateway P2P Flow",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "mesh-gateway"),
+    cwd: path.join(root, "services", "mesh-gateway"),
     npmScript: "test:p2p:mesh"
   },
   "mesh-o2c": {
     label: "Mesh Gateway O2C Flow",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "mesh-gateway"),
+    cwd: path.join(root, "services", "mesh-gateway"),
     npmScript: "test:o2c:mesh"
   },
   "mesh-r2r": {
     label: "Mesh Gateway R2R Flow",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "mesh-gateway"),
+    cwd: path.join(root, "services", "mesh-gateway"),
     npmScript: "test:r2r:mesh"
   },
   "mesh-h2r": {
     label: "Mesh Gateway H2R Flow",
-    cwd: path.join(root, "ConstitutionalLayer", "ConstitutionalERP-ConstitutionalLayer", "mesh-gateway"),
+    cwd: path.join(root, "services", "mesh-gateway"),
     npmScript: "test:h2r:mesh"
   }
 };
