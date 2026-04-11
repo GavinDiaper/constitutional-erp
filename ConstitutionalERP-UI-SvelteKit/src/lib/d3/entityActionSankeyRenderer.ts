@@ -20,6 +20,22 @@ const levelColors: Record<number, string> = {
 	3: '#f8961e'
 };
 
+function isLightThemeActive(): boolean {
+	if (typeof document === 'undefined') {
+		return false;
+	}
+
+	return document.documentElement.classList.contains('light');
+}
+
+function getSankeyLabelColor(): string {
+	return isLightThemeActive() ? '#1f2937' : '#e5eef7';
+}
+
+function getSankeyEmptyStateColor(): string {
+	return isLightThemeActive() ? '#4b5563' : '#d9e3ee';
+}
+
 export interface EntityActionSankeyRenderOptions {
 	onNodeClick?: (node: EntityActionSankeyNode) => void;
 	clickableLevels?: number[];
@@ -117,7 +133,7 @@ export function renderEntityActionSankey(
 		.attr('y', (node) => ((node.y0 ?? 0) + (node.y1 ?? 0)) / 2)
 		.attr('dy', '0.35em')
 		.attr('text-anchor', (node) => ((node.x0 ?? 0) < width / 2 ? 'start' : 'end'))
-		.attr('fill', '#e5eef7')
+		.attr('fill', getSankeyLabelColor())
 		.attr('font-size', 11)
 		.text((node) => node.label);
 }
@@ -149,7 +165,7 @@ function renderEmptyState(svg: d3.Selection<SVGSVGElement, unknown, null, undefi
 		.attr('x', width / 2)
 		.attr('y', height / 2)
 		.attr('text-anchor', 'middle')
-		.attr('fill', '#d9e3ee')
+		.attr('fill', getSankeyEmptyStateColor())
 		.attr('font-size', 13)
 		.text('No domain, aggregate, entity, and action data available');
 }
