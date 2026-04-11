@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import Tabs from '$lib/components/shared/Tabs.svelte';
@@ -335,43 +335,43 @@
 
 	{#if activeTab === 'R2R'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Ledger</h3>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Ledger name" bind:value={ledgerForm.name} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Ledger name" bind:value={ledgerForm.name} />
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={ledgerForm.currencyCode} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Calendar (optional)" bind:value={ledgerForm.calendar} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={ledgerForm.currencyCode} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Calendar (optional)" bind:value={ledgerForm.calendar} />
 					</div>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Chart of Accounts Ref (optional)" bind:value={ledgerForm.chartOfAccountsRef} />
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={ledgerForm.legalEntityId}>
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Chart of Accounts Ref (optional)" bind:value={ledgerForm.chartOfAccountsRef} />
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={ledgerForm.legalEntityId}>
 						<option value="">No legal entity link</option>
 						{#each legalEntities as legalEntity (legalEntity.legal_entity_id)}
 							<option value={legalEntity.legal_entity_id}>{legalEntityLabel(legalEntity)}</option>
 						{/each}
 					</select>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-ledger', ledgerForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-ledger', ledgerForm)}>
 					{runningKey === 'create-ledger' ? 'Creating...' : 'Create Ledger'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Account</h3>
 				<div class="mt-3 grid gap-2">
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Account code" bind:value={accountForm.accountCode} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Account name" bind:value={accountForm.accountName} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Account code" bind:value={accountForm.accountCode} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Account name" bind:value={accountForm.accountName} />
 					</div>
 					<div class="grid grid-cols-2 gap-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={accountForm.accountType}>
+						<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={accountForm.accountType}>
 							<option value="Asset">Asset</option>
 							<option value="Liability">Liability</option>
 							<option value="Equity">Equity</option>
 							<option value="Revenue">Revenue</option>
 							<option value="Expense">Expense</option>
 						</select>
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={accountForm.parentAccountId}>
+						<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={accountForm.parentAccountId}>
 							<option value="">No parent account</option>
 							{#each accounts as account (account.account_id)}
 								<option value={account.account_id}>{accountLabel(account)}</option>
@@ -379,45 +379,45 @@
 						</select>
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-account', accountForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-account', accountForm)}>
 					{runningKey === 'create-account' ? 'Creating...' : 'Create Account'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Fiscal Year</h3>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="FY label (FY2027)" bind:value={fiscalYearForm.yearLabel} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="FY label (FY2027)" bind:value={fiscalYearForm.yearLabel} />
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-fiscal-year', fiscalYearForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-fiscal-year', fiscalYearForm)}>
 					{runningKey === 'create-fiscal-year' ? 'Creating...' : 'Create Fiscal Year'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Fiscal Period</h3>
 				<p class="muted mt-1 text-xs">Requires at least one fiscal year.</p>
 				<div class="mt-3 grid gap-2">
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
 						<option value="">Select fiscal year</option>
 						{#each fiscalYears as fiscalYear (fiscalYear.fiscal_year_id)}
 							<option value={fiscalYear.fiscal_year_id}>{fiscalYear.year_label ?? fiscalYear.fiscal_year_id}</option>
 						{/each}
 					</select>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Period number" bind:value={fiscalPeriodForm.periodNumber} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Period number" bind:value={fiscalPeriodForm.periodNumber} />
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
 					</div>
 				</div>
 				{#if fiscalYears.length === 0}
 					<p class="muted mt-2 text-xs">Create a fiscal year first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fiscalYears.length === 0 || !fiscalPeriodForm.fiscalYearId} on:click={() => runOperation('create-fiscal-period', fiscalPeriodForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fiscalYears.length === 0 || !fiscalPeriodForm.fiscalYearId} on:click={() => runOperation('create-fiscal-period', fiscalPeriodForm)}>
 					{runningKey === 'create-fiscal-period' ? 'Creating...' : 'Create Fiscal Period'}
 				</button>
 			</div>
@@ -426,76 +426,76 @@
 
 	{#if activeTab === 'H2R'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Position</h3>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Position title" bind:value={positionForm.title} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={positionForm.department} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Position title" bind:value={positionForm.title} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Department" bind:value={positionForm.department} />
 					<div class="grid grid-cols-2 gap-2">
-						<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={positionForm.authorityDomain}>
+						<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={positionForm.authorityDomain}>
 							<option value="O2C">O2C</option>
 							<option value="P2P">P2P</option>
 							<option value="R2R">R2R</option>
 							<option value="H2R">H2R</option>
 						</select>
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="5" step="1" placeholder="Authority tier" bind:value={positionForm.authorityTier} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="1" max="5" step="1" placeholder="Authority tier" bind:value={positionForm.authorityTier} />
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-position', positionForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-position', positionForm)}>
 					{runningKey === 'create-position' ? 'Creating...' : 'Create Position'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Assignment</h3>
 				<p class="muted mt-1 text-xs">Requires at least one employee and one position.</p>
 				<div class="mt-3 grid gap-2">
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={assignmentForm.employeeId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={assignmentForm.employeeId}>
 						<option value="">Select employee</option>
 						{#each employees as employee (employee.employee_id)}
 							<option value={employee.employee_id}>{employeeLabel(employee)}</option>
 						{/each}
 					</select>
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={assignmentForm.positionId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={assignmentForm.positionId}>
 						<option value="">Select position</option>
 						{#each positions as position (position.position_id)}
 							<option value={position.position_id}>{positionLabel(position)}</option>
 						{/each}
 					</select>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={assignmentForm.startDate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={assignmentForm.endDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={assignmentForm.startDate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={assignmentForm.endDate} />
 					</div>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={assignmentForm.department} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Role" bind:value={assignmentForm.role} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Department" bind:value={assignmentForm.department} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Role" bind:value={assignmentForm.role} />
 					</div>
 				</div>
 				{#if employees.length === 0 || positions.length === 0}
 					<p class="muted mt-2 text-xs">Create both employees and positions first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || employees.length === 0 || positions.length === 0 || !assignmentForm.employeeId || !assignmentForm.positionId} on:click={() => runOperation('create-assignment', assignmentForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || employees.length === 0 || positions.length === 0 || !assignmentForm.employeeId || !assignmentForm.positionId} on:click={() => runOperation('create-assignment', assignmentForm)}>
 					{runningKey === 'create-assignment' ? 'Creating...' : 'Create Assignment'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Credential</h3>
 				<p class="muted mt-1 text-xs">Requires at least one employee.</p>
 				<div class="mt-3 grid gap-2">
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={credentialForm.employeeId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={credentialForm.employeeId}>
 						<option value="">Select employee</option>
 						{#each employees as employee (employee.employee_id)}
 							<option value={employee.employee_id}>{employeeLabel(employee)}</option>
 						{/each}
 					</select>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Credential type" bind:value={credentialForm.type} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={credentialForm.expiryDate} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Credential type" bind:value={credentialForm.type} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={credentialForm.expiryDate} />
 				</div>
 				{#if employees.length === 0}
 					<p class="muted mt-2 text-xs">Create an employee first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || employees.length === 0 || !credentialForm.employeeId} on:click={() => runOperation('create-credential', credentialForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || employees.length === 0 || !credentialForm.employeeId} on:click={() => runOperation('create-credential', credentialForm)}>
 					{runningKey === 'create-credential' ? 'Creating...' : 'Create Credential'}
 				</button>
 			</div>
@@ -504,71 +504,71 @@
 
 	{#if activeTab === 'Governance'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Authority Rule</h3>
 				<div class="mt-3 grid gap-2">
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={authorityRuleForm.domain}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={authorityRuleForm.domain}>
 						<option value="O2C">O2C</option>
 						<option value="P2P">P2P</option>
 						<option value="R2R">R2R</option>
 						<option value="H2R">H2R</option>
 					</select>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Threshold" bind:value={authorityRuleForm.threshold} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="5" step="1" placeholder="Required tier" bind:value={authorityRuleForm.requiredTier} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Threshold" bind:value={authorityRuleForm.threshold} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="1" max="5" step="1" placeholder="Required tier" bind:value={authorityRuleForm.requiredTier} />
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-authority-rule', authorityRuleForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-authority-rule', authorityRuleForm)}>
 					{runningKey === 'create-authority-rule' ? 'Creating...' : 'Create Authority Rule'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Posting Profile</h3>
 				<p class="muted mt-1 text-xs">Requires two accounts for debit and credit lines.</p>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Profile name" bind:value={postingProfileForm.name} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Event type" bind:value={postingProfileForm.eventType} />
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={postingProfileForm.debitAccountId}>
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Profile name" bind:value={postingProfileForm.name} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Event type" bind:value={postingProfileForm.eventType} />
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={postingProfileForm.debitAccountId}>
 						<option value="">Select debit account</option>
 						{#each accounts as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={postingProfileForm.creditAccountId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={postingProfileForm.creditAccountId}>
 						<option value="">Select credit account</option>
 						{#each accounts as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Amount source" bind:value={postingProfileForm.amountSource} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Amount source" bind:value={postingProfileForm.amountSource} />
 				</div>
 				{#if accounts.length === 0}
 					<p class="muted mt-2 text-xs">Create accounts first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || accounts.length === 0 || !postingProfileForm.debitAccountId || !postingProfileForm.creditAccountId} on:click={() => runOperation('create-posting-profile', postingProfileForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || accounts.length === 0 || !postingProfileForm.debitAccountId || !postingProfileForm.creditAccountId} on:click={() => runOperation('create-posting-profile', postingProfileForm)}>
 					{runningKey === 'create-posting-profile' ? 'Creating...' : 'Create Posting Profile'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Combination Rule</h3>
 				<p class="muted mt-1 text-xs">Requires at least one segment definition.</p>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Rule name" bind:value={combinationRuleForm.name} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={combinationRuleForm.description} />
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={combinationRuleForm.segmentDefinitionId}>
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Rule name" bind:value={combinationRuleForm.name} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Description" bind:value={combinationRuleForm.description} />
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={combinationRuleForm.segmentDefinitionId}>
 						<option value="">Select segment definition</option>
 						{#each segmentDefinitions as definition (definition.segment_definition_id)}
 							<option value={definition.segment_definition_id}>{segmentDefinitionLabel(definition)}</option>
 						{/each}
 					</select>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Expected value" bind:value={combinationRuleForm.expectedValue} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Expected value" bind:value={combinationRuleForm.expectedValue} />
 				</div>
 				{#if segmentDefinitions.length === 0}
 					<p class="muted mt-2 text-xs">Create segment definitions first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || segmentDefinitions.length === 0 || !combinationRuleForm.segmentDefinitionId || !combinationRuleForm.expectedValue} on:click={() => runOperation('create-combination-rule', combinationRuleForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || segmentDefinitions.length === 0 || !combinationRuleForm.segmentDefinitionId || !combinationRuleForm.expectedValue} on:click={() => runOperation('create-combination-rule', combinationRuleForm)}>
 					{runningKey === 'create-combination-rule' ? 'Creating...' : 'Create Combination Rule'}
 				</button>
 			</div>
@@ -577,51 +577,51 @@
 
 	{#if activeTab === 'Legal/Org'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Legal Entity</h3>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Legal entity name" bind:value={legalEntityForm.name} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={legalEntityForm.currencyCode} />
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={legalEntityForm.parentLegalEntityId}>
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Legal entity name" bind:value={legalEntityForm.name} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={legalEntityForm.currencyCode} />
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={legalEntityForm.parentLegalEntityId}>
 						<option value="">No parent legal entity</option>
 						{#each legalEntities as legalEntity (legalEntity.legal_entity_id)}
 							<option value={legalEntity.legal_entity_id}>{legalEntityLabel(legalEntity)}</option>
 						{/each}
 					</select>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-legal-entity', legalEntityForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-legal-entity', legalEntityForm)}>
 					{runningKey === 'create-legal-entity' ? 'Creating...' : 'Create Legal Entity'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Ledger Set</h3>
 				<p class="muted mt-1 text-xs">{ledgers.length} ledgers available to attach after create.</p>
 				<div class="mt-3 grid gap-2">
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Ledger set name" bind:value={ledgerSetForm.name} />
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={ledgerSetForm.description} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Ledger set name" bind:value={ledgerSetForm.name} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Description" bind:value={ledgerSetForm.description} />
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-ledger-set', ledgerSetForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-ledger-set', ledgerSetForm)}>
 					{runningKey === 'create-ledger-set' ? 'Creating...' : 'Create Ledger Set'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create Segment Definition</h3>
 				<div class="mt-3 grid gap-2">
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Code" bind:value={segmentDefinitionForm.code} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Name" bind:value={segmentDefinitionForm.name} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Code" bind:value={segmentDefinitionForm.code} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Name" bind:value={segmentDefinitionForm.name} />
 					</div>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Sort order" bind:value={segmentDefinitionForm.sortOrder} />
-						<label class="flex items-center gap-2 text-xs text-white/80">
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="1" step="1" placeholder="Sort order" bind:value={segmentDefinitionForm.sortOrder} />
+						<label class="flex items-center gap-2 text-xs dark:text-white/80 text-slate-700">
 							<input type="checkbox" bind:checked={segmentDefinitionForm.isRequired} />
 							Required segment
 						</label>
 					</div>
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-segment-definition', segmentDefinitionForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-segment-definition', segmentDefinitionForm)}>
 					{runningKey === 'create-segment-definition' ? 'Creating...' : 'Create Segment Definition'}
 				</button>
 			</div>
@@ -630,43 +630,43 @@
 
 	{#if activeTab === 'FX'}
 		<div class="mt-5 grid gap-3 xl:grid-cols-2">
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create FX Rate Type</h3>
 				<div class="mt-3 grid gap-2">
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Code" bind:value={fxRateTypeForm.code} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Name" bind:value={fxRateTypeForm.name} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Code" bind:value={fxRateTypeForm.code} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Name" bind:value={fxRateTypeForm.name} />
 					</div>
-					<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Description" bind:value={fxRateTypeForm.description} />
+					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Description" bind:value={fxRateTypeForm.description} />
 				</div>
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-fx-rate-type', fxRateTypeForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null} on:click={() => runOperation('create-fx-rate-type', fxRateTypeForm)}>
 					{runningKey === 'create-fx-rate-type' ? 'Creating...' : 'Create FX Rate Type'}
 				</button>
 			</div>
 
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<h3 class="text-lg font-semibold">Create FX Rate</h3>
 				<p class="muted mt-1 text-xs">Requires at least one FX rate type.</p>
 				<div class="mt-3 grid gap-2">
-					<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fxRateForm.rateTypeId}>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={fxRateForm.rateTypeId}>
 						<option value="">Select rate type</option>
 						{#each fxRateTypes as fxType (fxType.rate_type_id)}
 							<option value={fxType.rate_type_id}>{fxRateTypeLabel(fxType)}</option>
 						{/each}
 					</select>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="From currency" bind:value={fxRateForm.fromCurrency} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="To currency" bind:value={fxRateForm.toCurrency} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="From currency" bind:value={fxRateForm.fromCurrency} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="To currency" bind:value={fxRateForm.toCurrency} />
 					</div>
 					<div class="grid grid-cols-2 gap-2">
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0.000001" step="0.000001" placeholder="Rate" bind:value={fxRateForm.rate} />
-						<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="datetime-local" bind:value={fxRateForm.validFrom} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="0.000001" step="0.000001" placeholder="Rate" bind:value={fxRateForm.rate} />
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="datetime-local" bind:value={fxRateForm.validFrom} />
 					</div>
 				</div>
 				{#if fxRateTypes.length === 0}
 					<p class="muted mt-2 text-xs">Create an FX rate type first.</p>
 				{/if}
-				<button class="mt-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fxRateTypes.length === 0 || !fxRateForm.rateTypeId} on:click={() => runOperation('create-fx-rate', fxRateForm)}>
+				<button class="mt-3 rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2 text-sm font-semibold text-slate-900 disabled:opacity-60" disabled={runningKey !== null || fxRateTypes.length === 0 || !fxRateForm.rateTypeId} on:click={() => runOperation('create-fx-rate', fxRateForm)}>
 					{runningKey === 'create-fx-rate' ? 'Creating...' : 'Create FX Rate'}
 				</button>
 			</div>
@@ -684,7 +684,7 @@
 				<p class="mt-1">Created {lastResult.entityType} / {lastResult.entityId}</p>
 			{/if}
 			<div class="mt-3 flex flex-wrap gap-2">
-				<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white" href={resolve('/admin')}>
+				<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900" href={resolve('/admin')}>
 					Back to Admin
 				</a>
 			</div>

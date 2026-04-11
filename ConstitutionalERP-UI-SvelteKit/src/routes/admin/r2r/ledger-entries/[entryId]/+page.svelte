@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -184,7 +184,7 @@
 			<h2 class="text-2xl font-semibold">Ledger Entry Detail</h2>
 			<p class="muted mt-2 text-sm">Entry-level accounting context across journal, account, and period views.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadData} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={loadData} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
@@ -197,22 +197,22 @@
 		<p class="mt-4 text-sm">Ledger entry not found.</p>
 	{:else}
 		<div class="mt-4 flex flex-wrap gap-2 text-xs">
-			<a class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10" href={resolve('/admin/r2r/ledger-entries')}>
+			<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/ledger-entries')}>
 				Back To Ledger Entries
 			</a>
 			{#if entry.journal_id}
-				<a class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10" href={resolve('/canvas/[entityType]/[entityId]', { entityType: 'r2r_journal', entityId: entry.journal_id })}>
+				<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/canvas/[entityType]/[entityId]', { entityType: 'r2r_journal', entityId: entry.journal_id })}>
 					Open Journal Process
 				</a>
 			{/if}
 			{#if fiscalPeriod?.fiscal_period_id}
-				<a class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10" href={resolve('/admin/r2r/trial-balance')}>
+				<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/trial-balance')}>
 					Open Trial Balance
 				</a>
 			{/if}
 			{#if entry.account_id && fiscalPeriod?.fiscal_period_id}
 				<a
-					class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10"
+					class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 					href={resolve(`/admin/r2r/ledger-entries?periodId=${encodeURIComponent(fiscalPeriod.fiscal_period_id)}&accountId=${encodeURIComponent(entry.account_id)}`)}
 				>
 					Account In Period
@@ -221,34 +221,34 @@
 		</div>
 
 		<div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Entry ID</p>
 				<p class="mt-2 text-sm font-semibold break-all">{entry.ledger_entry_id}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Account</p>
 				<p class="mt-2 text-sm font-semibold">{entry.account_id}</p>
 				<p class="muted text-xs">{account?.account_code ?? 'n/a'} {account?.account_name ?? ''}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Journal</p>
 				<p class="mt-2 text-sm font-semibold">{entry.journal_id}</p>
 				<p class="muted text-xs">{journal?.state ?? 'n/a'} v{journal?.version ?? 'n/a'}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Period</p>
 				<p class="mt-2 text-sm font-semibold">{journal?.fiscal_period_id ?? 'n/a'}</p>
 				<p class="muted text-xs">{fiscalPeriod?.period_number ? `P${fiscalPeriod.period_number}` : ''} {fiscalPeriod?.state ?? ''}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Posting Date</p>
 				<p class="mt-2 text-sm font-semibold">{formatDate(entry.posting_date ?? entry.created_at)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Entry Debit</p>
 				<p class="mt-2 text-sm font-semibold">{formatAmount(entry.debit_amount)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Entry Credit</p>
 				<p class="mt-2 text-sm font-semibold">{formatAmount(entry.credit_amount)}</p>
 			</div>
@@ -260,15 +260,15 @@
 		</div>
 
 		<div class="mt-5 grid gap-4 xl:grid-cols-2">
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
-				<h3 class="text-sm font-semibold uppercase tracking-[0.1em] text-white/85">Journal Lines</h3>
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+				<h3 class="text-sm font-semibold uppercase tracking-[0.1em] dark:text-white/85 text-slate-700">Journal Lines</h3>
 				{#if journalLines.length === 0}
 					<p class="mt-3 text-sm">No journal lines found for this journal.</p>
 				{:else}
 					<div class="mt-3 overflow-x-auto">
 						<table class="min-w-full text-left text-xs">
 							<thead>
-								<tr class="border-b border-white/10 text-white/70">
+								<tr class="border-b dark:border-white/10 border-slate-200 dark:text-white/70 text-slate-600">
 									<th class="px-2 py-2">Line</th>
 									<th class="px-2 py-2">Account</th>
 									<th class="px-2 py-2">Debit</th>
@@ -277,7 +277,7 @@
 							</thead>
 							<tbody>
 								{#each journalLines as line (line.journal_line_id)}
-									<tr class="border-b border-white/10">
+									<tr class="border-b dark:border-white/10 border-slate-200">
 										<td class="px-2 py-2">{line.journal_line_id}</td>
 										<td class="px-2 py-2">{line.account_id ?? 'n/a'}</td>
 										<td class="px-2 py-2">{formatAmount(line.debit_amount)}</td>
@@ -290,18 +290,18 @@
 				{/if}
 			</div>
 
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
-				<h3 class="text-sm font-semibold uppercase tracking-[0.1em] text-white/85">Related Ledger Entries</h3>
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+				<h3 class="text-sm font-semibold uppercase tracking-[0.1em] dark:text-white/85 text-slate-700">Related Ledger Entries</h3>
 				{#if relatedEntries.length === 0}
 					<p class="mt-3 text-sm">No additional ledger entries found for this journal.</p>
 				{:else}
 					<ul class="mt-3 space-y-2 text-sm">
 						{#each relatedEntries as related (related.ledger_entry_id)}
-							<li class="rounded border border-white/10 p-2">
+							<li class="rounded border dark:border-white/10 border-slate-200 p-2">
 								<div class="flex flex-wrap items-center justify-between gap-2">
 									<p class="font-semibold">{related.ledger_entry_id}</p>
 									<a
-										class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+										class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 										href={resolve(`/admin/r2r/ledger-entries/${related.ledger_entry_id}`)}
 									>
 										Open

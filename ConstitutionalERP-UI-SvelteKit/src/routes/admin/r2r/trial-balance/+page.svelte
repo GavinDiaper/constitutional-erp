@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getTrialBalance, type TrialBalanceRow } from '$lib/api/r2r';
@@ -114,19 +114,19 @@
 			<h2 class="text-2xl font-semibold">R2R Trial Balance</h2>
 			<p class="muted mt-2 text-sm">Period-level debit/credit balance with account drilldown to ledger entries.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadPageData} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={loadPageData} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
 
 	<div class="mt-4 grid gap-2 md:grid-cols-3">
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={selectedPeriodId} on:change={loadTrialBalance}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={selectedPeriodId} on:change={loadTrialBalance}>
 			<option value="">Select fiscal period</option>
 			{#each fiscalPeriods as period (period.fiscal_period_id)}
 				<option value={period.fiscal_period_id}>{periodLabel(period)}</option>
 			{/each}
 		</select>
-		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by account id" bind:value={accountFilter} />
+		<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Filter by account id" bind:value={accountFilter} />
 	</div>
 
 	{#if errorMessage}
@@ -137,11 +137,11 @@
 		<p class="mt-4 text-sm">Choose a fiscal period to view balances.</p>
 	{:else}
 		<div class="mt-4 grid gap-3 md:grid-cols-3">
-			<div class="rounded-md border border-white/15 bg-white/5 p-3">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 				<p class="muted text-xs">Total debit</p>
 				<p class="mt-2 text-xl font-semibold">{formatAmount(totalDebit)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-3">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 				<p class="muted text-xs">Total credit</p>
 				<p class="mt-2 text-xl font-semibold">{formatAmount(totalCredit)}</p>
 			</div>
@@ -157,7 +157,7 @@
 			<div class="mt-4 overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+						<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 							<th class="px-3 py-2">Account</th>
 							<th class="px-3 py-2">Debit</th>
 							<th class="px-3 py-2">Credit</th>
@@ -166,12 +166,12 @@
 					</thead>
 					<tbody>
 						{#each visibleRows as row (row.trial_balance_row_id)}
-							<tr class="border-b border-white/10">
+							<tr class="border-b dark:border-white/10 border-slate-200">
 								<td class="px-3 py-3 font-semibold">{row.account_id}</td>
 								<td class="px-3 py-3">{formatAmount(toNumber(row.debit_total))}</td>
 								<td class="px-3 py-3">{formatAmount(toNumber(row.credit_total))}</td>
 								<td class="px-3 py-3">
-									<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10" href={resolve(`/admin/r2r/ledger-entries?periodId=${selectedPeriodId}&accountId=${encodeURIComponent(String(row.account_id ?? ''))}`)}>
+									<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve(`/admin/r2r/ledger-entries?periodId=${selectedPeriodId}&accountId=${encodeURIComponent(String(row.account_id ?? ''))}`)}>
 										View Entries
 									</a>
 								</td>

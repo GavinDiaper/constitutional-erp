@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
@@ -416,7 +416,7 @@
 	<div class="mt-4 flex flex-wrap items-center gap-3">
 		<input
 			type="text"
-			class="w-full max-w-md rounded-md border border-white/30 bg-[#112946] px-3 py-2 text-sm text-white"
+			class="w-full max-w-md rounded-md border dark:border-white/30 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm dark:text-white text-slate-900"
 			placeholder="Find by ID, state, or name"
 			bind:value={filterText}
 		/>
@@ -428,28 +428,28 @@
 	<div class="mt-4 flex flex-wrap gap-2">
 		<button
 			type="button"
-			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'o2c' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'o2c' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 			on:click={() => (activeTab = 'o2c')}
 		>
 			O2C
 		</button>
 		<button
 			type="button"
-			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'p2p' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'p2p' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 			on:click={() => (activeTab = 'p2p')}
 		>
 			P2P
 		</button>
 		<button
 			type="button"
-			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'r2r' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'r2r' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 			on:click={() => (activeTab = 'r2r')}
 		>
 			R2R
 		</button>
 		<button
 			type="button"
-			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'hcm' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+			class={`rounded-md border px-3 py-1 text-xs font-semibold ${activeTab === 'hcm' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 			on:click={() => (activeTab = 'hcm')}
 		>
 			HCM
@@ -463,13 +463,13 @@
 	<div class="mt-5 space-y-4">
 		{#each sectionsByTab[activeTab] as section (section.key)}
 			{@const visibleItems = filteredItems(section.items, stateFilterByEntity[section.key] ?? '', filterText)}
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<h3 class="text-lg font-semibold">{section.title}</h3>
 						<p class="muted mt-1 text-xs">{section.description}</p>
 					</div>
-					<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+					<span class="rounded-full dark:bg-white/10 bg-slate-500/10 px-3 py-1 text-xs font-semibold dark:text-white text-slate-900">
 						{section.items.length} total
 					</span>
 				</div>
@@ -477,7 +477,7 @@
 				<div class="mt-3 flex flex-wrap gap-2 text-xs">
 					<button
 						type="button"
-						class={`rounded-md border px-2 py-1 ${!stateFilterByEntity[section.key] ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+						class={`rounded-md border px-2 py-1 ${!stateFilterByEntity[section.key] ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 						on:click={() => setStateFilter(section.key, '')}
 					>
 						View all
@@ -485,7 +485,7 @@
 					{#each stateCounts(section.items) as stateEntry (stateEntry.state)}
 						<button
 							type="button"
-							class={`rounded-md border px-2 py-1 ${stateFilterByEntity[section.key] === stateEntry.state ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`}
+							class={`rounded-md border px-2 py-1 ${stateFilterByEntity[section.key] === stateEntry.state ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 							on:click={() => setStateFilter(section.key, stateEntry.state)}
 						>
 							View {stateEntry.state} ({stateEntry.count})
@@ -499,10 +499,10 @@
 					{:else}
 						{#each visibleItems as item (item.id)}
 							<li>
-								<a class="block rounded border border-white/10 px-3 py-2 hover:bg-white/10" href={item.href}>
+								<a class="block rounded border dark:border-white/10 border-slate-200 px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={item.href}>
 									<div class="flex items-center justify-between gap-3">
 										<span class="font-semibold">{item.id}</span>
-										<span class="rounded bg-white/10 px-2 py-0.5 text-[11px] text-white/85">{item.state}</span>
+										<span class="rounded dark:bg-white/10 bg-slate-500/10 px-2 py-0.5 text-[11px] dark:text-white/85 text-slate-700">{item.state}</span>
 									</div>
 									<p class="muted mt-1 text-xs">{item.secondary || 'n/a'}</p>
 								</a>

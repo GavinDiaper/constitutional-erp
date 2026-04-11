@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
@@ -112,7 +112,7 @@
 
 <DiagramBreadcrumb items={[{ label: 'Home', href: resolve('/') }, { label: 'Diagram Explorer' }]} />
 
-<section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
+<section class="rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/80 bg-white/95 p-6 md:p-10">
 	<h1 class="text-3xl font-semibold text-slate-900">Diagram Explorer</h1>
 	<p class="mt-3 max-w-3xl text-sm text-slate-700">
 		Open architecture diagrams and domain process flows from one landing page.
@@ -131,7 +131,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<h2 class="text-xl font-semibold text-slate-900">Domain Process Flows</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		{#each processFlowDomains as flowDomain (flowDomain.domain)}
@@ -146,7 +146,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<h2 class="text-xl font-semibold text-slate-900">Architecture Diagrams: FoundationERP Domains</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each grouped.foundation as item (item.id)}
@@ -158,7 +158,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<h2 class="text-xl font-semibold text-slate-900">ConstitutionalLayer Systems</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each grouped.constitutional as item (item.id)}
@@ -170,7 +170,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<h2 class="text-xl font-semibold text-slate-900">Cross-System</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		{#each grouped.cross as item (item.id)}

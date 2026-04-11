@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
@@ -435,15 +435,15 @@
 		</div>
 
 		{#if inferredFlowDomain}
-			<div class="rounded-lg border border-white/15 bg-white/5 p-4">
+			<div class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<div>
-						<h3 class="text-sm font-semibold text-white">Domain Flow Context</h3>
+						<h3 class="text-sm font-semibold dark:text-white text-slate-900">Domain Flow Context</h3>
 						<p class="muted mt-1 text-xs">
 							{inferredFlowDomain} flow derived from Postman end-to-end sequence.
 						</p>
 					</div>
-					<a class="rounded-md border border-white/25 px-2 py-1 text-xs text-white/85 hover:bg-white/10" href={flowDeepLinkHref}>
+					<a class="rounded-md border dark:border-white/25 border-slate-300 px-2 py-1 text-xs dark:text-white/85 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10" href={flowDeepLinkHref}>
 						Open flow explorer
 					</a>
 				</div>
@@ -452,7 +452,7 @@
 					<div class="mt-3 flex flex-wrap gap-2 text-xs">
 						{#each domainFlows as flow (flow.id)}
 							<a
-								class={`rounded-md border px-2 py-1 ${selectedDomainFlow?.id === flow.id ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+								class={`rounded-md border px-2 py-1 ${selectedDomainFlow?.id === flow.id ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'dark:border-white/20 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 								href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${flow.variantKey}&flowView=${selectedFlowView}`)}
 							>
 								{flow.variantLabel}
@@ -463,19 +463,19 @@
 
 				<div class="mt-3 flex flex-wrap gap-2 text-xs">
 					<a
-						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'mermaid' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'mermaid' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'dark:border-white/20 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=mermaid`)}
 					>
 						Mermaid diagram
 					</a>
 					<a
-						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'list' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'list' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'dark:border-white/20 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=list`)}
 					>
 						List view
 					</a>
 					<a
-						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'hidden' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'border-white/20 text-white/80 hover:bg-white/10'}`}
+						class={`rounded-md border px-2 py-1 ${selectedFlowView === 'hidden' ? 'border-sky-200 bg-sky-400/20 text-sky-100' : 'dark:border-white/20 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`}
 						href={resolve(`/canvas/${resolvedEntityType}/${resolvedEntityId}?flow=${selectedVariant}&flowView=hidden`)}
 					>
 						Hide flows
@@ -483,17 +483,17 @@
 				</div>
 
 				{#if selectedFlowView === 'hidden'}
-					<p class="mt-3 text-xs text-white/75">Flow display is hidden for this entity view.</p>
+					<p class="mt-3 text-xs dark:text-white/75 text-slate-700">Flow display is hidden for this entity view.</p>
 				{:else if selectedFlowView === 'mermaid'}
-					<div class="mt-3 rounded border border-white/20 bg-slate-950/20 p-2">
+					<div class="mt-3 rounded border dark:border-white/20 border-slate-300 bg-slate-950/20 p-2">
 						<MermaidDiagram definition={selectedDomainFlowMermaid} title="Entity-aligned flow" fontSize={44} />
 					</div>
 				{:else if selectedDomainFlow}
 					<ol class="mt-3 space-y-2 text-xs">
 						{#each selectedDomainFlow.nodes as node (node.id)}
-							<li class={`rounded border px-2 py-2 ${node.id === highlightedFlowStepId ? 'border-amber-300/70 bg-amber-300/10' : 'border-white/20 bg-slate-950/20'}`}>
-								<div class="font-semibold text-white">{node.sequence}. {node.requestName}</div>
-								<div class="mt-1 text-white/75">{node.httpMethod} {node.requestPath}</div>
+							<li class={`rounded border px-2 py-2 ${node.id === highlightedFlowStepId ? 'border-amber-300/70 bg-amber-300/10' : 'dark:border-white/20 border-slate-300 bg-slate-950/20'}`}>
+								<div class="font-semibold dark:text-white text-slate-900">{node.sequence}. {node.requestName}</div>
+								<div class="mt-1 dark:text-white/75 text-slate-700">{node.httpMethod} {node.requestPath}</div>
 							</li>
 						{/each}
 					</ol>

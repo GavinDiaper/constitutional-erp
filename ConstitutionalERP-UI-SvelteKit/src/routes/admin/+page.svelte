@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -353,32 +353,32 @@
 <p class="muted mt-2 text-sm">Admin dashboards and inspectors for governance, events, and accounting drilldowns.</p>
 
 <div class="mt-4 flex flex-wrap gap-2">
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/create-entities')}>Open Create Admin Entities</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/events')}>Open Event Stream Viewer</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/trial-balance')}>Open R2R Trial Balance</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/ledger-entries')}>Open R2R Ledger Entries</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/tax-summary')}>Open R2R Tax Summary</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/vat-report')}>Open R2R VAT Report</a>
-	<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/admin/r2r/withholding-tax')}>Open R2R Withholding Tax</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/create-entities')}>Open Create Admin Entities</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/events')}>Open Event Stream Viewer</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/trial-balance')}>Open R2R Trial Balance</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/ledger-entries')}>Open R2R Ledger Entries</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/tax-summary')}>Open R2R Tax Summary</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/vat-report')}>Open R2R VAT Report</a>
+	<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/r2r/withholding-tax')}>Open R2R Withholding Tax</a>
 </div>
 
-<div class="mt-6 border-t border-white/10 pt-4">
-	<h3 class="mb-3 text-xs uppercase tracking-[0.15em] text-white/70">Navigator</h3>
+<div class="mt-6 border-t dark:border-white/10 border-slate-200 pt-4">
+	<h3 class="mb-3 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Navigator</h3>
 	<div class="flex flex-wrap gap-2">
-		<a class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" href={resolve('/navigator/sessions')}>Open Navigator Sessions</a>
+		<a class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/navigator/sessions')}>Open Navigator Sessions</a>
 	</div>
 </div>
 
-<div class="mt-8 border-t border-white/10 pt-6">
+<div class="mt-8 border-t dark:border-white/10 border-slate-200 pt-6">
 	<h3 class="text-xl font-semibold">System Entity Action Topology</h3>
 	<p class="muted mt-2 text-sm">
 		D3 Sankey showing domain → aggregate type → live instance ID → action. Create operations link directly from type to action (no instance ID). Each parent splits equally across its outgoing paths.
 	</p>
 
-	<div class="mt-4 inline-flex rounded-lg border border-white/20 bg-white/5 p-1" role="tablist" aria-label="Topology views">
+	<div class="mt-4 inline-flex rounded-lg border dark:border-white/20 border-slate-300 dark:bg-white/5 bg-slate-100/60 p-1" role="tablist" aria-label="Topology views">
 		<button
 			type="button"
-			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'diagram' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'diagram' ? 'dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:text-white/70 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 dark:hover:text-white text-slate-900'}`}
 			role="tab"
 			aria-selected={activeTopologyTab === 'diagram'}
 			on:click={() => {
@@ -389,7 +389,7 @@
 		</button>
 		<button
 			type="button"
-			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'interactive-map' ? 'bg-white/20 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+			class={`rounded-md px-3 py-1.5 text-xs transition ${activeTopologyTab === 'interactive-map' ? 'dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:text-white/70 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 dark:hover:text-white text-slate-900'}`}
 			role="tab"
 			aria-selected={activeTopologyTab === 'interactive-map'}
 			on:click={() => {
@@ -401,13 +401,13 @@
 	</div>
 
 	{#if isLoadingSankey}
-		<p class="mt-4 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/80">Loading Sankey data...</p>
+		<p class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 text-sm dark:text-white/80 text-slate-700">Loading Sankey data...</p>
 	{:else if sankeyError}
 		<p class="mt-4 rounded-md border border-red-400/40 bg-red-900/20 px-3 py-2 text-sm text-red-100">{sankeyError}</p>
 	{:else if sankeyModel.nodes.length === 0}
-		<p class="mt-4 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/80">No eligible entity actions were returned by MCP catalog.</p>
+		<p class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 text-sm dark:text-white/80 text-slate-700">No eligible entity actions were returned by MCP catalog.</p>
 	{:else}
-		<p class="mt-3 text-xs text-white/60">
+		<p class="mt-3 text-xs dark:text-white/60 text-slate-500">
 			Source MCP functions: {mcpFunctionCount} | Sankey nodes: {sankeyModel.nodes.length} | Sankey links: {sankeyModel.links.length}
 		</p>
 		{#if activeTopologyTab === 'diagram'}
@@ -416,24 +416,24 @@
 			</div>
 		{:else}
 			<div class="mt-4" role="tabpanel" aria-label="Interactive Map">
-				<div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
+				<div class="mb-3 flex flex-wrap items-center gap-2 text-xs dark:text-white/70 text-slate-600">
 					{#if interactiveMapMode === 'root'}
 						<span>Click a domain node to drill to aggregate types.</span>
 					{:else if interactiveMapMode === 'domain-focused'}
 						<span>
-							Domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span> | Click an aggregate type to focus aggregate IDs.
+							Domain: <span class="font-semibold dark:text-white text-slate-900">{selectedInteractiveDomain}</span> | Click an aggregate type to focus aggregate IDs.
 						</span>
 					{:else}
 						<span>
-							Domain: <span class="font-semibold text-white">{selectedInteractiveDomain}</span> |
-							Aggregate: <span class="font-semibold text-white">{selectedInteractiveAggregate}</span> | Click an aggregate ID to open Canvas.
+							Domain: <span class="font-semibold dark:text-white text-slate-900">{selectedInteractiveDomain}</span> |
+							Aggregate: <span class="font-semibold dark:text-white text-slate-900">{selectedInteractiveAggregate}</span> | Click an aggregate ID to open Canvas.
 						</span>
 					{/if}
 
 					{#if interactiveMapMode !== 'root'}
 						<button
 							type="button"
-							class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+							class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 							on:click={resetInteractiveMap}
 						>
 							Reset map

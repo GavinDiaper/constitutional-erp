@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
@@ -90,7 +90,7 @@
 	]}
 />
 
-<section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
+<section class="rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/80 bg-white/95 p-6 md:p-10">
 	<p class="text-xs uppercase tracking-[0.18em] text-slate-600">Diagram Explorer</p>
 	<h1 class="mt-2 text-3xl font-semibold text-slate-900">{data.domain} Domain Process Flow</h1>
 	<p class="mt-3 max-w-3xl text-sm text-slate-700">
@@ -99,7 +99,7 @@
 	<div class="mt-5 flex flex-wrap gap-2">
 		{#each domainLinks as domainLink (domainLink.slug)}
 			<a
-				class={`rounded-md border px-3 py-1 text-xs font-semibold ${domainLink.slug === data.slug ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+				class={`rounded-md border px-3 py-1 text-xs font-semibold ${domainLink.slug === data.slug ? 'border-slate-800 bg-slate-800 dark:text-white text-slate-900' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
 				href={resolve('/diagrams/process-flows/[domain]', { domain: domainLink.slug })}
 			>
 				{domainLink.label}
@@ -116,7 +116,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 class="text-xl font-semibold text-slate-900">Flow Variants</h2>
@@ -131,7 +131,7 @@
 			{#each flowsForDomain as flow (flow.id)}
 				<button
 					type="button"
-					class={`rounded-md border px-2 py-1 ${selectedFlow?.id === flow.id ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+					class={`rounded-md border px-2 py-1 ${selectedFlow?.id === flow.id ? 'border-slate-800 bg-slate-800 dark:text-white text-slate-900' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
 					on:click={() => (selectedVariantKey = flow.variantKey)}
 				>
 					{flow.variantLabel}
@@ -144,21 +144,21 @@
 			<div class="mt-3 flex flex-wrap gap-2 text-xs">
 				<button
 					type="button"
-					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'mermaid' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'mermaid' ? 'border-slate-800 bg-slate-800 dark:text-white text-slate-900' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
 					on:click={() => (selectedFlowViewMode = 'mermaid')}
 				>
 					Mermaid diagram
 				</button>
 				<button
 					type="button"
-					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'list' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'list' ? 'border-slate-800 bg-slate-800 dark:text-white text-slate-900' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
 					on:click={() => (selectedFlowViewMode = 'list')}
 				>
 					List view
 				</button>
 				<button
 					type="button"
-					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'hidden' ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+					class={`rounded-md border px-2 py-1 ${selectedFlowViewMode === 'hidden' ? 'border-slate-800 bg-slate-800 dark:text-white text-slate-900' : 'border-slate-300 text-slate-700 hover:bg-slate-100'}`}
 					on:click={() => (selectedFlowViewMode = 'hidden')}
 				>
 					Hide flow
@@ -168,13 +168,13 @@
 			{#if selectedFlowViewMode === 'hidden'}
 				<p class="mt-3 text-xs text-slate-600">Flow display is hidden for this domain.</p>
 			{:else if selectedFlowViewMode === 'mermaid'}
-				<div class="mt-3 rounded border border-slate-200 bg-white p-2">
+				<div class="mt-3 rounded border border-slate-200 dark:bg-white dark:text-slate-900 bg-slate-900 text-white p-2">
 					<MermaidDiagram definition={selectedFlowMermaid} title={`${data.domain} flow diagram`} fontSize={44} />
 				</div>
 			{:else}
 				<ol class="mt-3 space-y-2 text-sm">
 					{#each selectedFlow.nodes as node (node.id)}
-						<li class="rounded border border-slate-200 bg-white px-3 py-2">
+						<li class="rounded border border-slate-200 dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-3 py-2">
 							<div class="flex flex-wrap items-center justify-between gap-2">
 								<span class="font-semibold text-slate-900">{node.sequence}. {node.requestName}</span>
 								<span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700">{node.action}</span>

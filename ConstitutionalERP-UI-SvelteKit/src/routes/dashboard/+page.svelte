@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
@@ -385,13 +385,13 @@
 		<p class="mt-4 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{chartErrorMessage}</p>
 	{/if}
 
-	<section class="mt-8 rounded-lg border border-white/15 bg-white/5 p-4">
+	<section class="mt-8 rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div>
 				<h2 class="text-lg font-semibold">Approval Queue</h2>
 				<p class="muted mt-1 text-xs">Draft customer activations, submitted requisitions, and pending journals requiring operator attention.</p>
 			</div>
-			<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+			<span class="rounded-full dark:bg-white/10 bg-slate-500/10 px-3 py-1 text-xs font-semibold dark:text-white text-slate-900">
 				{approvalQueueItems.length} items
 			</span>
 		</div>
@@ -402,10 +402,10 @@
 			<ul class="mt-3 grid gap-2 md:grid-cols-2">
 				{#each approvalQueueItems as item (item.entityType + '-' + item.id)}
 					<li>
-						<a class="block rounded-md border border-white/15 bg-white/5 px-3 py-2 hover:bg-white/10" href={item.href}>
+						<a class="block rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={item.href}>
 							<div class="flex items-center justify-between gap-2">
 								<p class="font-semibold">{item.id}</p>
-								<span class="text-[11px] uppercase tracking-[0.12em] text-white/65">
+								<span class="text-[11px] uppercase tracking-[0.12em] dark:text-white/65 text-slate-600">
 									{item.entityType === 'o2c_customer'
 										? 'Customer'
 										: item.entityType === 'p2p_requisition'
@@ -414,7 +414,7 @@
 								</span>
 							</div>
 							<p class="muted mt-1 text-xs">{item.ownerLabel}</p>
-							<p class="mt-1 text-xs text-white/85">State: {item.stateLabel}</p>
+							<p class="mt-1 text-xs dark:text-white/85 text-slate-700">State: {item.stateLabel}</p>
 						</a>
 					</li>
 				{/each}
@@ -423,10 +423,10 @@
 	</section>
 
 	<div class="mt-8 grid gap-4 lg:grid-cols-2">
-		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+		<section class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<h2 class="text-lg font-semibold">Quotes By Status</h2>
 			<div class="mt-4 flex items-center gap-4">
-				<div class="h-36 w-36 rounded-full border border-white/20" style={`background: ${quoteStatusConic}`}></div>
+				<div class="h-36 w-36 rounded-full border dark:border-white/20 border-slate-300" style={`background: ${quoteStatusConic}`}></div>
 				<ul class="space-y-2 text-sm">
 					{#if quoteStatusData.length === 0}
 						<li class="muted">No quote status data available.</li>
@@ -445,10 +445,10 @@
 			</div>
 		</section>
 
-		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+		<section class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<h2 class="text-lg font-semibold">Employees By Status</h2>
 			<div class="mt-4 flex items-center gap-4">
-				<div class="h-36 w-36 rounded-full border border-white/20" style={`background: ${employeeStatusConic}`}></div>
+				<div class="h-36 w-36 rounded-full border dark:border-white/20 border-slate-300" style={`background: ${employeeStatusConic}`}></div>
 				<ul class="space-y-2 text-sm">
 					{#if employeeStatusData.length === 0}
 						<li class="muted">No employee status data available.</li>
@@ -467,7 +467,7 @@
 			</div>
 		</section>
 
-		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+		<section class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<h2 class="text-lg font-semibold">Journals Sum By Period</h2>
 			<div class="mt-4 space-y-2">
 				{#if journalsByPeriod.length === 0}
@@ -475,11 +475,11 @@
 				{:else}
 					{#each journalsByPeriod as item (item.label)}
 						<div class="space-y-1">
-							<div class="flex items-center justify-between text-xs text-white/85">
+							<div class="flex items-center justify-between text-xs dark:text-white/85 text-slate-700">
 								<span>{item.label}</span>
 								<span>{formatCurrency(item.total)}</span>
 							</div>
-							<div class="h-2 rounded bg-white/10">
+							<div class="h-2 rounded dark:bg-white/10 bg-slate-500/10">
 								<div
 									class="h-2 rounded bg-gradient-to-r from-cyan-400 to-sky-500"
 									style={`width:${maxJournalValue ? Math.max((item.total / maxJournalValue) * 100, 3) : 0}%`}
@@ -491,7 +491,7 @@
 			</div>
 		</section>
 
-		<section class="rounded-lg border border-white/15 bg-white/5 p-4">
+		<section class="rounded-lg border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<h2 class="text-lg font-semibold">PO Value By State (FY)</h2>
 			<div class="mt-4 space-y-2">
 				{#if poValueByState.length === 0}
@@ -499,11 +499,11 @@
 				{:else}
 					{#each poValueByState as item (item.label)}
 						<div class="space-y-1">
-							<div class="flex items-center justify-between text-xs text-white/85">
+							<div class="flex items-center justify-between text-xs dark:text-white/85 text-slate-700">
 								<span>{item.label}</span>
 								<span>{formatCurrency(item.total)}</span>
 							</div>
-							<div class="h-2 rounded bg-white/10">
+							<div class="h-2 rounded dark:bg-white/10 bg-slate-500/10">
 								<div
 									class="h-2 rounded bg-gradient-to-r from-amber-400 to-orange-500"
 									style={`width:${maxPoValue ? Math.max((item.total / maxPoValue) * 100, 3) : 0}%`}
@@ -517,10 +517,10 @@
 	</div>
 
 	<div class="mt-8 flex flex-wrap gap-3">
-		<a class="rounded-md bg-white px-4 py-2 font-semibold text-slate-900" href={resolve('/canvas')}>
+		<a class="rounded-md dark:bg-white dark:text-slate-900 bg-slate-900 text-white px-4 py-2 font-semibold text-slate-900" href={resolve('/canvas')}>
 			Open Canvas
 		</a>
-		<a class="rounded-md border border-white/35 px-4 py-2 text-white" href={resolve('/canvas/create')}>
+		<a class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 dark:text-white text-slate-900" href={resolve('/canvas/create')}>
 			Create New Entity
 		</a>
 	</div>

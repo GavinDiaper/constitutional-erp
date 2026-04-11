@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getEvents, type EventRow } from '$lib/api/events';
@@ -163,30 +163,30 @@
 			<h2 class="text-2xl font-semibold">Event Stream Viewer</h2>
 			<p class="muted mt-2 text-sm">Audit-ready stream of domain events with links to related process entities.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={resetAndLoad} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={resetAndLoad} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
 
 	<div class="mt-4 grid gap-2 md:grid-cols-4">
 		<input
-			class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+			class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 			placeholder="Filter by id, type, entity"
 			bind:value={textFilter}
 		/>
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={eventTypeFilter}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={eventTypeFilter}>
 			<option value="">All event types</option>
 			{#each eventTypes as eventType (eventType)}
 				<option value={eventType}>{eventType}</option>
 			{/each}
 		</select>
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={entityTypeFilter}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={entityTypeFilter}>
 			<option value="">All entity types</option>
 			{#each entityTypes as entityType (entityType)}
 				<option value={entityType}>{entityType}</option>
 			{/each}
 		</select>
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={pageSize} on:change={resetAndLoad}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={pageSize} on:change={resetAndLoad}>
 			<option value="100">100 rows</option>
 			<option value="150">150 rows</option>
 			<option value="250">250 rows</option>
@@ -194,13 +194,13 @@
 	</div>
 
 	<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={previousPage} disabled={loading || previousAfterStack.length === 0}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-40" on:click={previousPage} disabled={loading || previousAfterStack.length === 0}>
 			Previous Page
 		</button>
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={nextPage} disabled={loading || !hasMore || !nextAfter}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-40" on:click={nextPage} disabled={loading || !hasMore || !nextAfter}>
 			Next Page
 		</button>
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={resetAndLoad} disabled={loading || (currentAfter === '' && previousAfterStack.length === 0)}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-40" on:click={resetAndLoad} disabled={loading || (currentAfter === '' && previousAfterStack.length === 0)}>
 			Reset Cursor
 		</button>
 		<span class="muted">Rows {currentPageCount} | Cursor {currentAfter || 'start'} {#if !hasMore}(end){/if}</span>
@@ -216,7 +216,7 @@
 		<div class="mt-4 overflow-x-auto">
 			<table class="min-w-full text-left text-sm">
 				<thead>
-					<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+					<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 						<th class="px-3 py-2">Timestamp</th>
 						<th class="px-3 py-2">Event</th>
 						<th class="px-3 py-2">Entity</th>
@@ -227,7 +227,7 @@
 				<tbody>
 					{#each filteredEvents as event (event.event_id)}
 						{@const target = processTarget(event)}
-						<tr class="border-b border-white/10 align-top">
+						<tr class="border-b dark:border-white/10 border-slate-200 align-top">
 							<td class="px-3 py-3 text-xs">{formatDate(event.timestamp)}</td>
 							<td class="px-3 py-3">
 								<p class="font-semibold">{event.event_type}</p>
@@ -241,7 +241,7 @@
 							<td class="px-3 py-3">
 								{#if target}
 									<a
-										class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+										class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 										href={resolve('/canvas/[entityType]/[entityId]', target)}
 									>
 										Open Process

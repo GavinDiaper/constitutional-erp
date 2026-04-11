@@ -21,7 +21,7 @@
 	afterUpdate(paint);
 </script>
 
-<section class="rounded-lg border border-white/20 bg-slate-950/25 p-3">
-	<h4 class="text-sm font-semibold text-slate-100">{title}</h4>
+<section class="rounded-lg border dark:border-white/20 border-slate-200 dark:bg-slate-950/25 bg-slate-100/60 p-3">
+	<h4 class="text-sm font-semibold dark:text-slate-100 text-slate-700">{title}</h4>
 	<svg bind:this={svgEl} class="mt-2 w-full" aria-label="compact flow graph"></svg>
 </section>

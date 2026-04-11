@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
@@ -93,17 +93,17 @@
 			<h2 class="text-2xl font-semibold">R2R VAT Report</h2>
 			<p class="muted mt-2 text-sm">Sales and purchase VAT including standard-rated, zero-rated, exempt, and reverse-charge lines.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadData} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={loadData} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
 
 	<div class="mt-4 grid gap-2 md:grid-cols-2">
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={txTypeFilter}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={txTypeFilter}>
 			<option value="">All transaction types</option>
 			{#each uniqueTxTypes as t (t)}<option value={t}>{t}</option>{/each}
 		</select>
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={statusFilter}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={statusFilter}>
 			<option value="">All statuses</option>
 			{#each uniqueStatuses as s (s)}<option value={s}>{s}</option>{/each}
 		</select>
@@ -115,12 +115,12 @@
 		<p class="mt-4 text-sm">Loading VAT data...</p>
 	{:else}
 		<div class="mt-4 grid gap-3 md:grid-cols-3">
-			<div class="rounded-md border border-white/15 bg-white/5 p-3">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 				<p class="muted text-xs">AR Taxable Amount</p>
 				<p class="mt-2 text-xl font-semibold">{fmt(totalTaxableAR)}</p>
 				<p class="muted mt-1 text-xs">Tax: {fmt(totalVatAR)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-3">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 				<p class="muted text-xs">AP Taxable Amount</p>
 				<p class="mt-2 text-xl font-semibold">{fmt(totalTaxableAP)}</p>
 				<p class="muted mt-1 text-xs">Input VAT: {fmt(totalVatAP)}</p>
@@ -133,11 +133,11 @@
 		</div>
 
 		{#if groupedByCode.length > 0}
-			<h3 class="mt-5 text-sm font-semibold uppercase tracking-widest text-white/60">Breakdown by Tax Code</h3>
+			<h3 class="mt-5 text-sm font-semibold uppercase tracking-widest dark:text-white/60 text-slate-500">Breakdown by Tax Code</h3>
 			<div class="mt-2 overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+						<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 							<th class="px-3 py-2">Tax Code</th>
 							<th class="px-3 py-2">Lines</th>
 							<th class="px-3 py-2">Taxable Amount</th>
@@ -147,12 +147,12 @@
 					</thead>
 					<tbody>
 						{#each groupedByCode as [code, agg] (code)}
-							<tr class="border-b border-white/10">
+							<tr class="border-b dark:border-white/10 border-slate-200">
 								<td class="px-3 py-3 font-mono text-xs">{code}</td>
 								<td class="px-3 py-3">{agg.count}</td>
 								<td class="px-3 py-3">{fmt(agg.taxable)}</td>
 								<td class="px-3 py-3 font-semibold">{fmt(agg.tax)}</td>
-								<td class="px-3 py-3 text-xs text-white/70">
+								<td class="px-3 py-3 text-xs dark:text-white/70 text-slate-600">
 									{agg.taxable > 0 ? fmt((agg.tax / agg.taxable) * 100) + ' %' : '—'}
 								</td>
 							</tr>
@@ -162,7 +162,7 @@
 			</div>
 		{/if}
 
-		<h3 class="mt-5 text-sm font-semibold uppercase tracking-widest text-white/60">Invoice Lines ({filtered.length})</h3>
+		<h3 class="mt-5 text-sm font-semibold uppercase tracking-widest dark:text-white/60 text-slate-500">Invoice Lines ({filtered.length})</h3>
 
 		{#if filtered.length === 0}
 			<p class="mt-2 text-sm">No VAT lines match the selected filters.</p>
@@ -170,7 +170,7 @@
 			<div class="mt-2 overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+						<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 							<th class="px-3 py-2">Source Entity</th>
 							<th class="px-3 py-2">Tx Type</th>
 							<th class="px-3 py-2">Applicability</th>
@@ -184,11 +184,11 @@
 					</thead>
 					<tbody>
 						{#each filtered as line (line.tax_transaction_line_id)}
-							<tr class="border-b border-white/10">
+							<tr class="border-b dark:border-white/10 border-slate-200">
 								<td class="px-3 py-3 font-mono text-xs">{line.source_entity_id}</td>
 								<td class="px-3 py-3 text-xs">{line.transaction_type}</td>
 								<td class="px-3 py-3">
-									<span class="rounded-full px-2 py-0.5 text-xs font-semibold {line.tax_applicability === 'taxable' ? 'bg-emerald-500/20 text-emerald-300' : line.tax_applicability === 'reverse-charge' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/10 text-white/70'}">
+									<span class="rounded-full px-2 py-0.5 text-xs font-semibold {line.tax_applicability === 'taxable' ? 'bg-emerald-500/20 text-emerald-300' : line.tax_applicability === 'reverse-charge' ? 'bg-blue-500/20 text-blue-300' : 'dark:bg-white/10 bg-slate-500/10 dark:text-white/70 text-slate-600'}">
 										{line.tax_applicability}
 									</span>
 								</td>
@@ -201,7 +201,7 @@
 										{line.accounting_status}
 									</span>
 								</td>
-								<td class="px-3 py-3 text-xs text-white/60">{line.created_at?.slice(0, 10) ?? '—'}</td>
+								<td class="px-3 py-3 text-xs dark:text-white/60 text-slate-500">{line.created_at?.slice(0, 10) ?? '—'}</td>
 							</tr>
 						{/each}
 					</tbody>

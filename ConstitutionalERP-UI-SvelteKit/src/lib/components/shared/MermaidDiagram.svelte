@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { browser } from '$app/environment';
+	import { themeStore } from '$lib/stores/themeStore';
 	import {
 		buildDiagramLabelMap,
 		extractDiagramNodeSpecs,
@@ -99,7 +100,7 @@
 			mermaid?.initialize({
 				startOnLoad: false,
 				securityLevel: 'loose',
-				theme: 'base',
+				theme: $themeStore === 'light' ? 'default' : 'dark',
 				themeVariables: {
 					fontSize: `${fontSize}px`
 				},
@@ -160,13 +161,13 @@
 	}
 </script>
 
-<div bind:this={containerHost} class="mermaid-shell rounded-xl border border-slate-300 bg-white p-4">
+<div bind:this={containerHost} class="mermaid-shell rounded-xl border dark:border-white/25 border-slate-300 dark:bg-white/5 bg-white p-4">
 	<div class="mb-2 flex items-center justify-between gap-2">
-		<div class="text-sm font-semibold text-slate-700">{title}</div>
+		<div class="text-sm font-semibold dark:text-slate-200 text-slate-700">{title}</div>
 		{#if showFullscreenToggle}
 			<button
 				type="button"
-				class="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+				class="rounded border dark:border-white/25 dark:text-slate-200 dark:hover:bg-white/10 border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
 				on:click={toggleFullscreen}
 			>
 				{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
@@ -174,8 +175,8 @@
 		{/if}
 	</div>
 	{#if renderError}
-		<p class="text-sm text-red-700">{renderError}</p>
-		<pre class="mt-3 overflow-x-auto rounded border border-red-300 bg-red-50 p-3 text-xs text-red-900">{definition}</pre>
+		<p class="text-sm dark:text-red-300 text-red-700">{renderError}</p>
+		<pre class="mt-3 overflow-x-auto rounded border dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-200 border-red-300 bg-red-50 p-3 text-xs text-red-900">{definition}</pre>
 	{:else}
 		<div bind:this={svgHost} class="svghost overflow-auto" class:clickable-nodes={!!onNodeClick}>
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -->

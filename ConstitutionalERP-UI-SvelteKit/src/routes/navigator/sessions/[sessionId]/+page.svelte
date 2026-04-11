@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -180,7 +180,7 @@
 			case 'partial':
 				return 'border-amber-500/50 bg-amber-500/10 text-amber-100';
 			default:
-				return 'border-white/25 bg-white/10 text-white/85';
+				return 'dark:border-white/25 border-slate-300 dark:bg-white/10 bg-slate-500/10 dark:text-white/85 text-slate-700';
 		}
 	}
 
@@ -257,19 +257,19 @@
 			<h2 class="text-2xl font-semibold">Session {sessionId}</h2>
 			<p class="muted mt-2 text-sm">Inspect navlog and transcript entries for this session.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadSessionData} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={loadSessionData} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
 
 	<div class="mt-4 flex flex-wrap gap-2 text-xs">
-		<button class={`rounded-md border px-3 py-1 ${activeTab === 'navlog' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`} on:click={() => (activeTab = 'navlog')}>
+		<button class={`rounded-md border px-3 py-1 ${activeTab === 'navlog' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`} on:click={() => (activeTab = 'navlog')}>
 			Navlog
 		</button>
-		<button class={`rounded-md border px-3 py-1 ${activeTab === 'transcript' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`} on:click={() => (activeTab = 'transcript')}>
+		<button class={`rounded-md border px-3 py-1 ${activeTab === 'transcript' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`} on:click={() => (activeTab = 'transcript')}>
 			Transcript
 		</button>
-		<button class={`rounded-md border px-3 py-1 ${activeTab === 'summary' ? 'border-white bg-white/20 text-white' : 'border-white/25 text-white/80 hover:bg-white/10'}`} on:click={() => (activeTab = 'summary')}>
+		<button class={`rounded-md border px-3 py-1 ${activeTab === 'summary' ? 'dark:border-white border-slate-700 dark:bg-white/20 bg-slate-500/20 dark:text-white text-slate-900' : 'dark:border-white/25 border-slate-300 dark:text-white/80 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10'}`} on:click={() => (activeTab = 'summary')}>
 			Summary
 		</button>
 	</div>
@@ -281,7 +281,7 @@
 	{:else if activeTab === 'navlog'}
 		<div class="mt-4 space-y-3">
 			<div class="grid gap-2 md:grid-cols-3">
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={navlogEntryType} on:change={loadSessionData}>
+				<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={navlogEntryType} on:change={loadSessionData}>
 					<option value="">All entry types</option>
 					{#each entryTypeOptions as option (option)}
 						<option value={option}>{option}</option>
@@ -295,18 +295,18 @@
 				<ul class="space-y-2 text-sm">
 					{#each navlogEntries as entry, index (`${entry.navlog_id ?? 'row'}-${index}`)}
 						{@const target = processTarget(entry)}
-						<li class="rounded-md border border-white/15 bg-white/5 p-3">
+						<li class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 							<div class="flex flex-wrap items-center justify-between gap-2">
 								<p class="font-semibold">{entry.entry_type ?? 'entry'}</p>
 								<span class="muted text-xs">{formatDate(entry.timestamp)}</span>
 							</div>
 							<p class="muted mt-1 text-xs">Action: {entry.action ?? 'n/a'} | Actor: {entry.actor_id ?? 'n/a'}</p>
 							{#if entry.simulation_outcome || entry.execution_result || entry.error_message}
-								<p class="mt-2 text-xs text-white/85">{entry.execution_result ?? entry.simulation_outcome ?? entry.error_message}</p>
+								<p class="mt-2 text-xs dark:text-white/85 text-slate-700">{entry.execution_result ?? entry.simulation_outcome ?? entry.error_message}</p>
 							{/if}
 							{#if target}
 								<a
-									class="mt-2 inline-block rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+									class="mt-2 inline-block rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 									href={resolve('/canvas/[entityType]/[entityId]', target)}
 								>
 									Open Related Process
@@ -320,13 +320,13 @@
 	{:else if activeTab === 'transcript'}
 		<div class="mt-4 space-y-3">
 			<div class="grid gap-2 md:grid-cols-3">
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={transcriptCommandType} on:change={loadSessionData}>
+				<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={transcriptCommandType} on:change={loadSessionData}>
 					<option value="">All command types</option>
 					{#each transcriptTypeOptions as option (option)}
 						<option value={option}>{option}</option>
 					{/each}
 				</select>
-				<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={transcriptStatus} on:change={loadSessionData}>
+				<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={transcriptStatus} on:change={loadSessionData}>
 					<option value="">All statuses</option>
 					{#each transcriptStatusOptions as option (option)}
 						<option value={option}>{option}</option>
@@ -339,7 +339,7 @@
 			{:else}
 				<ul class="space-y-2 text-sm">
 					{#each transcriptEntries as entry, index (`${entry.transcript_id ?? 'row'}-${index}`)}
-						<li class="rounded-md border border-white/15 bg-white/5 p-3">
+						<li class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-3">
 							<div class="flex flex-wrap items-center justify-between gap-2">
 								<div class="flex items-center gap-2">
 									<p class="font-semibold">{entry.command_type ?? 'command'}</p>
@@ -347,29 +347,29 @@
 								</div>
 								<span class="muted text-xs">{formatDate(entry.timestamp)}</span>
 							</div>
-							<p class="mt-2 text-xs font-semibold text-white/90">Command</p>
-							<pre class="mt-1 overflow-x-auto rounded-md border border-white/10 bg-[#0b1d33] p-2 text-xs text-white/90 whitespace-pre-wrap">{entry.command ?? 'n/a'}</pre>
+							<p class="mt-2 text-xs font-semibold dark:text-white/90 text-slate-800">Command</p>
+							<pre class="mt-1 overflow-x-auto rounded-md border dark:border-white/10 border-slate-200 dark:bg-[#0b1d33] bg-slate-100 p-2 text-xs dark:text-white/90 text-slate-800 whitespace-pre-wrap">{entry.command ?? 'n/a'}</pre>
 							<p class="muted mt-2 text-xs">Actor: {entry.actor_id ?? 'n/a'} | Duration: {formatMs(entry.execution_time_ms)}</p>
 							{#if entry.output_text || entry.error_message}
-								<p class="mt-2 text-xs font-semibold text-white/90">Output</p>
-								<pre class="mt-1 overflow-x-auto rounded-md border border-white/10 bg-[#0b1d33] p-2 text-xs text-white/90 whitespace-pre-wrap">{formatTextBlock(entry.output_text ?? entry.error_message)}</pre>
+								<p class="mt-2 text-xs font-semibold dark:text-white/90 text-slate-800">Output</p>
+								<pre class="mt-1 overflow-x-auto rounded-md border dark:border-white/10 border-slate-200 dark:bg-[#0b1d33] bg-slate-100 p-2 text-xs dark:text-white/90 text-slate-800 whitespace-pre-wrap">{formatTextBlock(entry.output_text ?? entry.error_message)}</pre>
 							{/if}
 							{#if entry.arguments_json}
-								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
-									<summary class="cursor-pointer text-xs font-semibold text-white/90">Arguments JSON</summary>
-									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.arguments_json)}</pre>
+								<details class="mt-2 rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-2">
+									<summary class="cursor-pointer text-xs font-semibold dark:text-white/90 text-slate-800">Arguments JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs dark:text-white/85 text-slate-700 whitespace-pre-wrap">{formatJsonColumn(entry.arguments_json)}</pre>
 								</details>
 							{/if}
 							{#if entry.context_json}
-								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
-									<summary class="cursor-pointer text-xs font-semibold text-white/90">Context JSON</summary>
-									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.context_json)}</pre>
+								<details class="mt-2 rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-2">
+									<summary class="cursor-pointer text-xs font-semibold dark:text-white/90 text-slate-800">Context JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs dark:text-white/85 text-slate-700 whitespace-pre-wrap">{formatJsonColumn(entry.context_json)}</pre>
 								</details>
 							{/if}
 							{#if entry.output_json}
-								<details class="mt-2 rounded-md border border-white/10 bg-white/5 p-2">
-									<summary class="cursor-pointer text-xs font-semibold text-white/90">Output JSON</summary>
-									<pre class="mt-2 overflow-x-auto text-xs text-white/85 whitespace-pre-wrap">{formatJsonColumn(entry.output_json)}</pre>
+								<details class="mt-2 rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-2">
+									<summary class="cursor-pointer text-xs font-semibold dark:text-white/90 text-slate-800">Output JSON</summary>
+									<pre class="mt-2 overflow-x-auto text-xs dark:text-white/85 text-slate-700 whitespace-pre-wrap">{formatJsonColumn(entry.output_json)}</pre>
 								</details>
 							{/if}
 						</li>
@@ -379,41 +379,41 @@
 		</div>
 	{:else}
 		<div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Navlog entries</p>
 				<p class="mt-2 text-2xl font-semibold">{navlogEntries.length}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Transcript entries</p>
 				<p class="mt-2 text-2xl font-semibold">{transcriptEntries.length}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Execution entries</p>
 				<p class="mt-2 text-2xl font-semibold">{executionCount}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Success rate</p>
 				<p class="mt-2 text-2xl font-semibold">{completionRate.toFixed(1)}%</p>
 				<p class="muted text-xs">{successCount} success, {failureCount} error, {partialCount} partial</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Timeline</p>
 				<p class="mt-2 text-xl font-semibold">{timelineMinutes} min</p>
 				<p class="muted text-xs">{formatDate(timelineStart)} to {formatDate(timelineEnd)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 				<p class="muted text-xs">Execution latency</p>
 				<p class="mt-2 text-xl font-semibold">avg {formatMs(avgExecutionMs)}</p>
 				<p class="muted text-xs">p95 {formatMs(p95ExecutionMs)} | max {formatMs(maxExecutionMs)}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4 md:col-span-2 xl:col-span-2">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4 md:col-span-2 xl:col-span-2">
 				<p class="muted text-xs">Navlog stage mix</p>
-				<p class="mt-2 text-sm text-white/90">Proposal {proposalCount} | Simulation {simulationCount} | Decision {decisionCount} | Execution {executionCount}</p>
+				<p class="mt-2 text-sm dark:text-white/90 text-slate-800">Proposal {proposalCount} | Simulation {simulationCount} | Decision {decisionCount} | Execution {executionCount}</p>
 			</div>
-			<div class="rounded-md border border-white/15 bg-white/5 p-4 md:col-span-2 xl:col-span-2">
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4 md:col-span-2 xl:col-span-2">
 				<p class="muted text-xs">Top command types</p>
 				{#if commandBreakdown.length === 0}
-					<p class="mt-2 text-sm text-white/85">No command data</p>
+					<p class="mt-2 text-sm dark:text-white/85 text-slate-700">No command data</p>
 				{:else}
 					<ul class="mt-2 space-y-1 text-sm">
 						{#each commandBreakdown as [name, count] (`${name}-${count}`)}

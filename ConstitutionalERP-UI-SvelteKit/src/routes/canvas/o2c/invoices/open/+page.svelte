@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { isOpenInvoice } from '$lib/api/dashboard';
 	import { getO2CInvoices, type O2CInvoice } from '$lib/api/invoices';
@@ -57,7 +57,7 @@
 			<h2 class="text-2xl font-semibold">Open AR Invoices</h2>
 			<p class="muted mt-1 text-sm">Invoices stay open until fully paid, reconciled, written off, or cancelled.</p>
 		</div>
-		<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+		<span class="rounded-full dark:bg-white/10 bg-slate-500/10 px-3 py-1 text-xs font-semibold dark:text-white text-slate-900">
 			{openInvoices.length} open invoices
 		</span>
 	</div>
@@ -72,7 +72,7 @@
 		<div class="mt-4 overflow-x-auto">
 			<table class="min-w-full text-left text-sm">
 				<thead>
-					<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+					<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 						<th class="px-3 py-2">Invoice</th>
 						<th class="px-3 py-2">Order</th>
 						<th class="px-3 py-2">Amount Due</th>
@@ -83,14 +83,14 @@
 				</thead>
 				<tbody>
 					{#each openInvoices as invoice (invoice.invoice_id)}
-						<tr class="border-b border-white/10 align-top">
+						<tr class="border-b dark:border-white/10 border-slate-200 align-top">
 							<td class="px-3 py-3 font-semibold">{invoice.invoice_id}</td>
 							<td class="px-3 py-3">{invoice.order_id ?? 'n/a'}</td>
 							<td class="px-3 py-3">{formatAmount(invoice.amount_due)}</td>
 							<td class="px-3 py-3">{formatAmount(invoice.amount_paid)}</td>
 							<td class="px-3 py-3">{invoice.state ?? 'Unknown'}</td>
 							<td class="px-3 py-3">
-								<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white" href={resolve(`/canvas/o2c_invoice/${invoice.invoice_id}`)}>
+								<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900" href={resolve(`/canvas/o2c_invoice/${invoice.invoice_id}`)}>
 									Open Process
 								</a>
 							</td>

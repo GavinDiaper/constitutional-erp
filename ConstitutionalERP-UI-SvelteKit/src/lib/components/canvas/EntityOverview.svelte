@@ -136,14 +136,14 @@
 			{/if}
 
 			<div>
-				<p class="text-xs uppercase tracking-[0.16em] text-white/65">Header</p>
+				<p class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Header</p>
 				{#if headerEntries.length === 0}
 					<p class="muted mt-1 text-sm">No header attributes available.</p>
 				{:else}
 					<dl class="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
 						{#each headerEntries as [key, value] (key)}
 							<div class="rounded-md border border-white/10 bg-white/5 p-3">
-								<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
+								<dt class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">{formatLabel(key)}</dt>
 								<dd class="mt-1 text-sm"><JsonFieldValue {value} /></dd>
 							</div>
 						{/each}
@@ -152,11 +152,11 @@
 			</div>
 
 			<div>
-				<p class="text-xs uppercase tracking-[0.16em] text-white/65">Lines</p>
+				<p class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Lines</p>
 				<div class="mt-2 overflow-x-auto rounded-md border border-white/15 bg-white/5">
 					{#if isJournalLineLayout}
 						<table class="min-w-full text-sm">
-							<thead class="text-left text-white/70">
+							<thead class="text-left dark:text-white/70 text-slate-700">
 								<tr>
 									<th class="px-3 py-2">Account</th>
 									<th class="px-3 py-2 text-right">Debit</th>
@@ -177,7 +177,7 @@
 						</table>
 					{:else}
 						<table class="min-w-full text-sm">
-							<thead class="text-left text-white/70">
+							<thead class="text-left dark:text-white/70 text-slate-700">
 								<tr>
 									<th class="px-3 py-2">Description</th>
 									<th class="px-3 py-2 text-right">Quantity</th>
@@ -211,16 +211,16 @@
 			<div class="rounded-md border border-white/15 bg-white/5 p-3">
 				{#if isJournalLineLayout}
 					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total Debit</span>
+						<span class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Total Debit</span>
 						<span class="text-base font-semibold">{formatCurrency(totalDebit)}</span>
 					</div>
 					<div class="mt-1 flex items-center justify-between">
-						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total Credit</span>
+						<span class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Total Credit</span>
 						<span class="text-base font-semibold">{formatCurrency(totalCredit)}</span>
 					</div>
 				{:else}
 					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-[0.16em] text-white/65">Total</span>
+						<span class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Total</span>
 						<span class="text-base font-semibold">{formatCurrency(totalAmount ?? '')}</span>
 					</div>
 				{/if}
@@ -230,7 +230,7 @@
 		<dl class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
 			{#each Object.entries(attributes).filter(([key]) => !key.startsWith('__')) as [key, value] (key)}
 				<div class="rounded-md border border-white/10 bg-white/5 p-3">
-					<dt class="text-xs uppercase tracking-[0.16em] text-white/65">{formatLabel(key)}</dt>
+					<dt class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">{formatLabel(key)}</dt>
 				<dd class="mt-1 text-sm"><JsonFieldValue {value} /></dd>
 				</div>
 			{/each}

@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import { documentationContentItems } from '$lib/content/catalog';
@@ -12,14 +12,14 @@
 	]}
 />
 
-<section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
+<section class="rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/80 bg-white/95 p-6 md:p-10">
 	<h1 class="text-3xl font-semibold text-slate-900">Documentation Content</h1>
 	<p class="mt-3 max-w-3xl text-sm text-slate-700">
 		Select a markdown file from the content directory.
 	</p>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	{#if documentationContentItems.length === 0}
 		<div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
 			No markdown files found. Add files under <span class="font-semibold">src/lib/content/markdown</span>.

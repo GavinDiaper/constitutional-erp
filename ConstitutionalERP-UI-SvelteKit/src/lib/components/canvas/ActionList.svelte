@@ -168,7 +168,7 @@
 				{@const requiredFields = action.link.inputSchema?.required ?? []}
 				{@const allFields = Object.keys(action.link.inputSchema?.properties ?? {})}
 				{@const optionalFields = allFields.filter((f) => !requiredFields.includes(f))}
-				<li class="rounded-md border border-white/15 bg-white/5 p-3">
+				<li class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-50 p-3">
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0 flex-1">
 							<p class="font-semibold">{action.name}</p>
@@ -181,7 +181,7 @@
 										{@const lookupKey = resolveLookupUrl(xLookup, action)}
 										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
-											<span class="mb-0.5 block text-xs font-medium text-white/80"
+											<span class="mb-0.5 block text-xs font-medium dark:text-white/80 text-slate-700"
 												>{field} <span class="text-red-400">*</span></span
 											>
 												{#if hasEnum(fieldSchema)}
@@ -225,7 +225,7 @@
 											{:else}
 												<input
 													type={getInputType(fieldSchema)}
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
+													class="input-base w-full"
 													placeholder={fieldSchema?.description ?? field}
 													value={getInput(action.name, field)}
 													on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
@@ -239,7 +239,7 @@
 										{@const lookupKey = resolveLookupUrl(xLookup, action)}
 										{@const fetchedOptions = lookupKey ? lookupOptions[lookupKey] : undefined}
 										<label class="block">
-											<span class="mb-0.5 block text-xs font-medium text-white/60">{field}</span>
+											<span class="mb-0.5 block text-xs font-medium dark:text-white/60 text-slate-500">{field}</span>
 												{#if hasEnum(fieldSchema)}
 													<select
 														class="w-full rounded border border-white/20 bg-white px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-white/40"
@@ -281,7 +281,7 @@
 											{:else}
 												<input
 													type={getInputType(fieldSchema)}
-													class="w-full rounded border border-white/20 bg-white/10 px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
+													class="input-base w-full"
 													placeholder={fieldSchema?.description ?? field}
 													value={getInput(action.name, field)}
 													on:input={(e) => setInput(action.name, field, (e.target as HTMLInputElement).value)}
@@ -300,7 +300,7 @@
 								/>
 								<button
 									type="button"
-									class="rounded-md border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white enabled:hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+									class="btn-ghost rounded-md px-3 py-1 text-xs font-semibold enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
 									on:click={() => handleRun(action)}
 									disabled={!onExecute || executingActionName === action.name || !isReady(action, inputValues)}
 								>

@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
@@ -937,10 +937,10 @@
 
 	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 		<div>
-			<label class="mb-1 block text-xs text-white/70" for="nav-domain">Domain</label>
+			<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-domain">Domain</label>
 			<select
 				id="nav-domain"
-				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+				class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 				bind:value={domain}
 				on:change={() => void handleDomainChange()}
 			>
@@ -951,10 +951,10 @@
 		</div>
 
 		<div>
-			<label class="mb-1 block text-xs text-white/70" for="nav-aggregate-type">Aggregate Type</label>
+			<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-aggregate-type">Aggregate Type</label>
 			<select
 				id="nav-aggregate-type"
-				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+				class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 				bind:value={aggregateType}
 				on:change={() => void handleAggregateTypeChange()}
 			>
@@ -966,25 +966,25 @@
 
 		<div>
 			<div class="mb-1 flex items-center gap-2">
-				<label class="block text-xs text-white/70" for="nav-aggregate-id">Aggregate ID</label>
+				<label class="block text-xs dark:text-white/70 text-slate-600" for="nav-aggregate-id">Aggregate ID</label>
 				<button
 					type="button"
-					class="rounded border border-white/25 px-2 py-0.5 text-[11px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+					class="rounded border dark:border-white/25 border-slate-300 px-2 py-0.5 text-[11px] dark:text-white/70 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={getAggregateIdLoading(aggregateType)}
 					on:click={() => void handleAggregateIdRefresh()}
 				>
 					{getAggregateIdLoading(aggregateType) ? 'Refreshing...' : 'Refresh IDs'}
 				</button>
 				{#if getAggregateIdLoading(aggregateType)}
-					<span class="inline-flex items-center gap-2 text-[11px] text-white/55">
-						<span class="h-3 w-3 animate-spin rounded-full border border-white/25 border-t-white/80"></span>
+					<span class="inline-flex items-center gap-2 text-[11px] dark:text-white/55 text-slate-500">
+						<span class="h-3 w-3 animate-spin rounded-full border dark:border-white/25 border-slate-300 border-t-white/80"></span>
 						Loading live data
 					</span>
 				{/if}
 			</div>
 			<select
 				id="nav-aggregate-id"
-				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+				class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 				disabled={getAggregateIdLoading(aggregateType)}
 				bind:value={aggregateId}
 				on:click={() => void handleAggregateIdInteract()}
@@ -1005,15 +1005,15 @@
 			{#if getAggregateIdError(aggregateType)}
 				<p class="mt-2 text-xs text-red-200">{getAggregateIdError(aggregateType)}</p>
 			{:else if !getAggregateIdLoading(aggregateType) && getAggregateIdOptions(aggregateType).length === 0}
-				<p class="mt-2 text-xs text-white/55">No live aggregate IDs are available for this type yet. Click the dropdown to retry.</p>
+				<p class="mt-2 text-xs dark:text-white/55 text-slate-500">No live aggregate IDs are available for this type yet. Click the dropdown to retry.</p>
 			{/if}
 		</div>
 
 		<div>
-			<label class="mb-1 block text-xs text-white/70" for="nav-actor-id">Actor ID</label>
+			<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-actor-id">Actor ID</label>
 			<select
 				id="nav-actor-id"
-				class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+				class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 				bind:value={actorId}
 				on:change={() => void handleActorChange()}
 			>
@@ -1023,14 +1023,14 @@
 			</select>
 		</div>
 
-		<div class="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
-			<p class="font-semibold text-white/80">Selected Actor Tier</p>
+		<div class="rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 text-xs dark:text-white/70 text-slate-600">
+			<p class="font-semibold dark:text-white/80 text-slate-700">Selected Actor Tier</p>
 			<p class="mt-1">{selectedActor().authorityTier}</p>
 		</div>
 
 		<div class="flex items-end">
 			<button
-				class="w-full rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+				class="w-full rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 				disabled={resourceLoading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
 				on:click={handleLoadResource}
 			>
@@ -1040,7 +1040,7 @@
 
 		<div class="flex items-end">
 			<button
-				class="w-full rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+				class="w-full rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 				disabled={loading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
 				on:click={handleRank}
 			>
@@ -1049,33 +1049,33 @@
 		</div>
 	</div>
 
-	<p class="mt-3 text-xs text-white/55">
+	<p class="mt-3 text-xs dark:text-white/55 text-slate-500">
 		Aggregate IDs load from live data for the selected actor and aggregate type.
 	</p>
 
 	<div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		<div class="rounded-md border border-white/15 bg-white/5 p-4">
+		<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div>
-					<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Create</h3>
-					<p class="mt-2 text-sm text-white/75">
+					<h3 class="text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Create</h3>
+					<p class="mt-2 text-sm dark:text-white/75 text-slate-700">
 						Use natural language or typed fields to create a new aggregate, then continue directly in Navigator on the created entity.
 					</p>
 				</div>
-				<a class="text-xs text-white/60 hover:text-white" href={resolve('/canvas/create')}>
+				<a class="text-xs dark:text-white/60 text-slate-500 dark:hover:text-white text-slate-900" href={resolve('/canvas/create')}>
 					Open Full Create Workspace &rarr;
 				</a>
 			</div>
 
-			<div class="mt-4 inline-flex rounded-md border border-white/15 bg-[#0e2038] p-1">
+			<div class="mt-4 inline-flex rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-1">
 				<button
-					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'prompt' ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}
+					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'prompt' ? 'dark:bg-white/15 bg-slate-500/15 dark:text-white text-slate-900' : 'dark:text-white/65 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 dark:hover:text-white text-slate-900'}`}
 					on:click={() => (createPanelTab = 'prompt')}
 				>
 					Prompt Create
 				</button>
 				<button
-					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'quick' ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}
+					class={`rounded px-3 py-2 text-sm transition ${createPanelTab === 'quick' ? 'dark:bg-white/15 bg-slate-500/15 dark:text-white text-slate-900' : 'dark:text-white/65 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 dark:hover:text-white text-slate-900'}`}
 					on:click={() => (createPanelTab = 'quick')}
 				>
 					Quick Create
@@ -1083,17 +1083,17 @@
 			</div>
 
 			{#if createPanelTab === 'prompt'}
-				<p class="mt-3 text-sm text-white/75">
+				<p class="mt-3 text-sm dark:text-white/75 text-slate-700">
 					Use natural language to resolve a create operation and payload. Example: create a new supplier in UAE named Gulf Trading with NET45 terms in AED.
 				</p>
 				<textarea
-					class="mt-3 min-h-[88px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+					class="mt-3 min-h-[88px] w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm dark:text-white text-slate-900"
 					placeholder="Describe what to create..."
 					bind:value={promptCreateText}
 				></textarea>
 				<div class="mt-3 flex flex-wrap gap-3">
 					<button
-						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 						disabled={promptCreateLoading}
 						on:click={() => void handlePromptCreate(true)}
 					>
@@ -1113,11 +1113,11 @@
 				{/if}
 
 				{#if promptCreateResult}
-					<div class="mt-3 rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm text-white/90">
-						<p><span class="text-white/65">Status:</span> {promptCreateResult.status}</p>
-						<p><span class="text-white/65">Operation:</span> {promptCreateResult.resolution.operation}</p>
+					<div class="mt-3 rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-3 text-sm dark:text-white/90 text-slate-800">
+						<p><span class="dark:text-white/65 text-slate-600">Status:</span> {promptCreateResult.status}</p>
+						<p><span class="dark:text-white/65 text-slate-600">Operation:</span> {promptCreateResult.resolution.operation}</p>
 						{#if promptCreateResult.resolution.missingFields.length > 0}
-							<p><span class="text-white/65">Missing:</span> {promptCreateResult.resolution.missingFields.join(', ')}</p>
+							<p><span class="dark:text-white/65 text-slate-600">Missing:</span> {promptCreateResult.resolution.missingFields.join(', ')}</p>
 						{/if}
 						{#if promptCreateResult.resolution.clarification}
 							<p class="mt-1 text-amber-200">{promptCreateResult.resolution.clarification}</p>
@@ -1128,99 +1128,99 @@
 					</div>
 				{/if}
 			{:else}
-				<p class="mt-3 text-sm text-white/75">
+				<p class="mt-3 text-sm dark:text-white/75 text-slate-700">
 					Create a new aggregate through the existing bootstrap flow, then continue directly in Navigator on the created entity.
 				</p>
 
 				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
 					<div>
-						<label class="mb-1 block text-xs text-white/70" for="nav-create-preset">Entity Preset</label>
+						<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-create-preset">Entity Preset</label>
 						<select
 							id="nav-create-preset"
-							class="w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm"
+							class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
 							bind:value={createPresetId}
 						>
 							{#each QUICK_CREATE_PRESETS as preset (preset.operation)}
 								<option value={preset.operation}>{preset.label}</option>
 							{/each}
 						</select>
-						<p class="mt-2 text-xs text-white/55">{selectedCreatePreset()?.description}</p>
+						<p class="mt-2 text-xs dark:text-white/55 text-slate-500">{selectedCreatePreset()?.description}</p>
 					</div>
 
 					<div>
 						{#if createPresetId === 'create-supplier'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Supplier Name" bind:value={supplierForm.supplierName} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Payment Terms" bind:value={supplierForm.paymentTerms} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={supplierForm.currencyCode} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Supplier Name" bind:value={supplierForm.supplierName} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Email" bind:value={supplierForm.email} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Payment Terms" bind:value={supplierForm.paymentTerms} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency" bind:value={supplierForm.currencyCode} />
 							</div>
 						{:else if createPresetId === 'create-requisition'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={requisitionForm.currencyCode} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency" bind:value={requisitionForm.currencyCode} />
 							</div>
 						{:else if createPresetId === 'create-purchase-order'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
+								<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
 									{#each supplierLookup as supplier (String(supplier.supplier_id ?? ''))}
 										<option value={String(supplier.supplier_id ?? '')}>{lookupLabel(supplier, 'supplier_id', ['supplier_name', 'name'])}</option>
 									{/each}
 								</select>
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Requisition Id (optional)" bind:value={purchaseOrderForm.requisitionId} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total Amount" bind:value={purchaseOrderForm.totalAmount} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={purchaseOrderForm.currencyCode} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm sm:col-span-2" placeholder="Delivery Address" bind:value={purchaseOrderForm.deliveryAddress} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Requisition Id (optional)" bind:value={purchaseOrderForm.requisitionId} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="0" step="0.01" placeholder="Total Amount" bind:value={purchaseOrderForm.totalAmount} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency" bind:value={purchaseOrderForm.currencyCode} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm sm:col-span-2" placeholder="Delivery Address" bind:value={purchaseOrderForm.deliveryAddress} />
 							</div>
 						{:else if createPresetId === 'create-fiscal-year'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalYearForm.ledgerId}>
+								<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={fiscalYearForm.ledgerId}>
 									{#each ledgerLookup as ledger (String(ledger.ledger_id ?? ''))}
 										<option value={String(ledger.ledger_id ?? '')}>{lookupLabel(ledger, 'ledger_id', ['name'])}</option>
 									{/each}
 								</select>
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="2000" max="2100" bind:value={fiscalYearForm.year} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="2000" max="2100" bind:value={fiscalYearForm.year} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.startDate} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalYearForm.endDate} />
 							</div>
 						{:else if createPresetId === 'create-fiscal-period'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
+								<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={fiscalPeriodForm.fiscalYearId}>
 									{#each fiscalYearLookup as fiscalYear (String(fiscalYear.fiscal_year_id ?? ''))}
 										<option value={String(fiscalYear.fiscal_year_id ?? '')}>{lookupLabel(fiscalYear, 'fiscal_year_id', ['name'])}</option>
 									{/each}
 								</select>
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="1" max="16" bind:value={fiscalPeriodForm.periodNumber} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="1" max="16" bind:value={fiscalPeriodForm.periodNumber} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.startDate} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="date" bind:value={fiscalPeriodForm.endDate} />
 							</div>
 						{:else if createPresetId === 'create-payment'}
 							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-								<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
+								<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
 									{#each invoiceLookup as invoice (String(invoice.invoice_id ?? ''))}
 										<option value={String(invoice.invoice_id ?? '')}>{lookupLabel(invoice, 'invoice_id', ['state'])}</option>
 									{/each}
 								</select>
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" type="number" min="0" step="0.01" bind:value={paymentForm.amount} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Currency" bind:value={paymentForm.currencyCode} />
-								<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" type="number" min="0" step="0.01" bind:value={paymentForm.amount} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency" bind:value={paymentForm.currencyCode} />
+								<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Method" bind:value={paymentForm.method} />
 							</div>
 						{/if}
-						<p class="mt-1 text-xs text-white/55">Typed fields are backed by Navigator lookup endpoints for prerequisites.</p>
+						<p class="mt-1 text-xs dark:text-white/55 text-slate-500">Typed fields are backed by Navigator lookup endpoints for prerequisites.</p>
 					</div>
 				</div>
 
 				<div class="mt-4 flex flex-wrap gap-3">
 					<button
-						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 						disabled={lookupLoading}
 						on:click={() => void loadCreateLookups()}
 					>
 						{lookupLoading ? 'Refreshing lookups...' : 'Refresh Lookups'}
 					</button>
 					<button
-						class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+						class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 						disabled={createLoading}
 						on:click={handleCreateEntity}
 					>
@@ -1241,14 +1241,14 @@
 			{/if}
 		</div>
 
-		<div class="rounded-md border border-white/15 bg-white/5 p-4">
-			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Next Step Recommender</h3>
-			<p class="mt-2 text-sm text-white/75">
+		<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Next Step Recommender</h3>
+			<p class="mt-2 text-sm dark:text-white/75 text-slate-700">
 				Generate history-aware recommendations that combine available actions and logical create-operation progression.
 			</p>
 			<div class="mt-3 flex flex-wrap gap-3">
 				<button
-					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+					class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={nextStepsLoading}
 					on:click={handleLoadNextSteps}
 				>
@@ -1261,19 +1261,19 @@
 			{/if}
 
 			{#if nextStepsResult}
-				<p class="mt-3 text-xs text-white/60">
+				<p class="mt-3 text-xs dark:text-white/60 text-slate-500">
 					Events analyzed: {nextStepsResult.historySignals.eventCount} | Recent entity created: {nextStepsResult.historySignals.hasRecentEntityCreated ? 'yes' : 'no'}
 				</p>
 				<ul class="mt-3 space-y-2">
 					{#each nextStepsResult.suggestions as suggestion (suggestion.stepId)}
-						<li class="rounded-md border border-white/15 bg-[#0e2038] p-3 text-sm">
-							<p class="font-semibold text-white/90">
+						<li class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-3 text-sm">
+							<p class="font-semibold dark:text-white/90 text-slate-800">
 								{suggestion.kind === 'ACTION' ? `Action: ${suggestion.actionId}` : `Create: ${suggestion.operation}`}
-								<span class="ml-2 text-xs text-white/60">score {suggestion.score.toFixed(2)}</span>
+								<span class="ml-2 text-xs dark:text-white/60 text-slate-500">score {suggestion.score.toFixed(2)}</span>
 							</p>
-							<p class="mt-1 text-white/75">{suggestion.rationale}</p>
+							<p class="mt-1 dark:text-white/75 text-slate-700">{suggestion.rationale}</p>
 							{#if suggestion.prerequisites.length > 0}
-								<p class="mt-1 text-xs text-white/55">Prerequisites: {suggestion.prerequisites.join(', ')}</p>
+								<p class="mt-1 text-xs dark:text-white/55 text-slate-500">Prerequisites: {suggestion.prerequisites.join(', ')}</p>
 							{/if}
 						</li>
 					{/each}
@@ -1282,18 +1282,18 @@
 		</div>
 	</div>
 
-	<div class="mt-6 rounded-md border border-white/15 bg-white/5 p-4">
+	<div class="mt-6 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 		<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 			<div>
-				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Approval Queue</h3>
-				<p class="mt-2 text-sm text-white/75">
+				<h3 class="text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Approval Queue</h3>
+				<p class="mt-2 text-sm dark:text-white/75 text-slate-700">
 					Draft customer activations, submitted requisitions, and pending journals requiring operator attention.
 				</p>
 			</div>
 			<div class="flex flex-wrap gap-3">
-				<span class="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white/85">Dashboard Method</span>
+				<span class="rounded-full dark:bg-white/10 bg-slate-500/10 px-3 py-2 text-xs font-semibold dark:text-white/85 text-slate-700">Dashboard Method</span>
 				<button
-					class="rounded-md border border-white/35 px-4 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-50"
+					class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={approvalsLoading}
 					on:click={handleLoadApprovals}
 				>
@@ -1309,21 +1309,21 @@
 		<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
 			<div>
 				{#if approvalItems.length === 0}
-					<p class="rounded-md border border-white/10 bg-[#0e2038] p-3 text-sm text-white/70">No entities currently requiring attention.</p>
+					<p class="rounded-md border dark:border-white/10 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-3 text-sm dark:text-white/70 text-slate-600">No entities currently requiring attention.</p>
 				{:else}
 					<ul class="space-y-2">
 						{#each approvalItems as approval (approval.entityType + '-' + approval.id)}
 							<li>
 								<button
-									class={`w-full rounded-md border px-3 py-3 text-left text-sm transition hover:bg-white/10 ${selectedApproval?.entityType === approval.entityType && selectedApproval?.id === approval.id ? 'border-emerald-400/55 bg-emerald-500/10' : 'border-white/15 bg-[#0e2038]'}`}
+									class={`w-full rounded-md border px-3 py-3 text-left text-sm transition dark:hover:bg-white/10 hover:bg-slate-500/10 ${selectedApproval?.entityType === approval.entityType && selectedApproval?.id === approval.id ? 'border-emerald-400/55 bg-emerald-500/10' : 'dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60'}`}
 									on:click={() => void handleSelectApproval(approval)}
 								>
-									<p class="font-mono text-xs text-white/80">{approval.id}</p>
-									<p class="mt-1 text-white/90">
+									<p class="font-mono text-xs dark:text-white/80 text-slate-700">{approval.id}</p>
+									<p class="mt-1 dark:text-white/90 text-slate-800">
 										{approval.entityType === 'o2c_customer' ? 'Customer Activation' : approval.entityType === 'p2p_requisition' ? 'Submitted Requisition' : 'Pending Journal'}
 									</p>
-									<p class="mt-1 text-xs text-white/65">{approval.ownerLabel}</p>
-									<p class="mt-1 text-xs text-white/60">State {approval.stateLabel}</p>
+									<p class="mt-1 text-xs dark:text-white/65 text-slate-600">{approval.ownerLabel}</p>
+									<p class="mt-1 text-xs dark:text-white/60 text-slate-500">State {approval.stateLabel}</p>
 								</button>
 							</li>
 						{/each}
@@ -1331,37 +1331,37 @@
 				{/if}
 			</div>
 
-			<div class="rounded-md border border-white/15 bg-[#0e2038] p-4">
-				<h4 class="text-sm font-semibold text-white/90">Attention Detail</h4>
+			<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-4">
+				<h4 class="text-sm font-semibold dark:text-white/90 text-slate-800">Attention Detail</h4>
 				{#if selectedApproval}
 					<div class="mt-3 space-y-2 text-sm">
-						<p><span class="text-white/60">Entity:</span> {selectedApproval.entityType}</p>
-						<p><span class="text-white/60">ID:</span> {selectedApproval.id}</p>
-						<p><span class="text-white/60">Owner/Context:</span> {selectedApproval.ownerLabel}</p>
-						<p><span class="text-white/60">State:</span> {selectedApproval.stateLabel}</p>
+						<p><span class="dark:text-white/60 text-slate-500">Entity:</span> {selectedApproval.entityType}</p>
+						<p><span class="dark:text-white/60 text-slate-500">ID:</span> {selectedApproval.id}</p>
+						<p><span class="dark:text-white/60 text-slate-500">Owner/Context:</span> {selectedApproval.ownerLabel}</p>
+						<p><span class="dark:text-white/60 text-slate-500">State:</span> {selectedApproval.stateLabel}</p>
 						{#if selectedApproval.createdAt}
-							<p><span class="text-white/60">Created:</span> {selectedApproval.createdAt}</p>
+							<p><span class="dark:text-white/60 text-slate-500">Created:</span> {selectedApproval.createdAt}</p>
 						{/if}
 					</div>
-					<p class="mt-4 text-xs text-white/60">
+					<p class="mt-4 text-xs dark:text-white/60 text-slate-500">
 						Navigator now uses the dashboard attention queue method for this panel. Approval resolution actions will be added next.
 					</p>
 				{:else}
-					<p class="mt-3 text-sm text-white/65">Select an attention entity to inspect it.</p>
+					<p class="mt-3 text-sm dark:text-white/65 text-slate-600">Select an attention entity to inspect it.</p>
 				{/if}
 			</div>
 		</div>
 	</div>
 
 	<div class="mt-4">
-		<label class="mb-1 block text-xs text-white/70" for="nav-user-note">Operator Note</label>
+		<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-user-note">Operator Note</label>
 		<textarea
 			id="nav-user-note"
-			class="min-h-[92px] w-full rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm text-white"
+			class="min-h-[92px] w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm dark:text-white text-slate-900"
 			placeholder="Optional context for the AI, e.g. 'Line for X missing for N at Y AED; likely next action is add-line.'"
 			bind:value={userNote}
 		></textarea>
-		<p class="mt-1 text-xs text-white/55">
+		<p class="mt-1 text-xs dark:text-white/55 text-slate-500">
 			This note is sent to Navigator and can influence ranking, explanation, simulation, decisioning, and execution payload context.
 		</p>
 	</div>
@@ -1371,8 +1371,8 @@
 	{/if}
 
 	{#if resource}
-		<div class="mt-6 rounded-md border border-white/15 bg-white/5 p-4">
-			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Canonical Resource</h3>
+		<div class="mt-6 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Canonical Resource</h3>
 			<p class="mt-2 text-sm font-medium">
 				{resource.domain} / {resource.type} / {resource.id} (state: {resource.state})
 			</p>
@@ -1391,11 +1391,11 @@
 
 	{#if actionOptions.length > 0}
 		<div class="mt-6">
-			<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Available Actions</h3>
+			<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Available Actions</h3>
 			<div class="overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+						<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 							<th class="px-3 py-2">Action</th>
 							<th class="px-3 py-2">Method</th>
 							<th class="px-3 py-2">Requires Approval</th>
@@ -1404,7 +1404,7 @@
 					</thead>
 					<tbody>
 						{#each actionOptions as option (option.id)}
-							<tr class="border-b border-white/10">
+							<tr class="border-b dark:border-white/10 border-slate-200">
 								<td class="px-3 py-3 font-mono text-xs">{option.id}</td>
 								<td class="px-3 py-3 text-xs">{option.method}</td>
 								<td class="px-3 py-3 text-xs">{option.requiresApproval ? 'Yes' : 'No'}</td>
@@ -1423,19 +1423,19 @@
 
 	{#if rankedActions.length > 0}
 		<div class="mt-6">
-			<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70">Ranked Actions</h3>
+			<h3 class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Ranked Actions</h3>
 			
 			<!-- Mermaid Sankey Diagram -->
-			<div class="mb-6 rounded-md border border-white/10 bg-white/5 p-4">
-				<p class="mb-3 text-xs uppercase tracking-[0.15em] text-white/60">Action Flow (Score Distribution)</p>
+			<div class="mb-6 rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+				<p class="mb-3 text-xs uppercase tracking-[0.15em] dark:text-white/60 text-slate-500">Action Flow (Score Distribution)</p>
 				<MermaidDiagram definition={generateMermaidSankey()} title="Action Score Distribution" showFullscreenToggle={false} />
-				<p class="mt-2 text-xs text-white/50">Flow width represents normalized action score (thickness = recommendation strength)</p>
+				<p class="mt-2 text-xs dark:text-white/50 text-slate-500">Flow width represents normalized action score (thickness = recommendation strength)</p>
 			</div>
 
 			<div class="overflow-x-auto">
 				<table class="min-w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+						<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 							<th class="px-3 py-2">Rank</th>
 							<th class="px-3 py-2">Action</th>
 							<th class="px-3 py-2">Score</th>
@@ -1448,38 +1448,38 @@
 					<tbody>
 						{#each rankedActions as action, index (action.actionId)}
 							{@const option = optionForAction(action.actionId)}
-							<tr class="border-b border-white/10">
+							<tr class="border-b dark:border-white/10 border-slate-200">
 								<td class="px-3 py-3 text-xs">{index + 1}</td>
 								<td class="px-3 py-3 font-mono text-xs">{action.actionId}</td>
 								<td class="px-3 py-3 text-xs">{action.score != null ? action.score.toFixed(2) : '—'}</td>
 								<td class="px-3 py-3 text-xs">{option?.requiresApproval ? 'Yes' : 'No'}</td>
 								<td class="px-3 py-3 text-xs">{option?.requiredTier ?? '—'}</td>
-								<td class="px-3 py-3 text-xs text-white/70">{action.rationale ?? '—'}</td>
+								<td class="px-3 py-3 text-xs dark:text-white/70 text-slate-600">{action.rationale ?? '—'}</td>
 								<td class="px-3 py-3">
 									<div class="flex flex-wrap gap-2">
 										<button
-											class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={explanationLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleExplain(action.actionId); }}
 										>
 											Explain
 										</button>
 										<button
-											class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={simulationLoading}
 											on:click={() => void handleSimulate(action.actionId)}
 										>
 											Simulate
 										</button>
 										<button
-											class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={decisionLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleDecide(); }}
 										>
 											Decide
 										</button>
 										<button
-											class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={executionLoading}
 											on:click={() => void handleExecute(action.actionId)}
 										>
@@ -1495,14 +1495,14 @@
 
 			<div class="mt-3 flex gap-2">
 				<button
-					class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+					class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={explanationLoading}
 					on:click={() => { selectedActionId = ''; void handleExplain(); }}
 				>
 					{explanationLoading ? 'Loading...' : 'Explain All (Overview)'}
 				</button>
 				<button
-					class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+					class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={decisionLoading}
 					on:click={handleDecide}
 				>
@@ -1517,8 +1517,8 @@
 	{/if}
 
 	{#if explanation}
-		<div class="mt-4 rounded-md border border-white/15 bg-white/5 p-4">
-			<p class="mb-1 text-xs text-white/60">
+		<div class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<p class="mb-1 text-xs dark:text-white/60 text-slate-500">
 				Explanation{selectedActionId ? ` for ${selectedActionId}` : ' (overview)'}
 			</p>
 			<p class="text-sm leading-relaxed">{explanation}</p>
@@ -1530,15 +1530,15 @@
 	{/if}
 
 	{#if simulation}
-		<div class="mt-4 rounded-md border border-white/15 bg-white/5 p-4">
-			<p class="mb-2 text-xs text-white/60">Simulation{selectedActionId ? ` for ${selectedActionId}` : ''}</p>
+		<div class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<p class="mb-2 text-xs dark:text-white/60 text-slate-500">Simulation{selectedActionId ? ` for ${selectedActionId}` : ''}</p>
 			<div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-				<p><span class="text-white/60">Predicted State:</span> {simulation.predictedState}</p>
-				<p><span class="text-white/60">Risk:</span> {simulation.riskSummary}</p>
-				<p><span class="text-white/60">Financial Impact:</span> {simulation.financialImpact ?? 'n/a'}</p>
-				<p><span class="text-white/60">Transitions:</span> {simulation.predictedTransitions.join(', ') || 'n/a'}</p>
+				<p><span class="dark:text-white/60 text-slate-500">Predicted State:</span> {simulation.predictedState}</p>
+				<p><span class="dark:text-white/60 text-slate-500">Risk:</span> {simulation.riskSummary}</p>
+				<p><span class="dark:text-white/60 text-slate-500">Financial Impact:</span> {simulation.financialImpact ?? 'n/a'}</p>
+				<p><span class="dark:text-white/60 text-slate-500">Transitions:</span> {simulation.predictedTransitions.join(', ') || 'n/a'}</p>
 			</div>
-			<p class="mt-3 text-sm leading-relaxed text-white/90">{simulation.narrative}</p>
+			<p class="mt-3 text-sm leading-relaxed dark:text-white/90 text-slate-800">{simulation.narrative}</p>
 		</div>
 	{/if}
 
@@ -1547,14 +1547,14 @@
 	{/if}
 
 	{#if decision}
-		<div class="mt-4 rounded-md border border-white/15 bg-white/5 p-4">
-			<p class="mb-1 text-xs text-white/60">Decision</p>
-			<p class="text-sm"><span class="text-white/60">Mode:</span> {decision.mode}</p>
-			<p class="text-sm"><span class="text-white/60">Chosen Action:</span> {decision.action?.actionId ?? 'none'}</p>
+		<div class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<p class="mb-1 text-xs dark:text-white/60 text-slate-500">Decision</p>
+			<p class="text-sm"><span class="dark:text-white/60 text-slate-500">Mode:</span> {decision.mode}</p>
+			<p class="text-sm"><span class="dark:text-white/60 text-slate-500">Chosen Action:</span> {decision.action?.actionId ?? 'none'}</p>
 			<p class="mt-2 text-sm leading-relaxed">{decision.explanation}</p>
 			{#if decision.mode === 'EXECUTE' || decision.mode === 'REQUEST_APPROVAL'}
 				<button
-					class="mt-3 rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10 disabled:opacity-50"
+					class="mt-3 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={executionLoading}
 					on:click={() => void handleExecute(decision?.action?.actionId)}
 				>
@@ -1569,20 +1569,20 @@
 	{/if}
 
 	{#if execution}
-		<div class="mt-4 rounded-md border border-white/15 bg-white/5 p-4">
-			<p class="mb-1 text-xs text-white/60">Execution Result</p>
-			<p class="text-sm"><span class="text-white/60">Mode:</span> {execution.mode}</p>
-			<p class="text-sm"><span class="text-white/60">Action:</span> {execution.actionId}</p>
-			<p class="text-sm"><span class="text-white/60">Status:</span> {execution.statusCode}</p>
+		<div class="mt-4 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<p class="mb-1 text-xs dark:text-white/60 text-slate-500">Execution Result</p>
+			<p class="text-sm"><span class="dark:text-white/60 text-slate-500">Mode:</span> {execution.mode}</p>
+			<p class="text-sm"><span class="dark:text-white/60 text-slate-500">Action:</span> {execution.actionId}</p>
+			<p class="text-sm"><span class="dark:text-white/60 text-slate-500">Status:</span> {execution.statusCode}</p>
 			<div class="mt-3">
 				<JsonFieldValue value={execution.responseBody} />
 			</div>
 		</div>
 	{/if}
 
-	<div class="mt-8 border-t border-white/10 pt-4">
+	<div class="mt-8 border-t dark:border-white/10 border-slate-200 pt-4">
 		<a
-			class="text-xs text-white/60 hover:text-white"
+			class="text-xs dark:text-white/60 text-slate-500 dark:hover:text-white text-slate-900"
 			href={resolve('/navigator/sessions')}
 		>
 			View Navigator Sessions &rarr;

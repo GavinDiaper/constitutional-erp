@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { queryTable } from '$lib/api/query';
@@ -62,7 +62,7 @@
 			<h2 class="text-2xl font-semibold">Open Sales Orders</h2>
 			<p class="muted mt-1 text-sm">Orders remain actionable until they are Closed or Cancelled. Shipped orders expose the generate-invoice action.</p>
 		</div>
-		<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+		<span class="rounded-full dark:bg-white/10 bg-slate-500/10 px-3 py-1 text-xs font-semibold dark:text-white text-slate-900">
 			{openOrders.length} open orders
 		</span>
 	</div>
@@ -77,7 +77,7 @@
 		<div class="mt-4 overflow-x-auto">
 			<table class="min-w-full text-left text-sm">
 				<thead>
-					<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+					<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 						<th class="px-3 py-2">Order</th>
 						<th class="px-3 py-2">Quote</th>
 						<th class="px-3 py-2">Customer</th>
@@ -88,7 +88,7 @@
 				</thead>
 				<tbody>
 					{#each openOrders as order (order.order_id)}
-						<tr class="border-b border-white/10 align-top">
+						<tr class="border-b dark:border-white/10 border-slate-200 align-top">
 							<td class="px-3 py-3 font-semibold">{order.order_id}</td>
 							<td class="px-3 py-3">{order.quote_id ?? 'n/a'}</td>
 							<td class="px-3 py-3">{order.customer_id ?? 'n/a'}</td>
@@ -99,7 +99,7 @@
 									{#if isReadyToInvoice(order)}
 										<span class="rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-100">Ready to invoice</span>
 									{/if}
-									<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white" href={resolve(`/canvas/o2c_sales_order/${order.order_id}`)}>
+									<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900" href={resolve(`/canvas/o2c_sales_order/${order.order_id}`)}>
 										Open Process
 									</a>
 								</div>

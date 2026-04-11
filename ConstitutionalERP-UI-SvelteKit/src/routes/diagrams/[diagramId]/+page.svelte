@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
@@ -175,7 +175,7 @@
 	]}
 />
 
-<section class="rounded-2xl border border-white/30 bg-white/80 p-6 md:p-10">
+<section class="rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/80 bg-white/95 p-6 md:p-10">
 	<p class="text-xs uppercase tracking-[0.18em] text-slate-600">{data.diagram.system}</p>
 	<h1 class="mt-2 text-3xl font-semibold text-slate-900">{data.diagram.title}</h1>
 	<p class="mt-3 text-sm text-slate-700">{data.diagram.summary}</p>
@@ -189,7 +189,7 @@
 	</div>
 </section>
 
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/75 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<MermaidDiagram
 		title={data.diagram.title}
 		definition={data.diagram.definition}
@@ -198,7 +198,7 @@
 </section>
 
 {#if selectedEntity}
-<section class="mt-6 rounded-2xl border border-white/30 bg-white/80 p-6 md:p-8">
+<section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/80 bg-white/95 p-6 md:p-8">
 	<div class="flex items-start justify-between gap-4">
 		<div>
 			<p class="text-xs uppercase tracking-widest text-slate-500">Live Data</p>

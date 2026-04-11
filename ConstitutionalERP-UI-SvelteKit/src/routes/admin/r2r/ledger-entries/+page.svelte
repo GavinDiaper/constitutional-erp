@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -199,26 +199,26 @@
 			<h2 class="text-2xl font-semibold">R2R Ledger Entries</h2>
 			<p class="muted mt-2 text-sm">Inspect posted ledger lines and drill through to journal process pages.</p>
 		</div>
-		<button class="rounded-md border border-white/35 px-3 py-2 text-xs text-white hover:bg-white/10" on:click={loadEntries} disabled={loading}>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" on:click={loadEntries} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</button>
 	</div>
 
 	<div class="mt-4 grid gap-2 md:grid-cols-4">
-		<select class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" bind:value={selectedLedgerId}>
+		<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={selectedLedgerId}>
 			<option value="">All ledgers</option>
 			{#each sortedLedgers as ledger (ledger.ledger_id)}
 				<option value={ledger.ledger_id}>{ledgerLabel(ledger)}</option>
 			{/each}
 		</select>
-		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by account" bind:value={accountFilter} />
-		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by journal" bind:value={journalFilter} />
-		<input class="rounded-md border border-white/25 bg-[#112946] px-3 py-2 text-sm" placeholder="Filter by period" bind:value={periodFilter} />
+		<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Filter by account" bind:value={accountFilter} />
+		<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Filter by journal" bind:value={journalFilter} />
+		<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Filter by period" bind:value={periodFilter} />
 	</div>
 
 	<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={previousPage} disabled={loading || offset === 0}>Previous</button>
-		<button class="rounded-md border border-white/35 px-2 py-1 text-white hover:bg-white/10 disabled:opacity-40" on:click={nextPage} disabled={loading || offset + pageSize >= filteredEntries.length}>Next</button>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-40" on:click={previousPage} disabled={loading || offset === 0}>Previous</button>
+		<button class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-40" on:click={nextPage} disabled={loading || offset + pageSize >= filteredEntries.length}>Next</button>
 		<span class="muted">Offset {offset} | Page size {pageSize} | Filtered {filteredEntries.length} / Loaded {entries.length}</span>
 	</div>
 
@@ -232,7 +232,7 @@
 		<div class="mt-4 overflow-x-auto">
 			<table class="min-w-full text-left text-sm">
 				<thead>
-					<tr class="border-b border-white/15 text-xs uppercase tracking-[0.15em] text-white/70">
+					<tr class="border-b dark:border-white/15 border-slate-200 text-xs uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">
 						<th class="px-3 py-2">Ledger Entry</th>
 						<th class="px-3 py-2">Journal</th>
 						<th class="px-3 py-2">Account</th>
@@ -244,7 +244,7 @@
 				</thead>
 				<tbody>
 					{#each pagedEntries as entry (entry.ledger_entry_id)}
-						<tr class="border-b border-white/10">
+						<tr class="border-b dark:border-white/10 border-slate-200">
 							<td class="px-3 py-3 font-semibold">{entry.ledger_entry_id}</td>
 							<td class="px-3 py-3 text-xs">{entry.journal_id ?? 'n/a'}</td>
 							<td class="px-3 py-3 text-xs">{entry.account_id ?? 'n/a'}</td>
@@ -254,13 +254,13 @@
 							<td class="px-3 py-3">
 								<div class="flex flex-wrap gap-2">
 									<a
-										class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10"
+										class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10"
 										href={resolve(`/admin/r2r/ledger-entries/${entry.ledger_entry_id}`)}
 									>
 										View Entry
 									</a>
 									{#if entry.journal_id}
-										<a class="rounded-md border border-white/35 px-2 py-1 text-xs text-white hover:bg-white/10" href={resolve('/canvas/[entityType]/[entityId]', { entityType: 'r2r_journal', entityId: entry.journal_id })}>
+										<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/canvas/[entityType]/[entityId]', { entityType: 'r2r_journal', entityId: entry.journal_id })}>
 											Open Journal
 										</a>
 									{/if}

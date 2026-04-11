@@ -86,13 +86,13 @@
 		<MermaidDiagram definition={mermaidSource} title="Field Detail" showFullscreenToggle={true} />
 		<button
 			type="button"
-			class="mt-1 text-[10px] uppercase tracking-[0.12em] text-white/40 hover:text-white/70 transition-colors"
+			class="mt-1 text-[10px] uppercase tracking-[0.12em] dark:text-white/40 text-slate-500 dark:hover:text-white/70 hover:text-slate-700 transition-colors"
 			on:click={() => (showRaw = !showRaw)}
 		>
 			{showRaw ? 'Hide raw' : 'Show raw'}
 		</button>
 		{#if showRaw}
-			<pre class="mt-1 max-h-48 overflow-auto rounded bg-white/5 p-2 text-[11px] leading-relaxed text-white/70">{formatRaw(value)}</pre>
+			<pre class="mt-1 max-h-48 overflow-auto rounded bg-white/5 p-2 text-[11px] leading-relaxed dark:text-white/70 text-slate-700">{formatRaw(value)}</pre>
 		{/if}
 	</div>
 {:else}

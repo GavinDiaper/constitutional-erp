@@ -5,6 +5,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import TopBar from '$lib/components/shared/TopBar.svelte';
 	import Sidebar from '$lib/components/shared/Sidebar.svelte';
+	import { themeStore } from '$lib/stores/themeStore';
 
 	let navigatorOpen = true;
 
@@ -12,14 +13,35 @@
 		navigatorOpen = !navigatorOpen;
 	}
 
+	type MermaidWindow = Window & {
+		mermaid?: {
+			initialize: (options: { startOnLoad: boolean; theme: string }) => void;
+			contentLoaded: () => void;
+		};
+		__mermaidInitDone__?: boolean;
+		__mermaidLoadPromise__?: Promise<void>;
+	};
+
+	function initMermaid(theme: string): void {
+		const globalWindow = window as MermaidWindow;
+		if (!globalWindow.mermaid) return;
+		globalWindow.__mermaidInitDone__ = false;
+		globalWindow.mermaid.initialize({ startOnLoad: false, theme });
+		globalWindow.mermaid.contentLoaded();
+		globalWindow.__mermaidInitDone__ = true;
+	}
+
 	onMount(() => {
-		const globalWindow = window as Window & {
-			mermaid?: {
-				initialize: (options: { startOnLoad: boolean; theme: string }) => void;
-				contentLoaded: () => void;
-			};
-			__mermaidInitDone__?: boolean;
-			__mermaidLoadPromise__?: Promise<void>;
+		// Apply persisted theme immediately (may differ from server-rendered default)
+		document.documentElement.className = $themeStore;
+
+		const unsubscribe = themeStore.subscribe((theme) => {
+			document.documentElement.className = theme;
+			initMermaid(theme === 'light' ? 'default' : 'dark');
+		});
+
+		const globalWindow = window as MermaidWindow & {
+			__mermaidLoadPromise__: Promise<void> | undefined;
 		};
 
 		if (!globalWindow.__mermaidLoadPromise__) {
@@ -54,13 +76,18 @@
 				if (!globalWindow.mermaid || globalWindow.__mermaidInitDone__) {
 					return;
 				}
-				globalWindow.mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+				const mermaidTheme = $themeStore === 'light' ? 'default' : 'dark';
+				globalWindow.mermaid.initialize({ startOnLoad: true, theme: mermaidTheme });
 				globalWindow.mermaid.contentLoaded();
 				globalWindow.__mermaidInitDone__ = true;
 			})
 			.catch(() => {
 				// Keep layout resilient even if Mermaid fails to load.
 			});
+
+		return () => {
+			unsubscribe();
+		};
 	});
 </script>
 
@@ -78,15 +105,15 @@
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		<button
 			type="button"
-			class="rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20"
+			class="btn-ghost rounded-md px-3 py-1.5 text-xs font-semibold"
 			on:click={toggleNavigator}
 		>
 			{navigatorOpen ? 'Collapse Navigator' : 'Expand Navigator'}
 		</button>
-		<a class="rounded-md border border-white/30 px-3 py-1.5 text-xs text-white/85 hover:bg-white/10" href={resolve('/canvas')}>
+		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/canvas')}>
 			Canvas
 		</a>
-		<a class="rounded-md border border-white/30 px-3 py-1.5 text-xs text-white/85 hover:bg-white/10" href={resolve('/navigator/sessions')}>
+		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/navigator/sessions')}>
 			Navigator Sessions
 		</a>
 	</div>
