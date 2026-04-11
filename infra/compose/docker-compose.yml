@@ -1,12 +1,13 @@
 services:
   foundation-erp:
     build:
-      context: ../../services/foundation-erp
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/foundation-erp/Dockerfile
     env_file:
       - ../../.env.example
     environment:
       DATABASE_PATH: /data/foundation.db
+      INTERNAL_ALLOWLIST: ${FOUNDATION_INTERNAL_ALLOWLIST:-127.0.0.1,::1,172.16.0.0/12}
     ports:
       - "${FOUNDATION_PORT:-3000}:3000"
     volumes:
@@ -14,8 +15,8 @@ services:
 
   authority-engine:
     build:
-      context: ../../services/authority-engine
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/authority-engine/Dockerfile
     env_file:
       - ../../services/authority-engine/.env.example
     environment:
@@ -30,8 +31,8 @@ services:
 
   governance-engine:
     build:
-      context: ../../services/governance-engine
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/governance-engine/Dockerfile
     env_file:
       - ../../services/governance-engine/.env.example
     environment:
@@ -46,8 +47,8 @@ services:
 
   mesh-gateway:
     build:
-      context: ../../services/mesh-gateway
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mesh-gateway/Dockerfile
     env_file:
       - ../../services/mesh-gateway/.env.example
     environment:
@@ -66,8 +67,8 @@ services:
 
   event-processor:
     build:
-      context: ../../services/event-processor
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/event-processor/Dockerfile
     env_file:
       - ../../services/event-processor/.env.example
     environment:
@@ -88,8 +89,8 @@ services:
 
   process-graph:
     build:
-      context: ../../services/process-graph
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/process-graph/Dockerfile
     env_file:
       - ../../services/process-graph/.env.example
     environment:
@@ -110,8 +111,8 @@ services:
 
   integration-hub:
     build:
-      context: ../../services/integration-hub
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/integration-hub/Dockerfile
     env_file:
       - ../../services/integration-hub/.env.example
     environment:
@@ -125,8 +126,8 @@ services:
 
   navigator-ai:
     build:
-      context: ../../services/navigator-ai
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/navigator-ai/Dockerfile
     env_file:
       - ../../services/navigator-ai/.env.example
     environment:
@@ -149,8 +150,8 @@ services:
 
   ui-sveltekit:
     build:
-      context: ../../apps/ui-sveltekit
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/ui-sveltekit/Dockerfile
     environment:
       HOST: 0.0.0.0
       PORT: 4173

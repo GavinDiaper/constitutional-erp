@@ -2,7 +2,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { db } from "./connection";
 
-const MIGRATION_DIR = path.join(__dirname, "migrations");
+function resolveMigrationDir(): string {
+  const candidates = [
+    path.join(__dirname, "migrations"),
+    path.join(process.cwd(), "src", "db", "migrations")
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Migration directory not found. Checked: ${candidates.join(", ")}`);
+}
 
 function ensureMigrationsTable() {
   db.exec(`
@@ -19,7 +32,8 @@ function getAppliedMigrations(): Set<string> {
 }
 
 function applyMigration(fileName: string) {
-  const fullPath = path.join(MIGRATION_DIR, fileName);
+  const migrationDir = resolveMigrationDir();
+  const fullPath = path.join(migrationDir, fileName);
   const sql = fs.readFileSync(fullPath, "utf8");
   const run = db.transaction(() => {
     db.exec(sql);
@@ -33,9 +47,10 @@ function applyMigration(fileName: string) {
 export function runMigrations() {
   ensureMigrationsTable();
 
+  const migrationDir = resolveMigrationDir();
   const applied = getAppliedMigrations();
   const files = fs
-    .readdirSync(MIGRATION_DIR)
+    .readdirSync(migrationDir)
     .filter((name) => name.endsWith(".sql"))
     .sort();
 
