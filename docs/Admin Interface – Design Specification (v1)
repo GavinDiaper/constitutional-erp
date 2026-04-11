@@ -1,0 +1,516 @@
+# 🌐 Why an Admin Interface Is the Right Move Now
+
+You’ve just built:
+
+- Integration Hub  
+- AI Offline Mode  
+- A canonical model  
+- A data‑oriented test strategy  
+- A roadmap that depends heavily on **observability**  
+
+What you’re missing is a **window into the system** — a way to *see* the flows, events, transitions, and data that define the constitutional architecture.
+
+Right now, everything is happening “in the dark” unless you manually inspect logs, Postman responses, or database tables.
+
+An Admin Interface solves that.
+
+---
+
+# 🎯 What the Admin Interface Should Be
+
+A **developer and architect cockpit** that shows:
+
+### **1. Canonical Data**
+- Entities (Supplier, PO, Invoice, Order, Journal, etc.)
+- Current state
+- Attributes
+- Relationships
+
+### **2. Event Streams**
+- Canonical events emitted by Mesh / Foundation ERP
+- Replay history
+- Correlation and causation chains
+- Visualised as a timeline or graph
+
+### **3. Process Graphs (via D3)**
+- PGE transitions
+- Current state highlighted
+- Allowed next actions
+- Risk annotations
+- Authority requirements
+
+### **4. Integration Hub Hypermedia**
+- Links[]
+- MCP functions
+- Governance metadata
+- Input schemas
+
+### **5. Navigator Execution**
+- Proposed actions
+- Simulations
+- Explanations
+- Decision logs
+
+### **6. Test Execution Results**
+- Golden snapshot comparisons
+- Event replay results
+- Cross‑ERP equivalence checks
+- Mesh adapter validation
+
+This becomes the **observability layer** for the entire platform.
+
+---
+
+# 🧠 Why D3.js Is the Right Choice
+
+D3 gives you:
+
+- **Process graphs** that match PGE  
+- **Event timelines**  
+- **State transition diagrams**  
+- **Flow visualisations**  
+- **Tree and graph layouts**  
+
+This is exactly what a constitutional system needs — a visualisation of:
+
+- how data flows  
+- how processes evolve  
+- how events propagate  
+- how Navigator reasons  
+
+It’s not just pretty — it’s diagnostic.
+
+---
+
+# 🏗️ Why Node/Express Is the Right Backend
+
+Because:
+
+- It matches the rest of your stack  
+- It can proxy Integration Hub, Mesh, PGE, CEP  
+- It can expose test execution results  
+- It can serve static D3 visualisations  
+- It can run locally or in CI  
+- It can integrate with AI Offline Mode  
+
+This keeps the Admin Interface lightweight and aligned with your architecture.
+
+---
+
+# 🚀 What This Admin Interface Unlocks
+
+### **1. Faster debugging**
+You can see exactly where a flow broke.
+
+### **2. Better developer onboarding**
+New engineers can *see* the system instead of reading docs.
+
+### **3. Stronger test infrastructure**
+Visual diffs of event streams and state transitions.
+
+### **4. Better governance validation**
+You can inspect:
+- risk levels  
+- authority tiers  
+- allowed transitions  
+
+### **5. Better Mesh adapter development**
+You can compare:
+- canonical state  
+- vendor ERP state  
+- canonical events  
+- vendor events  
+
+### **6. Better Navigator tuning**
+You can visualise:
+- proposed actions  
+- ranking  
+- simulation  
+- explanations  
+
+### **7. Better architecture communication**
+This becomes the demo environment for leadership.
+
+---
+
+# 🧩 How It Fits Into the Roadmap
+
+This Admin Interface becomes part of:
+
+### **Phase M – Developer Tooling Suite**
+- Navigator REPL v2  
+- PGE visualizer  
+- Event stream explorer  
+- Mesh adapter test harness  
+- Charter rule debugger  
+- Authority credential simulator  
+
+The Admin Interface becomes the **unified UI** for all of these.
+
+---
+
+# 🛠️ Recommended Architecture
+
+### **Backend (Node/Express)**
+- `/entities/:type/:id` → Foundation ERP  
+- `/events/:entity/:id` → CEP  
+- `/process/:entity/:id` → Integration Hub  
+- `/navigator/:sessionId` → Navigator logs  
+- `/tests/run` → Test harness  
+- `/tests/results` → Snapshot diffs  
+
+### **Frontend (D3 + React or plain HTML/JS)**
+- Process graph visualiser  
+- Event timeline  
+- Entity inspector  
+- Hypermedia inspector  
+- MCP catalog viewer  
+- Test results dashboard  
+
+---
+
+# 🧭 Final Recommendation
+
+**Yes — build the Admin Interface.**  
+It will become:
+
+- the **observability layer**  
+- the **debugging cockpit**  
+- the **test runner UI**  
+- the **architecture visualiser**  
+- the **developer onboarding tool**  
+- the **Mesh adapter validator**  
+- the **Navigator reasoning inspector**  
+
+And with D3, it will give you the **graph‑native visualisation** that matches your constitutional architecture perfectly.
+
+This is one of those investments that pays off every single day.
+
+
+### Admin Interface – Design Specification (v1)
+
+---
+
+## 1. Purpose
+
+The Admin Interface is a **developer and operator cockpit** for the constitutional platform. It provides:
+
+- A **window into canonical data** (Foundation ERP).
+- **Visualisation of flows and processes** (via D3).
+- **Inspection of events, hypermedia, MCP, and Navigator decisions**.
+- **Execution and inspection of tests** (data‑oriented and flow‑based).
+- **Secure access**, tied to a **Foundation ERP actor**.
+
+Tech stack: **Node/Express backend + Web UI (React or vanilla) + D3.js**.
+
+---
+
+## 2. High‑level capabilities
+
+- **Secure login** mapped to a **Foundation ERP actor**.
+- **Entity explorer** (Supplier, PO, Invoice, Order, Journal, Employee, etc.).
+- **Event stream explorer** (canonical events from CEP).
+- **Process graph visualiser** (PGE + Integration Hub).
+- **Hypermedia inspector** (Integration Hub `/process`).
+- **MCP catalog viewer** (Integration Hub `/mcp`).
+- **Navigator session viewer** (proposals, simulations, explanations).
+- **Test runner & results viewer** (golden snapshots, replay, cross‑ERP).
+
+---
+
+## 3. UI wireframe (text sketch)
+
+### 3.1 Layout
+
+```text
++----------------------------------------------------------------------------------+
+|  Header: "Constitutional ERP – Admin Console"        [User: actor-123] [Logout] |
++----------------------------------------------------------------------------------+
+| Sidebar                               | Main Content                             |
+|---------------------------------------+------------------------------------------|
+| [Dashboard]                           | [Dashboard]                              |
+| [Entities]                            | - System health                          |
+|   - Suppliers                         | - Recent events                          |
+|   - Requisitions                      | - Recent test runs                       |
+|   - Purchase Orders                   | - Active Navigator sessions              |
+|   - Invoices                          |                                          |
+|   - Payments                          |                                          |
+|   - Customers                         |                                          |
+|   - Orders                            |                                          |
+|   - Journals                          |                                          |
+|   - Employees                         |                                          |
+| [Events]                              |                                          |
+| [Process Graphs]                      |                                          |
+| [Hypermedia]                          |                                          |
+| [MCP Catalog]                         |                                          |
+| [Navigator Sessions]                  |                                          |
+| [Tests]                               |                                          |
++----------------------------------------------------------------------------------+
+```
+
+### 3.2 Example: Entity detail view (PO)
+
+```text
++------------------------ Purchase Order PO123 ------------------------+
+| Header: PO123   State: FullyReceived   Supplier: SUP-001             |
++---------------------------------------------------------------------+
+| Left: Details                    | Right: Visualisations            |
+|----------------------------------+----------------------------------|
+| - Attributes (table)             | [D3 Process Graph]               |
+| - Lines                          |  - Nodes: states                 |
+| - Related entities               |  - Edges: transitions            |
+|   - Requisition                  |  - Highlight: current state      |
+|   - Invoices                     |                                  |
+|   - Payments                     | [D3 Event Timeline]              |
+|                                  |  - Events over time              |
+|                                  |  - Click to inspect payload      |
++---------------------------------------------------------------------+
+```
+
+---
+
+## 4. Node/Express API design
+
+Backend acts as a **facade** over existing services:
+
+- Foundation ERP
+- CEP / Event Processor
+- Integration Hub
+- PGE
+- Navigator
+- Test harness
+
+### 4.1 Authentication & session
+
+- `POST /auth/login`
+  - Body: `{ username, password }` (or SSO token, depending on environment).
+  - Validates against **Foundation ERP actor** (via Foundation ERP API).
+  - On success:
+    - Creates session (JWT or server session).
+    - Stores `actorId` and `authorityTier`.
+- `POST /auth/logout`
+- `GET /auth/me`
+  - Returns current actor info.
+
+### 4.2 Actor association (Foundation ERP)
+
+- On login, Admin Interface calls Foundation ERP:
+
+  - `GET /internal/actors/by-username/:username`
+    - Returns: `{ actorId, name, authorityTier, domains[] }`
+
+- This `actorId` is used:
+  - For audit on Admin actions.
+  - As `actor` in test runs (simulated actions).
+  - For governance checks (optional).
+
+---
+
+### 4.3 Entity APIs (Foundation ERP)
+
+Proxy or aggregate calls to Foundation ERP:
+
+- `GET /api/entities/:type`
+  - `type ∈ {suppliers, requisitions, purchase-orders, invoices, payments, customers, orders, journals, employees}`
+  - Query params: paging, filters.
+- `GET /api/entities/:type/:id`
+  - Returns canonical entity.
+
+Optional:
+- `GET /api/entities/:type/:id/related`
+  - Returns related entities (e.g. PO → Supplier, Invoices, Payments).
+
+---
+
+### 4.4 Event APIs (CEP / Event Processor)
+
+- `GET /api/events/entity/:type/:id`
+  - Returns canonical events for that entity.
+- `GET /api/events/recent`
+  - Returns recent events (for dashboard).
+- `GET /api/events/:eventId`
+  - Returns full event payload.
+
+---
+
+### 4.5 Process graph & hypermedia (PGE + Integration Hub)
+
+- `GET /api/process/:entity/:id/graph`
+  - Calls PGE to get process graph (states + transitions).
+- `GET /api/process/:entity/:id/hypermedia`
+  - Proxies Integration Hub `GET /process/{entity}/{id}`.
+  - Returns:
+    - `state`
+    - `attributes`
+    - `links[]` (governed actions).
+
+---
+
+### 4.6 MCP catalog (Integration Hub)
+
+- `GET /api/mcp/functions`
+  - Proxies `/mcp/functions`.
+- `GET /api/mcp/functions/:id`
+  - Proxies `/mcp/functions/{id}`.
+
+---
+
+### 4.7 Navigator sessions
+
+- `GET /api/navigator/sessions`
+  - List active/recent sessions.
+- `GET /api/navigator/sessions/:sessionId`
+  - Returns:
+    - proposals
+    - simulations
+    - decisions
+    - explanations
+    - actions taken
+- `GET /api/navigator/sessions/:sessionId/timeline`
+  - Returns time‑ordered events/decisions.
+
+---
+
+### 4.8 Test harness APIs
+
+- `POST /api/tests/run`
+  - Body: `{ suiteId, actorId? }`
+  - Triggers:
+    - event replay
+    - cross‑ERP equivalence
+    - golden snapshot comparison
+- `GET /api/tests/runs`
+  - List recent runs.
+- `GET /api/tests/runs/:runId`
+  - Returns:
+    - status
+    - diffs
+    - logs
+    - links to entities/events.
+
+---
+
+## 5. D3 visualisation plan
+
+### 5.1 Process graph visualiser
+
+Data source:
+
+- `GET /api/process/:entity/:id/graph`
+- `GET /api/process/:entity/:id/hypermedia`
+
+Visualisation:
+
+- **Nodes**: states (e.g. Draft, Approved, Sent, FullyReceived).
+- **Edges**: transitions (e.g. approvePurchaseOrder, sendPurchaseOrder).
+- **Highlight**:
+  - Current state node.
+  - Allowed next transitions (from hypermedia `links[]`).
+- **Annotations**:
+  - Risk level (color).
+  - Authority tier required (icon).
+  - MCP function mapping (tooltip).
+
+D3 layout:
+
+- Force‑directed or layered (e.g. DAG layout).
+- Click on node → show state details.
+- Click on edge → show command + MCP function.
+
+---
+
+### 5.2 Event timeline
+
+Data source:
+
+- `GET /api/events/entity/:type/:id`
+
+Visualisation:
+
+- X‑axis: time.
+- Y‑axis: event type or lane per entity.
+- Each event: dot or marker.
+- Hover: show event details.
+- Click: open full payload.
+
+D3 layout:
+
+- Simple time scale.
+- Zoom/pan for long histories.
+
+---
+
+### 5.3 Navigator decision flow
+
+Data source:
+
+- `GET /api/navigator/sessions/:sessionId/timeline`
+
+Visualisation:
+
+- Sequence diagram or node‑link graph:
+  - User input → Navigator proposals → Hypermedia actions → Events.
+- Show:
+  - Proposed actions.
+  - Chosen action.
+  - Explanation.
+  - Simulation summary.
+
+---
+
+## 6. Data access model
+
+### 6.1 Foundation ERP
+
+- Admin Interface never talks directly to the DB.
+- All access via **Foundation ERP internal APIs**.
+- Read‑only by default; write actions (e.g. test data reset) are explicit and audited.
+
+### 6.2 Subsystems
+
+- **CEP**: event queries via event processor API.
+- **Integration Hub**: hypermedia + MCP.
+- **PGE**: process graphs.
+- **Navigator**: session logs.
+- **Test harness**: internal service or library exposed via Admin backend.
+
+---
+
+## 7. Security & login
+
+### 7.1 Authentication
+
+- `POST /auth/login`
+  - Validates credentials (pluggable: local, SSO, OAuth).
+  - On success:
+    - Look up actor in Foundation ERP:
+      - `GET /internal/actors/by-username/:username`
+    - Store `actorId`, `authorityTier`, `domains[]` in session/JWT.
+
+### 7.2 Authorisation
+
+- Middleware checks:
+  - Session/JWT validity.
+  - Optional: authority tier for sensitive operations (e.g. running destructive tests).
+
+### 7.3 Audit
+
+- All Admin actions logged with:
+  - `actorId`
+  - timestamp
+  - action type
+  - target (entity, test, session)
+
+---
+
+## 8. Rollout plan
+
+1. **Backend skeleton** (auth, basic proxy endpoints).
+2. **Entity explorer** (Foundation ERP read‑only).
+3. **Event explorer** (CEP).
+4. **Process graph + hypermedia visualiser** (D3).
+5. **Navigator session viewer**.
+6. **Test runner + results dashboard**.
+7. **Hardening** (auth, audit, rate limiting, RBAC if needed).
+
+

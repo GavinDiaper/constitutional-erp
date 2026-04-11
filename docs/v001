@@ -1,0 +1,191 @@
+**Considering structure and components**
+
+I need to keep things concise but also structured. I’m thinking about which components to include and what changes to make. I want to make sure the information is clear and easy to follow, but not too overwhelming. I’ll focus on the essentials and avoid unnecessary details. It’s about finding that balance between being thorough and keeping it simple. Let’s see how I can organize this in a way that’s both efficient and effective.
+### 1. Design goals for minimal v1
+
+- **Restore:** MCP + Integration Hub + Hypermedia as the *spine*.
+- **Reuse:** Existing Navigator, Mesh, PGE, Charter, Authority as much as possible.
+- **Constrain scope:** One ERP (Foundation) and a small set of flows (e.g. Supplier + Requisition + PO).
+
+---
+
+### 2. Target shape (v1)
+
+```text
+AI Navigator
+    ↑
+AI-Facing Hub API (MCP + Hypermedia)
+    ↑
+Integration Hub (new/reshaped)
+    ↑
+Mesh + Existing Adapters
+    ↑
+Foundation ERP
+```
+
+- **Integration Hub** becomes the **single entrypoint** for AI.
+- It exposes:
+  - **MCP function catalog** (what can be done).
+  - **Hypermedia REST API** (what is allowed next).
+- Mesh + adapters stay behind the Hub.
+
+---
+
+### 3. Integration Hub – minimal responsibilities
+
+#### 3.1 MCP function catalog (v1)
+
+New endpoints:
+
+- `GET /mcp/functions`
+- `GET /mcp/functions/{id}`
+
+Each function:
+
+```json
+{
+  "id": "create_supplier",
+  "name": "Create Supplier",
+  "description": "Create a new supplier in the ERP.",
+  "entity": "Supplier",
+  "operationType": "create",
+  "inputSchema": { ... },
+  "outputSchema": { ... },
+  "backingRoute": "/internal/mesh/suppliers/create"
+}
+```
+
+**Implementation v1:**
+
+- Backed by static JSON/YAML in the Hub.
+- `backingRoute` calls existing Mesh/adapter endpoints.
+
+---
+
+#### 3.2 Hypermedia REST API (v1)
+
+New endpoints:
+
+- `GET /process/{entity}/{id}` → returns **state + links**.
+- `POST /process/{entity}/{id}/actions/{action}` → executes transition.
+
+Example response:
+
+```json
+{
+  "entity": "PurchaseOrder",
+  "id": "PO123",
+  "state": "Draft",
+  "links": [
+    {
+      "rel": "approve",
+      "href": "/process/PurchaseOrder/PO123/actions/approve",
+      "method": "POST",
+      "requiredInput": {
+        "type": "object",
+        "properties": {
+          "comment": { "type": "string" }
+        }
+      },
+      "mcpFunctionId": "approve_po"
+    }
+  ]
+}
+```
+
+**Implementation v1:**
+
+- Hub reads current state from existing PGE + Mesh.
+- Links are generated from a simple, static process definition per entity (can be aligned with PGE later).
+
+---
+
+### 4. Navigator – minimal changes
+
+- Add a **Hub client**:
+
+  - `GET /mcp/functions` to discover capabilities.
+  - `GET /process/{entity}/{id}` to see current state + allowed links.
+
+- Behaviour v1:
+
+  1. Use MCP to know **what functions exist** and their schemas.
+  2. Use hypermedia to know **what actions are allowed now**.
+  3. When choosing an action:
+     - pick a link from `links[]`.
+     - use `mcpFunctionId` to understand required input.
+     - call the link’s `href` with validated payload.
+
+Navigator no longer “invents” actions; it **follows the Hub**.
+
+---
+
+### 5. Mesh + PGE – how they fit without big surgery
+
+#### 5.1 Mesh
+
+- Existing Mesh endpoints become **internal**:
+
+  - e.g. `/internal/mesh/suppliers/create`
+  - `/internal/mesh/purchase-orders/approve`
+
+- Integration Hub calls Mesh using `backingRoute` from MCP function catalog.
+
+No change to Mesh semantics—just **reframed behind the Hub**.
+
+#### 5.2 PGE
+
+- v1: leave PGE as-is, but:
+
+  - Hub queries PGE for current state and valid transitions.
+  - Hub turns those transitions into hypermedia `links[]`.
+
+Later, PGE can be refactored to be MCP-driven; v1 just **uses it as a source of truth**.
+
+---
+
+### 6. Charter + Authority – minimal integration
+
+- v1: Hub calls Charter/Authority when building `links[]`:
+
+  - remove links the caller is not allowed to execute.
+  - optionally annotate links with `requiredAuthority` / `riskLevel`.
+
+This keeps governance **non-bypassable** without refactoring Charter itself.
+
+---
+
+### 7. Minimal v1 scope (recommended)
+
+Pick **one vertical slice** and do it end-to-end:
+
+- Entities: `Supplier`, `Requisition`, `PurchaseOrder`.
+- Flows:
+  - Create Supplier
+  - Create Requisition
+  - Approve Requisition
+  - Create PO from Requisition
+  - Approve PO
+
+Implement:
+
+1. MCP functions for those actions.
+2. Hypermedia for those processes.
+3. Hub → Mesh → ERP wiring for those routes.
+4. Navigator using Hub only for that slice.
+
+Once that works, you’ve **proven**:
+
+- MCP-driven discovery.
+- Hypermedia-constrained execution.
+- Hub as constitutional gateway.
+- ERP hidden behind Hub.
+
+From there, you can expand horizontally.
+
+---
+
+If you want, I can next:
+
+- draft the **exact JSON contracts** for `/mcp/functions` and `/process/{entity}/{id}`, or  
+- write a **one-page v1 implementation brief** you can drop into a ticket/epic.

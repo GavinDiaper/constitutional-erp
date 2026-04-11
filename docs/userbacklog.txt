@@ -1,0 +1,45 @@
+make process d3 nodes clickable to perform the action 
+
+FoundationERP
+check accounting is performed on accounting events such as receipt of purchase order, payment, receiving
+Consider accounting structures such as AR, FA, Trial balances 
+
+Add tax to requisition concepts
+Add inventory and cogs concepts
+add core financial reports (BS PL CF SOGS)
+Add POS and Till
+Add scan to pay
+
+Add industry - Catering/Bakery/Groceries (small retail)
+Add industry - content creators / productions 
+Add industry - Artists gallery / events
+
+We need top panel information alongside the actor telling us which legal entity we are using and what ledger is being used
+
+
+Update contents of field maps table
+
+Assets
+Bill-Management
+Budgetary-Control
+Cash-Management
+Expenses
+Financials-Common-Module
+Financials-for-Asia Pacific
+Financials-for-EMEA
+Financials-for-Regional-Localizations
+Financials-for-the-Americas
+General-Ledger
+Joint-Venture-Management
+Legal-Entity-Configurator
+Oracle-Fusion-U.S.-Federal-Financials
+Oracle-Middleware-Extensions-for-Applications
+Payables
+Payments
+Receivables
+Revenue-Management
+Subledger-Accounting
+Tax
+
+Inventory
+PoS

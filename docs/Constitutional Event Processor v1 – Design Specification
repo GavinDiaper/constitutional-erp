@@ -1,0 +1,288 @@
+### Constitutional Event Processor v1 – Design Specification
+
+---
+
+## 1. Purpose and role
+
+**Goal:** Turn all constitutional‑relevant activity (ERP, Mesh, Governance, Authority) into a **single canonical event stream** that can be:
+
+- appended immutably  
+- replayed deterministically  
+- versioned safely  
+- consumed by Charter Engine, Process Graph, Navigator, and Distributed Fabric  
+
+The Constitutional Event Processor (CEP) is the **ingestion + normalization + append** layer in front of the Ledger.
+
+---
+
+## 2. Canonical event schema v1
+
+### 2.1 Top‑level structure
+
+```json
+{
+  "eventId": "UUID",
+  "eventType": "string",
+  "eventVersion": 1,
+  "occurredAt": "2026-03-27T12:34:56.789Z",
+  "source": {
+    "system": "foundation-erp | mesh-gateway | authority-engine | governance-engine | external-erp",
+    "streamId": "string",
+    "sequence": 123
+  },
+  "correlation": {
+    "correlationId": "string",
+    "causationId": "string"
+  },
+  "actor": {
+    "actorId": "EMP-123",
+    "ingressId": "foundation-ingress",
+    "impersonated": false
+  },
+  "domain": {
+    "domain": "P2P | O2C | R2R | H2R | ...",
+    "aggregateType": "purchase-order | requisition | journal | employee | ...",
+    "aggregateId": "PO-123",
+    "tenantId": "TENANT-001"
+  },
+  "payload": {
+    "...": "domain-specific body"
+  },
+  "metadata": {
+    "schemaVersion": 1,
+    "tags": ["string"],
+    "flags": {
+      "isReplay": false,
+      "isSynthetic": false
+    }
+  }
+}
+```
+
+**Key points:**
+
+- `eventType` is canonical (e.g. `P2P.PurchaseOrderIssued`, `Mesh.ActionDenied`, `Governance.DecisionEvaluated`).  
+- `eventVersion` is **per eventType**, not global.  
+- `source.streamId + source.sequence` allow idempotent ingestion from each upstream.  
+- `domain.aggregateType/aggregateId` give you per‑aggregate streams.  
+
+---
+
+## 3. Event ingestion + normalization pipeline
+
+### 3.1 Sources
+
+- **Foundation ERP**: domain events (O2C, P2P, R2R, H2R).  
+- **Mesh Gateway**: MeshActionAllowed, MeshActionDenied, MeshHypermediaFiltered, MeshApprovalTaskCreated, MeshApprovalCompleted.  
+- **Authority Engine**: authority decisions, earned authority changes.  
+- **Governance Engine**: governance decisions, rule evaluations.  
+- **Future external ERPs**: via adapters.
+
+### 3.2 Pipeline stages
+
+1. **Ingest (raw event)**  
+   - Pull from HTTP webhook, queue, or poll endpoint.  
+   - Wrap in a `RawEventEnvelope`:
+
+   ```ts
+   interface RawEventEnvelope {
+     sourceSystem: string;
+     rawPayload: any;
+     receivedAt: string;
+   }
+   ```
+
+2. **Classify**  
+   - Determine `eventType` and `source.system`.  
+   - Map upstream type → canonical type (e.g. `foundation.p2p.po_issued` → `P2P.PurchaseOrderIssued`).
+
+3. **Normalize**  
+   - Build canonical event using mapping functions:
+
+   ```ts
+   type Normalizer = (raw: RawEventEnvelope) => CanonicalEvent;
+   ```
+
+   - Each source has its own normalizer module.
+
+4. **Validate**  
+   - Ensure required fields present.  
+   - Validate `domain`, `aggregateId`, `occurredAt`.  
+   - Reject or dead‑letter invalid events.
+
+5. **Deduplicate**  
+   - Use `(source.system, source.streamId, source.sequence)` as idempotency key.  
+   - If already seen, skip append.
+
+6. **Append to Ledger**  
+   - Write to `ledger_events` table (see storage model).  
+   - Optionally publish to internal bus for projections.
+
+---
+
+## 4. Ledger storage model
+
+### 4.1 Core table: `ledger_events`
+
+**Columns (v1):**
+
+- `id` (UUID, PK) – same as `eventId`  
+- `event_type` (string)  
+- `event_version` (int)  
+- `occurred_at` (timestamp)  
+- `recorded_at` (timestamp)  
+- `source_system` (string)  
+- `source_stream_id` (string)  
+- `source_sequence` (bigint)  
+- `correlation_id` (string)  
+- `causation_id` (string)  
+- `actor_id` (string)  
+- `ingress_id` (string)  
+- `domain` (string)  
+- `aggregate_type` (string)  
+- `aggregate_id` (string)  
+- `tenant_id` (string)  
+- `payload` (JSONB)  
+- `metadata` (JSONB)
+
+**Indexes:**
+
+- `(domain, aggregate_type, aggregate_id, occurred_at)` – per‑aggregate stream.  
+- `(source_system, source_stream_id, source_sequence)` – idempotency.  
+- `(correlation_id)` – trace a business flow.  
+
+### 4.2 Streams
+
+- **Aggregate stream:** all events for `(domain, aggregateType, aggregateId)` ordered by `occurred_at`.  
+- **System stream:** all events from a given `source_system`.  
+- **Global stream:** all events ordered by `occurred_at` or `recorded_at`.
+
+---
+
+## 5. Replay semantics
+
+### 5.1 Replay modes
+
+1. **Per‑aggregate replay**  
+   - Rebuild state for a single aggregate (e.g. PO‑123).  
+   - Used by Process Graph Engine, Navigator, or diagnostics.
+
+2. **Per‑engine replay**  
+   - Charter Engine: re‑evaluate authority/governance decisions from a point in time.  
+   - Mesh Gateway (if ever needed): re‑derive decisions for audit.
+
+3. **Global replay (offline)**  
+   - Rebuild projections or read models.  
+   - Run in a separate process, not on the hot path.
+
+### 5.2 Replay contract
+
+For any consumer (e.g. Charter Engine):
+
+```ts
+interface EventConsumer {
+  apply(event: CanonicalEvent): void;
+}
+```
+
+Replay algorithm (per aggregate):
+
+1. Query `ledger_events` for `(domain, aggregateType, aggregateId)` ordered by `occurred_at`.  
+2. Start from initial state.  
+3. For each event, call `apply(event)`.  
+4. Final state is deterministic given the event sequence.
+
+### 5.3 Snapshots (v1 stance)
+
+- v1: **no snapshots required**; volumes are small.  
+- v2+: introduce optional `ledger_snapshots` per aggregate:
+
+  ```ts
+  interface Snapshot {
+    domain: string;
+    aggregateType: string;
+    aggregateId: string;
+    asOfEventId: string;
+    state: any;
+    createdAt: string;
+  }
+  ```
+
+- Replay from snapshot + subsequent events.
+
+---
+
+## 6. Event versioning strategy
+
+### 6.1 Principles
+
+- Events are **immutable** once written.  
+- You **never** rewrite history.  
+- Schema evolution is handled via **versioning + upcasting**, not mutation.
+
+### 6.2 Versioning model
+
+- Each event has `eventType` and `eventVersion`.  
+- Example:
+
+  - `P2P.PurchaseOrderIssued` v1  
+  - `P2P.PurchaseOrderIssued` v2  
+
+- Both can coexist in the Ledger.
+
+### 6.3 Upcasting
+
+Introduce an **upcaster pipeline** for consumers that want the latest shape:
+
+```ts
+interface StoredEvent {
+  eventType: string;
+  eventVersion: number;
+  payload: any;
+  // plus metadata
+}
+
+interface EventUpcaster {
+  canUpcast(eventType: string, fromVersion: number): boolean;
+  upcast(event: StoredEvent): StoredEvent;
+}
+```
+
+- On replay, the Ledger:
+
+  1. Reads stored event.  
+  2. Passes it through a chain of upcasters until it reaches the **current version**.  
+  3. Hands the upcasted event to consumers.
+
+### 6.4 Evolution rules
+
+- **Additive changes** (new optional fields):  
+  - Prefer bumping `schemaVersion` in `metadata`, keep `eventVersion` same.  
+- **Breaking changes** (rename/remove/semantic change):  
+  - Bump `eventVersion`.  
+  - Add upcaster from old → new.  
+- **New event types**:  
+  - Introduce new `eventType`, start at `eventVersion = 1`.
+
+---
+
+## 7. CEP v1 scope and non‑goals
+
+### In scope (v1)
+
+- Canonical event schema (as above).  
+- Ingestion from **Foundation ERP** and **Mesh Gateway**.  
+- Normalization + validation + deduplication.  
+- Append‑only Ledger storage.  
+- Simple per‑aggregate replay API.  
+- Basic version metadata (`eventVersion`, `schemaVersion`) without complex upcasters yet.
+
+### Out of scope (v1, but planned)
+
+- Full multi‑ERP ingestion (beyond Foundation ERP).  
+- Distributed Fabric integration.  
+- Snapshotting.  
+- Complex upcasting chains.  
+- Real‑time projections.
+
+
