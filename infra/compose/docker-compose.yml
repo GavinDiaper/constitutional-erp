@@ -132,6 +132,8 @@ services:
       - ../../services/navigator-ai/.env.example
     environment:
       DATABASE_PATH: /data/navigator-ai.db
+      INTEGRATION_HUB_URL: http://integration-hub:4017
+      INTEGRATION_HUB_API_KEY: change-me
       PGE_URL: http://process-graph:4005
       MESH_GATEWAY_URL: http://mesh-gateway:4003
       AUTHORITY_ENGINE_URL: http://authority-engine:4001
@@ -159,6 +161,8 @@ services:
       HUB_API_KEY: change-me
       HUB_INGRESS_ID: foundation-ingress
       IH_BASE_URL: http://integration-hub:4017
+      NAVIGATOR_AI_URL: http://navigator-ai:4016/api/v1
+      NAVIGATOR_AI_API_KEY: change-me
     depends_on:
       - foundation-erp
       - authority-engine

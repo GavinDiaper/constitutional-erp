@@ -150,8 +150,21 @@ export async function proxySubsystemGet(
 			headers
 		});
 	} catch (error) {
-		const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
-		return buildProxyErrorResponse(502, `Navigator proxy GET failed for ${requestUrl}: ${detail}`);
+		if (requestUrl.includes('://localhost')) {
+			const loopbackUrl = requestUrl.replace('://localhost', '://127.0.0.1');
+			try {
+				response = await fetch(loopbackUrl, {
+					method: 'GET',
+					headers
+				});
+			} catch {
+				const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+				return buildProxyErrorResponse(502, `Navigator proxy GET failed for ${requestUrl}: ${detail}`);
+			}
+		} else {
+			const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+			return buildProxyErrorResponse(502, `Navigator proxy GET failed for ${requestUrl}: ${detail}`);
+		}
 	}
 
 	const responseBody = await response.text();
@@ -185,8 +198,22 @@ export async function proxySubsystemPost(
 			body: JSON.stringify(body ?? {})
 		});
 	} catch (error) {
-		const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
-		return buildProxyErrorResponse(502, `Navigator proxy POST failed for ${requestUrl}: ${detail}`);
+		if (requestUrl.includes('://localhost')) {
+			const loopbackUrl = requestUrl.replace('://localhost', '://127.0.0.1');
+			try {
+				response = await fetch(loopbackUrl, {
+					method: 'POST',
+					headers,
+					body: JSON.stringify(body ?? {})
+				});
+			} catch {
+				const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+				return buildProxyErrorResponse(502, `Navigator proxy POST failed for ${requestUrl}: ${detail}`);
+			}
+		} else {
+			const detail = error instanceof Error ? error.message : `Failed to reach ${subsystem}`;
+			return buildProxyErrorResponse(502, `Navigator proxy POST failed for ${requestUrl}: ${detail}`);
+		}
 	}
 
 	const responseBody = await response.text();

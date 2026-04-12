@@ -13,35 +13,61 @@ interface EntityMapEntry {
 
 const ENTITY_MAP: Record<string, EntityMapEntry> = {
   quote: { domain: "o2c", aggregateType: "quote" },
+  o2cquote: { domain: "o2c", aggregateType: "quote" },
   salesorder: { domain: "o2c", aggregateType: "sales-order" },
+  o2csalesorder: { domain: "o2c", aggregateType: "sales-order" },
   arinvoice: { domain: "o2c", aggregateType: "ar-invoice" },
+  o2carinvoice: { domain: "o2c", aggregateType: "ar-invoice" },
   arpayment: { domain: "o2c", aggregateType: "ar-payment" },
+  o2carpayment: { domain: "o2c", aggregateType: "ar-payment" },
 
   requisition: { domain: "p2p", aggregateType: "requisition" },
+  p2prequisition: { domain: "p2p", aggregateType: "requisition" },
   supplier: { domain: "p2p", aggregateType: "supplier" },
+  p2psupplier: { domain: "p2p", aggregateType: "supplier" },
   purchaseorder: { domain: "p2p", aggregateType: "purchase-order" },
+  p2ppurchaseorder: { domain: "p2p", aggregateType: "purchase-order" },
   goodsreceipt: { domain: "p2p", aggregateType: "goods-receipt" },
+  p2pgoodsreceipt: { domain: "p2p", aggregateType: "goods-receipt" },
   supplierinvoice: { domain: "p2p", aggregateType: "supplier-invoice" },
+  p2psupplierinvoice: { domain: "p2p", aggregateType: "supplier-invoice" },
   appayment: { domain: "p2p", aggregateType: "ap-payment" },
+  p2pappayment: { domain: "p2p", aggregateType: "ap-payment" },
 
   account: { domain: "r2r", aggregateType: "account" },
+  r2raccount: { domain: "r2r", aggregateType: "account" },
   fiscalyear: { domain: "r2r", aggregateType: "fiscal-year" },
+  r2rfiscalyear: { domain: "r2r", aggregateType: "fiscal-year" },
   fiscalperiod: { domain: "r2r", aggregateType: "fiscal-period" },
+  r2rfiscalperiod: { domain: "r2r", aggregateType: "fiscal-period" },
   journal: { domain: "r2r", aggregateType: "journal" },
+  r2rjournal: { domain: "r2r", aggregateType: "journal" },
   taxregime: { domain: "r2r", aggregateType: "tax-regime" },
+  r2rtaxregime: { domain: "r2r", aggregateType: "tax-regime" },
   taxjurisdiction: { domain: "r2r", aggregateType: "tax-jurisdiction" },
+  r2rtaxjurisdiction: { domain: "r2r", aggregateType: "tax-jurisdiction" },
   taxcode: { domain: "r2r", aggregateType: "tax-code" },
+  r2rtaxcode: { domain: "r2r", aggregateType: "tax-code" },
   taxrate: { domain: "r2r", aggregateType: "tax-rate" },
+  r2rtaxrate: { domain: "r2r", aggregateType: "tax-rate" },
   taxrule: { domain: "r2r", aggregateType: "tax-rule" },
+  r2rtaxrule: { domain: "r2r", aggregateType: "tax-rule" },
   taxaccountmapping: { domain: "r2r", aggregateType: "tax-account-mapping" },
+  r2rtaxaccountmapping: { domain: "r2r", aggregateType: "tax-account-mapping" },
   taxtransactionline: { domain: "r2r", aggregateType: "tax-transaction-line" },
+  r2rtaxtransactionline: { domain: "r2r", aggregateType: "tax-transaction-line" },
 
 
   employee: { domain: "h2r", aggregateType: "employee" },
+  h2remployee: { domain: "h2r", aggregateType: "employee" },
   position: { domain: "h2r", aggregateType: "position" },
+  h2rposition: { domain: "h2r", aggregateType: "position" },
   assignment: { domain: "h2r", aggregateType: "assignment" },
+  h2rassignment: { domain: "h2r", aggregateType: "assignment" },
   credential: { domain: "h2r", aggregateType: "credential" },
-  authorityrule: { domain: "h2r", aggregateType: "authority-rule" }
+  h2rcredential: { domain: "h2r", aggregateType: "credential" },
+  authorityrule: { domain: "h2r", aggregateType: "authority-rule" },
+  h2rauthorityrule: { domain: "h2r", aggregateType: "authority-rule" }
 };
 
 function normalizeEntity(entity: string): string {
