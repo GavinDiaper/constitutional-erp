@@ -1,9 +1,18 @@
-const { mkdirSync } = require("node:fs");
+const { mkdirSync, existsSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { resolve } = require("node:path");
 const { config } = require("dotenv");
 
-config({ path: resolve(__dirname, "..", ".env"), override: true });
+const serviceRoot = resolve(__dirname, "..");
+
+[
+  resolve(serviceRoot, ".env"),
+  resolve(serviceRoot, ".env.example")
+].forEach((envPath) => {
+  if (existsSync(envPath)) {
+    config({ path: envPath, override: false });
+  }
+});
 
 mkdirSync("reports/newman", { recursive: true });
 
@@ -58,8 +67,9 @@ async function assertFoundationErpEndpoint(baseUrl, envOverrides) {
 }
 
 const cmd = process.execPath;
+const newmanBin = require.resolve("newman/bin/newman.js");
 const args = [
-  "node_modules/newman/bin/newman.js",
+  newmanBin,
   "run",
   "postman/FoundationERP.postman_collection.json",
   "-e",
@@ -73,12 +83,23 @@ const args = [
   "--bail"
 ];
 
-const inferredBaseUrl = process.env.PORT ? `http://localhost:${process.env.PORT}` : undefined;
+function isLocalBaseUrl(baseUrl) {
+  try {
+    const hostname = new URL(baseUrl).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+  } catch {
+    return false;
+  }
+}
+
+const resolvedBaseUrl = process.env.POSTMAN_BASE_URL ?? "http://localhost:3000";
+const useLocalDefaults = resolvedBaseUrl ? isLocalBaseUrl(resolvedBaseUrl) : false;
 
 const envOverrides = {
-  baseUrl: process.env.POSTMAN_BASE_URL ?? inferredBaseUrl,
-  apiKey: process.env.POSTMAN_API_KEY ?? process.env.API_KEY,
-  ingressId: process.env.POSTMAN_INGRESS_ID ?? process.env.INGRESS_ID_VALUE
+  baseUrl: resolvedBaseUrl,
+  apiKey: process.env.POSTMAN_API_KEY ?? (useLocalDefaults ? "change-me" : process.env.API_KEY),
+  ingressId:
+    process.env.POSTMAN_INGRESS_ID ?? (useLocalDefaults ? "foundation-ingress" : process.env.INGRESS_ID_VALUE)
 };
 
 if (!envOverrides.baseUrl) {
@@ -86,7 +107,10 @@ if (!envOverrides.baseUrl) {
 }
 
 if (!envOverrides.apiKey || !envOverrides.ingressId) {
-  throw new Error("Missing apiKey or ingressId for Postman run. Ensure API_KEY and INGRESS_ID_VALUE are configured.");
+  throw new Error(
+    "Missing apiKey or ingressId for Postman run. Set POSTMAN_API_KEY/POSTMAN_INGRESS_ID or API_KEY/INGRESS_ID_VALUE. " +
+      "Local defaults are applied only when POSTMAN_BASE_URL points to localhost."
+  );
 }
 
 Object.entries(envOverrides).forEach(([key, value]) => {
