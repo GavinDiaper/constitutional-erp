@@ -99,9 +99,11 @@ function Invoke-Stage {
   Write-Host "[stage] $Name"
   Write-Host "============================================================"
 
+  $global:LASTEXITCODE = 0
   & $Action
-  if ($LASTEXITCODE -ne 0) {
-    throw "Stage failed: $Name (exit code $LASTEXITCODE)"
+  $stageExitCode = if ($null -eq $global:LASTEXITCODE) { 0 } else { [int]$global:LASTEXITCODE }
+  if ($stageExitCode -ne 0) {
+    throw "Stage failed: $Name (exit code $stageExitCode)"
   }
 }
 
