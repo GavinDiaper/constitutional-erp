@@ -7,7 +7,18 @@ exports.runMigrations = runMigrations;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const connection_1 = require("./connection");
-const MIGRATION_DIR = node_path_1.default.join(__dirname, "migrations");
+function resolveMigrationDir() {
+    const candidates = [
+        node_path_1.default.join(__dirname, "migrations"),
+        node_path_1.default.join(process.cwd(), "src", "db", "migrations")
+    ];
+    for (const candidate of candidates) {
+        if (node_fs_1.default.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+    throw new Error(`Migration directory not found. Checked: ${candidates.join(", ")}`);
+}
 function ensureMigrationsTable() {
     connection_1.db.exec(`
     CREATE TABLE IF NOT EXISTS migration (
@@ -21,7 +32,8 @@ function getAppliedMigrations() {
     return new Set(rows.map((row) => row.id));
 }
 function applyMigration(fileName) {
-    const fullPath = node_path_1.default.join(MIGRATION_DIR, fileName);
+    const migrationDir = resolveMigrationDir();
+    const fullPath = node_path_1.default.join(migrationDir, fileName);
     const sql = node_fs_1.default.readFileSync(fullPath, "utf8");
     const run = connection_1.db.transaction(() => {
         connection_1.db.exec(sql);
@@ -32,9 +44,10 @@ function applyMigration(fileName) {
 }
 function runMigrations() {
     ensureMigrationsTable();
+    const migrationDir = resolveMigrationDir();
     const applied = getAppliedMigrations();
     const files = node_fs_1.default
-        .readdirSync(MIGRATION_DIR)
+        .readdirSync(migrationDir)
         .filter((name) => name.endsWith(".sql"))
         .sort();
     for (const file of files) {

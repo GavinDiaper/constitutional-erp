@@ -8,6 +8,7 @@ const express_1 = __importDefault(require("express"));
 const helmet_1 = __importDefault(require("helmet"));
 const authority_routes_1 = require("./api/authority.routes");
 const events_routes_1 = require("./api/events.routes");
+const query_routes_1 = require("./api/query.routes");
 const env_1 = require("./config/env");
 const apiKeyAuth_1 = require("./middleware/apiKeyAuth");
 const readinessGate_1 = require("./middleware/readinessGate");
@@ -29,6 +30,7 @@ function createApp() {
     });
     app.use("/authority", (0, apiKeyAuth_1.apiKeyAuth)(config.apiKey), (0, readinessGate_1.readinessGate)(), authority_routes_1.authorityRouter);
     app.use("/api/v1", (0, apiKeyAuth_1.apiKeyAuth)(config.apiKey), events_routes_1.eventRouter);
+    app.use("/api/v1", (0, apiKeyAuth_1.apiKeyAuth)(config.apiKey), query_routes_1.queryRouter);
     app.use((err, _req, res, _next) => {
         const problem = (0, errors_1.toProblem)(err);
         res.status(problem.status).json(problem.body);
