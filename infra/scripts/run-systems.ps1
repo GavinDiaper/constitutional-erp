@@ -50,6 +50,11 @@ $ServiceTemplates = @(
     DefaultPort = 4017
   },
   @{
+    Name = "user-identity"
+    Path = Join-Path $RepoRoot "services\user-identity"
+    DefaultPort = 4008
+  },
+  @{
     Name = "navigator-ai"
     Path = Join-Path $RepoRoot "services\navigator-ai"
     DefaultPort = 4016
@@ -437,6 +442,7 @@ function Get-ServiceDatabasePath($svc) {
       "event-processor" { $databasePath = "event-processor.db" }
       "process-graph" { $databasePath = "process-graph.db" }
       "integration-hub" { $databasePath = "integration-hub.db" }
+      "user-identity" { $databasePath = "user-identity.db" }
       "navigator-ai" { $databasePath = "navigator-ai.db" }
     }
   }
