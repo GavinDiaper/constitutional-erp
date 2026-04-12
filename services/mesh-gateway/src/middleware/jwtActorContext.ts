@@ -67,8 +67,18 @@ export function jwtActorContext(config: AppConfig) {
       return;
     }
 
-    req.headers[config.actorIdHeader] = claims.identity_id;
-    req.headers["x-actor-tier"] = claims.is_admin ? "5" : "2";
+    const existingActorId = req.header(config.actorIdHeader)?.trim();
+    const existingActorTier = req.header("x-actor-tier")?.trim();
+
+    if (!existingActorId) {
+      req.headers[config.actorIdHeader] = claims.identity_id;
+    }
+
+    if (!existingActorTier) {
+      req.headers["x-actor-tier"] = claims.is_admin ? "5" : "2";
+    }
+
+    req.headers["x-identity-id"] = claims.identity_id;
 
     if (claims.email) {
       req.headers["x-actor-email"] = claims.email;

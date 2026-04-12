@@ -191,6 +191,7 @@ export class FoundationAdapter implements BackendAdapter {
       "authorization",
       "x-actor-id",
       "x-actor-tier",
+      "x-identity-id",
       "x-actor-email",
       "x-actor-h2r-employee-id"
     ];

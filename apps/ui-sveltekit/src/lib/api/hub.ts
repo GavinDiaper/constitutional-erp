@@ -12,10 +12,12 @@ export async function fetchHubJson<T>(path: string, actor: ActorContext): Promis
 		const contentType = response.headers.get('content-type') ?? '';
 		if (contentType.includes('application/json')) {
 			const problem = await response.json();
-			throw new Error(formatProblemMessage(problem, 'Integration Hub request failed'));
+			throw new Error(formatProblemMessage(problem, `Integration Hub request failed (${response.status})`));
 		}
 
-		throw new Error(await response.text());
+		const bodyText = await response.text();
+		const detail = bodyText.trim() ? bodyText : 'No response body';
+		throw new Error(`Integration Hub request failed (${response.status}): ${detail}`);
 	}
 
 	return (await response.json()) as T;

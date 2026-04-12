@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { actorOptions, actorStore, setActorById } from '$lib/stores/actorStore';
 	import { themeStore } from '$lib/stores/themeStore';
 
@@ -51,10 +52,13 @@
 			{/each}
 		</select>
 
-		<form method="POST" action="/auth/logout">
-			<button type="submit" class="btn-ghost rounded-md px-2.5 py-1.5 text-xs" title="Sign out">
-				Sign out
-			</button>
-		</form>
+		<a
+			href={resolve('/auth/logout')}
+			data-sveltekit-preload-data="off"
+			class="btn-ghost rounded-md px-2.5 py-1.5 text-xs"
+			title="Sign out"
+		>
+			Sign out
+		</a>
 	</div>
 </header>

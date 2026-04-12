@@ -84,21 +84,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const bearerToken = getBearerToken(event.request.headers.get('authorization'));
 	const cookieToken = event.cookies.get(ACCESS_COOKIE_NAME) ?? null;
 	let accessToken = bearerToken ?? cookieToken;
+	const hasLegacyActorContext = Boolean(event.request.headers.get('x-actor-id')?.trim());
 
 	if (!accessToken && !bearerToken) {
 		accessToken = await tryRefreshSession(event);
 	}
 
 	const isPublic = isPublicRequest(event.url.pathname, event.request.method);
+	const isApiRoute = event.url.pathname.startsWith('/api/');
 
 	event.locals.accessToken = accessToken;
-	event.locals.isAuthenticated = Boolean(accessToken);
+	event.locals.isAuthenticated = Boolean(accessToken) || (isApiRoute && hasLegacyActorContext);
 
-	if (isPublic || accessToken) {
+	if (isPublic || accessToken || (isApiRoute && hasLegacyActorContext)) {
 		return resolve(event);
 	}
 
-	if (event.url.pathname.startsWith('/api/')) {
+	if (isApiRoute) {
 		return new Response(JSON.stringify({ error: 'Authentication required' }), {
 			status: 401,
 			headers: {

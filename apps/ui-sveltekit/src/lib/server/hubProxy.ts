@@ -24,33 +24,10 @@ export interface SubsystemConfig {
 	apiKey: string;
 }
 
-function findCookieValue(cookieHeader: string | null, name: string): string | null {
-	if (!cookieHeader) {
-		return null;
-	}
-
-	const encodedName = `${name}=`;
-	for (const pair of cookieHeader.split(';')) {
-		const trimmed = pair.trim();
-		if (!trimmed.startsWith(encodedName)) {
-			continue;
-		}
-
-		return trimmed.slice(encodedName.length);
-	}
-
-	return null;
-}
-
 function resolveAuthorizationHeader(incomingHeaders: Headers): string | null {
 	const incomingAuth = incomingHeaders.get('authorization');
 	if (incomingAuth?.toLowerCase().startsWith('bearer ')) {
 		return incomingAuth;
-	}
-
-	const sessionCookie = findCookieValue(incomingHeaders.get('cookie'), 'identity_session');
-	if (sessionCookie) {
-		return `Bearer ${sessionCookie}`;
 	}
 
 	return null;
