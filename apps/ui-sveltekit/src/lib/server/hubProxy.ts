@@ -215,11 +215,17 @@ export async function proxyHubRequest(
 		headers.set('content-type', 'application/json');
 	}
 
-	const response = await fetch(requestUrl, {
-		method,
-		headers,
-		body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
-	});
+	let response: Response;
+	try {
+		response = await fetch(requestUrl, {
+			method,
+			headers,
+			body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
+		});
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : 'Failed to reach hub';
+		return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+	}
 
 	const responseBody = await response.text();
 	const contentType = response.headers.get('content-type') ?? 'application/json';
@@ -247,11 +253,17 @@ export async function proxyIhRequest(
 		headers.set('content-type', 'application/json');
 	}
 
-	const response = await fetch(requestUrl, {
-		method,
-		headers,
-		body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
-	});
+	let response: Response;
+	try {
+		response = await fetch(requestUrl, {
+			method,
+			headers,
+			body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
+		});
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : 'Failed to reach integration hub';
+		return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+	}
 
 	const responseBody = await response.text();
 	const contentType = response.headers.get('content-type') ?? 'application/json';

@@ -6,27 +6,32 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	const mappedRoute = mapEntityTypeToRoute(params.entityType, params.entityId);
 	if (mappedRoute.startsWith('/process/')) {
 		const response = await proxyIhGet(mappedRoute, request.headers);
-		if (response.ok || !isQuoteEntityType(params.entityType)) {
+		if (response.ok || !supportsHubQueryFallback(params.entityType)) {
 			return response;
 		}
 
-		const fallback = await buildQuoteProcessFallback(params.entityType, params.entityId, request.headers);
+		const fallback = await buildProcessFallbackFromHubQuery(params.entityType, params.entityId, request.headers);
 		return fallback ?? response;
 	}
 	return proxyHubGet(mappedRoute, request.headers);
 };
 
-function isQuoteEntityType(entityType: string): boolean {
+function supportsHubQueryFallback(entityType: string): boolean {
 	const normalized = entityType.trim().toLowerCase();
-	return normalized === 'o2c_quote' || normalized === 'quote';
+	return normalized === 'o2c_quote' || normalized === 'quote' || normalized === 'r2r_journal' || normalized === 'journal';
 }
 
-async function buildQuoteProcessFallback(
+async function buildProcessFallbackFromHubQuery(
 	entityType: string,
 	entityId: string,
 	headers: Headers
 ): Promise<Response | null> {
-	const queryResponse = await proxyHubGet(`/query/o2c_quote/${encodeURIComponent(entityId)}`, headers);
+	const queryPath = resolveFallbackQueryPath(entityType, entityId);
+	if (!queryPath) {
+		return null;
+	}
+
+	const queryResponse = await proxyHubGet(queryPath, headers);
 	if (!queryResponse.ok) {
 		return null;
 	}
@@ -46,6 +51,21 @@ async function buildQuoteProcessFallback(
 		attributes,
 		links: []
 	});
+}
+
+function resolveFallbackQueryPath(entityType: string, entityId: string): string | null {
+	const normalized = entityType.trim().toLowerCase();
+	const encodedId = encodeURIComponent(entityId);
+
+	if (normalized === 'o2c_quote' || normalized === 'quote') {
+		return `/query/o2c_quote/${encodedId}`;
+	}
+
+	if (normalized === 'r2r_journal' || normalized === 'journal') {
+		return `/query/r2r_journal/${encodedId}`;
+	}
+
+	return null;
 }
 
 function extractAttributes(payload: unknown): Record<string, unknown> | null {
