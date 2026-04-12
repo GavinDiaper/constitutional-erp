@@ -101,7 +101,7 @@
 	let poValueByState: Array<{ label: string; total: number }> = [];
 	let approvalQueueItems: ApprovalQueueItem[] = [];
 
-	const palette = ['#22d3ee', '#38bdf8', '#f59e0b', '#34d399', '#f87171', '#a78bfa', '#f472b6', '#60a5fa'];
+	const palette = ['#dc2626', '#f97316', '#eab308', '#84cc16', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6'];
 
 	$: quoteStatusTotal = quoteStatusData.reduce((sum, item) => sum + item.value, 0);
 	$: employeeStatusTotal = employeeStatusData.reduce((sum, item) => sum + item.value, 0);
