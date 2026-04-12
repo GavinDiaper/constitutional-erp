@@ -159,7 +159,7 @@ services:
     depends_on:
       - user-identity
     ports:
-      - "${USER_IDENTITY_APP_PORT:-4174}:4174"
+      - "${USER_IDENTITY_APP_PORT:-4174}:3000"
 
   navigator-ai:
     build:
