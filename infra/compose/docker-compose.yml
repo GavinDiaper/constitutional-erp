@@ -155,6 +155,10 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 4173
+      HUB_BASE_URL: http://foundation-erp:3000/api/v1
+      HUB_API_KEY: change-me
+      HUB_INGRESS_ID: foundation-ingress
+      IH_BASE_URL: http://integration-hub:4017
     depends_on:
       - foundation-erp
       - authority-engine
