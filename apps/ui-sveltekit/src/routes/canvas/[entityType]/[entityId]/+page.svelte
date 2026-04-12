@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import ActionList from '$lib/components/canvas/ActionList.svelte';
 	import EntityHeader from '$lib/components/canvas/EntityHeader.svelte';
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
@@ -61,7 +62,7 @@
 		}
 
 		const lines: string[] = ['sequenceDiagram'];
-		const refById = new Map<string, string>();
+		const refById = new SvelteMap<string, string>();
 
 		for (const node of flow.nodes) {
 			const ref = `P${node.sequence}`;
@@ -443,6 +444,7 @@
 							{inferredFlowDomain} flow derived from Postman end-to-end sequence.
 						</p>
 					</div>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a class="rounded-md border dark:border-white/25 border-slate-300 px-2 py-1 text-xs dark:text-white/85 text-slate-700 dark:hover:bg-white/10 hover:bg-slate-500/10" href={flowDeepLinkHref}>
 						Open flow explorer
 					</a>

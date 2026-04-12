@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
 	import {
 		getApprovalAttentionItems,
@@ -230,7 +231,7 @@
 	}
 
 	function aggregateStates(values: Array<string | undefined>, fallback: string): ChartSlice[] {
-		const counts = new Map<string, number>();
+		const counts = new SvelteMap<string, number>();
 
 		for (const value of values) {
 			const label = normalizeLabel(value || fallback);
@@ -244,7 +245,7 @@
 	}
 
 	function aggregateJournalsByPeriod(rows: JournalRow[]): Array<{ label: string; total: number }> {
-		const totals = new Map<string, number>();
+		const totals = new SvelteMap<string, number>();
 
 		for (const row of rows) {
 			const period = normalizeLabel(
@@ -277,7 +278,7 @@
 			return Number.isNaN(parsed.getTime()) ? true : parsed.getFullYear() === currentYear;
 		});
 
-		const totals = new Map<string, number>();
+		const totals = new SvelteMap<string, number>();
 		for (const row of filteredByYear) {
 			const state = normalizeLabel(row.state || 'Unknown');
 			const amount = toNumber(row.total_amount) || toNumber(row.amount);
@@ -402,6 +403,7 @@
 			<ul class="mt-3 grid gap-2 md:grid-cols-2">
 				{#each approvalQueueItems as item (item.entityType + '-' + item.id)}
 					<li>
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a class="block rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={item.href}>
 							<div class="flex items-center justify-between gap-2">
 								<p class="font-semibold">{item.id}</p>

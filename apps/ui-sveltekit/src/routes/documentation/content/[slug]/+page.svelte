@@ -21,5 +21,6 @@
 </section>
 
 <article class="prose prose-slate mt-6 max-w-none rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html data.html}
 </article>

@@ -36,7 +36,7 @@
 		}
 	];
 
-	$: cardsWithCounts = domainCards.map((domain) => ({
+	const cardsWithCounts = domainCards.map((domain) => ({
 		...domain,
 		flowCount: listFlowsByDomain(domain.label).length
 	}));

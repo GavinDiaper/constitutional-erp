@@ -91,8 +91,8 @@
 		};
 	}
 
-	async function renderDiagram(): Promise<void> {
-		if (!browser || !definition) return;
+	async function renderDiagram(definitionValue: string, fontSizeValue: number): Promise<void> {
+		if (!browser || !definitionValue) return;
 		renderError = '';
 		try {
 			await ensureMermaidLoaded();
@@ -102,20 +102,20 @@
 				securityLevel: 'loose',
 				theme: $themeStore === 'light' ? 'default' : 'dark',
 				themeVariables: {
-					fontSize: `${fontSize}px`
+					fontSize: `${fontSizeValue}px`
 				},
 				sequence: {
-					actorFontSize: fontSize,
-					messageFontSize: fontSize,
-					noteFontSize: fontSize
+					actorFontSize: fontSizeValue,
+					messageFontSize: fontSizeValue,
+					noteFontSize: fontSizeValue
 				}
 			});
 			const renderId = `mermaid-${Math.random().toString(36).slice(2, 10)}`;
-			const result = await mermaid?.render(renderId, definition);
+			const result = await mermaid?.render(renderId, definitionValue);
 			if (result?.svg) {
 				svgHtml = result.svg;
 				await tick();
-				attachClickHandlers(definition);
+				attachClickHandlers(definitionValue);
 			}
 		} catch (err) {
 			renderError = err instanceof Error ? err.message : 'Failed to render diagram.';
@@ -145,7 +145,7 @@
 	}
 
 	onMount(() => {
-		void renderDiagram();
+		void renderDiagram(definition, fontSize);
 		document.addEventListener('fullscreenchange', syncFullscreenState);
 		return () => {
 			cleanupClickBinding?.();
@@ -154,11 +154,7 @@
 		};
 	});
 
-	$: {
-		definition;
-		fontSize;
-		void renderDiagram();
-	}
+	$: void renderDiagram(definition, fontSize);
 </script>
 
 <div bind:this={containerHost} class="mermaid-shell rounded-xl border dark:border-white/25 border-slate-300 dark:bg-white/5 bg-white p-4">

@@ -6,7 +6,7 @@
 	let showRaw = false;
 
 	// Resolve to a plain object/array if possible
-	let json: object | null = null;
+	let json: object | null;
 	$: {
 		if (typeof value === 'object' && value !== null) {
 			json = value as object;

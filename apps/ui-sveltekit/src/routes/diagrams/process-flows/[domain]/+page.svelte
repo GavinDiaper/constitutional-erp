@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { resolve } from '$app/paths';
+	import { SvelteMap } from 'svelte/reactivity';
 	import DiagramBreadcrumb from '$lib/components/shared/DiagramBreadcrumb.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { getProcessFlowBundle, getDefaultFlowForDomain, listFlowsByDomain } from '$lib/flows';
@@ -43,7 +44,7 @@
 		}
 
 		const lines: string[] = ['sequenceDiagram'];
-		const refById = new Map<string, string>();
+		const refById = new SvelteMap<string, string>();
 
 		for (const node of flow.nodes) {
 			const ref = `P${node.sequence}`;

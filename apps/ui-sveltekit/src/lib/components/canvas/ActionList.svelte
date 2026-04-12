@@ -175,7 +175,7 @@
 							<p class="muted mt-1 text-xs">{action.link.method ?? 'GET'} {action.link.href}</p>
 							{#if requiredFields.length > 0 || optionalFields.length > 0}
 								<div class="mt-2 space-y-1.5">
-									{#each requiredFields as field}
+									{#each requiredFields as field (field)}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
 										{@const lookupKey = resolveLookupUrl(xLookup, action)}
@@ -192,7 +192,7 @@
 														on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 													>
 														<option value="">— select —</option>
-														{#each fieldSchema?.enum ?? [] as enumValue}
+														{#each fieldSchema?.enum ?? [] as enumValue (String(enumValue))}
 															<option value={enumValue}>{enumValue}</option>
 														{/each}
 													</select>
@@ -211,7 +211,7 @@
 													on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 												>
 													<option value="">— select —</option>
-													{#each fetchedOptions as opt}
+													{#each fetchedOptions as opt (opt.value)}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
 												</select>
@@ -233,7 +233,7 @@
 											{/if}
 										</label>
 									{/each}
-									{#each optionalFields as field}
+									{#each optionalFields as field (field)}
 										{@const fieldSchema = action.link.inputSchema?.properties?.[field]}
 										{@const xLookup = fieldSchema?.['x-lookup']}
 										{@const lookupKey = resolveLookupUrl(xLookup, action)}
@@ -248,7 +248,7 @@
 														on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 													>
 														<option value="">— optional —</option>
-														{#each fieldSchema?.enum ?? [] as enumValue}
+														{#each fieldSchema?.enum ?? [] as enumValue (String(enumValue))}
 															<option value={enumValue}>{enumValue}</option>
 														{/each}
 													</select>
@@ -260,7 +260,7 @@
 													on:input={(e) => setInput(action.name, field, (e.target as HTMLSelectElement).value)}
 												>
 													<option value="">— optional —</option>
-													{#each fetchedOptions as opt}
+													{#each fetchedOptions as opt (opt.value)}
 														<option value={opt.value}>{opt.label}</option>
 													{/each}
 												</select>

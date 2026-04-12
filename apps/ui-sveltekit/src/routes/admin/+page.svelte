@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { fetchAggregateIds } from '$lib/api/aggregates';
@@ -240,7 +241,7 @@
 			};
 		}
 
-		const allowedByInstance = new Map<string, Set<string>>();
+		const allowedByInstance = new SvelteMap<string, Set<string>>();
 		const tooltips: Record<string, string> = {};
 		await Promise.all(
 			instanceNodes.map(async (node) => {

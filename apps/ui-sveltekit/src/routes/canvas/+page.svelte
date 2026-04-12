@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
 	import { getO2CQuotes, type O2CQuote } from '$lib/api/quotes';
 	import { queryTable } from '$lib/api/query';
@@ -376,7 +377,7 @@
 	} satisfies Record<DomainTab, EntitySection[]>;
 
 	function stateCounts(items: EntityListItem[]): Array<{ state: string; count: number }> {
-		const counts = new Map<string, number>();
+		const counts = new SvelteMap<string, number>();
 		for (const item of items) {
 			counts.set(item.state, (counts.get(item.state) ?? 0) + 1);
 		}
@@ -499,6 +500,7 @@
 					{:else}
 						{#each visibleItems as item (item.id)}
 							<li>
+								<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 								<a class="block rounded border dark:border-white/10 border-slate-200 px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={item.href}>
 									<div class="flex items-center justify-between gap-3">
 										<span class="font-semibold">{item.id}</span>

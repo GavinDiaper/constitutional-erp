@@ -174,7 +174,7 @@ function buildTransitionSetFromRegistry(cwd, warnings) {
 		'registry.ts'
 	);
 
-	let registryContent = '';
+	let registryContent;
 	try {
 		registryContent = readFileSync(registryPath, 'utf8');
 	} catch {
@@ -203,7 +203,7 @@ function buildTransitionSetFromRegistry(cwd, warnings) {
 			`${moduleName}.ts`
 		);
 
-		let content = '';
+		let content;
 		try {
 			content = readFileSync(transitionFile, 'utf8');
 		} catch {

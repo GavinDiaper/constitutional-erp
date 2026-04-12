@@ -13,6 +13,7 @@
 	<div class="flex flex-wrap items-center gap-2 text-xs dark:text-slate-200 text-slate-700">
 		{#each items as item, index (item.label)}
 			{#if item.href}
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a class="rounded px-2 py-1 font-semibold dark:hover:bg-white/10 hover:bg-slate-100" href={item.href}>{item.label}</a>
 			{:else}
 				<span class="rounded dark:bg-white/10 dark:text-white bg-slate-200/70 px-2 py-1 font-semibold text-slate-800">{item.label}</span>

@@ -248,7 +248,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedRows as row}
+					{#each sortedRows as row, rowIndex (rowIndex)}
 						<tr class="border-b border-slate-100 odd:bg-slate-50/60">
 							{#each columnHeaders as col (col)}
 								<td class="py-1.5 pr-4 text-slate-800 whitespace-nowrap">{row[col] ?? ''}</td>

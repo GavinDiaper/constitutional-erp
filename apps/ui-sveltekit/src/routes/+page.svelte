@@ -189,7 +189,7 @@ class D1,D2,D3,D4 fabric;`;
 		Click any box to open the dedicated system or domain diagram page.
 	</p>
 	<div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-		{#each featuredDiagramBoxes as box}
+		{#each featuredDiagramBoxes as box (box.id)}
 			<a class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${box.accentClass}`} href={resolve('/diagrams/[diagramId]', { diagramId: box.id })}>
 				<p class="text-sm font-semibold text-slate-900">{box.title}</p>
 				<p class="mt-2 text-xs text-slate-700">{box.summary}</p>
