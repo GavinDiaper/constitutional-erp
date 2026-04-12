@@ -7721,7 +7721,7 @@
                       "query": [
                         {
                           "key": "limit",
-                          "value": "50"
+                          "value": "500"
                         },
                         {
                           "key": "offset",
@@ -7731,7 +7731,7 @@
                       "host": [
                         "{{foundationBaseUrl}}"
                       ],
-                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=50&offset=0",
+                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=500&offset=0",
                       "path": [
                         "api",
                         "v1",
@@ -8609,7 +8609,7 @@
                       "query": [
                         {
                           "key": "limit",
-                          "value": "50"
+                          "value": "500"
                         },
                         {
                           "key": "offset",
@@ -8619,7 +8619,7 @@
                       "host": [
                         "{{foundationBaseUrl}}"
                       ],
-                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=50&offset=0",
+                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=500&offset=0",
                       "path": [
                         "api",
                         "v1",
@@ -9532,7 +9532,7 @@
                       "query": [
                         {
                           "key": "limit",
-                          "value": "50"
+                          "value": "500"
                         },
                         {
                           "key": "offset",
@@ -9542,7 +9542,7 @@
                       "host": [
                         "{{foundationBaseUrl}}"
                       ],
-                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=50&offset=0",
+                      "raw": "{{foundationBaseUrl}}/api/v1/query/r2r_ledger_entry?limit=500&offset=0",
                       "path": [
                         "api",
                         "v1",

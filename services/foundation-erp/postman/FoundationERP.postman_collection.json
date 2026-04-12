@@ -7717,7 +7717,7 @@
                                                                   "query":  [
                                                                                 {
                                                                                     "key":  "limit",
-                                                                                    "value":  "50"
+                                                                                    "value":  "500"
                                                                                 },
                                                                                 {
                                                                                     "key":  "offset",
@@ -7727,7 +7727,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=50\u0026offset=0",
+                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=500\u0026offset=0",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",
@@ -8605,7 +8605,7 @@
                                                                   "query":  [
                                                                                 {
                                                                                     "key":  "limit",
-                                                                                    "value":  "50"
+                                                                                    "value":  "500"
                                                                                 },
                                                                                 {
                                                                                     "key":  "offset",
@@ -8615,7 +8615,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=50\u0026offset=0",
+                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=500\u0026offset=0",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",
@@ -9528,7 +9528,7 @@
                                                                   "query":  [
                                                                                 {
                                                                                     "key":  "limit",
-                                                                                    "value":  "50"
+                                                                                    "value":  "500"
                                                                                 },
                                                                                 {
                                                                                     "key":  "offset",
@@ -9538,7 +9538,7 @@
                                                                   "host":  [
                                                                                "{{baseUrl}}"
                                                                            ],
-                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=50\u0026offset=0",
+                                                                  "raw":  "{{baseUrl}}/api/v1/query/r2r_ledger_entry?limit=500\u0026offset=0",
                                                                   "path":  [
                                                                                "api",
                                                                                "v1",

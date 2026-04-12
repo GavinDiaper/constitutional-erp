@@ -1,5 +1,5 @@
 param(
-  [string]$SourceRoot = $PSScriptRoot,
+  [string]$SourceRoot = (Join-Path $PSScriptRoot "..\.."),
   [string]$DestinationRoot = "E:\ERP",
   [switch]$DryRun,
   [switch]$CleanDestination
@@ -72,31 +72,20 @@ function Get-RelativePath([string]$basePath, [string]$targetPath) {
   return $relative
 }
 
-function Get-RepoRoots([string]$root) {
-  $repoRoots = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+function Resolve-RepoRoot([string]$path) {
+  $resolved = ""
 
-  $ignoreFiles = Get-ChildItem -Path $root -Filter ".gitignore" -File -Recurse -Force -ErrorAction SilentlyContinue
-  foreach ($ignoreFile in $ignoreFiles) {
-    $candidate = $ignoreFile.DirectoryName
-    $topLevel = ""
-
-    try {
-      $topLevel = (& git -C $candidate rev-parse --show-toplevel 2>$null).Trim()
-    } catch {
-      $topLevel = ""
-    }
-
-    if ([string]::IsNullOrWhiteSpace($topLevel)) {
-      continue
-    }
-
-    $full = Normalize-Path $topLevel
-    if ($full.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
-      [void]$repoRoots.Add($full)
-    }
+  try {
+    $resolved = (& git -C $path rev-parse --show-toplevel 2>$null).Trim()
+  } catch {
+    $resolved = ""
   }
 
-  return @($repoRoots | ForEach-Object { $_ }) | Sort-Object
+  if ([string]::IsNullOrWhiteSpace($resolved)) {
+    throw "Unable to resolve a git repository root from path: $path"
+  }
+
+  return Normalize-Path $resolved
 }
 
 function Copy-GitFiles([string]$repoRoot, [string]$sourceRoot, [string]$destinationRoot, [switch]$dryRun) {
@@ -135,48 +124,6 @@ function Copy-GitFiles([string]$repoRoot, [string]$sourceRoot, [string]$destinat
   return $count
 }
 
-function Is-UnderAnyRepo([string]$filePath, [string[]]$repoRoots) {
-  foreach ($repoRoot in $repoRoots) {
-    $prefix = $repoRoot.TrimEnd('\') + "\"
-    if ($filePath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-      return $true
-    }
-  }
-
-  return $false
-}
-
-function Copy-NonRepoFiles([string]$sourceRoot, [string]$destinationRoot, [string[]]$repoRoots, [switch]$dryRun) {
-  $files = Get-ChildItem -Path $sourceRoot -File -Recurse -Force -ErrorAction SilentlyContinue
-  $count = 0
-
-  foreach ($file in $files) {
-    $sourceFile = Normalize-Path $file.FullName
-
-    if ($sourceFile -like "*\\.git\\*") {
-      continue
-    }
-
-    if (Is-UnderAnyRepo -filePath $sourceFile -repoRoots $repoRoots) {
-      continue
-    }
-
-    $relative = Get-RelativePath -basePath $sourceRoot -targetPath $sourceFile
-    $destinationFile = Join-Path $destinationRoot $relative
-    $destinationDir = Split-Path -Parent $destinationFile
-    Ensure-Directory $destinationDir
-
-    if (-not $dryRun) {
-      Copy-Item -LiteralPath $sourceFile -Destination $destinationFile -Force
-    }
-
-    $count += 1
-  }
-
-  Write-Info "Copied $count non-repo file(s)."
-  return $count
-}
-
 $sourceRootFull = Normalize-Path $SourceRoot
 $destinationBaseRootFull = Normalize-Path $DestinationRoot
 
@@ -200,17 +147,11 @@ if ($CleanDestination -and -not $DryRun) {
   Get-ChildItem -Path $destinationRootFull -Force | Remove-Item -Recurse -Force
 }
 
-$repoRoots = Get-RepoRoots -root $sourceRootFull
-Write-Info "Discovered $($repoRoots.Count) git repo root(s)."
-foreach ($repoRoot in $repoRoots) {
-  Write-Info "Repo root: $repoRoot"
-}
+$repoRoot = Resolve-RepoRoot -path $sourceRootFull
+Write-Info "Repo root: $repoRoot"
 
-$total = 0
-foreach ($repoRoot in $repoRoots) {
-  $total += Copy-GitFiles -repoRoot $repoRoot -sourceRoot $sourceRootFull -destinationRoot $destinationRootFull -dryRun:$DryRun
-}
+$sourceRootFull = $repoRoot
 
-$total += Copy-NonRepoFiles -sourceRoot $sourceRootFull -destinationRoot $destinationRootFull -repoRoots $repoRoots -dryRun:$DryRun
+$total = Copy-GitFiles -repoRoot $repoRoot -sourceRoot $sourceRootFull -destinationRoot $destinationRootFull -dryRun:$DryRun
 
 Write-Info "Done. Total file(s) processed: $total"
