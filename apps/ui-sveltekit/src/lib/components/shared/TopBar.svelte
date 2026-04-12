@@ -50,5 +50,11 @@
 				<option value={actor.actorId}>{actor.actorId} (Tier {actor.authorityTier})</option>
 			{/each}
 		</select>
+
+		<form method="POST" action="/auth/logout">
+			<button type="submit" class="btn-ghost rounded-md px-2.5 py-1.5 text-xs" title="Sign out">
+				Sign out
+			</button>
+		</form>
 	</div>
 </header>

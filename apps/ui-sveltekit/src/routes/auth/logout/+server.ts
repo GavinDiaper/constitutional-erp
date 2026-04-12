@@ -1,0 +1,28 @@
+import { redirect, type RequestHandler } from '@sveltejs/kit';
+
+const ACCESS_COOKIE_NAME = 'identity_session';
+const REFRESH_COOKIE_NAME = 'identity_refresh';
+const IDENTITY_BASE_URL = (process.env.IDENTITY_BASE_URL ?? 'http://localhost:4008').replace(/\/$/, '');
+
+export const POST: RequestHandler = async ({ cookies }) => {
+	const refreshToken = cookies.get(REFRESH_COOKIE_NAME) ?? '';
+
+	if (refreshToken) {
+		try {
+			await fetch(`${IDENTITY_BASE_URL}/auth/logout`, {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({ refreshToken })
+			});
+		} catch {
+			// Ignore upstream logout errors and always clear local session cookies.
+		}
+	}
+
+	cookies.delete(ACCESS_COOKIE_NAME, { path: '/' });
+	cookies.delete(REFRESH_COOKIE_NAME, { path: '/' });
+
+	throw redirect(303, '/');
+};
