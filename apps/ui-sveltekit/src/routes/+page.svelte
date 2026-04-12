@@ -162,11 +162,14 @@ class D1,D2,D3,D4 fabric;`;
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/dashboard')}>
 					Open Dashboard
 				</a>
+				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/navigator')}>
+					Open Navigator **AI Driven UX**
+				</a>
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/canvas')}>
 					Open Canvas
 				</a>
-				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/diagrams')}>
-					Open Diagram Explorer
+				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/documentation')}>
+					Open Documentation Explorer
 				</a>
 			</div>
 		</div>

@@ -147,3 +147,5 @@ reports/
 *.db-shm
 *.log
 .venv/
+
+.turbo/cache
