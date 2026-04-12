@@ -12,7 +12,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
-    "test:integration": "node --import tsx --test \"test/**/*.test.ts\"",
+    "test:integration": "node scripts/run-integration-tests.js",
     "test:postman": "node scripts/run-postman.js"
   },
   "engines": {
