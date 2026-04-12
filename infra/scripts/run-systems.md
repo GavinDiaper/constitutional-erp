@@ -83,11 +83,13 @@ Optional flags:
 - `-TimeoutSeconds <n>`: service startup timeout used by start/reset stages
 - `-SkipMeshFlows`: run component suites only
 - `-SkipHealthCheck`: skip pre-suite health stage
+- `-UseExistingServices`: do not stop, reset, or start local services; run against already running endpoints such as Docker-published ports
 
 Example:
 
 ```powershell
 .\run-full-postman-cycle.cmd -KillPorts -TimeoutSeconds 90
+.\run-full-postman-cycle.cmd -UseExistingServices
 ```
 
 ## Options
@@ -121,6 +123,7 @@ Example:
 ## Notes
 
 - The tool uses `npm run dev` for each service.
+- `run-full-postman-cycle` defaults to the same local-process model. Use `-UseExistingServices` when the stack is already running elsewhere, for example via Docker.
 - The tool resolves config from each service env file in this order: `.env`, then `.env.example`.
 - The tool exports those resolved env values into each launched process to prevent global shell env collisions (for example global `PORT` or `API_KEY`).
 - If a port is already occupied and `-KillPorts` is not set, `start` fails with a clear message.

@@ -2,7 +2,8 @@ param(
   [switch]$KillPorts,
   [int]$TimeoutSeconds = 60,
   [switch]$SkipMeshFlows,
-  [switch]$SkipHealthCheck
+  [switch]$SkipHealthCheck,
+  [switch]$UseExistingServices
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,20 +53,30 @@ $commonSystemArgs += "-TimeoutSeconds"
 $commonSystemArgs += "$TimeoutSeconds"
 
 try {
-  Invoke-Stage -Name "Stop all services" -Action {
-    & powershell -ExecutionPolicy Bypass -File $runSystems "stop" @commonSystemArgs
-  }
+  if (-not $UseExistingServices) {
+    Invoke-Stage -Name "Stop all services" -Action {
+      & powershell -ExecutionPolicy Bypass -File $runSystems "stop" @commonSystemArgs
+    }
 
-  Invoke-Stage -Name "Clear data and recreate SQLite via migrations" -Action {
-    & powershell -ExecutionPolicy Bypass -File $runSystems "resetdb" @commonSystemArgs
+    Invoke-Stage -Name "Clear data and recreate SQLite via migrations" -Action {
+      & powershell -ExecutionPolicy Bypass -File $runSystems "resetdb" @commonSystemArgs
+    }
+  } else {
+    Write-Host ""
+    Write-Host "[mode] Using existing running services; skipping stop/reset/start stages."
+    if ($KillPorts) {
+      Write-Warning "-KillPorts is ignored when -UseExistingServices is set."
+    }
   }
 
   Invoke-Stage -Name "Build unified Postman collection and environment" -Action {
     & node $buildUnified
   }
 
-  Invoke-Stage -Name "Start all services" -Action {
-    & powershell -ExecutionPolicy Bypass -File $runSystems "start" @commonSystemArgs
+  if (-not $UseExistingServices) {
+    Invoke-Stage -Name "Start all services" -Action {
+      & powershell -ExecutionPolicy Bypass -File $runSystems "start" @commonSystemArgs
+    }
   }
 
   if (-not $SkipHealthCheck) {
