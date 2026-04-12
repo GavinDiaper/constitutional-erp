@@ -3,6 +3,7 @@ param(
   [switch]$SkipPostman,
   [switch]$SkipMeshFlows,
   [switch]$SkipHealthCheck,
+  [switch]$SkipIdentityRedirectCheck,
   [int]$TimeoutSeconds = 60,
   [string]$ComposeFile = "",
   [string]$ComposeEnvFile = ""
@@ -107,6 +108,44 @@ function Invoke-Stage {
   }
 }
 
+function Test-IdentityProviderRedirects {
+  if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
+    throw "curl.exe is required for identity redirect validation but was not found on PATH."
+  }
+
+  $providers = @("google", "microsoft", "apple")
+  foreach ($provider in $providers) {
+    $url = "http://localhost:4174/login/$provider"
+    $headersText = (& curl.exe -s -D - -o NUL $url) -join "`n"
+
+    if ([string]::IsNullOrWhiteSpace($headersText)) {
+      throw "Identity redirect probe failed for ${provider}: empty response headers from ${url}"
+    }
+
+    $statusMatch = [regex]::Match($headersText, "HTTP/\d(?:\.\d)?\s+(\d{3})")
+    if (-not $statusMatch.Success) {
+      throw "Identity redirect probe failed for ${provider}: unable to parse HTTP status from headers '$headersText'"
+    }
+
+    $statusCode = [int]$statusMatch.Groups[1].Value
+    $locationMatch = [regex]::Match($headersText, "(?im)^location:\s*(.+)$")
+    $location = if ($locationMatch.Success) { $locationMatch.Groups[1].Value.Trim() } else { "" }
+
+    if ($statusCode -ne 302) {
+      throw "Identity redirect probe failed for ${provider}: expected 302, got $statusCode"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($location)) {
+      throw "Identity redirect probe failed for ${provider}: missing Location header"
+    }
+
+    $expectedPrefix = "http://localhost:4008/auth/login/$provider"
+    if (-not $location.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "Identity redirect probe failed for ${provider}: expected Location prefix '$expectedPrefix', got '$location'"
+    }
+  }
+}
+
 $docker = Get-DockerCommand
 $composeArgs = @("compose", "-f", $ComposeFile)
 if (Test-Path $ComposeEnvFile) {
@@ -135,6 +174,12 @@ try {
   if (-not $SkipHealthCheck) {
     Invoke-Stage -Name "Health check published services" -Action {
       & powershell -ExecutionPolicy Bypass -File $runSystems "health" "-TimeoutSeconds" "$TimeoutSeconds"
+    }
+  }
+
+  if (-not $SkipIdentityRedirectCheck) {
+    Invoke-Stage -Name "Validate user-identity provider redirects" -Action {
+      Test-IdentityProviderRedirects
     }
   }
 

@@ -55,6 +55,13 @@ $ServiceTemplates = @(
     DefaultPort = 4008
   },
   @{
+    Name = "user-identity-app"
+    Path = Join-Path $RepoRoot "apps\user-identity"
+    DefaultPort = 4174
+    HealthPath = "/"
+    IncludeInResetDb = $false
+  },
+  @{
     Name = "navigator-ai"
     Path = Join-Path $RepoRoot "services\navigator-ai"
     DefaultPort = 4016
