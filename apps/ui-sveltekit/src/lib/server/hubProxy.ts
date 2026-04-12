@@ -223,8 +223,22 @@ export async function proxyHubRequest(
 			body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
 		});
 	} catch (error) {
+		if (requestUrl.includes('://localhost')) {
+			const loopbackUrl = requestUrl.replace('://localhost', '://127.0.0.1');
+			try {
+				response = await fetch(loopbackUrl, {
+					method,
+					headers,
+					body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
+				});
+			} catch {
+				const detail = error instanceof Error ? error.message : 'Failed to reach hub';
+				return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+			}
+		} else {
 		const detail = error instanceof Error ? error.message : 'Failed to reach hub';
 		return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+		}
 	}
 
 	const responseBody = await response.text();
@@ -261,8 +275,22 @@ export async function proxyIhRequest(
 			body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
 		});
 	} catch (error) {
+		if (requestUrl.includes('://localhost')) {
+			const loopbackUrl = requestUrl.replace('://localhost', '://127.0.0.1');
+			try {
+				response = await fetch(loopbackUrl, {
+					method,
+					headers,
+					body: method === 'GET' ? undefined : JSON.stringify(body ?? {})
+				});
+			} catch {
+				const detail = error instanceof Error ? error.message : 'Failed to reach integration hub';
+				return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+			}
+		} else {
 		const detail = error instanceof Error ? error.message : 'Failed to reach integration hub';
 		return buildProxyErrorResponse(502, `Navigator proxy ${method} failed for ${requestUrl}: ${detail}`);
+		}
 	}
 
 	const responseBody = await response.text();
