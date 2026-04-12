@@ -222,7 +222,7 @@ export const diagramCatalog: DiagramItem[] = [
 		id: 'mesh-gateway',
 		title: 'Mesh Gateway',
 		system: 'ConstitutionalLayer',
-		summary: 'Approval tasks, approver assignments, and decision audit logging.',
+		summary: 'Approval tasks, approver assignments, and decision audit logging. Canonical ERP for cross-system projection and orchestration. E.g. Oracle ERP, SAP, or custom microservices.',
 		accentClass: 'border-violet-600/40 bg-violet-50/70',
 		definition: `erDiagram
     MG_mesh_approval_task ||--o{ MG_mesh_approval_assignment : assigned_to`
