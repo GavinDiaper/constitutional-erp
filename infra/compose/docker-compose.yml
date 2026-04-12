@@ -56,6 +56,9 @@ services:
       FOUNDATION_ADAPTER_BASE_URL: http://foundation-erp:3000
       AUTHORITY_ENGINE_URL: http://authority-engine:4001
       GOVERNANCE_ENGINE_URL: http://governance-engine:4002
+      JWT_ISSUER: constitutionalerp-user-identity
+      JWT_AUDIENCE: constitutionalerp-clients
+      JWT_SIGNING_SECRET: change-me-signing-secret
     depends_on:
       - foundation-erp
       - authority-engine
@@ -118,11 +121,45 @@ services:
     environment:
       PGE_URL: http://process-graph:4005
       MESH_GATEWAY_URL: http://mesh-gateway:4003
+      JWT_ISSUER: constitutionalerp-user-identity
+      JWT_AUDIENCE: constitutionalerp-clients
+      JWT_SIGNING_SECRET: change-me-signing-secret
     depends_on:
       - process-graph
       - mesh-gateway
     ports:
       - "${INTEGRATION_HUB_PORT:-4017}:4017"
+
+  user-identity:
+    build:
+      context: ../..
+      dockerfile: services/user-identity/Dockerfile
+    env_file:
+      - ../../services/user-identity/.env.example
+    environment:
+      DATABASE_PATH: /data/user-identity.db
+      GOOGLE_REDIRECT_URI: http://localhost:4008/auth/callback/google
+      MICROSOFT_REDIRECT_URI: http://localhost:4008/auth/callback/microsoft
+      APPLE_REDIRECT_URI: http://localhost:4008/auth/callback/apple
+    ports:
+      - "${USER_IDENTITY_PORT:-4008}:4008"
+    volumes:
+      - user-identity-data:/data
+
+  user-identity-app:
+    build:
+      context: ../..
+      dockerfile: apps/user-identity/Dockerfile
+    env_file:
+      - ../../apps/user-identity/.env.example
+    environment:
+      IDENTITY_BASE_URL: http://user-identity:4008
+      UI_SVELTEKIT_BASE_URL: http://localhost:4173
+      UI_CALLBACK_PATH: /auth/callback
+    depends_on:
+      - user-identity
+    ports:
+      - "${USER_IDENTITY_APP_PORT:-4174}:4174"
 
   navigator-ai:
     build:
@@ -163,6 +200,8 @@ services:
       IH_BASE_URL: http://integration-hub:4017
       NAVIGATOR_AI_URL: http://navigator-ai:4016/api/v1
       NAVIGATOR_AI_API_KEY: change-me
+      IDENTITY_BASE_URL: http://user-identity:4008
+      UI_IDENTITY_LOGIN_PATH: http://localhost:4174
     depends_on:
       - foundation-erp
       - authority-engine
@@ -172,6 +211,8 @@ services:
       - process-graph
       - integration-hub
       - navigator-ai
+      - user-identity
+      - user-identity-app
     ports:
       - "${UI_PORT:-4173}:4173"
 
@@ -183,3 +224,4 @@ volumes:
   event-processor-data:
   process-graph-data:
   navigator-ai-data:
+  user-identity-data:

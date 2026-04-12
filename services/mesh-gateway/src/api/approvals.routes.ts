@@ -24,6 +24,25 @@ const listQuerySchema = z.object({
   actorId: z.string().min(1)
 });
 
+function adapterHeadersFromRequest(req: any): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const values: Array<[string, string | undefined]> = [
+    ["authorization", req.header("authorization") ?? undefined],
+    ["x-actor-id", req.header("x-actor-id") ?? undefined],
+    ["x-actor-tier", req.header("x-actor-tier") ?? undefined],
+    ["x-actor-email", req.header("x-actor-email") ?? undefined],
+    ["x-actor-h2r-employee-id", req.header("x-actor-h2r-employee-id") ?? undefined]
+  ];
+
+  for (const [key, value] of values) {
+    if (value && value.trim()) {
+      headers[key] = value;
+    }
+  }
+
+  return headers;
+}
+
 export function createApprovalsRouter(input: {
   actorHeader: string;
   authorityClient: AuthorityClient;
@@ -125,7 +144,7 @@ export function createApprovalsRouter(input: {
 
       const adapter = input.adapterRegistry.getById(task.adapterId);
 
-      const upstream = await adapter.executeAction(task.meshActionPath, requestBody, {});
+      const upstream = await adapter.executeAction(task.meshActionPath, requestBody, adapterHeadersFromRequest(req));
       if (upstream.status >= 400) {
         setTaskRejected(taskId, approverActorId, "ExecutionFailedAfterApproval");
         throw new HttpError(502, "execution_failed", "Action failed when forwarded to backend adapter");

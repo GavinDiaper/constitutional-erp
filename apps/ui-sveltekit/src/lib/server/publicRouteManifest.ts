@@ -1,4 +1,4 @@
-const PUBLIC_EXACT_PATHS = new Set<string>(['/', '/documentation', '/documentation/content']);
+const PUBLIC_EXACT_PATHS = new Set<string>(['/', '/documentation', '/documentation/content', '/auth/callback']);
 
 const PUBLIC_PREFIX_PATHS = ['/documentation/content/'];
 

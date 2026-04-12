@@ -16,6 +16,9 @@ export interface AppConfig {
   authorityEngineApiKey: string;
   governanceEngineUrl: string;
   governanceEngineApiKey: string;
+  jwtIssuer: string;
+  jwtAudience: string;
+  jwtSigningSecret: string;
 }
 
 function required(name: string, fallback?: string): string {
@@ -49,6 +52,9 @@ export function loadConfig(): AppConfig {
     authorityEngineUrl: required("AUTHORITY_ENGINE_URL", "http://localhost:4001"),
     authorityEngineApiKey: required("AUTHORITY_ENGINE_API_KEY", "change-me"),
     governanceEngineUrl: required("GOVERNANCE_ENGINE_URL", "http://localhost:4002"),
-    governanceEngineApiKey: required("GOVERNANCE_ENGINE_API_KEY", "change-me")
+    governanceEngineApiKey: required("GOVERNANCE_ENGINE_API_KEY", "change-me"),
+    jwtIssuer: required("JWT_ISSUER", "constitutionalerp-user-identity"),
+    jwtAudience: required("JWT_AUDIENCE", "constitutionalerp-clients"),
+    jwtSigningSecret: required("JWT_SIGNING_SECRET", "change-me-signing-secret")
   };
 }

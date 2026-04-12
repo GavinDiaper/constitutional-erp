@@ -11,6 +11,7 @@ import { GovernanceClient } from "./clients/governanceClient";
 import { AppConfig, loadConfig } from "./config/env";
 import { checkDependencies } from "./domain/dependencyChecks";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { jwtActorContext } from "./middleware/jwtActorContext";
 import { toProblem } from "./utils/errors";
 
 const defaultConfig = loadConfig();
@@ -32,6 +33,7 @@ export function createApp(overrides: AppOverrides = {}) {
 
   app.use(helmet());
   app.use(express.json());
+  app.use(jwtActorContext(config));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "mesh-gateway" });

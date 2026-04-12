@@ -32,6 +32,7 @@ export function createProcessRouter(catalog: McpCatalog, processFacade: ProcessF
     try {
       const params = actionPathSchema.parse(req.params ?? {});
       const actorId = req.header("x-actor-id") ?? undefined;
+      const accessToken = req.header("authorization") ?? undefined;
       const payload = (req.body ?? {}) as Record<string, unknown>;
       const fn = catalog.getByEntityAndAction(params.entity, params.action);
 
@@ -49,7 +50,8 @@ export function createProcessRouter(catalog: McpCatalog, processFacade: ProcessF
         id: params.id,
         action: params.action,
         payload,
-        actorId
+        actorId,
+        accessToken
       });
 
       res.json(result);

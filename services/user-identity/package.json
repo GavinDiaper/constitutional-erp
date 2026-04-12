@@ -1,0 +1,35 @@
+{
+  "name": "user-identity",
+  "version": "0.1.0",
+  "description": "User identity service for Constitutional ERP",
+  "main": "dist/src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "prestart": "npm run build",
+    "start": "node scripts/start-server.js",
+    "migrate": "tsx src/db/migrate.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run test:integration",
+    "test:integration": "node scripts/run-integration-tests.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.0.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2",
+    "helmet": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.10",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

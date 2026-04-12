@@ -117,6 +117,7 @@ export class ProcessFacade {
     action: string;
     payload: Record<string, unknown>;
     actorId?: string;
+    accessToken?: string;
   }) {
     const fn = this.catalog.getByEntityAndAction(input.entity, input.action);
     if (!fn) {
@@ -132,7 +133,7 @@ export class ProcessFacade {
     const backingRoute = fn.backingRoute.replace("{id}", encodeURIComponent(input.id));
 
     if (fn.operationType !== "transition") {
-      const execution = await this.meshClient.execute(backingRoute, input.payload, input.actorId);
+      const execution = await this.meshClient.execute(backingRoute, input.payload, input.actorId, input.accessToken);
       const after = await this.getProcess(input.entity, input.id, input.actorId);
 
       return {
@@ -177,7 +178,7 @@ export class ProcessFacade {
     // Also execute through mesh so the backing adapter (Foundation ERP) commits
     // the transition. We do this after PGE so the state is already projected;
     // errors here surface as-is to the caller.
-    const execution = await this.meshClient.execute(backingRoute, input.payload, input.actorId);
+    const execution = await this.meshClient.execute(backingRoute, input.payload, input.actorId, input.accessToken);
 
     const afterLinks = this.hypermediaBuilder.build({ entity: input.entity, id: input.id, resource: pgeResult });
 

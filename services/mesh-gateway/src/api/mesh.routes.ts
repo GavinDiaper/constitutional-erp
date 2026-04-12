@@ -55,6 +55,25 @@ function buildMeshActionPath(input: {
   return `${resourcePath}/${input.action}`;
 }
 
+function adapterHeadersFromRequest(req: any): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const values: Array<[string, string | undefined]> = [
+    ["authorization", req.header("authorization") ?? undefined],
+    ["x-actor-id", req.header("x-actor-id") ?? undefined],
+    ["x-actor-tier", req.header("x-actor-tier") ?? undefined],
+    ["x-actor-email", req.header("x-actor-email") ?? undefined],
+    ["x-actor-h2r-employee-id", req.header("x-actor-h2r-employee-id") ?? undefined]
+  ];
+
+  for (const [key, value] of values) {
+    if (value && value.trim()) {
+      headers[key] = value;
+    }
+  }
+
+  return headers;
+}
+
 export function createMeshRouter(input: {
   actorHeader: string;
   authorityClient: AuthorityClient;
@@ -71,7 +90,7 @@ export function createMeshRouter(input: {
       const meshResourcePath = buildMeshResourcePath(params);
       const adapter = input.adapterRegistry.resolve(meshResourcePath, params.adapterId);
 
-      const upstream = await adapter.fetchResource(meshResourcePath, {});
+      const upstream = await adapter.fetchResource(meshResourcePath, adapterHeadersFromRequest(req));
       const context = buildDomainContext(domain, upstream.resource.attributes, actorId);
       const links = upstream.resource.links;
       const filtered: Record<string, LinkDef> = {};
@@ -149,7 +168,7 @@ export function createMeshRouter(input: {
       const meshActionPath = buildMeshActionPath(params);
       const adapter = input.adapterRegistry.resolve(meshActionPath, params.adapterId);
 
-      const resourceResponse = await adapter.fetchResource(meshResourcePath, {});
+      const resourceResponse = await adapter.fetchResource(meshResourcePath, adapterHeadersFromRequest(req));
       const context = buildDomainContext(domain, resourceResponse.resource.attributes, actorId);
 
       const authorityDecision = await input.authorityClient.check({
@@ -252,7 +271,7 @@ export function createMeshRouter(input: {
         return;
       }
 
-      const upstream = await adapter.executeAction(meshActionPath, requestBody, {});
+      const upstream = await adapter.executeAction(meshActionPath, requestBody, adapterHeadersFromRequest(req));
 
       logMeshEvent({
         eventType: "MeshActionAllowed",

@@ -8,6 +8,7 @@ describe('isPublicRequest', () => {
 		expect(isPublicRequest('/documentation', 'GET')).toBe(true);
 		expect(isPublicRequest('/documentation/content', 'GET')).toBe(true);
 		expect(isPublicRequest('/documentation/content/identity', 'GET')).toBe(true);
+		expect(isPublicRequest('/auth/callback', 'GET')).toBe(true);
 	});
 
 	it('allows public page data endpoints for whitelisted pages', () => {

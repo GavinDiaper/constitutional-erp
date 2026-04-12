@@ -13,6 +13,7 @@ import { McpCatalog } from "./domain/mcpCatalog";
 import { ProcessFacade } from "./domain/processFacade";
 import { SessionStore } from "./domain/sessionStore";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { jwtActorContext } from "./middleware/jwtActorContext";
 import { toProblem } from "./utils/errors";
 import { sanitizeHeaders, serializeBody } from "./utils/logging";
 
@@ -29,6 +30,7 @@ export function createApp(config: AppConfig) {
 
   app.use(helmet());
   app.use(express.json());
+  app.use(jwtActorContext(config));
 
   app.use((req, res, next) => {
     const requestId = randomUUID();

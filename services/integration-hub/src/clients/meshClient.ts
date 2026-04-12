@@ -5,13 +5,19 @@ import { requestJsonAllowError } from "./http";
 export class MeshClient {
   constructor(private readonly config: AppConfig) {}
 
-  async execute(backingRoute: string, payload: Record<string, unknown>, actorId?: string): Promise<Record<string, unknown>> {
+  async execute(
+    backingRoute: string,
+    payload: Record<string, unknown>,
+    actorId?: string,
+    authorization?: string
+  ): Promise<Record<string, unknown>> {
     const url = `${this.config.meshGatewayUrl}${backingRoute}`;
     const result = await requestJsonAllowError<Record<string, unknown>>(url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-api-key": this.config.meshGatewayApiKey,
+        ...(authorization ? { authorization } : {}),
         ...(actorId ? { "x-actor-id": actorId } : {})
       },
       body: JSON.stringify(payload)

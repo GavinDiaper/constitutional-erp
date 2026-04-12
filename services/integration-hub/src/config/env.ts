@@ -31,6 +31,9 @@ export interface AppConfig {
   foundationErpApiKey: string;
   foundationErpIngressIdHeader: string;
   foundationErpIngressId: string;
+  jwtIssuer: string;
+  jwtAudience: string;
+  jwtSigningSecret: string;
 }
 
 function required(name: string, fallback?: string): string {
@@ -55,6 +58,9 @@ export function loadConfig(): AppConfig {
     foundationErpUrl: required("FOUNDATION_ERP_URL", "http://localhost:3000"),
     foundationErpApiKey: required("FOUNDATION_ERP_API_KEY", "change-me"),
     foundationErpIngressIdHeader: required("FOUNDATION_ERP_INGRESS_ID_HEADER", "x-ingress-id"),
-    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress")
+    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress"),
+    jwtIssuer: required("JWT_ISSUER", "constitutionalerp-user-identity"),
+    jwtAudience: required("JWT_AUDIENCE", "constitutionalerp-clients"),
+    jwtSigningSecret: required("JWT_SIGNING_SECRET", "change-me-signing-secret")
   };
 }

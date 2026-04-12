@@ -3,7 +3,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { isPublicRequest } from '$lib/server/publicRouteManifest';
 
 const SESSION_COOKIE_NAME = 'identity_session';
-const LOGIN_PATH = process.env.UI_IDENTITY_LOGIN_PATH ?? '/';
+const LOGIN_PATH = process.env.UI_IDENTITY_LOGIN_PATH ?? 'http://localhost:4174';
 
 function getBearerToken(authHeader: string | null): string | null {
 	if (!authHeader) {
@@ -41,5 +41,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const nextPath = `${event.url.pathname}${event.url.search}`;
-	throw redirect(303, `${LOGIN_PATH}?next=${encodeURIComponent(nextPath)}`);
+	const loginUrl = LOGIN_PATH.startsWith('http://') || LOGIN_PATH.startsWith('https://')
+		? new URL(LOGIN_PATH)
+		: new URL(LOGIN_PATH, event.url.origin);
+	loginUrl.searchParams.set('next', nextPath);
+	throw redirect(303, loginUrl.toString());
 };

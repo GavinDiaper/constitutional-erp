@@ -180,21 +180,38 @@ export class FoundationAdapter implements BackendAdapter {
       : `${prefix}/${domain}/${resource}/${id}`;
   }
 
-  private headers() {
-    return {
+  private headers(forwarded: Record<string, string>) {
+    const baseHeaders: Record<string, string> = {
       "content-type": "application/json",
       "x-api-key": this.config.foundationAdapterApiKey,
       [this.config.foundationAdapterIngressIdHeader]: this.config.foundationAdapterIngressId
     };
+
+    const passthrough = [
+      "authorization",
+      "x-actor-id",
+      "x-actor-tier",
+      "x-actor-email",
+      "x-actor-h2r-employee-id"
+    ];
+
+    for (const key of passthrough) {
+      const value = forwarded[key];
+      if (value && value.trim()) {
+        baseHeaders[key] = value;
+      }
+    }
+
+    return baseHeaders;
   }
 
-  async fetchResource(meshPath: string, _headers: Record<string, string>) {
+  async fetchResource(meshPath: string, headers: Record<string, string>) {
     const route = parseMeshPath(meshPath);
     const backendResource = toBackendResourcePath(route.domain, route.resource);
     const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${backendResource}/${route.id}`;
     const upstream = await requestJson<Record<string, unknown>>(`${this.config.foundationAdapterBaseUrl}${backendPath}`, {
       method: "GET",
-      headers: this.headers()
+      headers: this.headers(headers)
     });
 
     const raw = asRecord(upstream.data);
@@ -216,7 +233,7 @@ export class FoundationAdapter implements BackendAdapter {
     };
   }
 
-  async executeAction(meshPath: string, body: unknown, _headers: Record<string, string>) {
+  async executeAction(meshPath: string, body: unknown, headers: Record<string, string>) {
     const route = parseMeshPath(meshPath);
     if (!route.action) {
       throw new HttpError(400, "invalid_mesh_action_path", `Expected action segment in path: ${meshPath}`);
@@ -227,7 +244,7 @@ export class FoundationAdapter implements BackendAdapter {
     const backendPath = `${this.config.foundationAdapterBackendBasePath}/${route.domain}/${backendResource}/${route.id}/${backendAction}`;
     return requestJsonAllowError<unknown>(`${this.config.foundationAdapterBaseUrl}${backendPath}`, {
       method: "POST",
-      headers: this.headers(),
+      headers: this.headers(headers),
       body: JSON.stringify(body ?? {})
     });
   }

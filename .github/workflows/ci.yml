@@ -37,12 +37,16 @@ jobs:
               - 'services/process-graph/**'
             integration_hub:
               - 'services/integration-hub/**'
+            user_identity:
+              - 'services/user-identity/**'
             navigator_ai:
               - 'services/navigator-ai/**'
             navigator_repl:
               - 'apps/navigator-repl/**'
             ui_sveltekit:
               - 'apps/ui-sveltekit/**'
+            user_identity_app:
+              - 'apps/user-identity/**'
 
       - name: Build matrix from changed workspaces
         id: build-matrix
@@ -55,9 +59,11 @@ jobs:
           EVENT_PROCESSOR: ${{ steps.filter.outputs.event_processor }}
           PROCESS_GRAPH: ${{ steps.filter.outputs.process_graph }}
           INTEGRATION_HUB: ${{ steps.filter.outputs.integration_hub }}
+          USER_IDENTITY: ${{ steps.filter.outputs.user_identity }}
           NAVIGATOR_AI: ${{ steps.filter.outputs.navigator_ai }}
           NAVIGATOR_REPL: ${{ steps.filter.outputs.navigator_repl }}
           UI_SVELTEKIT: ${{ steps.filter.outputs.ui_sveltekit }}
+          USER_IDENTITY_APP: ${{ steps.filter.outputs.user_identity_app }}
         with:
           script: |
             const components = [
@@ -68,9 +74,11 @@ jobs:
               { key: 'EVENT_PROCESSOR', workspace: 'event-processor', path: 'services/event-processor' },
               { key: 'PROCESS_GRAPH', workspace: 'process-graph', path: 'services/process-graph' },
               { key: 'INTEGRATION_HUB', workspace: 'integration-hub', path: 'services/integration-hub' },
+              { key: 'USER_IDENTITY', workspace: 'user-identity', path: 'services/user-identity' },
               { key: 'NAVIGATOR_AI', workspace: 'navigator-ai', path: 'services/navigator-ai' },
               { key: 'NAVIGATOR_REPL', workspace: 'navigator-repl', path: 'apps/navigator-repl' },
-              { key: 'UI_SVELTEKIT', workspace: 'constitutionalerp-ui-sveltekit', path: 'apps/ui-sveltekit' }
+              { key: 'UI_SVELTEKIT', workspace: 'constitutionalerp-ui-sveltekit', path: 'apps/ui-sveltekit' },
+              { key: 'USER_IDENTITY_APP', workspace: 'constitutionalerp-user-identity', path: 'apps/user-identity' }
             ];
 
             const changed = components.filter((component) => process.env[component.key] === 'true');

@@ -24,6 +24,38 @@ export interface SubsystemConfig {
 	apiKey: string;
 }
 
+function findCookieValue(cookieHeader: string | null, name: string): string | null {
+	if (!cookieHeader) {
+		return null;
+	}
+
+	const encodedName = `${name}=`;
+	for (const pair of cookieHeader.split(';')) {
+		const trimmed = pair.trim();
+		if (!trimmed.startsWith(encodedName)) {
+			continue;
+		}
+
+		return trimmed.slice(encodedName.length);
+	}
+
+	return null;
+}
+
+function resolveAuthorizationHeader(incomingHeaders: Headers): string | null {
+	const incomingAuth = incomingHeaders.get('authorization');
+	if (incomingAuth?.toLowerCase().startsWith('bearer ')) {
+		return incomingAuth;
+	}
+
+	const sessionCookie = findCookieValue(incomingHeaders.get('cookie'), 'identity_session');
+	if (sessionCookie) {
+		return `Bearer ${sessionCookie}`;
+	}
+
+	return null;
+}
+
 function buildProxyErrorResponse(status: number, message: string): Response {
 	return new Response(JSON.stringify({ detail: message }), {
 		status,
@@ -88,6 +120,11 @@ export function buildHubHeaders(incomingHeaders: Headers, config: HubConfig): He
 	headers.set('x-api-key', config.apiKey);
 	headers.set('x-ingress-id', config.ingressId);
 
+	const authorization = resolveAuthorizationHeader(incomingHeaders);
+	if (authorization) {
+		headers.set('authorization', authorization);
+	}
+
 	const actorId = incomingHeaders.get('x-actor-id') ?? 'principal.system';
 	const actorTier = incomingHeaders.get('x-actor-tier') ?? '5';
 
@@ -102,6 +139,11 @@ export function buildIhHeaders(incomingHeaders: Headers, config: IhConfig): Head
 	headers.set('accept', 'application/json');
 	headers.set('x-api-key', config.apiKey);
 
+	const authorization = resolveAuthorizationHeader(incomingHeaders);
+	if (authorization) {
+		headers.set('authorization', authorization);
+	}
+
 	const actorId = incomingHeaders.get('x-actor-id') ?? 'principal.system';
 	const actorTier = incomingHeaders.get('x-actor-tier') ?? '5';
 
@@ -115,6 +157,11 @@ export function buildSubsystemHeaders(incomingHeaders: Headers, config: Subsyste
 	const headers = new Headers();
 	headers.set('accept', 'application/json');
 	headers.set('x-api-key', config.apiKey);
+
+	const authorization = resolveAuthorizationHeader(incomingHeaders);
+	if (authorization) {
+		headers.set('authorization', authorization);
+	}
 
 	const actorId = incomingHeaders.get('x-actor-id') ?? 'principal.system';
 	const actorTier = incomingHeaders.get('x-actor-tier') ?? '5';
