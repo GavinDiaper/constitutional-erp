@@ -100,3 +100,83 @@ This alignment is critical for token acceptance.
 2. You avoid major auth rework in mobile later.
 
 If you want, next I can produce a Render-ready variable matrix you can paste service-by-service (identity-api, identity-ui, ui-sveltekit, mesh-gateway, integration-hub).
+
+I’ll review the new IdentityV2.md and produce an updated, domain-aware rollout plan using `www.provisia.co.uk` with Cloudflare in front, then sync that plan into session memory for execution handoff. I’m gathering the new doc and current deployment assumptions first.
+
+Searched for files matching `**/docs/**/IdentityV2.md`, 1 match
+
+Read [](file:///d%3A/Projects/cerp/constitutional-erp/constitutional-erp/docs/IdentityV2.md)
+
+Read [](file:///d%3A/Projects/cerp/constitutional-erp/constitutional-erp/services/user-identity/.env.example)
+
+Read [](file:///d%3A/Projects/cerp/constitutional-erp/constitutional-erp/infra/compose/docker-compose.yml#120-120), lines 120 to 230
+
+I’m updating the session plan with a domain-specific deployment plan for `www.provisia.co.uk` behind Cloudflare, preserving real OAuth completion and sequencing Capacitor next. Then I’ll present the updated checklist tailored to Render + Cloudflare DNS/proxy.
+
+Inserted into memory file [](file:///c%3A/Users/Gavin%20Diaper/AppData/Roaming/Code/User/workspaceStorage/533687f21d2b82ecf557ed94954c6d72/GitHub.copilot-chat/memory-tool/memories/YTBkZDE0MTktYjBhNC00YjRjLWE1ZTQtMDI0ZmE2MmE5NTVm/plan.md)
+
+Excellent, this improves the plan a lot. With control of www.provisia.co.uk and Cloudflare, the updated approach is:
+
+## Plan: IdentityV2 with Real Domain
+
+Real OAuth first, then Capacitor.  
+Use stable subdomains for auth separation, keep www.provisia.co.uk as root/public entry.
+
+**Recommended hostname model**
+1. www.provisia.co.uk: marketing/root
+2. app.provisia.co.uk: main SvelteKit app
+3. identity.provisia.co.uk: hosted identity UI
+4. identity-api.provisia.co.uk: identity service OAuth callback/token endpoints
+5. Optional api.provisia.co.uk: mesh/public API edge
+
+**Execution checklist**
+
+1. Cloudflare DNS and TLS baseline
+1. Create DNS records for the subdomains pointing to Render services.
+2. Set SSL mode to Full (strict).
+3. Enable Always Use HTTPS.
+4. Keep proxy enabled unless troubleshooting callback issues.
+
+2. Render domain mapping
+1. Attach custom domains to each service:
+   1. identity-api.provisia.co.uk -> user-identity service
+   2. identity.provisia.co.uk -> user-identity app
+   3. app.provisia.co.uk -> ui-sveltekit
+2. Confirm cert issuance and green HTTPS on all hosts.
+
+3. Google OAuth configuration
+1. Authorized redirect URI:
+   1. https://identity-api.provisia.co.uk/auth/callback/google
+2. Authorized JS origins:
+   1. https://identity.provisia.co.uk
+   2. https://app.provisia.co.uk
+3. Save client ID/secret and set in Render env for identity service.
+
+4. Production env alignment
+1. user-identity:
+   1. OAUTH_MOCK_ENABLED=false
+   2. COOKIE_SECURE=true
+   3. GOOGLE_* values using provisia hosts
+   4. H2R and FOUNDATION_ERP values as already introduced
+2. user-identity app:
+   1. IDENTITY_BASE_URL=https://identity-api.provisia.co.uk
+   2. UI_SVELTEKIT_BASE_URL=https://app.provisia.co.uk
+3. ui-sveltekit:
+   1. UI_IDENTITY_LOGIN_PATH=https://identity.provisia.co.uk
+   2. IDENTITY_BASE_URL=https://identity-api.provisia.co.uk
+4. mesh-gateway and integration-hub:
+   1. JWT issuer/audience/signing secret exactly match identity service.
+
+5. End-to-end validation
+1. Unauthenticated app route redirects to identity host.
+2. Google login returns to identity-api callback.
+3. Callback returns to app callback and sets session.
+4. Protected routes load.
+5. Logout returns to identity and re-protects app routes.
+
+6. Then begin Capacitor phase
+1. Use the now-stable auth contract and callback endpoints.
+2. Implement mobile shell/deep link/auth handling against production-like endpoints.
+3. Add mobile auth test matrix afterward.
+
+I also synced this into session plan memory as a new addendum so execution can continue directly from this domain-aware plan.
