@@ -13,6 +13,14 @@ export function createApp() {
   app.use(helmet());
   app.use(express.json());
 
+  app.get("/", (_req, res) => {
+    res.json({
+      service: "user-identity",
+      status: "ok",
+      health: "/health"
+    });
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "user-identity" });
   });
