@@ -30,6 +30,111 @@ function parseBearerToken(authorization: string | undefined): string {
   return authorization.slice("Bearer ".length).trim();
 }
 
+function encodeState(input: { nonce: string; next: string | null }): string {
+  return Buffer.from(JSON.stringify(input), "utf8").toString("base64url");
+}
+
+function decodeState(rawState: unknown): { nonce: string; next: string | null } {
+  if (typeof rawState !== "string" || !rawState.trim()) {
+    return { nonce: "", next: null };
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8")) as {
+      nonce?: unknown;
+      next?: unknown;
+    };
+
+    return {
+      nonce: typeof parsed.nonce === "string" ? parsed.nonce : "",
+      next: typeof parsed.next === "string" && parsed.next.trim() ? parsed.next.trim() : null
+    };
+  } catch {
+    return { nonce: "", next: null };
+  }
+}
+
+function parseJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split(".");
+  if (parts.length < 2 || !parts[1]) {
+    throw new HttpError(400, "invalid_token", "Token payload is malformed.");
+  }
+
+  try {
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
+  } catch {
+    throw new HttpError(400, "invalid_token", "Token payload could not be decoded.");
+  }
+}
+
+async function exchangeAuthorizationCode(provider: ProviderName, code: string): Promise<{ accessToken?: string; idToken?: string }> {
+  const providerConfig = config.providers[provider];
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: providerConfig.clientId,
+    client_secret: providerConfig.clientSecret,
+    redirect_uri: providerConfig.redirectUri
+  });
+
+  const response = await fetch(providerConfig.tokenUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body: body.toString()
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new HttpError(502, "provider_token_exchange_failed", `Token exchange failed (${response.status}): ${detail || "no response body"}`);
+  }
+
+  const payload = (await response.json()) as { access_token?: unknown; id_token?: unknown };
+  return {
+    accessToken: typeof payload.access_token === "string" ? payload.access_token : undefined,
+    idToken: typeof payload.id_token === "string" ? payload.id_token : undefined
+  };
+}
+
+async function fetchUserInfo(provider: ProviderName, accessToken: string): Promise<Record<string, unknown>> {
+  const providerConfig = config.providers[provider];
+  if (!providerConfig.userInfoUrl) {
+    return {};
+  }
+
+  const response = await fetch(providerConfig.userInfoUrl, {
+    method: "GET",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new HttpError(502, "provider_userinfo_failed", `User info request failed (${response.status}): ${detail || "no response body"}`);
+  }
+
+  return (await response.json()) as Record<string, unknown>;
+}
+
+function extractIdentityClaims(input: { userInfo: Record<string, unknown>; idToken?: string }): { email: string; subject: string } {
+  const payload = input.idToken ? parseJwtPayload(input.idToken) : {};
+
+  const subjectCandidate = input.userInfo.sub ?? payload.sub;
+  const emailCandidate = input.userInfo.email ?? payload.email;
+
+  const subject = typeof subjectCandidate === "string" ? subjectCandidate.trim() : "";
+  const email = typeof emailCandidate === "string" ? emailCandidate.trim().toLowerCase() : "";
+
+  if (!subject || !email) {
+    throw new HttpError(400, "invalid_provider_identity", "Provider response did not include required sub/email claims.");
+  }
+
+  return { email, subject };
+}
+
 function issueSession(identity: ReturnType<typeof resolveIdentity>) {
   const accessToken = createAccessToken(identity);
   const refresh = createRefreshToken();
@@ -64,8 +169,9 @@ authRouter.get("/auth/providers", (_req, res) => {
 
 authRouter.get("/auth/login/:provider", (req, res) => {
   const provider = asProvider(req.params.provider);
-  const state = randomUUID();
   const nonce = randomUUID();
+  const next = typeof req.query.next === "string" && req.query.next.trim() ? req.query.next.trim() : null;
+  const state = encodeState({ nonce, next });
 
   if (!providerEnabled(provider) && !config.oauthMockEnabled) {
     throw new HttpError(400, "provider_not_configured", `${provider} OAuth provider is not configured.`);
@@ -78,35 +184,44 @@ authRouter.get("/auth/login/:provider", (req, res) => {
     callbackUrl.searchParams.set("email", String(req.query.email ?? `demo.${provider}@constitutionalerp.local`));
     callbackUrl.searchParams.set("sub", String(req.query.sub ?? `${provider}-${randomUUID()}`));
 
-    if (typeof req.query.next === "string" && req.query.next.trim()) {
-      callbackUrl.searchParams.set("next", req.query.next);
+    if (next) {
+      callbackUrl.searchParams.set("next", next);
     }
 
     return res.redirect(callbackUrl.toString());
   }
 
-  const authorizationUrl = new URL("https://example.invalid/oauth/authorize");
+  const authorizationUrl = new URL(config.providers[provider].authorizationUrl);
   authorizationUrl.searchParams.set("client_id", config.providers[provider].clientId);
   authorizationUrl.searchParams.set("redirect_uri", config.providers[provider].redirectUri);
   authorizationUrl.searchParams.set("response_type", "code");
-  authorizationUrl.searchParams.set("scope", "openid email profile");
+  authorizationUrl.searchParams.set("scope", config.providers[provider].scopes);
   authorizationUrl.searchParams.set("state", state);
   authorizationUrl.searchParams.set("nonce", nonce);
-
-  if (typeof req.query.next === "string" && req.query.next.trim()) {
-    authorizationUrl.searchParams.set("next", req.query.next);
-  }
 
   return res.redirect(authorizationUrl.toString());
 });
 
-authRouter.get("/auth/callback/:provider", (req, res) => {
+authRouter.get("/auth/callback/:provider", async (req, res) => {
   const provider = asProvider(req.params.provider);
-  const email = typeof req.query.email === "string" ? req.query.email : "";
-  const subject = typeof req.query.sub === "string" ? req.query.sub : "";
+  const state = decodeState(req.query.state);
+  const nextFromQuery = typeof req.query.next === "string" && req.query.next.trim() ? req.query.next.trim() : null;
+  const next = nextFromQuery ?? state.next;
+
+  let email = typeof req.query.email === "string" ? req.query.email : "";
+  let subject = typeof req.query.sub === "string" ? req.query.sub : "";
 
   if (!config.oauthMockEnabled) {
-    throw new HttpError(501, "provider_exchange_not_implemented", "Provider token exchange is not implemented yet.");
+    const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
+    if (!code) {
+      throw new HttpError(400, "invalid_callback_payload", "Callback must include authorization code.");
+    }
+
+    const tokenResponse = await exchangeAuthorizationCode(provider, code);
+    const userInfo = tokenResponse.accessToken ? await fetchUserInfo(provider, tokenResponse.accessToken) : {};
+    const claims = extractIdentityClaims({ userInfo, idToken: tokenResponse.idToken });
+    email = claims.email;
+    subject = claims.subject;
   }
 
   if (!email || !subject) {
@@ -121,8 +236,6 @@ authRouter.get("/auth/callback/:provider", (req, res) => {
   });
 
   const session = issueSession(identity);
-  const next = typeof req.query.next === "string" && req.query.next.trim() ? req.query.next : null;
-
   if (next) {
     const redirectUrl = new URL(next, "http://localhost");
     redirectUrl.searchParams.set("token", session.accessToken);

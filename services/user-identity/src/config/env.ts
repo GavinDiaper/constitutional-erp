@@ -4,6 +4,10 @@ export interface OAuthProviderConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+  authorizationUrl: string;
+  tokenUrl: string;
+  userInfoUrl: string;
+  scopes: string;
 }
 
 export interface AppConfig {
@@ -58,11 +62,19 @@ function asBoolean(name: string, fallback: boolean): boolean {
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
 
-function provider(prefix: "GOOGLE" | "MICROSOFT" | "APPLE", fallbackRedirectUri: string): OAuthProviderConfig {
+function provider(
+  prefix: "GOOGLE" | "MICROSOFT" | "APPLE",
+  fallbackRedirectUri: string,
+  defaults: { authorizationUrl: string; tokenUrl: string; userInfoUrl: string; scopes: string }
+): OAuthProviderConfig {
   return {
     clientId: process.env[`${prefix}_CLIENT_ID`] ?? "",
     clientSecret: process.env[`${prefix}_CLIENT_SECRET`] ?? "",
-    redirectUri: required(`${prefix}_REDIRECT_URI`, fallbackRedirectUri)
+    redirectUri: required(`${prefix}_REDIRECT_URI`, fallbackRedirectUri),
+    authorizationUrl: required(`${prefix}_AUTHORIZATION_URL`, defaults.authorizationUrl),
+    tokenUrl: required(`${prefix}_TOKEN_URL`, defaults.tokenUrl),
+    userInfoUrl: process.env[`${prefix}_USERINFO_URL`] ?? defaults.userInfoUrl,
+    scopes: required(`${prefix}_SCOPES`, defaults.scopes)
   };
 }
 
@@ -81,9 +93,24 @@ export function loadConfig(): AppConfig {
     cookieSecure: asBoolean("COOKIE_SECURE", false),
     oauthMockEnabled: asBoolean("OAUTH_MOCK_ENABLED", true),
     providers: {
-      google: provider("GOOGLE", "http://localhost:4008/auth/callback/google"),
-      microsoft: provider("MICROSOFT", "http://localhost:4008/auth/callback/microsoft"),
-      apple: provider("APPLE", "http://localhost:4008/auth/callback/apple")
+      google: provider("GOOGLE", "http://localhost:4008/auth/callback/google", {
+        authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+        tokenUrl: "https://oauth2.googleapis.com/token",
+        userInfoUrl: "https://openidconnect.googleapis.com/v1/userinfo",
+        scopes: "openid email profile"
+      }),
+      microsoft: provider("MICROSOFT", "http://localhost:4008/auth/callback/microsoft", {
+        authorizationUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        userInfoUrl: "https://graph.microsoft.com/oidc/userinfo",
+        scopes: "openid email profile"
+      }),
+      apple: provider("APPLE", "http://localhost:4008/auth/callback/apple", {
+        authorizationUrl: "https://appleid.apple.com/auth/authorize",
+        tokenUrl: "https://appleid.apple.com/auth/token",
+        userInfoUrl: "",
+        scopes: "name email"
+      })
     }
   };
 }
