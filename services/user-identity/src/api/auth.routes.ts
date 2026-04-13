@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createPublicKey, createVerify, randomUUID } from "node:crypto";
 import { Router } from "express";
 import { loadConfig } from "../config/env";
 import { HttpError } from "../utils/errors";
@@ -8,6 +8,18 @@ import { createAccessToken, createRefreshToken, hashRefreshToken, verifyAccessTo
 const config = loadConfig();
 
 type ProviderName = "google" | "microsoft" | "apple";
+
+type OidcTokenClaims = {
+  iss?: unknown;
+  aud?: unknown;
+  sub?: unknown;
+  email?: unknown;
+  nonce?: unknown;
+  exp?: unknown;
+};
+
+const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
+const jwksCache = new Map<string, { expiresAt: number; keys: Array<Record<string, unknown>> }>();
 
 function asProvider(value: string): ProviderName {
   if (value === "google" || value === "microsoft" || value === "apple") {
@@ -19,7 +31,14 @@ function asProvider(value: string): ProviderName {
 
 function providerEnabled(provider: ProviderName): boolean {
   const providerConfig = config.providers[provider];
-  return Boolean(providerConfig.clientId && providerConfig.redirectUri);
+  return Boolean(
+    providerConfig.clientId &&
+      providerConfig.clientSecret &&
+      providerConfig.redirectUri &&
+      providerConfig.authorizationUrl &&
+      providerConfig.tokenUrl &&
+      providerConfig.jwksUrl
+  );
 }
 
 function parseBearerToken(authorization: string | undefined): string {
@@ -54,17 +73,135 @@ function decodeState(rawState: unknown): { nonce: string; next: string | null } 
   }
 }
 
-function parseJwtPayload(token: string): Record<string, unknown> {
+function decodeBase64UrlJson(value: string, field: string): Record<string, unknown> {
+  try {
+    return JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Record<string, unknown>;
+  } catch {
+    throw new HttpError(400, "invalid_token", `Token ${field} could not be decoded.`);
+  }
+}
+
+function parseJwt(token: string): {
+  header: Record<string, unknown>;
+  payload: Record<string, unknown>;
+  signature: Buffer;
+  unsignedInput: string;
+} {
   const parts = token.split(".");
-  if (parts.length < 2 || !parts[1]) {
-    throw new HttpError(400, "invalid_token", "Token payload is malformed.");
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+    throw new HttpError(400, "invalid_token", "Token is malformed.");
   }
 
-  try {
-    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
-  } catch {
-    throw new HttpError(400, "invalid_token", "Token payload could not be decoded.");
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+  return {
+    header: decodeBase64UrlJson(encodedHeader, "header"),
+    payload: decodeBase64UrlJson(encodedPayload, "payload"),
+    signature: Buffer.from(encodedSignature, "base64url"),
+    unsignedInput: `${encodedHeader}.${encodedPayload}`
+  };
+}
+
+async function getJwksKeys(provider: ProviderName): Promise<Array<Record<string, unknown>>> {
+  const providerConfig = config.providers[provider];
+  const now = Date.now();
+  const cached = jwksCache.get(providerConfig.jwksUrl);
+  if (cached && cached.expiresAt > now) {
+    return cached.keys;
   }
+
+  const response = await fetch(providerConfig.jwksUrl, {
+    method: "GET",
+    headers: {
+      accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new HttpError(502, "provider_jwks_failed", `JWKS request failed (${response.status}): ${detail || "no response body"}`);
+  }
+
+  const payload = (await response.json()) as { keys?: unknown };
+  if (!Array.isArray(payload.keys)) {
+    throw new HttpError(502, "provider_jwks_invalid", "JWKS response did not include a valid keys array.");
+  }
+
+  const keys = payload.keys.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"));
+  jwksCache.set(providerConfig.jwksUrl, {
+    expiresAt: now + JWKS_CACHE_TTL_MS,
+    keys
+  });
+
+  return keys;
+}
+
+function validateIssuer(provider: ProviderName, issuer: string): void {
+  const providerConfig = config.providers[provider];
+  if (providerConfig.expectedIssuer && issuer === providerConfig.expectedIssuer) {
+    return;
+  }
+
+  if (providerConfig.expectedIssuerPrefix && issuer.startsWith(providerConfig.expectedIssuerPrefix)) {
+    return;
+  }
+
+  throw new HttpError(401, "invalid_id_token_issuer", `ID token issuer '${issuer}' is not allowed for ${provider}.`);
+}
+
+function validateAudience(provider: ProviderName, audience: unknown): void {
+  const clientId = config.providers[provider].clientId;
+  const audValues = Array.isArray(audience)
+    ? audience.filter((value): value is string => typeof value === "string")
+    : typeof audience === "string"
+      ? [audience]
+      : [];
+
+  if (!audValues.includes(clientId)) {
+    throw new HttpError(401, "invalid_id_token_audience", `ID token audience did not include client_id for ${provider}.`);
+  }
+}
+
+async function verifyIdToken(provider: ProviderName, idToken: string, expectedNonce: string): Promise<OidcTokenClaims> {
+  const parsed = parseJwt(idToken);
+  const alg = typeof parsed.header.alg === "string" ? parsed.header.alg : "";
+  const kid = typeof parsed.header.kid === "string" ? parsed.header.kid : "";
+  if (alg !== "RS256" || !kid) {
+    throw new HttpError(401, "invalid_id_token_header", "ID token header must include kid and use RS256.");
+  }
+
+  const keys = await getJwksKeys(provider);
+  const jwk = keys.find((key) => key.kid === kid && key.kty === "RSA");
+  if (!jwk) {
+    throw new HttpError(401, "invalid_id_token_key", "No matching JWKS key found for ID token kid.");
+  }
+
+  const publicKey = createPublicKey({ key: jwk, format: "jwk" } as any);
+  const verifier = createVerify("RSA-SHA256");
+  verifier.update(parsed.unsignedInput);
+  verifier.end();
+  if (!verifier.verify(publicKey, parsed.signature)) {
+    throw new HttpError(401, "invalid_id_token_signature", "ID token signature verification failed.");
+  }
+
+  const claims = parsed.payload as OidcTokenClaims;
+  const subject = typeof claims.sub === "string" ? claims.sub.trim() : "";
+  const issuer = typeof claims.iss === "string" ? claims.iss.trim() : "";
+  const nonce = typeof claims.nonce === "string" ? claims.nonce.trim() : "";
+  const exp = typeof claims.exp === "number" ? claims.exp : Number(claims.exp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (!subject || !issuer || !Number.isFinite(exp) || exp <= nowSeconds) {
+    throw new HttpError(401, "invalid_id_token_claims", "ID token required claims are invalid or expired.");
+  }
+
+  validateIssuer(provider, issuer);
+  validateAudience(provider, claims.aud);
+
+  if (!expectedNonce || nonce !== expectedNonce) {
+    throw new HttpError(401, "invalid_id_token_nonce", "ID token nonce did not match expected value.");
+  }
+
+  return claims;
 }
 
 async function exchangeAuthorizationCode(provider: ProviderName, code: string): Promise<{ accessToken?: string; idToken?: string }> {
@@ -119,11 +256,9 @@ async function fetchUserInfo(provider: ProviderName, accessToken: string): Promi
   return (await response.json()) as Record<string, unknown>;
 }
 
-function extractIdentityClaims(input: { userInfo: Record<string, unknown>; idToken?: string }): { email: string; subject: string } {
-  const payload = input.idToken ? parseJwtPayload(input.idToken) : {};
-
-  const subjectCandidate = input.userInfo.sub ?? payload.sub;
-  const emailCandidate = input.userInfo.email ?? payload.email;
+function extractIdentityClaims(input: { userInfo: Record<string, unknown>; idTokenClaims: OidcTokenClaims }): { email: string; subject: string } {
+  const subjectCandidate = input.idTokenClaims.sub ?? input.userInfo.sub;
+  const emailCandidate = input.idTokenClaims.email ?? input.userInfo.email;
 
   const subject = typeof subjectCandidate === "string" ? subjectCandidate.trim() : "";
   const email = typeof emailCandidate === "string" ? emailCandidate.trim().toLowerCase() : "";
@@ -204,6 +339,12 @@ authRouter.get("/auth/login/:provider", (req, res) => {
 
 authRouter.get("/auth/callback/:provider", async (req, res) => {
   const provider = asProvider(req.params.provider);
+  const providerError = typeof req.query.error === "string" ? req.query.error.trim() : "";
+  if (providerError) {
+    const description = typeof req.query.error_description === "string" ? req.query.error_description.trim() : providerError;
+    throw new HttpError(401, "provider_authorization_failed", description || "Provider authorization failed.");
+  }
+
   const state = decodeState(req.query.state);
   const nextFromQuery = typeof req.query.next === "string" && req.query.next.trim() ? req.query.next.trim() : null;
   const next = nextFromQuery ?? state.next;
@@ -212,14 +353,23 @@ authRouter.get("/auth/callback/:provider", async (req, res) => {
   let subject = typeof req.query.sub === "string" ? req.query.sub : "";
 
   if (!config.oauthMockEnabled) {
+    if (!state.nonce) {
+      throw new HttpError(400, "invalid_state", "Callback state was missing or invalid.");
+    }
+
     const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
     if (!code) {
       throw new HttpError(400, "invalid_callback_payload", "Callback must include authorization code.");
     }
 
     const tokenResponse = await exchangeAuthorizationCode(provider, code);
+    if (!tokenResponse.idToken) {
+      throw new HttpError(502, "provider_id_token_missing", "Provider token response did not include an id_token.");
+    }
+
+    const idTokenClaims = await verifyIdToken(provider, tokenResponse.idToken, state.nonce);
     const userInfo = tokenResponse.accessToken ? await fetchUserInfo(provider, tokenResponse.accessToken) : {};
-    const claims = extractIdentityClaims({ userInfo, idToken: tokenResponse.idToken });
+    const claims = extractIdentityClaims({ userInfo, idTokenClaims });
     email = claims.email;
     subject = claims.subject;
   }

@@ -8,6 +8,9 @@ export interface OAuthProviderConfig {
   tokenUrl: string;
   userInfoUrl: string;
   scopes: string;
+  jwksUrl: string;
+  expectedIssuer: string;
+  expectedIssuerPrefix: string;
 }
 
 export interface AppConfig {
@@ -65,7 +68,15 @@ function asBoolean(name: string, fallback: boolean): boolean {
 function provider(
   prefix: "GOOGLE" | "MICROSOFT" | "APPLE",
   fallbackRedirectUri: string,
-  defaults: { authorizationUrl: string; tokenUrl: string; userInfoUrl: string; scopes: string }
+  defaults: {
+    authorizationUrl: string;
+    tokenUrl: string;
+    userInfoUrl: string;
+    scopes: string;
+    jwksUrl: string;
+    expectedIssuer: string;
+    expectedIssuerPrefix: string;
+  }
 ): OAuthProviderConfig {
   return {
     clientId: process.env[`${prefix}_CLIENT_ID`] ?? "",
@@ -74,7 +85,10 @@ function provider(
     authorizationUrl: required(`${prefix}_AUTHORIZATION_URL`, defaults.authorizationUrl),
     tokenUrl: required(`${prefix}_TOKEN_URL`, defaults.tokenUrl),
     userInfoUrl: process.env[`${prefix}_USERINFO_URL`] ?? defaults.userInfoUrl,
-    scopes: required(`${prefix}_SCOPES`, defaults.scopes)
+    scopes: required(`${prefix}_SCOPES`, defaults.scopes),
+    jwksUrl: required(`${prefix}_JWKS_URL`, defaults.jwksUrl),
+    expectedIssuer: process.env[`${prefix}_EXPECTED_ISSUER`] ?? defaults.expectedIssuer,
+    expectedIssuerPrefix: process.env[`${prefix}_EXPECTED_ISSUER_PREFIX`] ?? defaults.expectedIssuerPrefix
   };
 }
 
@@ -97,19 +111,28 @@ export function loadConfig(): AppConfig {
         authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
         tokenUrl: "https://oauth2.googleapis.com/token",
         userInfoUrl: "https://openidconnect.googleapis.com/v1/userinfo",
-        scopes: "openid email profile"
+        scopes: "openid email profile",
+        jwksUrl: "https://www.googleapis.com/oauth2/v3/certs",
+        expectedIssuer: "https://accounts.google.com",
+        expectedIssuerPrefix: ""
       }),
       microsoft: provider("MICROSOFT", "http://localhost:4008/auth/callback/microsoft", {
         authorizationUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
         tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
         userInfoUrl: "https://graph.microsoft.com/oidc/userinfo",
-        scopes: "openid email profile"
+        scopes: "openid email profile",
+        jwksUrl: "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+        expectedIssuer: "",
+        expectedIssuerPrefix: "https://login.microsoftonline.com/"
       }),
       apple: provider("APPLE", "http://localhost:4008/auth/callback/apple", {
         authorizationUrl: "https://appleid.apple.com/auth/authorize",
         tokenUrl: "https://appleid.apple.com/auth/token",
         userInfoUrl: "",
-        scopes: "name email"
+        scopes: "name email",
+        jwksUrl: "https://appleid.apple.com/auth/keys",
+        expectedIssuer: "https://appleid.apple.com",
+        expectedIssuerPrefix: ""
       })
     }
   };
