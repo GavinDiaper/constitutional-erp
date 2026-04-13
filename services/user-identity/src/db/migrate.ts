@@ -3,7 +3,12 @@ import path from "node:path";
 import { db } from "./connection";
 
 function resolveMigrationDir(): string {
-  const candidates = [path.join(__dirname, "migrations"), path.join(process.cwd(), "src", "db", "migrations")];
+  const candidates = [
+    path.join(__dirname, "migrations"),
+    path.resolve(__dirname, "..", "..", "..", "src", "db", "migrations"),
+    path.join(process.cwd(), "src", "db", "migrations"),
+    path.join(process.cwd(), "services", "user-identity", "src", "db", "migrations")
+  ];
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
