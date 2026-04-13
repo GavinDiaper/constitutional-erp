@@ -291,6 +291,65 @@ function issueSession(identity: ReturnType<typeof resolveIdentity>) {
   };
 }
 
+async function resolveH2rEmployeeIdByEmail(email: string): Promise<string | null> {
+  if (!config.h2rAutoLinkEnabled) {
+    return null;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.h2rLookupTimeoutMs);
+
+  try {
+    const queryUrl = new URL(`query/h2r_employee`, `${config.foundationErpUrl.replace(/\/$/, "")}/`);
+    queryUrl.searchParams.set("limit", "500");
+    queryUrl.searchParams.set("offset", "0");
+
+    const response = await fetch(queryUrl.toString(), {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        "x-api-key": config.foundationErpApiKey,
+        "x-ingress-id": config.foundationErpIngressId
+      },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as { data?: unknown };
+    if (!Array.isArray(payload.data)) {
+      return null;
+    }
+
+    const row = payload.data.find((item) => {
+      if (!item || typeof item !== "object") {
+        return false;
+      }
+
+      const record = item as Record<string, unknown>;
+      const candidateEmail = typeof record.email === "string" ? record.email.trim().toLowerCase() : "";
+      return candidateEmail === normalizedEmail;
+    }) as Record<string, unknown> | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    return typeof row.employee_id === "string" && row.employee_id.trim() ? row.employee_id.trim() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export const authRouter = Router();
 
 authRouter.get("/auth/providers", (_req, res) => {
@@ -378,11 +437,13 @@ authRouter.get("/auth/callback/:provider", async (req, res) => {
     throw new HttpError(400, "invalid_callback_payload", "Callback must include email and sub in mock mode.");
   }
 
+  const h2rEmployeeId = await resolveH2rEmployeeIdByEmail(email);
+
   const identity = resolveIdentity({
     externalProvider: provider,
     externalSubject: subject,
     email,
-    h2rEmployeeId: null
+    h2rEmployeeId
   });
 
   const session = issueSession(identity);

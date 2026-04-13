@@ -138,6 +138,10 @@ services:
       - ../../services/user-identity/.env.example
     environment:
       DATABASE_PATH: /data/user-identity.db
+      H2R_AUTO_LINK_ENABLED: true
+      FOUNDATION_ERP_URL: http://foundation-erp:3000/api/v1
+      FOUNDATION_ERP_API_KEY: change-me
+      FOUNDATION_ERP_INGRESS_ID: foundation-ingress
       GOOGLE_REDIRECT_URI: http://localhost:4008/auth/callback/google
       MICROSOFT_REDIRECT_URI: http://localhost:4008/auth/callback/microsoft
       APPLE_REDIRECT_URI: http://localhost:4008/auth/callback/apple

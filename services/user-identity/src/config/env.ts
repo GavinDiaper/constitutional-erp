@@ -26,6 +26,11 @@ export interface AppConfig {
   cookieDomain: string | null;
   cookieSecure: boolean;
   oauthMockEnabled: boolean;
+  h2rAutoLinkEnabled: boolean;
+  foundationErpUrl: string;
+  foundationErpApiKey: string;
+  foundationErpIngressId: string;
+  h2rLookupTimeoutMs: number;
   providers: {
     google: OAuthProviderConfig;
     microsoft: OAuthProviderConfig;
@@ -106,6 +111,11 @@ export function loadConfig(): AppConfig {
     cookieDomain: process.env.COOKIE_DOMAIN?.trim() || null,
     cookieSecure: asBoolean("COOKIE_SECURE", false),
     oauthMockEnabled: asBoolean("OAUTH_MOCK_ENABLED", true),
+    h2rAutoLinkEnabled: asBoolean("H2R_AUTO_LINK_ENABLED", false),
+    foundationErpUrl: required("FOUNDATION_ERP_URL", "http://localhost:3000/api/v1"),
+    foundationErpApiKey: required("FOUNDATION_ERP_API_KEY", "change-me"),
+    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress"),
+    h2rLookupTimeoutMs: asNumber("H2R_LOOKUP_TIMEOUT_MS", 1500),
     providers: {
       google: provider("GOOGLE", "http://localhost:4008/auth/callback/google", {
         authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
