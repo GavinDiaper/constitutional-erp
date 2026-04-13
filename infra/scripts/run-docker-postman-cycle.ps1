@@ -4,6 +4,7 @@ param(
   [switch]$SkipMeshFlows,
   [switch]$SkipHealthCheck,
   [switch]$SkipIdentityRedirectCheck,
+  [switch]$SkipIdentityAuthSmokeCheck,
   [int]$TimeoutSeconds = 60,
   [string]$ComposeFile = "",
   [string]$ComposeEnvFile = ""
@@ -108,28 +109,54 @@ function Invoke-Stage {
   }
 }
 
-function Test-IdentityProviderRedirects {
+function Get-CurlResponseHead {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Url,
+    [string]$CookieJar,
+    [string]$CookieFile
+  )
+
   if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
-    throw "curl.exe is required for identity redirect validation but was not found on PATH."
+    throw "curl.exe is required for HTTP validation but was not found on PATH."
   }
 
+  $args = @("-s", "-D", "-", "-o", "NUL")
+  if (-not [string]::IsNullOrWhiteSpace($CookieJar)) {
+    $args += @("-c", $CookieJar)
+  }
+  if (-not [string]::IsNullOrWhiteSpace($CookieFile)) {
+    $args += @("-b", $CookieFile)
+  }
+  $args += $Url
+
+  $headersText = (& curl.exe @args) -join "`n"
+  if ([string]::IsNullOrWhiteSpace($headersText)) {
+    throw "HTTP validation failed: empty response headers from ${Url}"
+  }
+
+  $statusMatch = [regex]::Match($headersText, "HTTP/\d(?:\.\d)?\s+(\d{3})")
+  if (-not $statusMatch.Success) {
+    throw "HTTP validation failed: unable to parse status from headers '$headersText'"
+  }
+
+  $locationMatch = [regex]::Match($headersText, "(?im)^location:\s*(.+)$")
+  $location = if ($locationMatch.Success) { $locationMatch.Groups[1].Value.Trim() } else { "" }
+
+  return @{
+    StatusCode = [int]$statusMatch.Groups[1].Value
+    Location = $location
+    HeadersText = $headersText
+  }
+}
+
+function Test-IdentityProviderRedirects {
   $providers = @("google", "microsoft", "apple")
   foreach ($provider in $providers) {
     $url = "http://localhost:4174/login/$provider"
-    $headersText = (& curl.exe -s -D - -o NUL $url) -join "`n"
-
-    if ([string]::IsNullOrWhiteSpace($headersText)) {
-      throw "Identity redirect probe failed for ${provider}: empty response headers from ${url}"
-    }
-
-    $statusMatch = [regex]::Match($headersText, "HTTP/\d(?:\.\d)?\s+(\d{3})")
-    if (-not $statusMatch.Success) {
-      throw "Identity redirect probe failed for ${provider}: unable to parse HTTP status from headers '$headersText'"
-    }
-
-    $statusCode = [int]$statusMatch.Groups[1].Value
-    $locationMatch = [regex]::Match($headersText, "(?im)^location:\s*(.+)$")
-    $location = if ($locationMatch.Success) { $locationMatch.Groups[1].Value.Trim() } else { "" }
+    $response = Get-CurlResponseHead -Url $url
+    $statusCode = [int]$response.StatusCode
+    $location = [string]$response.Location
 
     if ($statusCode -ne 302) {
       throw "Identity redirect probe failed for ${provider}: expected 302, got $statusCode"
@@ -142,6 +169,67 @@ function Test-IdentityProviderRedirects {
     $expectedPrefix = "http://localhost:4008/auth/login/$provider"
     if (-not $location.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
       throw "Identity redirect probe failed for ${provider}: expected Location prefix '$expectedPrefix', got '$location'"
+    }
+  }
+}
+
+function Test-UiIdentityAuthSmoke {
+  $cookieJar = Join-Path ([System.IO.Path]::GetTempPath()) ("identity-smoke-{0}.cookies" -f ([guid]::NewGuid().ToString("N")))
+
+  try {
+    # Protected route should redirect to identity login app when unauthenticated.
+    $initial = Get-CurlResponseHead -Url "http://localhost:4173/dashboard"
+    if ($initial.StatusCode -ne 303 -or [string]::IsNullOrWhiteSpace($initial.Location) -or -not $initial.Location.StartsWith("http://localhost:4174", [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "UI auth smoke failed: expected unauthenticated /dashboard -> 303 to identity app, got status=$($initial.StatusCode), location='$($initial.Location)'"
+    }
+
+    # Start provider login from identity app (mock flow).
+    $providerStart = Get-CurlResponseHead -Url "http://localhost:4174/login/google?next=%2Fdashboard"
+    if ($providerStart.StatusCode -ne 302 -or [string]::IsNullOrWhiteSpace($providerStart.Location)) {
+      throw "UI auth smoke failed: expected provider start redirect from identity app, got status=$($providerStart.StatusCode), location='$($providerStart.Location)'"
+    }
+
+    # Follow callback redirect chain until it lands on /dashboard.
+    $redirectUrl = $providerStart.Location
+    $redirectedToDashboard = $false
+    for ($hop = 0; $hop -lt 5; $hop++) {
+      $hopResponse = Get-CurlResponseHead -Url $redirectUrl -CookieJar $cookieJar -CookieFile $cookieJar
+      if (($hopResponse.StatusCode -ne 302 -and $hopResponse.StatusCode -ne 303) -or [string]::IsNullOrWhiteSpace($hopResponse.Location)) {
+        throw "UI auth smoke failed: expected redirect in callback chain, got status=$($hopResponse.StatusCode), location='$($hopResponse.Location)'"
+      }
+
+      if ($hopResponse.Location.EndsWith("/dashboard")) {
+        $redirectedToDashboard = $true
+        break
+      }
+
+      $redirectUrl = $hopResponse.Location
+    }
+
+    if (-not $redirectedToDashboard) {
+      throw "UI auth smoke failed: callback chain did not reach /dashboard within 5 redirects"
+    }
+
+    # Authenticated dashboard should load.
+    $dashboardAuthed = Get-CurlResponseHead -Url "http://localhost:4173/dashboard" -CookieFile $cookieJar
+    if ($dashboardAuthed.StatusCode -ne 200) {
+      throw "UI auth smoke failed: expected authenticated /dashboard -> 200, got status=$($dashboardAuthed.StatusCode)"
+    }
+
+    # Logout should redirect to identity login app.
+    $logout = Get-CurlResponseHead -Url "http://localhost:4173/auth/logout" -CookieJar $cookieJar -CookieFile $cookieJar
+    if ($logout.StatusCode -ne 303 -or [string]::IsNullOrWhiteSpace($logout.Location) -or -not $logout.Location.StartsWith("http://localhost:4174", [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "UI auth smoke failed: expected /auth/logout -> 303 to identity app, got status=$($logout.StatusCode), location='$($logout.Location)'"
+    }
+
+    # Protected route should be blocked again after logout.
+    $dashboardAfterLogout = Get-CurlResponseHead -Url "http://localhost:4173/dashboard" -CookieFile $cookieJar
+    if ($dashboardAfterLogout.StatusCode -ne 303 -or [string]::IsNullOrWhiteSpace($dashboardAfterLogout.Location) -or -not $dashboardAfterLogout.Location.StartsWith("http://localhost:4174", [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "UI auth smoke failed: expected post-logout /dashboard -> 303 to identity app, got status=$($dashboardAfterLogout.StatusCode), location='$($dashboardAfterLogout.Location)'"
+    }
+  } finally {
+    if (Test-Path $cookieJar) {
+      Remove-Item -Path $cookieJar -Force -ErrorAction SilentlyContinue
     }
   }
 }
@@ -180,6 +268,12 @@ try {
   if (-not $SkipIdentityRedirectCheck) {
     Invoke-Stage -Name "Validate user-identity provider redirects" -Action {
       Test-IdentityProviderRedirects
+    }
+  }
+
+  if (-not $SkipIdentityAuthSmokeCheck) {
+    Invoke-Stage -Name "Validate UI identity auth smoke flow" -Action {
+      Test-UiIdentityAuthSmoke
     }
   }
 
