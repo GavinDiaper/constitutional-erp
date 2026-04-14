@@ -6,11 +6,7 @@
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
-	import {
-		actorOptions,
-		setActorById,
-		type ActorContext
-	} from '$lib/stores/actorStore';
+	import { actorStore, type ActorContext } from '$lib/stores/actorStore';
 	import { getApprovalAttentionItems, type ApprovalAttentionItem } from '$lib/api/dashboard';
 	import {
 		createEntity,
@@ -130,7 +126,6 @@
 	let domain: (typeof DOMAINS)[number] = 'P2P';
 	let aggregateType = 'requisition';
 	let aggregateId = '';
-	let actorId = 'principal.system';
 	let userNote = '';
 	let aggregateIdsByLookupKey: Record<string, string[]> = {};
 	let aggregateIdLoadingByLookupKey: Record<string, boolean> = {};
@@ -248,18 +243,19 @@
 		paymentForm.invoiceId = String(invoiceLookup[0]?.invoice_id ?? '');
 	}
 
-	function buildAggregateLookupKey(targetAggregateType: string, targetActorId = actorId): string {
+	function buildAggregateLookupKey(targetAggregateType: string, targetActorId = selectedActor().actorId): string {
 		return `${targetActorId}::${targetAggregateType}`;
 	}
 
 
 
 	function buildContext(): NavigatorContext {
+		const actor = selectedActor();
 		return {
 			domain,
 			aggregateType: aggregateType.trim(),
 			aggregateId: aggregateId.trim(),
-			actorId: actorId.trim(),
+			actorId: actor.actorId,
 			userNote: userNote.trim() ? userNote.trim() : undefined
 		};
 	}
@@ -374,11 +370,6 @@
 		}
 
 		await loadAggregateIdsForType(aggregateType);
-	}
-
-	async function handleActorChange(): Promise<void> {
-		setActorById(actorId);
-		await handleAggregateTypeChange();
 	}
 
 	function selectedCreatePreset(): QuickCreatePreset | undefined {
@@ -517,7 +508,10 @@
 	}
 
 	onMount(() => {
-		setActorById(actorId);
+		const unsubscribeActor = actorStore.subscribe(() => {
+			void handleAggregateTypeChange();
+		});
+
 		void Promise.all([loadCreateLookups(), loadQueryTableMetadata()]).then(async () => {
 			const allTypes = getAllAggregateTypes();
 			for (const type of allTypes) {
@@ -528,6 +522,8 @@
 				await loadAggregateIdsForType(aggregateType);
 			}
 		});
+
+		return unsubscribeActor;
 	});
 
 	function registerAggregateId(targetAggregateType: string, id: string): void {
@@ -566,7 +562,7 @@
 	}
 
 	function selectedActor(): ActorContext {
-		return actorOptions.find((actor) => actor.actorId === actorId) ?? actorOptions[0];
+		return $actorStore;
 	}
 
 	function resolveLinesHref(resourceType: string, resourceId: string): string | null {
@@ -662,8 +658,8 @@
 	}
 
 	async function handleLoadResource(): Promise<void> {
-		if (!aggregateType.trim() || !aggregateId.trim() || !actorId.trim()) {
-			resourceError = 'Aggregate type, aggregate ID, and actor ID are required.';
+		if (!aggregateType.trim() || !aggregateId.trim()) {
+			resourceError = 'Aggregate type and aggregate ID are required.';
 			return;
 		}
 
@@ -806,8 +802,8 @@
 	}
 
 	async function handleRank(): Promise<void> {
-		if (!aggregateType.trim() || !aggregateId.trim() || !actorId.trim()) {
-			errorMessage = 'Aggregate type, aggregate ID, and actor ID are required.';
+		if (!aggregateType.trim() || !aggregateId.trim()) {
+			errorMessage = 'Aggregate type and aggregate ID are required.';
 			return;
 		}
 
@@ -1016,24 +1012,6 @@
 			{/if}
 		</div>
 
-		<div>
-			<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-actor-id">Actor ID</label>
-			<select
-				id="nav-actor-id"
-				class="w-full rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm"
-				bind:value={actorId}
-				on:change={() => void handleActorChange()}
-			>
-				{#each actorOptions as actor (actor.actorId)}
-					<option value={actor.actorId}>{actor.actorId}</option>
-				{/each}
-			</select>
-		</div>
-
-		<div class="rounded-md border dark:border-white/10 border-slate-200 dark:bg-white/5 bg-slate-100/60 px-3 py-2 text-xs dark:text-white/70 text-slate-600">
-			<p class="font-semibold dark:text-white/80 text-slate-700">Selected Actor Tier</p>
-			<p class="mt-1">{selectedActor().authorityTier}</p>
-		</div>
 
 		<div class="flex items-end">
 			<button
@@ -1057,7 +1035,7 @@
 	</div>
 
 	<p class="mt-3 text-xs dark:text-white/55 text-slate-500">
-		Aggregate IDs load from live data for the selected actor and aggregate type.
+		Aggregate IDs load from live data for the actor selected in the header and the chosen aggregate type.
 	</p>
 
 	<div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
