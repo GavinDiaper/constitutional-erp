@@ -5,7 +5,7 @@
 
 	const logoUrl = `${base}/images/Provisa.svg`;
 	const frontPageBackgroundUrl = `${base}/images/backgroundFrontPage.png`;
-	const gMarkUrl = `${base}/images/G.png`;
+	const gMarkUrl = `${base}/images/Lina.png`;
 	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
 	const architectureFutureDefinition = `%%{init: {'themeVariables': {'fontSize': '44px'}, 'themeCSS': '.nodeLabel, .edgeLabel, .cluster-label { font-weight: 700; line-height: 1.2; } .node .label { padding-top: 18px; padding-bottom: 10px; }'}}%%
 flowchart TB
