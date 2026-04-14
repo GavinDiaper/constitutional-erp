@@ -1,6 +1,8 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
-	import { resolve } from '$app/paths';
+	import { base, resolve } from '$app/paths';
+
+	const linaUrl = `${base}/images/Lina1.png`;
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
@@ -931,7 +933,12 @@
 	}
 </script>
 
-<section class="glass-panel p-6">
+<section class="glass-panel relative overflow-hidden p-6">
+	<img
+		class="pointer-events-none absolute right-4 top-4 w-36 opacity-80 md:w-44"
+		src={linaUrl}
+		alt=""
+	/>
 	<h2 class="text-2xl font-semibold">Navigator AI</h2>
 	<p class="muted mt-2 text-sm">Run the full Navigator workflow with domain-aligned dropdowns and Postman-compatible fixture values.</p>
 

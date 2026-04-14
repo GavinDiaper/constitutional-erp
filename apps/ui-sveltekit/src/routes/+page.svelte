@@ -146,9 +146,9 @@ class D1,D2,D3,D4 fabric;`;
 				<img class="h-16 w-auto md:h-20" src={logoUrl} alt="Provisa logo" />
 			</div>
 
-			<h1 class="mt-6 text-4xl font-semibold text-slate-900 md:text-5xl">Foundation ERP v2</h1>
+			<h1 class="mt-6 text-4xl font-semibold text-slate-900 md:text-5xl">Lina Foundation ERP v2</h1>
 			<p class="mt-4 max-w-3xl text-sm leading-7 text-slate-800/95 md:text-base">
-				Foundation ERP v2 is the canonical ERP model and execution engine for the Constitutional stack.
+				Lina "Lee-na" is a lean and efficient Foundation ERP, v2 is the canonical ERP model and execution engine for the Constitutional stack.
 				It provides a stable, complete core across O2C, P2P, R2R, and H2R, emits replayable canonical
 				events, and supports portable command mappings into ERP-specific APIs through Mesh.
 			</p>
