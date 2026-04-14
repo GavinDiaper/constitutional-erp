@@ -135,7 +135,7 @@ class D1,D2,D3,D4 fabric;`;
 		alt=""
 	/>
 	<img
-		class="pointer-events-none absolute -right-8 -top-10 w-44 opacity-80 md:w-56"
+		class="pointer-events-none absolute right-4 top-4 w-36 opacity-80 md:w-44"
 		src={gMarkUrl}
 		alt=""
 	/>
