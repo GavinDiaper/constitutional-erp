@@ -4,7 +4,7 @@
 	import { diagramCatalog } from '$lib/diagrams/catalog';
 
 	const logoUrl = `${base}/images/Provisa.svg`;
-	const frontPageBackgroundUrl = `${base}/images/backgroundFrontPage.png`;
+	const frontPageBackgroundUrl = `${base}/images/BusinessIdea1.png`;
 	const gMarkUrl = `${base}/images/Lina1.png`;
 	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
 	const architectureFutureDefinition = `%%{init: {'themeVariables': {'fontSize': '44px'}, 'themeCSS': '.nodeLabel, .edgeLabel, .cluster-label { font-weight: 700; line-height: 1.2; } .node .label { padding-top: 18px; padding-bottom: 10px; }'}}%%
@@ -163,7 +163,7 @@ class D1,D2,D3,D4 fabric;`;
 					Open Dashboard
 				</a>
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/navigator')}>
-					Open Navigator **AI Driven UX**
+					Open Lina **AI Driven UX**
 				</a>
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/canvas')}>
 					Open Canvas

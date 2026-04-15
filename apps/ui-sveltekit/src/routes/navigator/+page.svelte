@@ -1,7 +1,7 @@
 ﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
-
+	const frontPageBackgroundUrl = `${base}/images/BusinessIdea.jpg`;
 	const linaUrl = `${base}/images/Lina1.png`;
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
@@ -937,7 +937,7 @@
 	/>
 	<h2 class="text-2xl font-semibold">Navigator AI</h2>
 	<p class="muted mt-2 text-sm">Run the full Navigator workflow with domain-aligned dropdowns and Postman-compatible fixture values.</p>
-
+<section class="glass-panel relative overflow-hidden p-6">
 	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 		<div>
 			<label class="mb-1 block text-xs dark:text-white/70 text-slate-600" for="nav-domain">Domain</label>
@@ -970,7 +970,7 @@
 		<div>
 			<div class="mb-1 flex items-center gap-2">
 				<label class="block text-xs dark:text-white/70 text-slate-600" for="nav-aggregate-id">Aggregate ID</label>
-				<button
+				<!-- <button
 					type="button"
 					class="rounded border dark:border-white/25 border-slate-300 px-2 py-0.5 text-[11px] dark:text-white/70 text-slate-600 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={getAggregateIdLoading(aggregateType)}
@@ -983,7 +983,7 @@
 						<span class="h-3 w-3 animate-spin rounded-full border dark:border-white/25 border-slate-300 border-t-white/80"></span>
 						Loading live data
 					</span>
-				{/if}
+				{/if} -->
 			</div>
 			<select
 				id="nav-aggregate-id"
@@ -1013,7 +1013,8 @@
 		</div>
 
 
-		<div class="flex items-end">
+
+		<div class="flex justify-start items-end">
 			<button
 				class="w-full rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 				disabled={resourceLoading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
@@ -1023,7 +1024,9 @@
 			</button>
 		</div>
 
-		<div class="flex items-end">
+
+
+		<div class="flex justify-start items-end">
 			<button
 				class="w-full rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 				disabled={loading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
@@ -1037,7 +1040,7 @@
 	<p class="mt-3 text-xs dark:text-white/55 text-slate-500">
 		Aggregate IDs load from live data for the actor selected in the header and the chosen aggregate type.
 	</p>
-
+</section>
 	<div class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1225,8 +1228,15 @@
 				{/if}
 			{/if}
 		</div>
+<section class="glass-panel relative overflow-hidden p-6">
+
 
 		<div class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
+			<img
+		class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15"
+		src={frontPageBackgroundUrl}
+		alt=""
+	/>
 			<h3 class="text-sm font-semibold uppercase tracking-[0.15em] dark:text-white/70 text-slate-600">Next Step Recommender</h3>
 			<p class="mt-2 text-sm dark:text-white/75 text-slate-700">
 				Generate history-aware recommendations that combine available actions and logical create-operation progression.
@@ -1264,7 +1274,7 @@
 					{/each}
 				</ul>
 			{/if}
-		</div>
+		</div></section>
 	</div>
 
 	<div class="mt-6 rounded-md border dark:border-white/15 border-slate-200 dark:bg-white/5 bg-slate-100/60 p-4">
