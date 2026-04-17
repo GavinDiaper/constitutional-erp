@@ -4,6 +4,7 @@ This document describes the root orchestration tool for starting and stopping th
 
 ## Files
 
+- `run-systems.js`: cross-platform Node orchestrator used by root npm scripts and Render
 - `run-systems.ps1`: main PowerShell orchestrator
 - `run-systems.cmd`: convenience wrapper for Windows shells
 - `run-full-postman-cycle.ps1`: end-to-end stop/reset/build/start/test orchestrator
@@ -22,7 +23,10 @@ This document describes the root orchestration tool for starting and stopping th
 5. Event Processor (`4004`)
 6. Process Graph (`4005`)
 7. Integration Hub (`4017`)
-8. Navigator AI (`4016`)
+8. User Identity API (`4008`)
+9. User Identity App (`4174`)
+10. UI SvelteKit (`4173`)
+11. Navigator AI (`4016`)
 
 Startup order follows the list above.
 Shutdown order is reversed.
@@ -30,6 +34,12 @@ Shutdown order is reversed.
 ## Commands
 
 Run from `D:\Projects\ConstitutionalERP`:
+
+```bash
+npm run start:all
+npm run stop:all
+npm run health:all
+```
 
 ```powershell
 .\run-systems.cmd start
@@ -138,7 +148,7 @@ Example:
 - `restart`: stop then start
 - `status`: shows tracked PID/alive/listening-port view
 - `health`: calls each `/health` endpoint and shows a health matrix
-- `killports`: kills any process listening on `3000`, `4001`, `4002`, `4003`, `4004`, `4005`, `4016`, `4017`
+- `killports`: kills any process listening on `3000`, `4001`, `4002`, `4003`, `4004`, `4005`, `4008`, `4016`, `4017`, `4173`, `4174`
 - `resetdb`: stops services, kills managed ports, removes SQLite files (`.db`, `-wal`, `-shm`) for all managed services, then runs `npm run migrate` for each service
 
 ## Runtime artifacts
@@ -150,11 +160,14 @@ Example:
 
 ## Notes
 
-- The tool uses `npm run dev` for each service.
+- In local development, the Node orchestrator uses `npm run dev` for each service.
+- In production mode (`RENDER` or `NODE_ENV=production`), the Node orchestrator prefers each workspace `start` script.
+- If you run the full stack inside a single Render service, set `RENDER_PUBLIC_SERVICE` to the service that should bind Render's assigned `PORT`. It defaults to `ui-sveltekit` on Render.
 - `run-full-postman-cycle` defaults to the same local-process model. Use `-UseExistingServices` when the stack is already running elsewhere, for example via Docker.
 - The default local and Docker examples intentionally use `API_KEY=change-me` for all internal service hops and Postman environments. That value must match across the running services and the Newman environment unless you deliberately override it everywhere.
 - The tool resolves config from each service env file in this order: `.env`, then `.env.example`.
 - The tool exports those resolved env values into each launched process to prevent global shell env collisions (for example global `PORT` or `API_KEY`).
+- The tool now applies internal API key defaults (`change-me`) when service env files omit them, so shell/global API key values cannot accidentally break cross-service auth during local orchestration.
 - If a port is already occupied and `-KillPorts` is not set, `start` fails with a clear message.
 - `health` marks a service healthy when HTTP is `200`; if payload fields exist, `status` should be `ok` and `replayStatus` should be `Ready`.
 - Navigator AI performs fail-fast startup validation for Azure OpenAI connectivity; if required Azure settings are missing or unreachable, Navigator AI will fail startup by design.

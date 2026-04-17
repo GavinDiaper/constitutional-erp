@@ -13,6 +13,19 @@ $RuntimeDir = Join-Path $ScriptsRoot ".runtime"
 $LogsDir = Join-Path $ScriptsRoot "logs"
 $StatePath = Join-Path $RuntimeDir "services-state.json"
 
+$OrchestrationEnvDefaults = @{
+  API_KEY = "change-me"
+  FOUNDATION_ERP_API_KEY = "change-me"
+  AUTHORITY_ENGINE_API_KEY = "change-me"
+  GOVERNANCE_ENGINE_API_KEY = "change-me"
+  EVENT_PROCESSOR_API_KEY = "change-me"
+  MESH_GATEWAY_API_KEY = "change-me"
+  PGE_API_KEY = "change-me"
+  INTEGRATION_HUB_API_KEY = "change-me"
+  FOUNDATION_ADAPTER_API_KEY = "change-me"
+  ADAPTER_API_KEY = "change-me"
+}
+
 $ServiceTemplates = @(
   @{
     Name = "foundation-erp"
@@ -59,6 +72,14 @@ $ServiceTemplates = @(
     Path = Join-Path $RepoRoot "apps\user-identity"
     DefaultPort = 4174
     HealthPath = "/"
+    IncludeInResetDb = $false
+  },
+  @{
+    Name = "ui-sveltekit"
+    Path = Join-Path $RepoRoot "apps\ui-sveltekit"
+    DefaultPort = 4173
+    HealthPath = "/"
+    StartCommand = "npm run dev -- --host 127.0.0.1 --port {port}"
     IncludeInResetDb = $false
   },
   @{
@@ -116,9 +137,17 @@ function Get-ServiceEnvMap([string]$servicePath) {
 
 function Resolve-Service($template) {
   $envMap = Get-ServiceEnvMap -servicePath $template.Path
+  $mergedEnvMap = @{}
+  foreach ($key in $OrchestrationEnvDefaults.Keys) {
+    $mergedEnvMap[$key] = [string]$OrchestrationEnvDefaults[$key]
+  }
+  foreach ($key in $envMap.Keys) {
+    $mergedEnvMap[$key] = [string]$envMap[$key]
+  }
+
   $envPort = $null
-  if ($envMap.ContainsKey("PORT") -and $envMap["PORT"] -match '^[0-9]+$') {
-    $envPort = [int]$envMap["PORT"]
+  if ($mergedEnvMap.ContainsKey("PORT") -and $mergedEnvMap["PORT"] -match '^[0-9]+$') {
+    $envPort = [int]$mergedEnvMap["PORT"]
   }
 
   $port = if ($null -ne $envPort) { $envPort } else { [int]$template.DefaultPort }
@@ -133,7 +162,7 @@ function Resolve-Service($template) {
     HealthUrl = "http://localhost:$port$healthPath"
     StartCommand = $startCommand
     IncludeInResetDb = $includeInResetDb
-    EnvMap = $envMap
+    EnvMap = $mergedEnvMap
   }
 }
 

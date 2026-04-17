@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"start": "node build",
 		"preview": "vite preview",
 		"flows:generate": "node scripts/generate-process-flows.mjs",
 		"prepare": "svelte-kit sync || echo ''",
