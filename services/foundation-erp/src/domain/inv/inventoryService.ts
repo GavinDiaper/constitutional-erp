@@ -7,6 +7,7 @@ type ValuationMethod = "standard" | "moving_average";
 type MovementType = "receipt" | "issue" | "adjustment" | "cost_update";
 type ReservationType = "soft" | "hard";
 type ReservationStatus = "Active" | "Released" | "Fulfilled" | "Cancelled";
+type BinTxnType = "putaway" | "pick" | "adjustment";
 
 type SkuRow = {
   sku_id: string;
@@ -61,6 +62,28 @@ type ReservationRow = {
   updated_at: string;
   released_at: string | null;
   released_reason: string | null;
+};
+
+type BinRow = {
+  bin_id: string;
+  organization_id: string;
+  bin_code: string;
+  zone: string | null;
+  aisle: string | null;
+  rack: string | null;
+  shelf_level: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type BinBalanceRow = {
+  bin_balance_id: string;
+  sku_id: string;
+  organization_id: string;
+  bin_id: string;
+  quantity: number;
+  updated_at: string;
 };
 
 function now(): string {
@@ -300,6 +323,102 @@ function getActiveHardReservedQuantity(skuId: string, organizationId: string): n
     .get(skuId, organizationId) as { reserved_quantity: number } | undefined;
 
   return Number(row?.reserved_quantity ?? 0);
+}
+
+function getBinRow(binId: string): BinRow {
+  const row = db.prepare("SELECT * FROM inv_bin WHERE bin_id = ?").get(binId) as BinRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Inventory bin not found");
+  }
+
+  return row;
+}
+
+function getBinBalanceRow(skuId: string, organizationId: string, binId: string): BinBalanceRow | undefined {
+  return db
+    .prepare("SELECT * FROM inv_bin_balance WHERE sku_id = ? AND organization_id = ? AND bin_id = ?")
+    .get(skuId, organizationId, binId) as BinBalanceRow | undefined;
+}
+
+function upsertBinBalance(input: { skuId: string; organizationId: string; binId: string; quantity: number }): BinBalanceRow {
+  const timestamp = now();
+  const existing = getBinBalanceRow(input.skuId, input.organizationId, input.binId);
+
+  if (existing) {
+    db.prepare(
+      `UPDATE inv_bin_balance
+       SET quantity = ?, updated_at = ?
+       WHERE bin_balance_id = ?`
+    ).run(input.quantity, timestamp, existing.bin_balance_id);
+
+    return {
+      ...existing,
+      quantity: input.quantity,
+      updated_at: timestamp
+    };
+  }
+
+  const binBalanceId = newId("BINB-");
+  db.prepare(
+    `INSERT INTO inv_bin_balance(bin_balance_id, sku_id, organization_id, bin_id, quantity, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(binBalanceId, input.skuId, input.organizationId, input.binId, input.quantity, timestamp);
+
+  return {
+    bin_balance_id: binBalanceId,
+    sku_id: input.skuId,
+    organization_id: input.organizationId,
+    bin_id: input.binId,
+    quantity: input.quantity,
+    updated_at: timestamp
+  };
+}
+
+function getTotalAllocatedBinQuantity(skuId: string, organizationId: string): number {
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(quantity), 0) AS allocated_quantity
+       FROM inv_bin_balance
+       WHERE sku_id = ? AND organization_id = ?`
+    )
+    .get(skuId, organizationId) as { allocated_quantity: number } | undefined;
+
+  return Number(row?.allocated_quantity ?? 0);
+}
+
+function insertBinTransaction(input: {
+  txnType: BinTxnType;
+  skuId: string;
+  organizationId: string;
+  binId: string;
+  quantity: number;
+  reason?: string;
+  referenceType?: string;
+  referenceId?: string;
+  correlationKey?: string;
+}): string {
+  const binTxnId = newId("BINTX-");
+  db.prepare(
+    `INSERT INTO inv_bin_txn(
+      bin_txn_id, txn_type, sku_id, organization_id, bin_id, quantity,
+      reason, reference_type, reference_id, correlation_key, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    binTxnId,
+    input.txnType,
+    input.skuId,
+    input.organizationId,
+    input.binId,
+    input.quantity,
+    input.reason ?? null,
+    input.referenceType ?? null,
+    input.referenceId ?? null,
+    input.correlationKey ?? null,
+    now()
+  );
+
+  return binTxnId;
 }
 
 export function createSku(input: {
@@ -910,4 +1029,338 @@ export function listReservations(filters: {
   return db
     .prepare(`SELECT * FROM inv_reservation ${whereClause} ORDER BY created_at DESC LIMIT 500`)
     .all(...params);
+}
+
+export function createInventoryBin(input: {
+  organizationId: string;
+  binCode: string;
+  zone?: string;
+  aisle?: string;
+  rack?: string;
+  shelfLevel?: string;
+}, actor?: EventActor) {
+  ensureOrganizationExists(input.organizationId);
+
+  const binId = newId("BIN-");
+  const timestamp = now();
+
+  try {
+    transaction(() => {
+      db.prepare(
+        `INSERT INTO inv_bin(
+          bin_id, organization_id, bin_code, zone, aisle, rack, shelf_level, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      ).run(
+        binId,
+        input.organizationId,
+        input.binCode,
+        input.zone ?? null,
+        input.aisle ?? null,
+        input.rack ?? null,
+        input.shelfLevel ?? null,
+        timestamp,
+        timestamp
+      );
+
+      appendEvent({
+        entityId: binId,
+        entityType: "InventoryBin",
+        eventType: "inv.bin.created",
+        version: 1,
+        actor,
+        governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Bin.Create" },
+        payload: {
+          organizationId: input.organizationId,
+          binCode: input.binCode,
+          zone: input.zone,
+          aisle: input.aisle,
+          rack: input.rack,
+          shelfLevel: input.shelfLevel
+        }
+      });
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      throw new HttpError(409, "duplicate_bin_code", `Bin code '${input.binCode}' already exists in this organization`);
+    }
+
+    throw err;
+  }
+
+  return getInventoryBinById(binId);
+}
+
+export function getInventoryBinById(binId: string) {
+  return getBinRow(binId);
+}
+
+export function listInventoryBins(filters: { organizationId?: string; isActive?: boolean } = {}) {
+  if (filters.organizationId !== undefined && filters.isActive !== undefined) {
+    return db
+      .prepare("SELECT * FROM inv_bin WHERE organization_id = ? AND is_active = ? ORDER BY bin_code ASC LIMIT 500")
+      .all(filters.organizationId, filters.isActive ? 1 : 0);
+  }
+
+  if (filters.organizationId !== undefined) {
+    return db.prepare("SELECT * FROM inv_bin WHERE organization_id = ? ORDER BY bin_code ASC LIMIT 500").all(filters.organizationId);
+  }
+
+  if (filters.isActive !== undefined) {
+    return db.prepare("SELECT * FROM inv_bin WHERE is_active = ? ORDER BY organization_id ASC, bin_code ASC LIMIT 500").all(filters.isActive ? 1 : 0);
+  }
+
+  return db.prepare("SELECT * FROM inv_bin ORDER BY organization_id ASC, bin_code ASC LIMIT 500").all();
+}
+
+export function listBinBalances(filters: { binId?: string; skuId?: string; organizationId?: string } = {}) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+
+  if (filters.binId) {
+    clauses.push("bin_id = ?");
+    params.push(filters.binId);
+  }
+
+  if (filters.skuId) {
+    clauses.push("sku_id = ?");
+    params.push(filters.skuId);
+  }
+
+  if (filters.organizationId) {
+    clauses.push("organization_id = ?");
+    params.push(filters.organizationId);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db
+    .prepare(`SELECT * FROM inv_bin_balance ${whereClause} ORDER BY updated_at DESC LIMIT 500`)
+    .all(...params);
+}
+
+export function putawayToBin(input: {
+  skuId: string;
+  organizationId: string;
+  binId: string;
+  quantity: number;
+  reason?: string;
+  referenceType?: string;
+  referenceId?: string;
+  correlationKey?: string;
+}, actor?: EventActor) {
+  getSkuRow(input.skuId);
+  ensureOrganizationExists(input.organizationId);
+
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new HttpError(400, "invalid_request", "Putaway quantity must be greater than zero");
+  }
+
+  const bin = getBinRow(input.binId);
+  if (bin.organization_id !== input.organizationId) {
+    throw new HttpError(400, "invalid_request", "Bin does not belong to the provided organization");
+  }
+
+  if (bin.is_active !== 1) {
+    throw new HttpError(409, "invalid_state", "Bin is inactive");
+  }
+
+  const onHand = getOnHandRow(input.skuId, input.organizationId);
+  const onHandQuantity = onHand?.quantity_on_hand ?? 0;
+  const currentlyAllocated = getTotalAllocatedBinQuantity(input.skuId, input.organizationId);
+  const unallocatedQuantity = roundMoney(onHandQuantity - currentlyAllocated);
+
+  if (input.quantity > unallocatedQuantity) {
+    throw new HttpError(409, "insufficient_unallocated_on_hand", "Putaway exceeds unallocated on-hand quantity");
+  }
+
+  const currentBinBalance = getBinBalanceRow(input.skuId, input.organizationId, input.binId);
+  const balanceAfter = roundMoney((currentBinBalance?.quantity ?? 0) + input.quantity);
+
+  let result: Record<string, unknown> = {};
+
+  try {
+    transaction(() => {
+      const updatedBalance = upsertBinBalance({
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: balanceAfter
+      });
+
+      const binTxnId = insertBinTransaction({
+        txnType: "putaway",
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: input.quantity,
+        reason: input.reason,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        correlationKey: input.correlationKey
+      });
+
+      appendEvent({
+        entityId: binTxnId,
+        entityType: "InventoryBinMovement",
+        eventType: "inv.putaway.posted",
+        version: 1,
+        actor,
+        governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Putaway.Post" },
+        payload: {
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          binId: input.binId,
+          quantity: input.quantity,
+          balanceAfter,
+          reason: input.reason,
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          correlationKey: input.correlationKey
+        }
+      });
+
+      result = {
+        binTxnId,
+        operation: "putaway",
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: input.quantity,
+        balanceAfter: updatedBalance.quantity
+      };
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE" && input.correlationKey) {
+      const existing = db
+        .prepare("SELECT * FROM inv_bin_txn WHERE correlation_key = ?")
+        .get(input.correlationKey) as { bin_txn_id: string; sku_id: string; organization_id: string; bin_id: string; quantity: number } | undefined;
+
+      if (existing) {
+        return {
+          binTxnId: existing.bin_txn_id,
+          operation: "putaway",
+          skuId: existing.sku_id,
+          organizationId: existing.organization_id,
+          binId: existing.bin_id,
+          quantity: existing.quantity
+        };
+      }
+    }
+
+    throw err;
+  }
+
+  return result;
+}
+
+export function pickFromBin(input: {
+  skuId: string;
+  organizationId: string;
+  binId: string;
+  quantity: number;
+  reason?: string;
+  referenceType?: string;
+  referenceId?: string;
+  correlationKey?: string;
+}, actor?: EventActor) {
+  getSkuRow(input.skuId);
+  ensureOrganizationExists(input.organizationId);
+
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new HttpError(400, "invalid_request", "Pick quantity must be greater than zero");
+  }
+
+  const bin = getBinRow(input.binId);
+  if (bin.organization_id !== input.organizationId) {
+    throw new HttpError(400, "invalid_request", "Bin does not belong to the provided organization");
+  }
+
+  if (bin.is_active !== 1) {
+    throw new HttpError(409, "invalid_state", "Bin is inactive");
+  }
+
+  const currentBinBalance = getBinBalanceRow(input.skuId, input.organizationId, input.binId);
+  const currentQuantity = currentBinBalance?.quantity ?? 0;
+  if (input.quantity > currentQuantity) {
+    throw new HttpError(409, "insufficient_bin_quantity", "Pick quantity exceeds available bin quantity");
+  }
+
+  const balanceAfter = roundMoney(currentQuantity - input.quantity);
+  let result: Record<string, unknown> = {};
+
+  try {
+    transaction(() => {
+      const updatedBalance = upsertBinBalance({
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: balanceAfter
+      });
+
+      const binTxnId = insertBinTransaction({
+        txnType: "pick",
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: -input.quantity,
+        reason: input.reason,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        correlationKey: input.correlationKey
+      });
+
+      appendEvent({
+        entityId: binTxnId,
+        entityType: "InventoryBinMovement",
+        eventType: "inv.pick.posted",
+        version: 1,
+        actor,
+        governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Pick.Post" },
+        payload: {
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          binId: input.binId,
+          quantity: input.quantity,
+          balanceAfter,
+          reason: input.reason,
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          correlationKey: input.correlationKey
+        }
+      });
+
+      result = {
+        binTxnId,
+        operation: "pick",
+        skuId: input.skuId,
+        organizationId: input.organizationId,
+        binId: input.binId,
+        quantity: input.quantity,
+        balanceAfter: updatedBalance.quantity
+      };
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE" && input.correlationKey) {
+      const existing = db
+        .prepare("SELECT * FROM inv_bin_txn WHERE correlation_key = ?")
+        .get(input.correlationKey) as { bin_txn_id: string; sku_id: string; organization_id: string; bin_id: string; quantity: number } | undefined;
+
+      if (existing) {
+        return {
+          binTxnId: existing.bin_txn_id,
+          operation: "pick",
+          skuId: existing.sku_id,
+          organizationId: existing.organization_id,
+          binId: existing.bin_id,
+          quantity: Math.abs(existing.quantity)
+        };
+      }
+    }
+
+    throw err;
+  }
+
+  return result;
 }

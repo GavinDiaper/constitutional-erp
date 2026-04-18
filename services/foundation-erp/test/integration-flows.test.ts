@@ -1177,3 +1177,119 @@ test("Inventory reservations enforce hard allocation availability and support re
 
   assert.equal(activeReservations.body.data.length, 0);
 });
+
+test("Inventory bin operations support putaway and pick constraints", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-BIN-${unique}`,
+      description: "Bin operation test SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 12
+    })
+    .expect(201);
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Bin WH ${unique}` })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      movementType: "receipt",
+      quantity: 10,
+      unitCost: 12,
+      reason: "seed stock for bin test"
+    })
+    .expect(201);
+
+  const bin = await request(app)
+    .post("/api/v1/inv/bins")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      binCode: `A-01-${unique}`,
+      zone: "A",
+      aisle: "01",
+      rack: "R1",
+      shelfLevel: "L1"
+    })
+    .expect(201);
+
+  const putaway = await request(app)
+    .post("/api/v1/inv/bins/putaway")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      quantity: 6,
+      reason: "putaway to primary bin"
+    })
+    .expect(201);
+
+  assert.equal(putaway.body.operation, "putaway");
+  assert.equal(putaway.body.balanceAfter, 6);
+
+  const overPutaway = await request(app)
+    .post("/api/v1/inv/bins/putaway")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      quantity: 5,
+      reason: "should exceed unallocated on-hand"
+    })
+    .expect(409);
+
+  assert.equal(overPutaway.body.title, "insufficient_unallocated_on_hand");
+
+  const balancesAfterPutaway = await request(app)
+    .get(`/api/v1/inv/bins/${bin.body.bin_id}/balances`)
+    .query({ skuId: sku.body.sku_id })
+    .set(headers)
+    .expect(200);
+
+  assert.equal(balancesAfterPutaway.body.data.length, 1);
+  assert.equal(balancesAfterPutaway.body.data[0].quantity, 6);
+
+  const pick = await request(app)
+    .post("/api/v1/inv/bins/pick")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      quantity: 2,
+      reason: "pick for shipment"
+    })
+    .expect(201);
+
+  assert.equal(pick.body.operation, "pick");
+  assert.equal(pick.body.balanceAfter, 4);
+
+  const overPick = await request(app)
+    .post("/api/v1/inv/bins/pick")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      quantity: 5,
+      reason: "should exceed bin quantity"
+    })
+    .expect(409);
+
+  assert.equal(overPick.body.title, "insufficient_bin_quantity");
+});
