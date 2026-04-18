@@ -114,6 +114,33 @@ type CycleCountLineRow = {
   updated_at: string;
 };
 
+type LotStatus = "Active" | "Hold" | "Consumed" | "Expired";
+type SerialStatus = "Available" | "Allocated" | "Consumed" | "Hold";
+
+type LotRow = {
+  lot_id: string;
+  sku_id: string;
+  organization_id: string;
+  lot_code: string;
+  manufacture_date: string | null;
+  expiry_date: string | null;
+  status: LotStatus;
+  quantity_on_hand: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type SerialRow = {
+  serial_id: string;
+  sku_id: string;
+  organization_id: string;
+  lot_id: string | null;
+  serial_number: string;
+  status: SerialStatus;
+  created_at: string;
+  updated_at: string;
+};
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -465,6 +492,38 @@ function listCycleCountLinesByCountId(cycleCountId: string): CycleCountLineRow[]
   return db
     .prepare("SELECT * FROM inv_cycle_count_line WHERE cycle_count_id = ? ORDER BY created_at ASC")
     .all(cycleCountId) as CycleCountLineRow[];
+}
+
+function getLotRow(lotId: string): LotRow {
+  const row = db.prepare("SELECT * FROM inv_lot WHERE lot_id = ?").get(lotId) as LotRow | undefined;
+  if (!row) {
+    throw new HttpError(404, "not_found", "Inventory lot not found");
+  }
+
+  return row;
+}
+
+function getSerialRow(serialId: string): SerialRow {
+  const row = db.prepare("SELECT * FROM inv_serial WHERE serial_id = ?").get(serialId) as SerialRow | undefined;
+  if (!row) {
+    throw new HttpError(404, "not_found", "Inventory serial not found");
+  }
+
+  return row;
+}
+
+function getTrackedLotQuantity(skuId: string, organizationId: string): number {
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(quantity_on_hand), 0) AS tracked_quantity
+       FROM inv_lot
+       WHERE sku_id = ?
+         AND organization_id = ?
+         AND status IN ('Active', 'Hold', 'Expired')`
+    )
+    .get(skuId, organizationId) as { tracked_quantity: number } | undefined;
+
+  return Number(row?.tracked_quantity ?? 0);
 }
 
 function updateOnHandForCycleCountVariance(input: {
@@ -1734,4 +1793,318 @@ export function postCycleCount(cycleCountId: string, actor?: EventActor) {
   });
 
   return getCycleCountById(cycleCountId);
+}
+
+export function createInventoryLot(input: {
+  skuId: string;
+  organizationId: string;
+  lotCode: string;
+  quantityOnHand: number;
+  manufactureDate?: string;
+  expiryDate?: string;
+}, actor?: EventActor) {
+  getSkuRow(input.skuId);
+  ensureOrganizationExists(input.organizationId);
+
+  if (!Number.isFinite(input.quantityOnHand) || input.quantityOnHand <= 0) {
+    throw new HttpError(400, "invalid_request", "Lot quantityOnHand must be greater than zero");
+  }
+
+  const onHand = getOnHandRow(input.skuId, input.organizationId);
+  const totalOnHand = onHand?.quantity_on_hand ?? 0;
+  const trackedLotQuantity = getTrackedLotQuantity(input.skuId, input.organizationId);
+  const availableUntracked = roundMoney(totalOnHand - trackedLotQuantity);
+
+  if (input.quantityOnHand > availableUntracked) {
+    throw new HttpError(409, "insufficient_untracked_on_hand", "Lot quantity exceeds available untracked on-hand quantity");
+  }
+
+  const lotId = newId("LOT-");
+  const timestamp = now();
+
+  try {
+    transaction(() => {
+      db.prepare(
+        `INSERT INTO inv_lot(
+          lot_id, sku_id, organization_id, lot_code, manufacture_date, expiry_date,
+          status, quantity_on_hand, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?)`
+      ).run(
+        lotId,
+        input.skuId,
+        input.organizationId,
+        input.lotCode,
+        input.manufactureDate ?? null,
+        input.expiryDate ?? null,
+        roundMoney(input.quantityOnHand),
+        timestamp,
+        timestamp
+      );
+
+      appendEvent({
+        entityId: lotId,
+        entityType: "InventoryLot",
+        eventType: "inv.lot.created",
+        version: 1,
+        actor,
+        governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Lot.Create" },
+        payload: {
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          lotCode: input.lotCode,
+          quantityOnHand: roundMoney(input.quantityOnHand),
+          manufactureDate: input.manufactureDate,
+          expiryDate: input.expiryDate
+        }
+      });
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      throw new HttpError(409, "duplicate_lot_code", `Lot code '${input.lotCode}' already exists for this SKU and organization`);
+    }
+
+    throw err;
+  }
+
+  return getInventoryLotById(lotId);
+}
+
+export function getInventoryLotById(lotId: string) {
+  return getLotRow(lotId);
+}
+
+export function listInventoryLots(filters: {
+  skuId?: string;
+  organizationId?: string;
+  status?: LotStatus;
+} = {}) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+
+  if (filters.skuId) {
+    clauses.push("sku_id = ?");
+    params.push(filters.skuId);
+  }
+
+  if (filters.organizationId) {
+    clauses.push("organization_id = ?");
+    params.push(filters.organizationId);
+  }
+
+  if (filters.status) {
+    clauses.push("status = ?");
+    params.push(filters.status);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db
+    .prepare(`SELECT * FROM inv_lot ${whereClause} ORDER BY updated_at DESC LIMIT 500`)
+    .all(...params);
+}
+
+export function consumeInventoryLot(
+  lotId: string,
+  input: { quantity: number; reason?: string },
+  actor?: EventActor
+) {
+  const lot = getLotRow(lotId);
+  if (lot.status !== "Active" && lot.status !== "Hold" && lot.status !== "Expired") {
+    throw new HttpError(409, "invalid_state", "Lot cannot be consumed in its current status");
+  }
+
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new HttpError(400, "invalid_request", "Lot consume quantity must be greater than zero");
+  }
+
+  if (input.quantity > lot.quantity_on_hand) {
+    throw new HttpError(409, "insufficient_lot_quantity", "Lot consume quantity exceeds available lot quantity");
+  }
+
+  const timestamp = now();
+  const quantityAfter = roundMoney(lot.quantity_on_hand - input.quantity);
+  const statusAfter: LotStatus = quantityAfter === 0 ? "Consumed" : lot.status;
+
+  transaction(() => {
+    db.prepare(
+      `UPDATE inv_lot
+       SET quantity_on_hand = ?, status = ?, updated_at = ?
+       WHERE lot_id = ?`
+    ).run(quantityAfter, statusAfter, timestamp, lotId);
+
+    appendEvent({
+      entityId: lotId,
+      entityType: "InventoryLot",
+      eventType: "inv.lot.consumed",
+      version: 1,
+      actor,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Lot.Consume" },
+      payload: {
+        lotId,
+        skuId: lot.sku_id,
+        organizationId: lot.organization_id,
+        quantityConsumed: input.quantity,
+        quantityAfter,
+        reason: input.reason
+      }
+    });
+  });
+
+  return getInventoryLotById(lotId);
+}
+
+export function createInventorySerial(input: {
+  skuId: string;
+  organizationId: string;
+  serialNumber: string;
+  lotId?: string;
+}, actor?: EventActor) {
+  getSkuRow(input.skuId);
+  ensureOrganizationExists(input.organizationId);
+
+  if (input.lotId) {
+    const lot = getLotRow(input.lotId);
+    if (lot.organization_id !== input.organizationId || lot.sku_id !== input.skuId) {
+      throw new HttpError(400, "invalid_request", "lotId does not belong to the provided SKU and organization");
+    }
+  }
+
+  const serialId = newId("SER-");
+  const timestamp = now();
+
+  try {
+    transaction(() => {
+      db.prepare(
+        `INSERT INTO inv_serial(
+          serial_id, sku_id, organization_id, lot_id, serial_number, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'Available', ?, ?)`
+      ).run(
+        serialId,
+        input.skuId,
+        input.organizationId,
+        input.lotId ?? null,
+        input.serialNumber,
+        timestamp,
+        timestamp
+      );
+
+      appendEvent({
+        entityId: serialId,
+        entityType: "InventorySerial",
+        eventType: "inv.serial.created",
+        version: 1,
+        actor,
+        governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Serial.Create" },
+        payload: {
+          serialId,
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          serialNumber: input.serialNumber,
+          lotId: input.lotId
+        }
+      });
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      throw new HttpError(409, "duplicate_serial_number", `Serial number '${input.serialNumber}' already exists in this organization`);
+    }
+
+    throw err;
+  }
+
+  return getInventorySerialById(serialId);
+}
+
+export function getInventorySerialById(serialId: string) {
+  return getSerialRow(serialId);
+}
+
+export function listInventorySerials(filters: {
+  skuId?: string;
+  organizationId?: string;
+  lotId?: string;
+  status?: SerialStatus;
+} = {}) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+
+  if (filters.skuId) {
+    clauses.push("sku_id = ?");
+    params.push(filters.skuId);
+  }
+
+  if (filters.organizationId) {
+    clauses.push("organization_id = ?");
+    params.push(filters.organizationId);
+  }
+
+  if (filters.lotId) {
+    clauses.push("lot_id = ?");
+    params.push(filters.lotId);
+  }
+
+  if (filters.status) {
+    clauses.push("status = ?");
+    params.push(filters.status);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db
+    .prepare(`SELECT * FROM inv_serial ${whereClause} ORDER BY updated_at DESC LIMIT 500`)
+    .all(...params);
+}
+
+export function consumeInventorySerial(
+  serialId: string,
+  input: { reason?: string },
+  actor?: EventActor
+) {
+  const serial = getSerialRow(serialId);
+  if (serial.status !== "Available" && serial.status !== "Allocated") {
+    throw new HttpError(409, "invalid_state", "Serial cannot be consumed in its current status");
+  }
+
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare(
+      `UPDATE inv_serial
+       SET status = 'Consumed', updated_at = ?
+       WHERE serial_id = ?`
+    ).run(timestamp, serialId);
+
+    if (serial.lot_id) {
+      const lot = getLotRow(serial.lot_id);
+      if (lot.quantity_on_hand < 1) {
+        throw new HttpError(409, "insufficient_lot_quantity", "Linked lot has no available quantity for serial consumption");
+      }
+
+      const lotQuantityAfter = roundMoney(lot.quantity_on_hand - 1);
+      const lotStatusAfter: LotStatus = lotQuantityAfter === 0 ? "Consumed" : lot.status;
+      db.prepare(
+        `UPDATE inv_lot
+         SET quantity_on_hand = ?, status = ?, updated_at = ?
+         WHERE lot_id = ?`
+      ).run(lotQuantityAfter, lotStatusAfter, timestamp, lot.lot_id);
+    }
+
+    appendEvent({
+      entityId: serialId,
+      entityType: "InventorySerial",
+      eventType: "inv.serial.consumed",
+      version: 1,
+      actor,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Serial.Consume" },
+      payload: {
+        serialId,
+        skuId: serial.sku_id,
+        organizationId: serial.organization_id,
+        lotId: serial.lot_id,
+        reason: input.reason
+      }
+    });
+  });
+
+  return getInventorySerialById(serialId);
 }

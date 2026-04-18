@@ -3,21 +3,29 @@ import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
 import {
+  consumeInventoryLot,
+  consumeInventorySerial,
   createCycleCount,
   createInventoryBin,
+  createInventoryLot,
   createReservation,
+  createInventorySerial,
   createInventoryOrganization,
   createSku,
   getCycleCountById,
   getInventoryBinById,
+  getInventoryLotById,
   getInventoryOrganizationById,
+  getInventorySerialById,
   getReservationById,
   getSkuById,
   listBinBalances,
   listCycleCountLines,
   listCycleCounts,
   listInventoryBins,
+  listInventoryLots,
   listInventoryOrganizations,
+  listInventorySerials,
   listMovements,
   listOnHand,
   listReservations,
@@ -113,6 +121,31 @@ const cycleCountLineSchema = z.object({
   reason: z.string().optional()
 });
 
+const createLotSchema = z.object({
+  skuId: z.string().min(1),
+  organizationId: z.string().min(1),
+  lotCode: z.string().min(1),
+  quantityOnHand: z.number().positive(),
+  manufactureDate: z.string().datetime().optional(),
+  expiryDate: z.string().datetime().optional()
+});
+
+const consumeLotSchema = z.object({
+  quantity: z.number().positive(),
+  reason: z.string().optional()
+});
+
+const createSerialSchema = z.object({
+  skuId: z.string().min(1),
+  organizationId: z.string().min(1),
+  serialNumber: z.string().min(1),
+  lotId: z.string().min(1).optional()
+});
+
+const consumeSerialSchema = z.object({
+  reason: z.string().optional()
+});
+
 function skuLinks(skuId: string) {
   return {
     self: { href: `/api/v1/inv/skus/${skuId}`, method: "GET" as const },
@@ -181,6 +214,30 @@ function cycleCountLinks(cycleCountId: string) {
       method: "POST" as const,
       mcpFunction: "inv_post_cycle_count",
       governance: { riskLevel: "High" as const, requiredTier: 2 as const }
+    }
+  };
+}
+
+function lotLinks(lotId: string) {
+  return {
+    self: { href: `/api/v1/inv/lots/${lotId}`, method: "GET" as const },
+    consume: {
+      href: `/api/v1/inv/lots/${lotId}/consume`,
+      method: "POST" as const,
+      mcpFunction: "inv_consume_lot",
+      governance: { riskLevel: "Low" as const, requiredTier: 1 as const }
+    }
+  };
+}
+
+function serialLinks(serialId: string) {
+  return {
+    self: { href: `/api/v1/inv/serials/${serialId}`, method: "GET" as const },
+    consume: {
+      href: `/api/v1/inv/serials/${serialId}/consume`,
+      method: "POST" as const,
+      mcpFunction: "inv_consume_serial",
+      governance: { riskLevel: "Low" as const, requiredTier: 1 as const }
     }
   };
 }
@@ -355,4 +412,60 @@ invRouter.post("/cycle-counts/:cycleCountId/lines", validateBody(cycleCountLineS
 invRouter.post("/cycle-counts/:cycleCountId/post", (req, res) => {
   const cycleCount = postCycleCount(req.params.cycleCountId, req.actor);
   res.json(entityWithLinks(cycleCount as Record<string, unknown>, cycleCountLinks(req.params.cycleCountId)));
+});
+
+invRouter.post("/lots", validateBody(createLotSchema), (req, res) => {
+  const lot = createInventoryLot(req.body, req.actor);
+  res.status(201).json(entityWithLinks(lot as Record<string, unknown>, lotLinks(String((lot as Record<string, unknown>).lot_id))));
+});
+
+invRouter.get("/lots", (req, res) => {
+  const skuId = typeof req.query.skuId === "string" ? req.query.skuId : undefined;
+  const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+  const rows = listInventoryLots({
+    skuId,
+    organizationId,
+    status: status as "Active" | "Hold" | "Consumed" | "Expired" | undefined
+  }).map((row) => entityWithLinks(row as Record<string, unknown>, lotLinks(String((row as Record<string, unknown>).lot_id))));
+  res.json({ data: rows });
+});
+
+invRouter.get("/lots/:lotId", (req, res) => {
+  const lot = getInventoryLotById(req.params.lotId);
+  res.json(entityWithLinks(lot as Record<string, unknown>, lotLinks(req.params.lotId)));
+});
+
+invRouter.post("/lots/:lotId/consume", validateBody(consumeLotSchema), (req, res) => {
+  const lot = consumeInventoryLot(req.params.lotId, req.body, req.actor);
+  res.json(entityWithLinks(lot as Record<string, unknown>, lotLinks(req.params.lotId)));
+});
+
+invRouter.post("/serials", validateBody(createSerialSchema), (req, res) => {
+  const serial = createInventorySerial(req.body, req.actor);
+  res.status(201).json(entityWithLinks(serial as Record<string, unknown>, serialLinks(String((serial as Record<string, unknown>).serial_id))));
+});
+
+invRouter.get("/serials", (req, res) => {
+  const skuId = typeof req.query.skuId === "string" ? req.query.skuId : undefined;
+  const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
+  const lotId = typeof req.query.lotId === "string" ? req.query.lotId : undefined;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+  const rows = listInventorySerials({
+    skuId,
+    organizationId,
+    lotId,
+    status: status as "Available" | "Allocated" | "Consumed" | "Hold" | undefined
+  }).map((row) => entityWithLinks(row as Record<string, unknown>, serialLinks(String((row as Record<string, unknown>).serial_id))));
+  res.json({ data: rows });
+});
+
+invRouter.get("/serials/:serialId", (req, res) => {
+  const serial = getInventorySerialById(req.params.serialId);
+  res.json(entityWithLinks(serial as Record<string, unknown>, serialLinks(req.params.serialId)));
+});
+
+invRouter.post("/serials/:serialId/consume", validateBody(consumeSerialSchema), (req, res) => {
+  const serial = consumeInventorySerial(req.params.serialId, req.body, req.actor);
+  res.json(entityWithLinks(serial as Record<string, unknown>, serialLinks(req.params.serialId)));
 });

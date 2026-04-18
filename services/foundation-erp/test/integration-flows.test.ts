@@ -1403,3 +1403,103 @@ test("Inventory cycle count posts bin variance to on-hand", async () => {
 
   assert.equal(onHand.body.data[0].quantity_on_hand, 8);
 });
+
+test("Inventory lot and serial tracking enforces traceability constraints", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-LS-${unique}`,
+      description: "Lot serial test SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 20
+    })
+    .expect(201);
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Lot Serial WH ${unique}` })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      movementType: "receipt",
+      quantity: 4,
+      unitCost: 20,
+      reason: "seed stock for lot serial"
+    })
+    .expect(201);
+
+  const lot = await request(app)
+    .post("/api/v1/inv/lots")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      lotCode: `LOT-${unique}`,
+      quantityOnHand: 3
+    })
+    .expect(201);
+
+  assert.equal(lot.body.status, "Active");
+  assert.equal(lot.body.quantity_on_hand, 3);
+
+  const overLot = await request(app)
+    .post("/api/v1/inv/lots")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      lotCode: `LOT-OVER-${unique}`,
+      quantityOnHand: 2
+    })
+    .expect(409);
+
+  assert.equal(overLot.body.title, "insufficient_untracked_on_hand");
+
+  const serial = await request(app)
+    .post("/api/v1/inv/serials")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      serialNumber: `SER-${unique}`,
+      lotId: lot.body.lot_id
+    })
+    .expect(201);
+
+  assert.equal(serial.body.status, "Available");
+
+  const consumedSerial = await request(app)
+    .post(`/api/v1/inv/serials/${serial.body.serial_id}/consume`)
+    .set(headers)
+    .send({ reason: "issued to work order" })
+    .expect(200);
+
+  assert.equal(consumedSerial.body.status, "Consumed");
+
+  const lotAfterSerial = await request(app)
+    .get(`/api/v1/inv/lots/${lot.body.lot_id}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(lotAfterSerial.body.quantity_on_hand, 2);
+
+  const consumedLot = await request(app)
+    .post(`/api/v1/inv/lots/${lot.body.lot_id}/consume`)
+    .set(headers)
+    .send({ quantity: 2, reason: "final lot issue" })
+    .expect(200);
+
+  assert.equal(consumedLot.body.quantity_on_hand, 0);
+  assert.equal(consumedLot.body.status, "Consumed");
+});
