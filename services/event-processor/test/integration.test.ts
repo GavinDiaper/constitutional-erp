@@ -255,6 +255,21 @@ test("replayToHead appends valid events and records dead letters for invalid sou
               event_type: "Issued",
               timestamp: "2026-03-27T14:00:00.000Z",
               payload: JSON.stringify({ actorId: "EMP-1", amount: 1200 })
+            },
+            {
+              event_id: "FND-REPLAY-PROJ-1",
+              entity_type: "ProjectWip",
+              entity_id: "WIP-REPLAY-1",
+              event_type: "proj.wip_material_posted",
+              timestamp: "2026-03-27T14:05:00.000Z",
+              payload: JSON.stringify({
+                domain: "PROJ",
+                actorId: "EMP-7",
+                wipId: "WIP-REPLAY-1",
+                projectId: "PRJ-REPLAY-1",
+                totalCost: 88.5,
+                inventoryIssueEventId: "INV-ISSUE-1"
+              })
             }
           ]
         }),
@@ -291,6 +306,7 @@ test("replayToHead appends valid events and records dead letters for invalid sou
   globalThis.fetch = originalFetch;
 
   const foundationRows = listLedgerEvents({ aggregateId: "PO-REPLAY-1" });
+  const slaRows = listLedgerEvents({ aggregateType: "sla-posting", aggregateId: "WIP-REPLAY-1" });
   const foundationCursor = getSourceCursor("foundation-erp");
   const meshCursor = getSourceCursor("mesh-gateway");
   const deadLetter = db
@@ -300,8 +316,11 @@ test("replayToHead appends valid events and records dead letters for invalid sou
   assert.ok(requests.some((url) => url.includes("localhost:3000/api/v1/events")));
   assert.ok(requests.some((url) => url.includes("localhost:4003/api/v1/events")));
   assert.equal(foundationRows.some((row: { eventId: string }) => row.eventId === "FND-REPLAY-1"), true);
+  assert.equal(slaRows.length, 1);
+  assert.equal(slaRows[0]?.eventType, "R2R.sla_posting_requested");
+  assert.equal(slaRows[0]?.payload.sourceEventType, "PROJ.proj.wip_material_posted");
   assert.equal(foundationCursor?.lastStatus, "Ready");
-  assert.equal(foundationCursor?.cursor, "2026-03-27T14:00:00.000Z");
+  assert.equal(foundationCursor?.cursor, "2026-03-27T14:05:00.000Z");
   assert.equal(meshCursor?.lastStatus, "Error");
   assert.equal(deadLetter?.source_system, "mesh-gateway");
   assert.equal(deadLetter?.error_code, "normalization_failed");

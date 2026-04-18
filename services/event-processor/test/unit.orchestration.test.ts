@@ -82,3 +82,22 @@ test("returns no derived events for unrelated event types", () => {
 
   assert.equal(derived.length, 0);
 });
+
+test("handles domain-prefixed replay event types", () => {
+  const derived = deriveProjectCostingEvents(
+    makeBaseEvent({
+      eventType: "PROJ.proj.wip_material_posted",
+      payload: {
+        wipId: "WIP-PREFIX",
+        projectId: "PRJ-PREFIX",
+        totalCost: 75,
+        inventoryIssueEventId: "MOV-PREFIX"
+      }
+    })
+  );
+
+  assert.equal(derived.length, 1);
+  assert.equal(derived[0].eventType, "R2R.sla_posting_requested");
+  assert.equal(derived[0].payload.postingReason, "ProjectMaterialToWIP");
+  assert.equal(derived[0].payload.wipId, "WIP-PREFIX");
+});

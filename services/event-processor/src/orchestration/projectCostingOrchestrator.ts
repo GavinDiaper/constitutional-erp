@@ -5,6 +5,12 @@ type SupportedProjectEventType =
   | "proj.wip_labor_posted"
   | "proj.wip_closed";
 
+const supportedProjectEventTypes: SupportedProjectEventType[] = [
+  "proj.wip_material_posted",
+  "proj.wip_labor_posted",
+  "proj.wip_closed"
+];
+
 function asNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -22,12 +28,14 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function isSupportedProjectEventType(eventType: string): eventType is SupportedProjectEventType {
-  return (
-    eventType === "proj.wip_material_posted" ||
-    eventType === "proj.wip_labor_posted" ||
-    eventType === "proj.wip_closed"
-  );
+function normalizeSupportedProjectEventType(eventType: string): SupportedProjectEventType | null {
+  for (const supportedEventType of supportedProjectEventTypes) {
+    if (eventType === supportedEventType || eventType.endsWith(`.${supportedEventType}`)) {
+      return supportedEventType;
+    }
+  }
+
+  return null;
 }
 
 function buildSyntheticEvent(
@@ -168,14 +176,15 @@ function createWipCloseEvent(sourceEvent: CanonicalEvent): CanonicalEvent | null
 }
 
 export function deriveProjectCostingEvents(sourceEvent: CanonicalEvent): CanonicalEvent[] {
-  if (!isSupportedProjectEventType(sourceEvent.eventType)) {
+  const normalizedEventType = normalizeSupportedProjectEventType(sourceEvent.eventType);
+  if (!normalizedEventType) {
     return [];
   }
 
   const derived =
-    sourceEvent.eventType === "proj.wip_material_posted"
+    normalizedEventType === "proj.wip_material_posted"
       ? createMaterialPostingEvent(sourceEvent)
-      : sourceEvent.eventType === "proj.wip_labor_posted"
+      : normalizedEventType === "proj.wip_labor_posted"
         ? createLaborPostingEvent(sourceEvent)
         : createWipCloseEvent(sourceEvent);
 
