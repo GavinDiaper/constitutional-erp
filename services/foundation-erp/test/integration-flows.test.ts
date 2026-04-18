@@ -1090,3 +1090,90 @@ test("Table query API returns data for all whitelisted tables", async () => {
   assert.equal(byIdResponse.body.primaryKey, "customer_id");
   assert.equal(byIdResponse.body.data.customer_id, customer.body.customer_id);
 });
+
+test("Inventory reservations enforce hard allocation availability and support release", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-RSV-${unique}`,
+      description: "Reservation test SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 10
+    })
+    .expect(201);
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Main WH ${unique}` })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      movementType: "receipt",
+      quantity: 5,
+      unitCost: 10,
+      reason: "seed stock"
+    })
+    .expect(201);
+
+  const hardReservation = await request(app)
+    .post("/api/v1/inv/reservations")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      reservationType: "hard",
+      quantity: 3,
+      reason: "allocate to outbound wave"
+    })
+    .expect(201);
+
+  assert.equal(hardReservation.body.status, "Active");
+  assert.equal(hardReservation.body.reservation_type, "hard");
+  assert.equal(hardReservation.body.quantity, 3);
+
+  const overReserve = await request(app)
+    .post("/api/v1/inv/reservations")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      reservationType: "hard",
+      quantity: 3,
+      reason: "should fail"
+    })
+    .expect(409);
+
+  assert.equal(overReserve.body.title, "insufficient_available_inventory");
+
+  const released = await request(app)
+    .post(`/api/v1/inv/reservations/${hardReservation.body.reservation_id}/release`)
+    .set(headers)
+    .send({ reason: "demand canceled" })
+    .expect(200);
+
+  assert.equal(released.body.status, "Released");
+  assert.equal(released.body.released_reason, "demand canceled");
+
+  const activeReservations = await request(app)
+    .get("/api/v1/inv/reservations")
+    .query({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      status: "Active"
+    })
+    .set(headers)
+    .expect(200);
+
+  assert.equal(activeReservations.body.data.length, 0);
+});

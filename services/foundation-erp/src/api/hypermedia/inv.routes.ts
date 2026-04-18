@@ -3,15 +3,19 @@ import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
 import {
+  createReservation,
   createInventoryOrganization,
   createSku,
   getInventoryOrganizationById,
+  getReservationById,
   getSkuById,
   listInventoryOrganizations,
   listMovements,
   listOnHand,
+  listReservations,
   listSkus,
-  postInventoryMovement
+  postInventoryMovement,
+  releaseReservation
 } from "../../domain/inv/inventoryService";
 
 const createSkuSchema = z.object({
@@ -47,6 +51,23 @@ const createMovementSchema = z.object({
   isProjectFinishedGood: z.boolean().optional()
 });
 
+const createReservationSchema = z.object({
+  skuId: z.string().min(1),
+  organizationId: z.string().min(1),
+  reservationType: z.enum(["soft", "hard"]),
+  quantity: z.number().positive(),
+  referenceType: z.string().optional(),
+  referenceId: z.string().optional(),
+  reason: z.string().optional(),
+  correlationKey: z.string().optional(),
+  expiresAt: z.string().datetime().optional()
+});
+
+const releaseReservationSchema = z.object({
+  reason: z.string().optional(),
+  expectedVersion: z.number().int().positive().optional()
+});
+
 function skuLinks(skuId: string) {
   return {
     self: { href: `/api/v1/inv/skus/${skuId}`, method: "GET" as const },
@@ -65,6 +86,18 @@ function organizationLinks(organizationId: string) {
     "list-on-hand": {
       href: `/api/v1/inv/on-hand?organizationId=${organizationId}`,
       method: "GET" as const
+    }
+  };
+}
+
+function reservationLinks(reservationId: string) {
+  return {
+    self: { href: `/api/v1/inv/reservations/${reservationId}`, method: "GET" as const },
+    release: {
+      href: `/api/v1/inv/reservations/${reservationId}/release`,
+      method: "POST" as const,
+      mcpFunction: "inv_release_reservation",
+      governance: { riskLevel: "Low" as const, requiredTier: 1 as const }
     }
   };
 }
@@ -124,4 +157,33 @@ invRouter.get("/on-hand", (req, res) => {
   const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
   const rows = listOnHand({ skuId, organizationId });
   res.json({ data: rows });
+});
+
+invRouter.post("/reservations", validateBody(createReservationSchema), (req, res) => {
+  const reservation = createReservation(req.body, req.actor);
+  res.status(201).json(entityWithLinks(reservation as Record<string, unknown>, reservationLinks(String((reservation as Record<string, unknown>).reservation_id))));
+});
+
+invRouter.get("/reservations", (req, res) => {
+  const skuId = typeof req.query.skuId === "string" ? req.query.skuId : undefined;
+  const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+  const reservationType = typeof req.query.reservationType === "string" ? req.query.reservationType : undefined;
+  const rows = listReservations({
+    skuId,
+    organizationId,
+    status: status as "Active" | "Released" | "Fulfilled" | "Cancelled" | undefined,
+    reservationType: reservationType as "soft" | "hard" | undefined
+  }).map((row) => entityWithLinks(row as Record<string, unknown>, reservationLinks(String((row as Record<string, unknown>).reservation_id))));
+  res.json({ data: rows });
+});
+
+invRouter.get("/reservations/:reservationId", (req, res) => {
+  const reservation = getReservationById(req.params.reservationId);
+  res.json(entityWithLinks(reservation as Record<string, unknown>, reservationLinks(req.params.reservationId)));
+});
+
+invRouter.post("/reservations/:reservationId/release", validateBody(releaseReservationSchema), (req, res) => {
+  const reservation = releaseReservation(req.params.reservationId, req.body, req.actor);
+  res.json(entityWithLinks(reservation as Record<string, unknown>, reservationLinks(req.params.reservationId)));
 });

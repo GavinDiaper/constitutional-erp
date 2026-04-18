@@ -5,6 +5,8 @@ import { newId } from "../../utils/id";
 
 type ValuationMethod = "standard" | "moving_average";
 type MovementType = "receipt" | "issue" | "adjustment" | "cost_update";
+type ReservationType = "soft" | "hard";
+type ReservationStatus = "Active" | "Released" | "Fulfilled" | "Cancelled";
 
 type SkuRow = {
   sku_id: string;
@@ -41,6 +43,24 @@ type ProjectWipRow = {
   wip_total_balance: number;
   material_line_count: number;
   version: number;
+};
+
+type ReservationRow = {
+  reservation_id: string;
+  sku_id: string;
+  organization_id: string;
+  reservation_type: ReservationType;
+  status: ReservationStatus;
+  quantity: number;
+  reference_type: string | null;
+  reference_id: string | null;
+  reason: string | null;
+  correlation_key: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  released_at: string | null;
+  released_reason: string | null;
 };
 
 function now(): string {
@@ -253,6 +273,33 @@ function toSignedQuantity(movementType: MovementType, quantity: number): number 
   }
 
   return quantity;
+}
+
+function getReservationRow(reservationId: string): ReservationRow {
+  const row = db
+    .prepare("SELECT * FROM inv_reservation WHERE reservation_id = ?")
+    .get(reservationId) as ReservationRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Inventory reservation not found");
+  }
+
+  return row;
+}
+
+function getActiveHardReservedQuantity(skuId: string, organizationId: string): number {
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(quantity), 0) AS reserved_quantity
+       FROM inv_reservation
+       WHERE sku_id = ?
+         AND organization_id = ?
+         AND reservation_type = 'hard'
+         AND status = 'Active'`
+    )
+    .get(skuId, organizationId) as { reserved_quantity: number } | undefined;
+
+  return Number(row?.reserved_quantity ?? 0);
 }
 
 export function createSku(input: {
@@ -681,4 +728,186 @@ export function listOnHand(filters: { skuId?: string; organizationId?: string } 
   }
 
   return db.prepare("SELECT * FROM inv_on_hand ORDER BY updated_at DESC LIMIT 500").all();
+}
+
+export function createReservation(input: {
+  skuId: string;
+  organizationId: string;
+  reservationType: ReservationType;
+  quantity: number;
+  referenceType?: string;
+  referenceId?: string;
+  reason?: string;
+  correlationKey?: string;
+  expiresAt?: string;
+}, actor?: EventActor) {
+  getSkuRow(input.skuId);
+  ensureOrganizationExists(input.organizationId);
+
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new HttpError(400, "invalid_request", "Reservation quantity must be greater than zero");
+  }
+
+  if (input.reservationType === "hard") {
+    const onHand = getOnHandRow(input.skuId, input.organizationId);
+    const availableOnHand = onHand?.quantity_on_hand ?? 0;
+    const activeHardReserved = getActiveHardReservedQuantity(input.skuId, input.organizationId);
+    const availableForHardReservation = roundMoney(availableOnHand - activeHardReserved);
+
+    if (input.quantity > availableForHardReservation) {
+      throw new HttpError(
+        409,
+        "insufficient_available_inventory",
+        "Hard reservation exceeds currently available on-hand inventory"
+      );
+    }
+  }
+
+  const reservationId = newId("RSV-");
+  const timestamp = now();
+
+  try {
+    transaction(() => {
+      db.prepare(
+        `INSERT INTO inv_reservation(
+          reservation_id, sku_id, organization_id, reservation_type, status, quantity,
+          reference_type, reference_id, reason, correlation_key, expires_at,
+          created_at, updated_at, released_at, released_reason
+        ) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`
+      ).run(
+        reservationId,
+        input.skuId,
+        input.organizationId,
+        input.reservationType,
+        roundMoney(input.quantity),
+        input.referenceType ?? null,
+        input.referenceId ?? null,
+        input.reason ?? null,
+        input.correlationKey ?? null,
+        input.expiresAt ?? null,
+        timestamp,
+        timestamp
+      );
+
+      appendEvent({
+        entityId: reservationId,
+        entityType: "InventoryReservation",
+        eventType: "inv.reservation.created",
+        version: 1,
+        actor,
+        governance:
+          input.reservationType === "hard"
+            ? { riskLevel: "Medium", requiredTier: 1, governanceTag: "INV.Reservation.Hard" }
+            : { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Reservation.Soft" },
+        payload: {
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          reservationType: input.reservationType,
+          quantity: roundMoney(input.quantity),
+          status: "Active",
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          reason: input.reason,
+          correlationKey: input.correlationKey,
+          expiresAt: input.expiresAt
+        }
+      });
+    });
+  } catch (err: unknown) {
+    const sqlError = err as { code?: string };
+    if (sqlError.code === "SQLITE_CONSTRAINT_UNIQUE" && input.correlationKey) {
+      const existing = db
+        .prepare("SELECT * FROM inv_reservation WHERE correlation_key = ?")
+        .get(input.correlationKey) as Record<string, unknown> | undefined;
+
+      if (existing) {
+        return existing;
+      }
+    }
+
+    throw err;
+  }
+
+  return getReservationById(reservationId);
+}
+
+export function getReservationById(reservationId: string) {
+  return getReservationRow(reservationId);
+}
+
+export function releaseReservation(
+  reservationId: string,
+  input: { reason?: string; expectedVersion?: number } = {},
+  actor?: EventActor
+) {
+  const existing = getReservationRow(reservationId);
+
+  if (existing.status !== "Active") {
+    throw new HttpError(409, "invalid_state", "Only active reservations can be released");
+  }
+
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare(
+      `UPDATE inv_reservation
+       SET status = 'Released', updated_at = ?, released_at = ?, released_reason = ?
+       WHERE reservation_id = ?`
+    ).run(timestamp, timestamp, input.reason ?? null, reservationId);
+
+    appendEvent({
+      entityId: reservationId,
+      entityType: "InventoryReservation",
+      eventType: "inv.reservation.released",
+      version: (input.expectedVersion ?? 1) + 1,
+      actor,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.Reservation.Release" },
+      payload: {
+        reservationId,
+        skuId: existing.sku_id,
+        organizationId: existing.organization_id,
+        reservationType: existing.reservation_type,
+        quantity: existing.quantity,
+        reason: input.reason ?? null
+      }
+    });
+  });
+
+  return getReservationById(reservationId);
+}
+
+export function listReservations(filters: {
+  skuId?: string;
+  organizationId?: string;
+  status?: ReservationStatus;
+  reservationType?: ReservationType;
+} = {}) {
+  const clauses: string[] = [];
+  const params: Array<string> = [];
+
+  if (filters.skuId) {
+    clauses.push("sku_id = ?");
+    params.push(filters.skuId);
+  }
+
+  if (filters.organizationId) {
+    clauses.push("organization_id = ?");
+    params.push(filters.organizationId);
+  }
+
+  if (filters.status) {
+    clauses.push("status = ?");
+    params.push(filters.status);
+  }
+
+  if (filters.reservationType) {
+    clauses.push("reservation_type = ?");
+    params.push(filters.reservationType);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+
+  return db
+    .prepare(`SELECT * FROM inv_reservation ${whereClause} ORDER BY created_at DESC LIMIT 500`)
+    .all(...params);
 }
