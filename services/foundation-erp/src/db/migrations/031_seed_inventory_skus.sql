@@ -1,0 +1,42 @@
+﻿-- Seed inventory SKUs from docs/skuList.csv
+
+INSERT OR IGNORE INTO inv_sku (
+  sku_id, sku_code, description, category, uom, valuation_method, standard_cost, lifecycle_state, version, created_at, updated_at
+) VALUES
+  ('SKU-SEED-SKU_PROD_001', 'SKU-PROD-001', 'Yellow Onions - 50lb Bag', 'Produce', 'Bag', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_002', 'SKU-PROD-002', 'Russet Potatoes - 50lb Bag', 'Produce', 'Bag', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_003', 'SKU-PROD-003', 'Roma Tomatoes - 25lb Case', 'Produce', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_004', 'SKU-PROD-004', 'Iceberg Lettuce - 24ct Case', 'Produce', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_005', 'SKU-PROD-005', 'Fresh Garlic - 30lb Case', 'Produce', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_006', 'SKU-PROD-006', 'Carrots - 50lb Bag', 'Produce', 'Bag', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_007', 'SKU-PROD-007', 'Green Bell Peppers - 25lb Case', 'Produce', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROD_008', 'SKU-PROD-008', 'Lemons - 140ct Choice', 'Produce', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_001', 'SKU-DAIR-001', 'Whole Milk - 1 Gallon', 'Dairy', 'Gallon', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_002', 'SKU-DAIR-002', 'Unsalted Butter - 1lb Block', 'Dairy', 'LB', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_003', 'SKU-DAIR-003', 'Heavy Whipping Cream - 1qt', 'Dairy', 'Quart', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_004', 'SKU-DAIR-004', 'Large Eggs - 30 Dozen Case', 'Dairy', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_005', 'SKU-DAIR-005', 'Shredded Mozzarella - 5lb Bag', 'Dairy', 'Bag', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DAIR_006', 'SKU-DAIR-006', 'Sour Cream - 5lb Tub', 'Dairy', 'Tub', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_001', 'SKU-PROT-001', 'Chicken Breast - B/S 10lb', 'Proteins', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_002', 'SKU-PROT-002', 'Ground Beef - 80/20 10lb Tube', 'Proteins', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_003', 'SKU-PROT-003', 'Bacon - Sliced 18/22 15lb', 'Proteins', 'Case', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_004', 'SKU-PROT-004', 'Atlantic Salmon Fillet - 10lb', 'Proteins', 'LB', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_005', 'SKU-PROT-005', 'Pork Loin - Boneless 2pk', 'Proteins', 'LB', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PROT_006', 'SKU-PROT-006', 'Ribeye Steak - Choice 12oz', 'Proteins', 'Each', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_001', 'SKU-DRYG-001', 'All-Purpose Flour - 50lb Bag', 'Dry Goods', 'Bag', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_002', 'SKU-DRYG-002', 'Granulated Sugar - 50lb Bag', 'Dry Goods', 'Bag', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_003', 'SKU-DRYG-003', 'Kosher Salt - 3lb Box', 'Dry Goods', 'Box', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_004', 'SKU-DRYG-004', 'Long Grain Rice - 50lb Bag', 'Dry Goods', 'Bag', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_005', 'SKU-DRYG-005', 'Black Peppercorns - 5lb Jug', 'Dry Goods', 'Each', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_DRYG_006', 'SKU-DRYG-006', 'Dry Penne Pasta - 20lb Case', 'Dry Goods', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_OILS_001', 'SKU-OILS-001', 'Canola Oil - 35lb Jib', 'Fats/Oils', 'Each', 'moving_average', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_OILS_002', 'SKU-OILS-002', 'Extra Virgin Olive Oil - 3L', 'Fats/Oils', 'Each', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_CANN_001', 'SKU-CANN-001', 'Tomato Paste - #10 Can', 'Canned Goods', 'Can', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_CANN_002', 'SKU-CANN-002', 'Black Beans - #10 Can', 'Canned Goods', 'Can', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_CANN_003', 'SKU-CANN-003', 'Chickpeas - #10 Can', 'Canned Goods', 'Can', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_FROZ_001', 'SKU-FROZ-001', 'Frozen Corn - 20lb Case', 'Frozen', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_FROZ_002', 'SKU-FROZ-002', 'Frozen Peas - 20lb Case', 'Frozen', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_FROZ_003', 'SKU-FROZ-003', 'French Fries - 3/8 Cut 30lb', 'Frozen', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PAPE_001', 'SKU-PAPE-001', 'Takeout Containers - 9x9 200ct', 'Paper Goods', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now')),
+  ('SKU-SEED-SKU_PAPE_002', 'SKU-PAPE-002', 'Dinner Napkins - 2-Ply 3000ct', 'Paper Goods', 'Case', 'standard', 0, 'Active', 1, datetime('now'), datetime('now'));
+

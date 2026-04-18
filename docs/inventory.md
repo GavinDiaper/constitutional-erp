@@ -1,9 +1,3 @@
-Here’s the strategic truth: **Inventory and COGS are not optional** if FoundationERP is going to mature into a credible enterprise platform. But the way you introduce them — and *where* they sit in the architecture — determines whether you preserve the stability of the constitutional layer (MCP, Mesh, Integration Hub, governance engine) or accidentally destabilize it.
-
-Let’s walk through this carefully and architecturally.
-
----
-
 # 🧱 1. Does Inventory “belong” in FoundationERP Core?
 
 **Yes — but only the *constitutional* parts of inventory.**

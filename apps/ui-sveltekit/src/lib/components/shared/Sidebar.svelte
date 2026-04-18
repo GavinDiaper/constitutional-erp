@@ -15,6 +15,7 @@ Domain Process Flows
 </a>
 </li> -->
 <li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/canvas')}>Canvas Home</a></li>
+<li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/inventory')}>Inventory</a></li>
 <li>
 <a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/canvas/create')}>
 Create Entity

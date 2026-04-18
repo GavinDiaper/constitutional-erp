@@ -44,6 +44,15 @@ function buildGovernanceContext(
         employeeId: String(payload["employeeId"] ?? attrs["id"] ?? aggregate.id),
         credentialType: payload["credentialType"] ?? attrs["credentialType"]
       };
+
+    case "INV":
+      return {
+        ...base,
+        skuId: String(payload["skuId"] ?? attrs["skuId"] ?? aggregate.id),
+        organizationId: payload["organizationId"] ?? attrs["organizationId"],
+        movementType: payload["movementType"] ?? attrs["movementType"],
+        credentialType: payload["credentialType"] ?? attrs["credentialType"]
+      };
   }
 }
 

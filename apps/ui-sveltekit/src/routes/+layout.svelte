@@ -41,7 +41,7 @@
 		});
 
 		const globalWindow = window as MermaidWindow & {
-			__mermaidLoadPromise__: Promise<void> | undefined;
+			__mermaidLoadPromise__?: Promise<void>;
 		};
 
 		if (!globalWindow.__mermaidLoadPromise__) {

@@ -2,7 +2,7 @@
 // Core domain types shared across the Process Graph Engine
 // ---------------------------------------------------------------------------
 
-export type CanonicalDomain = "P2P" | "O2C" | "R2R" | "H2R";
+export type CanonicalDomain = "P2P" | "O2C" | "R2R" | "H2R" | "INV";
 
 // A single canonical transition definition (state-machine edge)
 export interface CanonicalTransition {

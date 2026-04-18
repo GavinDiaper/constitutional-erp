@@ -25,6 +25,7 @@ const ACCOUNT_TYPE_MAP: Record<string, AccountType> = {
 const STARTER_ACCOUNTS: Array<{ accountCode: string; accountName: string; accountType: AccountType }> = [
   { accountCode: "SYS-100-ASSET-CASH", accountName: "Cash and Cash Equivalents", accountType: "Asset" },
   { accountCode: "SYS-110-ASSET-AR", accountName: "Accounts Receivable", accountType: "Asset" },
+  { accountCode: "SYS-120-ASSET-INVENTORY", accountName: "Inventory Asset", accountType: "Asset" },
   { accountCode: "SYS-200-LIAB-AP", accountName: "Accounts Payable", accountType: "Liability" },
   { accountCode: "SYS-300-EQ-RE", accountName: "Retained Earnings", accountType: "Equity" },
   { accountCode: "SYS-400-REV-SALES", accountName: "Sales Revenue", accountType: "Revenue" },

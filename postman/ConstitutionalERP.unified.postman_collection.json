@@ -9752,6 +9752,245 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "40 - Inventory Flow",
+              "item": [
+                {
+                  "name": "Create Inventory SKU",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"skuCode\": \"SKU-INV-100\",\n  \"description\": \"Inventory Demo Item\",\n  \"category\": \"Raw\",\n  \"uom\": \"EA\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 12.5\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/inv/skus",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "inv",
+                        "skus"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                          "var body = pm.response.json();",
+                          "pm.environment.set('invSkuId', body.sku_id);",
+                          "pm.test('SKU captured', function () { pm.expect(body.sku_id).to.be.a('string').and.not.empty; });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Inventory Organization",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Main Warehouse\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/inv/organizations",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "inv",
+                        "organizations"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                          "var body = pm.response.json();",
+                          "pm.environment.set('invOrganizationId', body.organization_id);",
+                          "pm.test('Organization captured', function () { pm.expect(body.organization_id).to.be.a('string').and.not.empty; });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Post Inventory Receipt Movement",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"skuId\": \"{{invSkuId}}\",\n  \"organizationId\": \"{{invOrganizationId}}\",\n  \"movementType\": \"receipt\",\n  \"quantity\": 20,\n  \"unitCost\": 12.5,\n  \"reason\": \"Initial stocking\",\n  \"referenceType\": \"postman\",\n  \"referenceId\": \"seed-receipt-1\",\n  \"correlationKey\": \"{{invSkuId}}-{{invOrganizationId}}-receipt-1\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/inv/movements",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "inv",
+                        "movements"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                          "var body = pm.response.json();",
+                          "pm.environment.set('invMovementId', body.movement_id);",
+                          "pm.test('Movement is receipt', function () { pm.expect(body.movement_type).to.eql('receipt'); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "List Inventory On Hand",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/inv/on-hand?skuId={{invSkuId}}&organizationId={{invOrganizationId}}",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "inv",
+                        "on-hand?skuId={{invSkuId}}&organizationId={{invOrganizationId}}"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                          "var body = pm.response.json();",
+                          "pm.test('On-hand row exists', function () { pm.expect(body.data).to.be.an('array').and.not.empty; });",
+                          "var row = body.data[0];",
+                          "pm.test('On-hand quantity reflects receipt', function () { pm.expect(Number(row.quantity_on_hand)).to.eql(20); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "List Inventory Movements",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/inv/movements",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "inv",
+                        "movements"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                          "var body = pm.response.json();",
+                          "pm.test('Movement list contains posted movement', function () { pm.expect(body.data.some(function (row) { return row.movement_id === pm.environment.get('invMovementId'); })).to.eql(true); });"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

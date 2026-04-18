@@ -3,7 +3,7 @@ import { loadConfig } from "../config/env";
 export interface AuthorityCheckInput {
   actorId: string;
   action: string;
-  domain: "P2P" | "O2C" | "R2R" | "H2R";
+  domain: "P2P" | "O2C" | "R2R" | "H2R" | "INV";
   context?: Record<string, unknown>;
 }
 

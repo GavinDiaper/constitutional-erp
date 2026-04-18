@@ -1,0 +1,37 @@
+SKU,Description,Category,AccountingMethod,Unit
+SKU-PROD-001,Yellow Onions - 50lb Bag,Produce,Moving Average,Bag
+SKU-PROD-002,Russet Potatoes - 50lb Bag,Produce,Moving Average,Bag
+SKU-PROD-003,Roma Tomatoes - 25lb Case,Produce,Moving Average,Case
+SKU-PROD-004,Iceberg Lettuce - 24ct Case,Produce,Moving Average,Case
+SKU-PROD-005,Fresh Garlic - 30lb Case,Produce,Moving Average,Case
+SKU-PROD-006,Carrots - 50lb Bag,Produce,Moving Average,Bag
+SKU-PROD-007,Green Bell Peppers - 25lb Case,Produce,Moving Average,Case
+SKU-PROD-008,Lemons - 140ct Choice,Produce,Moving Average,Case
+SKU-DAIR-001,Whole Milk - 1 Gallon,Dairy,Standard Cost,Gallon
+SKU-DAIR-002,Unsalted Butter - 1lb Block,Dairy,Standard Cost,LB
+SKU-DAIR-003,Heavy Whipping Cream - 1qt,Dairy,Standard Cost,Quart
+SKU-DAIR-004,Large Eggs - 30 Dozen Case,Dairy,Moving Average,Case
+SKU-DAIR-005,Shredded Mozzarella - 5lb Bag,Dairy,Standard Cost,Bag
+SKU-DAIR-006,Sour Cream - 5lb Tub,Dairy,Standard Cost,Tub
+SKU-PROT-001,Chicken Breast - B/S 10lb,Proteins,Moving Average,Case
+SKU-PROT-002,Ground Beef - 80/20 10lb Tube,Proteins,Moving Average,Case
+SKU-PROT-003,Bacon - Sliced 18/22 15lb,Proteins,Moving Average,Case
+SKU-PROT-004,Atlantic Salmon Fillet - 10lb,Proteins,Moving Average,LB
+SKU-PROT-005,Pork Loin - Boneless 2pk,Proteins,Moving Average,LB
+SKU-PROT-006,Ribeye Steak - Choice 12oz,Proteins,Moving Average,Each
+SKU-DRYG-001,All-Purpose Flour - 50lb Bag,Dry Goods,Standard Cost,Bag
+SKU-DRYG-002,Granulated Sugar - 50lb Bag,Dry Goods,Standard Cost,Bag
+SKU-DRYG-003,Kosher Salt - 3lb Box,Dry Goods,Standard Cost,Box
+SKU-DRYG-004,Long Grain Rice - 50lb Bag,Dry Goods,Standard Cost,Bag
+SKU-DRYG-005,Black Peppercorns - 5lb Jug,Dry Goods,Standard Cost,Each
+SKU-DRYG-006,Dry Penne Pasta - 20lb Case,Dry Goods,Standard Cost,Case
+SKU-OILS-001,Canola Oil - 35lb Jib,Fats/Oils,Moving Average,Each
+SKU-OILS-002,Extra Virgin Olive Oil - 3L,Fats/Oils,Standard Cost,Each
+SKU-CANN-001,Tomato Paste - #10 Can,Canned Goods,Standard Cost,Can
+SKU-CANN-002,Black Beans - #10 Can,Canned Goods,Standard Cost,Can
+SKU-CANN-003,Chickpeas - #10 Can,Canned Goods,Standard Cost,Can
+SKU-FROZ-001,Frozen Corn - 20lb Case,Frozen,Standard Cost,Case
+SKU-FROZ-002,Frozen Peas - 20lb Case,Frozen,Standard Cost,Case
+SKU-FROZ-003,French Fries - 3/8 Cut 30lb,Frozen,Standard Cost,Case
+SKU-PAPE-001,Takeout Containers - 9x9 200ct,Paper Goods,Standard Cost,Case
+SKU-PAPE-002,Dinner Napkins - 2-Ply 3000ct,Paper Goods,Standard Cost,Case

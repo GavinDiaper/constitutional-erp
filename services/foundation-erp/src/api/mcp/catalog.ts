@@ -1,6 +1,6 @@
 export interface McpFunctionDef {
   name: string;
-  domain: "o2c" | "p2p" | "r2r" | "h2r";
+  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv";
   description: string;
   entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
   action?: string; // e.g., "create", "activate", "approve"
@@ -97,5 +97,10 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "h2r_issue_credential", domain: "h2r", entity: "Credential", action: "issue", description: "Issue a credential in Valid status", riskLevel: "Medium", governanceTag: "H2R.Credential.Issue" },
   { name: "h2r_expire_credential", domain: "h2r", entity: "Credential", action: "expire", description: "Expire a Valid credential", riskLevel: "Low", governanceTag: "H2R.Credential.Expire" },
   { name: "h2r_revoke_credential", domain: "h2r", entity: "Credential", action: "revoke", description: "Revoke a Valid credential", riskLevel: "High", governanceTag: "H2R.Credential.Revoke" },
-  { name: "h2r_create_authority_rule", domain: "h2r", entity: "AuthorityRule", action: "create", description: "Create an authority approval rule", riskLevel: "High", governanceTag: "H2R.AuthorityRule.Create" }
+  { name: "h2r_create_authority_rule", domain: "h2r", entity: "AuthorityRule", action: "create", description: "Create an authority approval rule", riskLevel: "High", governanceTag: "H2R.AuthorityRule.Create" },
+
+  // ── INV ──────────────────────────────────────────────────────────────────
+  { name: "inv_create_sku", domain: "inv", entity: "InventorySKU", action: "create", description: "Create an inventory SKU", riskLevel: "Low", governanceTag: "INV.SKU.Create" },
+  { name: "inv_create_organization", domain: "inv", entity: "InventoryOrganization", action: "create", description: "Create an inventory organization/warehouse", riskLevel: "Medium", governanceTag: "INV.Organization.Create" },
+  { name: "inv_post_movement", domain: "inv", entity: "InventoryMovement", action: "post", description: "Post an inventory movement (receipt/issue/adjustment/cost_update)", riskLevel: "Medium", governanceTag: "INV.Movement.Post" }
 ];
