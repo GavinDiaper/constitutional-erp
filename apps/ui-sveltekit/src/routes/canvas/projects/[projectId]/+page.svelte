@@ -1,0 +1,621 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { actorStore } from '$lib/stores/actorStore';
+	import {
+		projectStore,
+		projectStatusBadge,
+		loadProject,
+		clearProjectStore,
+		updateCurrentProject
+	} from '$lib/stores/projectStore';
+	import {
+		getProjectById,
+		activateProject,
+		holdProject,
+		resumeProject,
+		completeProject,
+		cancelProject,
+		assignBomToProject,
+		postLaborCost,
+		createProjectFinishedItem
+	} from '$lib/api/projects';
+	import type { Project } from '$lib/types/projects';
+
+	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' = 'overview';
+	let loading = false;
+	let errorMessage = '';
+	let successMessage = '';
+
+	// Form states
+	let newBomId = '';
+	let newBomQuantity = '1';
+
+	let newResourceId = '';
+	let newHours = '8';
+	let newRate = '100';
+	let newCostElementId = '';
+
+	let newSkuId = '';
+	let newFGQuantity = '1';
+	let newUnitCost = '';
+
+	let showTransitionMenu = false;
+	let selectedTransition: 'activate' | 'hold' | 'resume' | 'complete' | 'cancel' | null = null;
+	let transitionReason = '';
+	let transitionCompletionType: 'FG_Conversion' | 'Expense_Close' = 'FG_Conversion';
+
+	$: projectId = $page.params.projectId || '';
+
+	function getStatusColor(status: string): string {
+		const colors: Record<string, string> = {
+			Draft: 'bg-gray-200 text-gray-800',
+			Active: 'bg-green-200 text-green-800',
+			OnHold: 'bg-yellow-200 text-yellow-800',
+			Completed: 'bg-blue-200 text-blue-800',
+			Cancelled: 'bg-red-200 text-red-800'
+		};
+		return colors[status] || 'bg-gray-100 text-gray-900';
+	}
+
+	function getNextActions(): Array<{ name: string; action: 'activate' | 'hold' | 'resume' | 'complete' | 'cancel' }> {
+		const status = $projectStore.currentProject?.status;
+		const actions: Array<{ name: string; action: 'activate' | 'hold' | 'resume' | 'complete' | 'cancel' }> = [];
+
+		if (status === 'Draft') {
+			actions.push({ name: 'Activate', action: 'activate' });
+		} else if (status === 'Active') {
+			actions.push({ name: 'Hold', action: 'hold' });
+			actions.push({ name: 'Complete', action: 'complete' });
+			actions.push({ name: 'Cancel', action: 'cancel' });
+		} else if (status === 'OnHold') {
+			actions.push({ name: 'Resume', action: 'resume' });
+			actions.push({ name: 'Cancel', action: 'cancel' });
+		}
+
+		return actions;
+	}
+
+	async function handleTransition(project: Project | null) {
+		if (!project || !selectedTransition) return;
+
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+
+		try {
+			const actor = $actorStore;
+			let updated;
+
+			switch (selectedTransition) {
+				case 'activate':
+					updated = await activateProject(actor, project.projectId);
+					break;
+				case 'hold':
+					updated = await holdProject(actor, project.projectId, transitionReason);
+					break;
+				case 'resume':
+					updated = await resumeProject(actor, project.projectId);
+					break;
+				case 'complete':
+					updated = await completeProject(actor, project.projectId, transitionCompletionType);
+					break;
+				case 'cancel':
+					updated = await cancelProject(actor, project.projectId, transitionReason);
+					break;
+				default:
+					return;
+			}
+
+			projectStore.update((state) => ({
+				...state,
+				currentProject: updated.data
+			}));
+
+			successMessage = `Project ${selectedTransition}d successfully!`;
+			showTransitionMenu = false;
+			selectedTransition = null;
+			transitionReason = '';
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to transition project';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleAssignBom() {
+		if (!$projectStore.currentProject || !newBomId) return;
+
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+
+		try {
+			const actor = $actorStore;
+			await assignBomToProject(actor, $projectStore.currentProject.projectId, {
+				bomId: newBomId,
+				quantityPlanned: parseFloat(newBomQuantity)
+			});
+
+			successMessage = 'BOM assigned successfully!';
+			newBomId = '';
+			newBomQuantity = '1';
+
+			// Reload to get updated assignments
+			await loadProject($projectStore.currentProject.projectId);
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to assign BOM';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handlePostLabor() {
+		if (!$projectStore.currentProject || !newResourceId) return;
+
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+
+		try {
+			const actor = $actorStore;
+			await postLaborCost(actor, $projectStore.currentProject.projectId, {
+				resourceId: newResourceId,
+				hours: parseFloat(newHours),
+				rate: parseFloat(newRate),
+				costElementId: newCostElementId || undefined
+			});
+
+			successMessage = 'Labor entry posted successfully!';
+			newResourceId = '';
+			newHours = '8';
+			newRate = '100';
+			newCostElementId = '';
+
+			// Reload to get updated entries
+			await loadProject($projectStore.currentProject.projectId);
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to post labor cost';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleCreateFinishedItem() {
+		if (!$projectStore.currentProject || !newSkuId) return;
+
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+
+		try {
+			const actor = $actorStore;
+			await createProjectFinishedItem(actor, $projectStore.currentProject.projectId, {
+				skuId: newSkuId,
+				organizationId: $projectStore.currentProject.organizationId,
+				quantity: parseFloat(newFGQuantity),
+				unitCost: newUnitCost ? parseFloat(newUnitCost) : undefined
+			});
+
+			successMessage = 'Finished item created successfully!';
+			newSkuId = '';
+			newFGQuantity = '1';
+			newUnitCost = '';
+
+			// Reload to get updated finished items
+			await loadProject($projectStore.currentProject.projectId);
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to create finished item';
+		} finally {
+			loading = false;
+		}
+	}
+
+	onMount(() => {
+		if (projectId) {
+			void loadProject(projectId);
+		}
+
+		return () => {
+			clearProjectStore();
+		};
+	});
+</script>
+
+<div class="container mx-auto px-4 py-8">
+	{#if $projectStore.loading && !$projectStore.currentProject}
+		<div class="text-center py-12">
+			<p class="text-gray-600">Loading project...</p>
+		</div>
+	{:else if $projectStore.error && !$projectStore.currentProject}
+		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+			{$projectStore.error}
+		</div>
+	{:else if $projectStore.currentProject}
+		<div class="mb-8">
+			<div class="flex justify-between items-center mb-4">
+				<div>
+					<h1 class="text-3xl font-bold">{$projectStore.currentProject.name}</h1>
+					<p class="text-gray-600 mt-2">{$projectStore.currentProject.description || 'No description'}</p>
+				</div>
+				<div class="flex gap-4">
+					<span class="px-4 py-2 rounded text-xs font-semibold {getStatusColor($projectStore.currentProject.status)}">
+						{$projectStore.currentProject.status}
+					</span>
+					<button
+						on:click={() => (showTransitionMenu = !showTransitionMenu)}
+						class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+					>
+						Actions
+					</button>
+				</div>
+			</div>
+
+			{#if showTransitionMenu}
+				<div class="bg-gray-50 border border-gray-300 rounded-lg p-4 mb-4">
+					<h3 class="font-semibold mb-3">Project Actions</h3>
+					<div class="space-y-2">
+						{#each getNextActions() as action}
+							<button
+								on:click={() => {
+									selectedTransition = action.action;
+									showTransitionMenu = false;
+								}}
+								class="block w-full text-left px-3 py-2 rounded hover:bg-gray-200 text-sm"
+							>
+								{action.name}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			{#if selectedTransition}
+				<div class="bg-blue-50 border border-blue-300 rounded-lg p-4 mb-4">
+					<h3 class="font-semibold mb-3">
+						Confirm {selectedTransition === 'activate' ? 'Activation' : selectedTransition === 'hold' ? 'Hold' : selectedTransition === 'resume' ? 'Resume' : selectedTransition === 'complete' ? 'Completion' : 'Cancellation'}
+					</h3>
+
+					{#if selectedTransition === 'hold' || selectedTransition === 'cancel'}
+						<div class="mb-3">
+							<label for="reason" class="block text-sm font-medium mb-1">Reason</label>
+							<textarea id="reason" bind:value={transitionReason} class="border rounded w-full px-3 py-2 text-sm" rows="2"></textarea>
+						</div>
+					{/if}
+
+					{#if selectedTransition === 'complete'}
+						<div class="mb-3">
+							<label for="compType" class="block text-sm font-medium mb-1">Completion Type</label>
+							<select id="compType" bind:value={transitionCompletionType} class="border rounded w-full px-3 py-2 text-sm">
+								<option value="FG_Conversion">Finished Good Conversion</option>
+								<option value="Expense_Close">Expense Close</option>
+							</select>
+						</div>
+					{/if}
+
+					<div class="flex gap-2">
+						<button
+							on:click={() => handleTransition($projectStore.currentProject)}
+							class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
+							disabled={loading}
+						>
+							Confirm
+						</button>
+						<button
+							on:click={() => {
+								selectedTransition = null;
+								transitionReason = '';
+							}}
+							class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded text-sm"
+						>
+							Cancel
+						</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		{#if errorMessage}
+			<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+				{errorMessage}
+			</div>
+		{/if}
+
+		{#if successMessage}
+			<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+				{successMessage}
+			</div>
+		{/if}
+
+		<!-- Project Summary -->
+		<div class="grid grid-cols-4 gap-4 mb-8">
+			<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+				<div class="text-xs text-gray-500 mb-1">Budget Amount</div>
+				<div class="text-2xl font-bold">${$projectStore.currentProject.budgetAmount.toFixed(2)}</div>
+			</div>
+			<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+				<div class="text-xs text-gray-500 mb-1">Actual Cost</div>
+				<div class="text-2xl font-bold">${$projectStore.currentProject.actualCostAmount.toFixed(2)}</div>
+			</div>
+			<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+				<div class="text-xs text-gray-500 mb-1">WIP Total</div>
+				<div class="text-2xl font-bold">${$projectStore.currentProject.wipTotalBalance.toFixed(2)}</div>
+			</div>
+			<div class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+				<div class="text-xs text-gray-500 mb-1">Budget Remaining</div>
+				<div class="text-2xl font-bold">
+					${(
+						$projectStore.currentProject.budgetAmount - $projectStore.currentProject.wipTotalBalance
+					).toFixed(2)}
+				</div>
+			</div>
+		</div>
+
+		<!-- Tabs -->
+		<div class="border-b border-gray-300 mb-6">
+			<div class="flex gap-4">
+				{#each (['overview', 'boms', 'labor', 'finished'] as const) as tab}
+					<button
+						on:click={() => (activeTab = tab)}
+						class={`px-4 py-2 border-b-2 font-medium text-sm ${
+							activeTab === tab
+								? 'border-blue-600 text-blue-600'
+								: 'border-transparent text-gray-600 hover:text-gray-900'
+						}`}
+					>
+						{tab === 'overview' ? 'Overview' : tab === 'boms' ? 'BOM Assignments' : tab === 'labor' ? 'Labor Entries' : 'Finished Items'}
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Overview Tab -->
+		{#if activeTab === 'overview'}
+			<div class="bg-gray-50 border border-gray-300 rounded-lg p-6">
+				<h2 class="text-lg font-semibold mb-4">Project Overview</h2>
+				<div class="grid grid-cols-2 gap-6">
+					<div>
+						<div class="text-sm text-gray-500">Project ID</div>
+						<div class="font-semibold">{$projectStore.currentProject.projectId}</div>
+					</div>
+					<div>
+						<div class="text-sm text-gray-500">Project Type</div>
+						<div class="font-semibold">{$projectStore.currentProject.projectType}</div>
+					</div>
+					<div>
+						<div class="text-sm text-gray-500">Start Date</div>
+						<div class="font-semibold">{$projectStore.currentProject.startDate.split('T')[0]}</div>
+					</div>
+					<div>
+						<div class="text-sm text-gray-500">End Date</div>
+						<div class="font-semibold">{$projectStore.currentProject.endDate?.split('T')[0] || 'N/A'}</div>
+					</div>
+					<div>
+						<div class="text-sm text-gray-500">Manager ID</div>
+						<div class="font-semibold">{$projectStore.currentProject.projectManagerId}</div>
+					</div>
+					<div>
+						<div class="text-sm text-gray-500">Organization ID</div>
+						<div class="font-semibold">{$projectStore.currentProject.organizationId}</div>
+					</div>
+				</div>
+
+				{#if $projectStore.wipSummary}
+					<div class="mt-8 pt-8 border-t">
+						<h3 class="text-md font-semibold mb-4">WIP Summary</h3>
+						<div class="grid grid-cols-3 gap-4">
+							<div class="bg-white border border-gray-200 rounded p-4">
+								<div class="text-xs text-gray-500 mb-2">Material Balance</div>
+								<div class="text-2xl font-bold text-blue-600">${$projectStore.wipSummary.wipMaterialBalance.toFixed(2)}</div>
+							</div>
+							<div class="bg-white border border-gray-200 rounded p-4">
+								<div class="text-xs text-gray-500 mb-2">Labor Balance</div>
+								<div class="text-2xl font-bold text-purple-600">${$projectStore.wipSummary.wipLaborBalance.toFixed(2)}</div>
+							</div>
+							<div class="bg-white border border-gray-200 rounded p-4">
+								<div class="text-xs text-gray-500 mb-2">Overhead Balance</div>
+								<div class="text-2xl font-bold text-orange-600">${$projectStore.wipSummary.wipOverheadBalance.toFixed(2)}</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- BOM Assignments Tab -->
+		{#if activeTab === 'boms'}
+			<div>
+				<div class="bg-gray-50 border border-gray-300 rounded-lg p-6 mb-6">
+					<h3 class="text-lg font-semibold mb-4">Assign New BOM</h3>
+					<div class="grid grid-cols-3 gap-4">
+						<div>
+							<label for="bomId" class="block text-sm font-medium mb-1">BOM ID</label>
+							<input id="bomId" type="text" bind:value={newBomId} class="border rounded w-full px-3 py-2" placeholder="bom-001" />
+						</div>
+						<div>
+							<label for="bomQty" class="block text-sm font-medium mb-1">Quantity Planned</label>
+							<input id="bomQty" type="number" bind:value={newBomQuantity} class="border rounded w-full px-3 py-2" placeholder="1" />
+						</div>
+						<div class="flex items-end">
+							<button
+								on:click={handleAssignBom}
+								class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+								disabled={loading || !newBomId}
+							>
+								Assign
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="overflow-x-auto">
+					<table class="min-w-full border-collapse border border-gray-300">
+						<thead class="bg-gray-100">
+							<tr>
+								<th class="border border-gray-300 px-4 py-2 text-left">BOM ID</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Quantity Planned</th>
+								<th class="border border-gray-300 px-4 py-2 text-left">Status</th>
+								<th class="border border-gray-300 px-4 py-2 text-left">Created At</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each $projectStore.bomAssignments as assignment (assignment.assignmentId)}
+								<tr class="hover:bg-gray-50">
+									<td class="border border-gray-300 px-4 py-2">{assignment.bomId}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right">{assignment.quantityPlanned}</td>
+									<td class="border border-gray-300 px-4 py-2">
+										<span class="px-2 py-1 rounded text-xs font-semibold {assignment.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+											{assignment.status}
+										</span>
+									</td>
+									<td class="border border-gray-300 px-4 py-2 text-sm">{assignment.createdAt.split('T')[0]}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				{#if $projectStore.bomAssignments.length === 0}
+					<div class="text-center py-8 text-gray-500">
+						No BOM assignments yet. Create one above to get started.
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Labor Entries Tab -->
+		{#if activeTab === 'labor'}
+			<div>
+				<div class="bg-gray-50 border border-gray-300 rounded-lg p-6 mb-6">
+					<h3 class="text-lg font-semibold mb-4">Post Labor Entry</h3>
+					<div class="grid grid-cols-5 gap-4">
+						<div>
+							<label for="resourceId" class="block text-sm font-medium mb-1">Resource ID</label>
+							<input id="resourceId" type="text" bind:value={newResourceId} class="border rounded w-full px-3 py-2" placeholder="emp-001" />
+						</div>
+						<div>
+							<label for="hours" class="block text-sm font-medium mb-1">Hours</label>
+							<input id="hours" type="number" bind:value={newHours} class="border rounded w-full px-3 py-2" placeholder="8" />
+						</div>
+						<div>
+							<label for="rate" class="block text-sm font-medium mb-1">Rate</label>
+							<input id="rate" type="number" bind:value={newRate} class="border rounded w-full px-3 py-2" placeholder="100" />
+						</div>
+						<div>
+							<label for="costElem" class="block text-sm font-medium mb-1">Cost Element</label>
+							<input id="costElem" type="text" bind:value={newCostElementId} class="border rounded w-full px-3 py-2" placeholder="(optional)" />
+						</div>
+						<div class="flex items-end">
+							<button
+								on:click={handlePostLabor}
+								class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+								disabled={loading || !newResourceId}
+							>
+								Post
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="overflow-x-auto">
+					<table class="min-w-full border-collapse border border-gray-300">
+						<thead class="bg-gray-100">
+							<tr>
+								<th class="border border-gray-300 px-4 py-2 text-left">Resource ID</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Hours</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Rate</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Total Cost</th>
+								<th class="border border-gray-300 px-4 py-2 text-left">Posted At</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each $projectStore.laborEntries as entry (entry.entryId)}
+								<tr class="hover:bg-gray-50">
+									<td class="border border-gray-300 px-4 py-2">{entry.resourceId}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right">{entry.hours}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right">${entry.rate.toFixed(2)}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right font-semibold">${entry.totalCost.toFixed(2)}</td>
+									<td class="border border-gray-300 px-4 py-2 text-sm">{entry.postedAt.split('T')[0]}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				{#if $projectStore.laborEntries.length === 0}
+					<div class="text-center py-8 text-gray-500">
+						No labor entries yet. Post one above to get started.
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Finished Items Tab -->
+		{#if activeTab === 'finished'}
+			<div>
+				<div class="bg-gray-50 border border-gray-300 rounded-lg p-6 mb-6">
+					<h3 class="text-lg font-semibold mb-4">Create Finished Item</h3>
+					<div class="grid grid-cols-4 gap-4">
+						<div>
+							<label for="skuId" class="block text-sm font-medium mb-1">SKU ID</label>
+							<input id="skuId" type="text" bind:value={newSkuId} class="border rounded w-full px-3 py-2" placeholder="sku-001" />
+						</div>
+						<div>
+							<label for="fgQty" class="block text-sm font-medium mb-1">Quantity</label>
+							<input id="fgQty" type="number" bind:value={newFGQuantity} class="border rounded w-full px-3 py-2" placeholder="1" />
+						</div>
+						<div>
+							<label for="unitCost" class="block text-sm font-medium mb-1">Unit Cost (optional)</label>
+							<input id="unitCost" type="number" bind:value={newUnitCost} class="border rounded w-full px-3 py-2" placeholder="auto-calculated" />
+						</div>
+						<div class="flex items-end">
+							<button
+								on:click={handleCreateFinishedItem}
+								class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+								disabled={loading || !newSkuId}
+							>
+								Create
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="overflow-x-auto">
+					<table class="min-w-full border-collapse border border-gray-300">
+						<thead class="bg-gray-100">
+							<tr>
+								<th class="border border-gray-300 px-4 py-2 text-left">SKU ID</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Quantity</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Unit Cost</th>
+								<th class="border border-gray-300 px-4 py-2 text-right">Total WIP Cost</th>
+								<th class="border border-gray-300 px-4 py-2 text-left">Created At</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each $projectStore.finishedItems as item (item.finishedItemId)}
+								<tr class="hover:bg-gray-50">
+									<td class="border border-gray-300 px-4 py-2">{item.skuId}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right">{item.quantity}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right">${item.unitCost.toFixed(2)}</td>
+									<td class="border border-gray-300 px-4 py-2 text-right font-semibold">${item.totalWipCost.toFixed(2)}</td>
+									<td class="border border-gray-300 px-4 py-2 text-sm">{item.createdAt.split('T')[0]}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				{#if $projectStore.finishedItems.length === 0}
+					<div class="text-center py-8 text-gray-500">
+						No finished items yet. Create one above to get started.
+					</div>
+				{/if}
+			</div>
+		{/if}
+	{:else}
+		<div class="text-center py-12">
+			<p class="text-gray-600">No project found.</p>
+			<a href="/projects" class="text-blue-600 hover:underline mt-4 inline-block">Back to Projects</a>
+		</div>
+	{/if}
+</div>

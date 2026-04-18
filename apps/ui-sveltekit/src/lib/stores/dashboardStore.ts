@@ -8,6 +8,9 @@ export interface DashboardSummary {
 	approvedPos: number;
 	pendingJournals: number;
 	activeEmployees: number;
+	draftProjects: number;
+	activeProjects: number;
+	completedProjects: number;
 }
 
 export const dashboardStore = writable<DashboardSummary>({
@@ -17,5 +20,8 @@ export const dashboardStore = writable<DashboardSummary>({
 	submittedRequisitions: 0,
 	approvedPos: 0,
 	pendingJournals: 0,
-	activeEmployees: 0
+	activeEmployees: 0,
+	draftProjects: 0,
+	activeProjects: 0,
+	completedProjects: 0
 });

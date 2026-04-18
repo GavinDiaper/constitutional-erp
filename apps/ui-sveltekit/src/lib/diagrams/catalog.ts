@@ -281,6 +281,108 @@ export const diagramCatalog: DiagramItem[] = [
     PGE_cmd[PGE_pge_command_log] -->|emits| EP_events
     EP_events -->|consumed_by| NAI_events[NAI_navigator_event_log]
     GE_decisions -->|referenced_by| NAI_gov[NAI_navigator_governance_outcome]`
+	},
+	{
+		id: 'foundation-projects-lifecycle',
+		title: 'Foundation Projects Lifecycle',
+		system: 'FoundationERP',
+		summary: 'Project state machine from draft through completion with WIP breakdown, BOM assignments, and labor costing.',
+		accentClass: 'border-lime-500/40 bg-lime-50/70',
+		definition: `stateDiagram-v2
+    [*] --> Draft
+    Draft -->|Activate| Active
+    Active -->|Hold| OnHold
+    OnHold -->|Resume| Active
+    Active -->|Complete| Completed
+    OnHold -->|Cancel| Cancelled
+    Active -->|Cancel| Cancelled
+    Draft -->|Cancel| Cancelled
+    Completed --> [*]
+    Cancelled --> [*]
+    
+    note right of Draft
+        Initial state
+        No WIP posted
+    end note
+    
+    note right of Active
+        Project underway
+        WIP materials/labor tracked
+        BOM assignments active
+    end note
+    
+    note right of OnHold
+        Temporarily halted
+        WIP accumulation paused
+    end note
+    
+    note right of Completed
+        Closed and archived
+        Final WIP balance
+        Ready for GL posting
+    end note
+    
+    note right of Cancelled
+        Cancelled and void
+        All WIP reversed
+    end note`
+	},
+	{
+		id: 'foundation-projects-domain',
+		title: 'Foundation Projects Domain',
+		system: 'FoundationERP',
+		summary: 'Project management with WIP breakdown, BOM assignments, labor entries, and finished item creation.',
+		accentClass: 'border-lime-500/40 bg-lime-50/70',
+		definition: `erDiagram
+    F_proj_project {
+        string project_id PK
+        string name
+        string description
+        string status
+        decimal budget_amount
+        date start_date
+        date end_date
+        string manager_id FK
+        string organization_id FK
+    }
+    F_proj_wip {
+        string wip_id PK
+        string project_id FK
+        decimal material_balance
+        decimal labor_balance
+        decimal overhead_balance
+        string status
+        date closed_at
+    }
+    F_proj_bom_assignment {
+        string assignment_id PK
+        string project_id FK
+        string bom_id FK
+        decimal quantity_planned
+        decimal quantity_completed
+        string status
+    }
+    F_proj_labor_entry {
+        string entry_id PK
+        string project_id FK
+        string labor_type
+        decimal hours
+        decimal hourly_rate
+        decimal total_cost
+        date posted_at
+    }
+    F_proj_finished_item {
+        string finished_item_id PK
+        string project_id FK
+        string sku_id FK
+        decimal quantity_produced
+        decimal wip_cost_per_unit
+        date created_at
+    }
+    F_proj_project ||--o{ F_proj_wip : has
+    F_proj_project ||--o{ F_proj_bom_assignment : assigned
+    F_proj_project ||--o{ F_proj_labor_entry : posts
+    F_proj_project ||--o{ F_proj_finished_item : creates`
 	}
 ];
 

@@ -42,6 +42,12 @@ interface CustomerRow {
 	created_at?: string;
 }
 
+interface ProjectRow {
+	project_id: string;
+	status?: string;
+	state?: string;
+}
+
 interface ApprovalJournalRow extends JournalRow {
 	description?: string;
 	created_at?: string;
@@ -192,14 +198,30 @@ export function isOpenInvoice(invoice: O2CInvoice): boolean {
 	return (invoice.state ?? '').trim().toLowerCase() !== 'paid';
 }
 
+export function isDraftProject(project: ProjectRow): boolean {
+	const lifecycle = normalizeLifecycleToken(project.status ?? project.state);
+	return lifecycle === 'draft';
+}
+
+export function isActiveProject(project: ProjectRow): boolean {
+	const lifecycle = normalizeLifecycleToken(project.status ?? project.state);
+	return ['active', 'activated', 'ongoing', 'inprogress'].includes(lifecycle);
+}
+
+export function isCompletedProject(project: ProjectRow): boolean {
+	const lifecycle = normalizeLifecycleToken(project.status ?? project.state);
+	return lifecycle === 'completed' || lifecycle === 'closed';
+}
+
 export async function getDashboardSummary(actor: ActorContext): Promise<DashboardSummary> {
-	const [quoteResult, invoiceResult, requisitionResult, poResult, journalResult, employeeResult] = await Promise.all([
+	const [quoteResult, invoiceResult, requisitionResult, poResult, journalResult, employeeResult, projectResult] = await Promise.all([
 		getO2CQuotes(actor),
 		getO2CInvoices(actor),
 		queryTable<RequisitionRow>('p2p_requisition', actor),
 		queryTable<PurchaseOrderRow>('p2p_purchase_order', actor),
 		queryTable<JournalRow>('r2r_journal', actor),
-		queryTable<EmployeeRow>('h2r_employee', actor)
+		queryTable<EmployeeRow>('h2r_employee', actor),
+		queryTable<ProjectRow>('proj_project', actor)
 	]);
 
 	return {
@@ -209,6 +231,9 @@ export async function getDashboardSummary(actor: ActorContext): Promise<Dashboar
 		submittedRequisitions: (requisitionResult.data ?? []).filter(isSubmittedRequisition).length,
 		approvedPos: (poResult.data ?? []).filter(isApprovedPo).length,
 		pendingJournals: (journalResult.data ?? []).filter(isPendingJournal).length,
-		activeEmployees: (employeeResult.data ?? []).filter(isActiveEmployee).length
+		activeEmployees: (employeeResult.data ?? []).filter(isActiveEmployee).length,
+		draftProjects: (projectResult.data ?? []).filter(isDraftProject).length,
+		activeProjects: (projectResult.data ?? []).filter(isActiveProject).length,
+		completedProjects: (projectResult.data ?? []).filter(isCompletedProject).length
 	};
 }

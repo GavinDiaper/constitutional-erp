@@ -24,7 +24,10 @@
 		{ key: 'submittedRequisitions', label: 'Submitted Requisitions', href: resolve('/canvas/p2p/requisitions/submitted') },
 		{ key: 'approvedPos', label: 'Approved POs', href: resolve('/canvas/p2p/purchase-orders/approved') },
 		{ key: 'pendingJournals', label: 'Pending Journals', href: resolve('/canvas/r2r/journals/pending') },
-		{ key: 'activeEmployees', label: 'Active Employees', href: resolve('/canvas/h2r/employees/active') }
+		{ key: 'activeEmployees', label: 'Active Employees', href: resolve('/canvas/h2r/employees/active') },
+		{ key: 'draftProjects', label: 'Draft Projects', href: resolve('/projects') },
+		{ key: 'activeProjects', label: 'Active Projects', href: resolve('/projects') },
+		{ key: 'completedProjects', label: 'Completed Projects', href: resolve('/projects') }
 	] as const;
 
 	interface PurchaseOrderRow {
