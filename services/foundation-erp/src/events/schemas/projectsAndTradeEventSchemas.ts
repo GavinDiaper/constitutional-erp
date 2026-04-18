@@ -24,6 +24,7 @@ export interface EventPayload_ProjectCreated {
   projectType: "Internal" | "Capital" | "Billable" | "Service";
   customerId?: string;
   contractId?: string;
+  wbsId?: string;
   budgetAmount: number;
   defaultWIPAccountId: string;
   defaultCloseAccountId: string;
@@ -318,6 +319,7 @@ export interface ProjectProjection {
   description?: string;
   customerId?: string;
   contractId?: string;
+  wbsId?: string;
   projectType: "Internal" | "Capital" | "Billable" | "Service";
   status: "Draft" | "Active" | "OnHold" | "Completed" | "Cancelled";
   budgetAmount: number;
