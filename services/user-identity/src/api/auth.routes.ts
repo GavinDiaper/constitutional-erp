@@ -375,7 +375,7 @@ authRouter.get("/auth/login/:provider", (req, res) => {
     const callbackUrl = new URL(config.providers[provider].redirectUri);
     callbackUrl.searchParams.set("state", state);
     callbackUrl.searchParams.set("nonce", nonce);
-    callbackUrl.searchParams.set("email", String(req.query.email ?? `demo.${provider}@constitutionalerp.local`));
+    callbackUrl.searchParams.set("email", String(req.query.email ?? "gavin.diaper@gmail.com"));
     callbackUrl.searchParams.set("sub", String(req.query.sub ?? `${provider}-${randomUUID()}`));
 
     if (next) {

@@ -11,7 +11,7 @@ const logsDir = path.join(__dirname, "logs");
 const statePath = path.join(runtimeDir, "services-state.json");
 const productionMode = Boolean(process.env.RENDER) || process.env.NODE_ENV === "production";
 const publicServiceName = process.env.RENDER_PUBLIC_SERVICE || (process.env.RENDER ? "ui-sveltekit" : "");
-const defaultTimeoutSeconds = Number.parseInt(process.env.START_ALL_TIMEOUT_SECONDS ?? "60", 10);
+const defaultTimeoutSeconds = Number.parseInt(process.env.START_ALL_TIMEOUT_SECONDS ?? "180", 10);
 
 const orchestrationEnvDefaults = {
   API_KEY: "change-me",
@@ -30,42 +30,50 @@ const serviceTemplates = [
   {
     name: "foundation-erp",
     relativePath: path.join("services", "foundation-erp"),
-    defaultPort: 3000
+    defaultPort: 3000,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "authority-engine",
     relativePath: path.join("services", "authority-engine"),
-    defaultPort: 4001
+    defaultPort: 4001,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "governance-engine",
     relativePath: path.join("services", "governance-engine"),
-    defaultPort: 4002
+    defaultPort: 4002,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "mesh-gateway",
     relativePath: path.join("services", "mesh-gateway"),
-    defaultPort: 4003
+    defaultPort: 4003,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "event-processor",
     relativePath: path.join("services", "event-processor"),
-    defaultPort: 4004
+    defaultPort: 4004,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "process-graph",
     relativePath: path.join("services", "process-graph"),
-    defaultPort: 4005
+    defaultPort: 4005,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "integration-hub",
     relativePath: path.join("services", "integration-hub"),
-    defaultPort: 4017
+    defaultPort: 4017,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "user-identity",
     relativePath: path.join("services", "user-identity"),
-    defaultPort: 4008
+    defaultPort: 4008,
+    startCommand: "node scripts/start-server.js"
   },
   {
     name: "user-identity-app",
@@ -86,7 +94,8 @@ const serviceTemplates = [
   {
     name: "navigator-ai",
     relativePath: path.join("services", "navigator-ai"),
-    defaultPort: 4016
+    defaultPort: 4016,
+    startCommand: "node scripts/start-server.js"
   }
 ];
 

@@ -62,3 +62,7 @@ export function runMigrations() {
 
   console.log("Migrations complete");
 }
+
+if (require.main === module) {
+  runMigrations();
+}
