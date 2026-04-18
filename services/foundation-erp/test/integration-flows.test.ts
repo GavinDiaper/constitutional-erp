@@ -1293,3 +1293,113 @@ test("Inventory bin operations support putaway and pick constraints", async () =
 
   assert.equal(overPick.body.title, "insufficient_bin_quantity");
 });
+
+test("Inventory cycle count posts bin variance to on-hand", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-CC-${unique}`,
+      description: "Cycle count test SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 15
+    })
+    .expect(201);
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Cycle Count WH ${unique}` })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      movementType: "receipt",
+      quantity: 10,
+      unitCost: 15,
+      reason: "seed stock for cycle count"
+    })
+    .expect(201);
+
+  const bin = await request(app)
+    .post("/api/v1/inv/bins")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      binCode: `CC-01-${unique}`,
+      zone: "CC",
+      aisle: "01",
+      rack: "R1",
+      shelfLevel: "L1"
+    })
+    .expect(201);
+
+  await request(app)
+    .post("/api/v1/inv/bins/putaway")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      quantity: 7,
+      reason: "putaway before count"
+    })
+    .expect(201);
+
+  const cycleCount = await request(app)
+    .post("/api/v1/inv/cycle-counts")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      binId: bin.body.bin_id,
+      reason: "scheduled weekly count"
+    })
+    .expect(201);
+
+  assert.equal(cycleCount.body.status, "Open");
+
+  const recordedLine = await request(app)
+    .post(`/api/v1/inv/cycle-counts/${cycleCount.body.cycle_count_id}/lines`)
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      countedQuantity: 5,
+      reason: "shrinkage observed"
+    })
+    .expect(201);
+
+  assert.equal(recordedLine.body.expected_quantity, 7);
+  assert.equal(recordedLine.body.counted_quantity, 5);
+  assert.equal(recordedLine.body.variance_quantity, -2);
+
+  const posted = await request(app)
+    .post(`/api/v1/inv/cycle-counts/${cycleCount.body.cycle_count_id}/post`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(posted.body.status, "Posted");
+
+  const binBalances = await request(app)
+    .get(`/api/v1/inv/bins/${bin.body.bin_id}/balances`)
+    .query({ skuId: sku.body.sku_id })
+    .set(headers)
+    .expect(200);
+
+  assert.equal(binBalances.body.data[0].quantity, 5);
+
+  const onHand = await request(app)
+    .get("/api/v1/inv/on-hand")
+    .query({ skuId: sku.body.sku_id, organizationId: organization.body.organization_id })
+    .set(headers)
+    .expect(200);
+
+  assert.equal(onHand.body.data[0].quantity_on_hand, 8);
+});

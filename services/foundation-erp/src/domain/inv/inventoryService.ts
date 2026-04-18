@@ -86,6 +86,34 @@ type BinBalanceRow = {
   updated_at: string;
 };
 
+type CycleCountStatus = "Open" | "Counted" | "Posted" | "Cancelled";
+
+type CycleCountRow = {
+  cycle_count_id: string;
+  organization_id: string;
+  bin_id: string | null;
+  status: CycleCountStatus;
+  reason: string | null;
+  scheduled_for: string | null;
+  counted_at: string | null;
+  posted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type CycleCountLineRow = {
+  cycle_count_line_id: string;
+  cycle_count_id: string;
+  sku_id: string;
+  expected_quantity: number;
+  counted_quantity: number;
+  variance_quantity: number;
+  reason: string | null;
+  counted_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -419,6 +447,64 @@ function insertBinTransaction(input: {
   );
 
   return binTxnId;
+}
+
+function getCycleCountRow(cycleCountId: string): CycleCountRow {
+  const row = db
+    .prepare("SELECT * FROM inv_cycle_count WHERE cycle_count_id = ?")
+    .get(cycleCountId) as CycleCountRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Inventory cycle count not found");
+  }
+
+  return row;
+}
+
+function listCycleCountLinesByCountId(cycleCountId: string): CycleCountLineRow[] {
+  return db
+    .prepare("SELECT * FROM inv_cycle_count_line WHERE cycle_count_id = ? ORDER BY created_at ASC")
+    .all(cycleCountId) as CycleCountLineRow[];
+}
+
+function updateOnHandForCycleCountVariance(input: {
+  sku: SkuRow;
+  organizationId: string;
+  varianceQuantity: number;
+  timestamp: string;
+}): { quantityAfter: number; inventoryValueAfter: number; unitCost: number } {
+  const onHand = getOnHandRow(input.sku.sku_id, input.organizationId);
+  const quantityBefore = onHand?.quantity_on_hand ?? 0;
+  const valueBefore = onHand?.inventory_value ?? 0;
+
+  const unitCost =
+    input.sku.valuation_method === "standard"
+      ? input.sku.standard_cost
+      : roundMoney(onHand?.moving_average_cost ?? 0);
+
+  const quantityAfter = roundMoney(quantityBefore + input.varianceQuantity);
+  if (quantityAfter < 0) {
+    throw new HttpError(409, "insufficient_inventory", "Cycle count variance would result in negative on-hand quantity");
+  }
+
+  const deltaValue = roundMoney(input.varianceQuantity * unitCost);
+  const inventoryValueAfter = roundMoney(Math.max(0, valueBefore + deltaValue));
+  const movingAverageAfter =
+    input.sku.valuation_method === "standard"
+      ? input.sku.standard_cost
+      : quantityAfter === 0
+        ? 0
+        : roundMoney(onHand?.moving_average_cost ?? unitCost);
+
+  upsertOnHand({
+    skuId: input.sku.sku_id,
+    organizationId: input.organizationId,
+    quantityOnHand: quantityAfter,
+    inventoryValue: inventoryValueAfter,
+    movingAverageCost: movingAverageAfter
+  });
+
+  return { quantityAfter, inventoryValueAfter, unitCost };
 }
 
 export function createSku(input: {
@@ -1363,4 +1449,289 @@ export function pickFromBin(input: {
   }
 
   return result;
+}
+
+export function createCycleCount(input: {
+  organizationId: string;
+  binId?: string;
+  reason?: string;
+  scheduledFor?: string;
+}, actor?: EventActor) {
+  ensureOrganizationExists(input.organizationId);
+
+  if (input.binId) {
+    const bin = getBinRow(input.binId);
+    if (bin.organization_id !== input.organizationId) {
+      throw new HttpError(400, "invalid_request", "Bin does not belong to the provided organization");
+    }
+  }
+
+  const cycleCountId = newId("CC-");
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO inv_cycle_count(
+        cycle_count_id, organization_id, bin_id, status, reason, scheduled_for, counted_at, posted_at, created_at, updated_at
+      ) VALUES (?, ?, ?, 'Open', ?, ?, NULL, NULL, ?, ?)`
+    ).run(
+      cycleCountId,
+      input.organizationId,
+      input.binId ?? null,
+      input.reason ?? null,
+      input.scheduledFor ?? null,
+      timestamp,
+      timestamp
+    );
+
+    appendEvent({
+      entityId: cycleCountId,
+      entityType: "InventoryCycleCount",
+      eventType: "inv.cycle_count.created",
+      version: 1,
+      actor,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.CycleCount.Create" },
+      payload: {
+        organizationId: input.organizationId,
+        binId: input.binId,
+        reason: input.reason,
+        scheduledFor: input.scheduledFor
+      }
+    });
+  });
+
+  return getCycleCountById(cycleCountId);
+}
+
+export function getCycleCountById(cycleCountId: string) {
+  return getCycleCountRow(cycleCountId);
+}
+
+export function listCycleCounts(filters: {
+  organizationId?: string;
+  binId?: string;
+  status?: CycleCountStatus;
+} = {}) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+
+  if (filters.organizationId) {
+    clauses.push("organization_id = ?");
+    params.push(filters.organizationId);
+  }
+
+  if (filters.binId) {
+    clauses.push("bin_id = ?");
+    params.push(filters.binId);
+  }
+
+  if (filters.status) {
+    clauses.push("status = ?");
+    params.push(filters.status);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db
+    .prepare(`SELECT * FROM inv_cycle_count ${whereClause} ORDER BY created_at DESC LIMIT 500`)
+    .all(...params);
+}
+
+export function listCycleCountLines(cycleCountId: string) {
+  getCycleCountRow(cycleCountId);
+  return listCycleCountLinesByCountId(cycleCountId);
+}
+
+export function recordCycleCountLine(input: {
+  cycleCountId: string;
+  skuId: string;
+  countedQuantity: number;
+  reason?: string;
+}, actor?: EventActor) {
+  const cycleCount = getCycleCountRow(input.cycleCountId);
+  if (cycleCount.status !== "Open" && cycleCount.status !== "Counted") {
+    throw new HttpError(409, "invalid_state", "Cycle count lines can only be recorded while count is Open or Counted");
+  }
+
+  const sku = getSkuRow(input.skuId);
+  if (!Number.isFinite(input.countedQuantity) || input.countedQuantity < 0) {
+    throw new HttpError(400, "invalid_request", "countedQuantity must be a non-negative number");
+  }
+
+  const expectedQuantity = cycleCount.bin_id
+    ? getBinBalanceRow(input.skuId, cycleCount.organization_id, cycleCount.bin_id)?.quantity ?? 0
+    : getOnHandRow(input.skuId, cycleCount.organization_id)?.quantity_on_hand ?? 0;
+
+  const varianceQuantity = roundMoney(input.countedQuantity - expectedQuantity);
+  const timestamp = now();
+
+  transaction(() => {
+    const existing = db
+      .prepare("SELECT cycle_count_line_id FROM inv_cycle_count_line WHERE cycle_count_id = ? AND sku_id = ?")
+      .get(input.cycleCountId, input.skuId) as { cycle_count_line_id: string } | undefined;
+
+    if (existing) {
+      db.prepare(
+        `UPDATE inv_cycle_count_line
+         SET expected_quantity = ?, counted_quantity = ?, variance_quantity = ?, reason = ?, counted_at = ?, updated_at = ?
+         WHERE cycle_count_line_id = ?`
+      ).run(
+        expectedQuantity,
+        input.countedQuantity,
+        varianceQuantity,
+        input.reason ?? null,
+        timestamp,
+        timestamp,
+        existing.cycle_count_line_id
+      );
+    } else {
+      db.prepare(
+        `INSERT INTO inv_cycle_count_line(
+          cycle_count_line_id, cycle_count_id, sku_id, expected_quantity, counted_quantity,
+          variance_quantity, reason, counted_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        newId("CCL-"),
+        input.cycleCountId,
+        input.skuId,
+        expectedQuantity,
+        input.countedQuantity,
+        varianceQuantity,
+        input.reason ?? null,
+        timestamp,
+        timestamp,
+        timestamp
+      );
+    }
+
+    db.prepare(
+      `UPDATE inv_cycle_count
+       SET status = 'Counted', counted_at = ?, updated_at = ?
+       WHERE cycle_count_id = ?`
+    ).run(timestamp, timestamp, input.cycleCountId);
+
+    appendEvent({
+      entityId: input.cycleCountId,
+      entityType: "InventoryCycleCount",
+      eventType: "inv.cycle_count.line_recorded",
+      version: 1,
+      actor,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "INV.CycleCount.RecordLine" },
+      payload: {
+        cycleCountId: input.cycleCountId,
+        skuId: sku.sku_id,
+        expectedQuantity,
+        countedQuantity: input.countedQuantity,
+        varianceQuantity,
+        reason: input.reason
+      }
+    });
+  });
+
+  return listCycleCountLinesByCountId(input.cycleCountId).find((line) => line.sku_id === input.skuId);
+}
+
+export function postCycleCount(cycleCountId: string, actor?: EventActor) {
+  const cycleCount = getCycleCountRow(cycleCountId);
+  if (cycleCount.status !== "Counted") {
+    throw new HttpError(409, "invalid_state", "Cycle count must be in Counted status before posting");
+  }
+
+  const lines = listCycleCountLinesByCountId(cycleCountId);
+  if (lines.length === 0) {
+    throw new HttpError(409, "invalid_state", "Cycle count has no lines to post");
+  }
+
+  const timestamp = now();
+
+  transaction(() => {
+    for (const line of lines) {
+      if (line.variance_quantity === 0) {
+        continue;
+      }
+
+      const sku = getSkuRow(line.sku_id);
+      const onHandUpdate = updateOnHandForCycleCountVariance({
+        sku,
+        organizationId: cycleCount.organization_id,
+        varianceQuantity: line.variance_quantity,
+        timestamp
+      });
+
+      if (cycleCount.bin_id) {
+        upsertBinBalance({
+          skuId: line.sku_id,
+          organizationId: cycleCount.organization_id,
+          binId: cycleCount.bin_id,
+          quantity: line.counted_quantity
+        });
+      }
+
+      const movementId = newId("MVT-");
+      db.prepare(
+        `INSERT INTO inv_movement(
+          movement_id, sku_id, organization_id, movement_type, quantity, unit_cost, total_cost,
+          reason, reference_type, reference_id, correlation_key,
+          project_id, project_wip_id, bom_id, bom_component_flag, is_project_finished_good,
+          created_at
+        ) VALUES (?, ?, ?, 'adjustment', ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 0, 0, ?)`
+      ).run(
+        movementId,
+        line.sku_id,
+        cycleCount.organization_id,
+        line.variance_quantity,
+        onHandUpdate.unitCost,
+        roundMoney(line.variance_quantity * onHandUpdate.unitCost),
+        "cycle_count_variance",
+        "cycle_count",
+        cycleCountId,
+        null,
+        timestamp
+      );
+
+      appendEvent({
+        entityId: movementId,
+        entityType: "InventoryMovement",
+        eventType: "inv.adjustment.posted",
+        version: 1,
+        actor,
+        governance: { riskLevel: "High", requiredTier: 2, governanceTag: "INV.CycleCount.Post" },
+        payload: {
+          skuId: line.sku_id,
+          organizationId: cycleCount.organization_id,
+          movementType: "adjustment",
+          quantity: line.variance_quantity,
+          unitCost: onHandUpdate.unitCost,
+          totalCost: roundMoney(line.variance_quantity * onHandUpdate.unitCost),
+          referenceType: "cycle_count",
+          referenceId: cycleCountId,
+          quantityAfter: onHandUpdate.quantityAfter,
+          inventoryValueAfter: onHandUpdate.inventoryValueAfter
+        }
+      });
+    }
+
+    db.prepare(
+      `UPDATE inv_cycle_count
+       SET status = 'Posted', posted_at = ?, updated_at = ?
+       WHERE cycle_count_id = ?`
+    ).run(timestamp, timestamp, cycleCountId);
+
+    appendEvent({
+      entityId: cycleCountId,
+      entityType: "InventoryCycleCount",
+      eventType: "inv.cycle_count.posted",
+      version: 1,
+      actor,
+      governance: { riskLevel: "High", requiredTier: 2, governanceTag: "INV.CycleCount.Post" },
+      payload: {
+        cycleCountId,
+        organizationId: cycleCount.organization_id,
+        binId: cycleCount.bin_id,
+        lineCount: lines.length,
+        postedAt: timestamp
+      }
+    });
+  });
+
+  return getCycleCountById(cycleCountId);
 }

@@ -3,15 +3,19 @@ import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
 import {
+  createCycleCount,
   createInventoryBin,
   createReservation,
   createInventoryOrganization,
   createSku,
+  getCycleCountById,
   getInventoryBinById,
   getInventoryOrganizationById,
   getReservationById,
   getSkuById,
   listBinBalances,
+  listCycleCountLines,
+  listCycleCounts,
   listInventoryBins,
   listInventoryOrganizations,
   listMovements,
@@ -19,8 +23,10 @@ import {
   listReservations,
   listSkus,
   pickFromBin,
+  postCycleCount,
   postInventoryMovement,
   putawayToBin,
+  recordCycleCountLine,
   releaseReservation
 } from "../../domain/inv/inventoryService";
 
@@ -94,6 +100,19 @@ const binOperationSchema = z.object({
   correlationKey: z.string().optional()
 });
 
+const createCycleCountSchema = z.object({
+  organizationId: z.string().min(1),
+  binId: z.string().min(1).optional(),
+  reason: z.string().optional(),
+  scheduledFor: z.string().datetime().optional()
+});
+
+const cycleCountLineSchema = z.object({
+  skuId: z.string().min(1),
+  countedQuantity: z.number().nonnegative(),
+  reason: z.string().optional()
+});
+
 function skuLinks(skuId: string) {
   return {
     self: { href: `/api/v1/inv/skus/${skuId}`, method: "GET" as const },
@@ -143,6 +162,25 @@ function binLinks(binId: string) {
       method: "POST" as const,
       mcpFunction: "inv_pick_from_bin",
       governance: { riskLevel: "Low" as const, requiredTier: 1 as const }
+    }
+  };
+}
+
+function cycleCountLinks(cycleCountId: string) {
+  return {
+    self: { href: `/api/v1/inv/cycle-counts/${cycleCountId}`, method: "GET" as const },
+    lines: { href: `/api/v1/inv/cycle-counts/${cycleCountId}/lines`, method: "GET" as const },
+    "record-line": {
+      href: `/api/v1/inv/cycle-counts/${cycleCountId}/lines`,
+      method: "POST" as const,
+      mcpFunction: "inv_record_cycle_count_line",
+      governance: { riskLevel: "Low" as const, requiredTier: 1 as const }
+    },
+    post: {
+      href: `/api/v1/inv/cycle-counts/${cycleCountId}/post`,
+      method: "POST" as const,
+      mcpFunction: "inv_post_cycle_count",
+      governance: { riskLevel: "High" as const, requiredTier: 2 as const }
     }
   };
 }
@@ -270,4 +308,51 @@ invRouter.post("/bins/putaway", validateBody(binOperationSchema), (req, res) => 
 invRouter.post("/bins/pick", validateBody(binOperationSchema), (req, res) => {
   const result = pickFromBin(req.body, req.actor);
   res.status(201).json(result);
+});
+
+invRouter.post("/cycle-counts", validateBody(createCycleCountSchema), (req, res) => {
+  const cycleCount = createCycleCount(req.body, req.actor);
+  res.status(201).json(entityWithLinks(cycleCount as Record<string, unknown>, cycleCountLinks(String((cycleCount as Record<string, unknown>).cycle_count_id))));
+});
+
+invRouter.get("/cycle-counts", (req, res) => {
+  const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
+  const binId = typeof req.query.binId === "string" ? req.query.binId : undefined;
+  const status = typeof req.query.status === "string" ? req.query.status : undefined;
+
+  const rows = listCycleCounts({
+    organizationId,
+    binId,
+    status: status as "Open" | "Counted" | "Posted" | "Cancelled" | undefined
+  }).map((row) => entityWithLinks(row as Record<string, unknown>, cycleCountLinks(String((row as Record<string, unknown>).cycle_count_id))));
+
+  res.json({ data: rows });
+});
+
+invRouter.get("/cycle-counts/:cycleCountId", (req, res) => {
+  const cycleCount = getCycleCountById(req.params.cycleCountId);
+  res.json(entityWithLinks(cycleCount as Record<string, unknown>, cycleCountLinks(req.params.cycleCountId)));
+});
+
+invRouter.get("/cycle-counts/:cycleCountId/lines", (req, res) => {
+  res.json({ data: listCycleCountLines(req.params.cycleCountId) });
+});
+
+invRouter.post("/cycle-counts/:cycleCountId/lines", validateBody(cycleCountLineSchema), (req, res) => {
+  const line = recordCycleCountLine(
+    {
+      cycleCountId: req.params.cycleCountId,
+      skuId: req.body.skuId,
+      countedQuantity: req.body.countedQuantity,
+      reason: req.body.reason
+    },
+    req.actor
+  );
+
+  res.status(201).json(line);
+});
+
+invRouter.post("/cycle-counts/:cycleCountId/post", (req, res) => {
+  const cycleCount = postCycleCount(req.params.cycleCountId, req.actor);
+  res.json(entityWithLinks(cycleCount as Record<string, unknown>, cycleCountLinks(req.params.cycleCountId)));
 });
