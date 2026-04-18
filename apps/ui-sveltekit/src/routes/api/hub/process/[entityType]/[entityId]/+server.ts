@@ -18,7 +18,14 @@ export const GET: RequestHandler = async ({ params, request }) => {
 
 function supportsHubQueryFallback(entityType: string): boolean {
 	const normalized = entityType.trim().toLowerCase();
-	return normalized === 'o2c_quote' || normalized === 'quote' || normalized === 'r2r_journal' || normalized === 'journal';
+	return (
+		normalized === 'o2c_quote' ||
+		normalized === 'quote' ||
+		normalized === 'r2r_journal' ||
+		normalized === 'journal' ||
+		normalized === 'h2r_employee' ||
+		normalized === 'employee'
+	);
 }
 
 async function buildProcessFallbackFromHubQuery(
@@ -42,7 +49,12 @@ async function buildProcessFallbackFromHubQuery(
 		return null;
 	}
 
-	const state = typeof attributes.state === 'string' && attributes.state.trim() ? attributes.state : 'Unknown';
+	const state =
+		typeof attributes.state === 'string' && attributes.state.trim()
+			? attributes.state
+			: typeof attributes.status === 'string' && attributes.status.trim()
+				? attributes.status
+				: 'Unknown';
 
 	return Response.json({
 		entityType,
@@ -63,6 +75,10 @@ function resolveFallbackQueryPath(entityType: string, entityId: string): string 
 
 	if (normalized === 'r2r_journal' || normalized === 'journal') {
 		return `/query/r2r_journal/${encodedId}`;
+	}
+
+	if (normalized === 'h2r_employee' || normalized === 'employee') {
+		return `/query/h2r_employee/${encodedId}`;
 	}
 
 	return null;

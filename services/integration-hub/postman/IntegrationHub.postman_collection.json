@@ -771,7 +771,7 @@
     { "key": "foundationBaseUrl", "value": "http://localhost:3000" },
     { "key": "apiKey", "value": "change-me" },
     { "key": "ingressId", "value": "foundation-ingress" },
-    { "key": "actorId", "value": "principal.system" },
+    { "key": "actorId", "value": "gavin.diaper@gmail.com" },
     { "key": "fiscalYearId", "value": "" },
     { "key": "fiscalPeriodId", "value": "" },
     { "key": "journalId", "value": "" },

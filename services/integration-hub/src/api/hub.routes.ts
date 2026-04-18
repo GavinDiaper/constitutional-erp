@@ -5,7 +5,8 @@ import { SessionStore } from "../domain/sessionStore";
 import { McpCatalog } from "../domain/mcpCatalog";
 import { HubNavlogEntry, McpFunction, SessionMode } from "../domain/types";
 import { AppConfig } from "../config/env";
-import { requestJson } from "../clients/http";
+import { requestJson, requestJsonAllowError } from "../clients/http";
+import { HttpError } from "../utils/errors";
 
 const sessionCreateSchema = z.object({
   actorId: z.string().min(1),
@@ -186,6 +187,63 @@ function foundationHeaders(req: Request, config: AppConfig): Record<string, stri
   };
 }
 
+function supportsEmployeeProcessFallback(entityType: string): boolean {
+  const normalized = entityType.trim().toLowerCase();
+  return normalized === "employee" || normalized === "h2r_employee";
+}
+
+function isMissingH2rEmployeeAggregate(error: unknown, entityType: string): boolean {
+  if (!supportsEmployeeProcessFallback(entityType)) {
+    return false;
+  }
+
+  if (!(error instanceof HttpError) || error.status !== 404) {
+    return false;
+  }
+
+  return /Aggregate\s+H2R\/employee\/.+not found/i.test(error.message);
+}
+
+async function buildEmployeeProcessFallback(input: {
+  req: Request;
+  config: AppConfig;
+  entityType: string;
+  entityId: string;
+}): Promise<{
+  entityType: string;
+  entityId: string;
+  state: string;
+  attributes: Record<string, unknown>;
+  links: Array<unknown>;
+} | null> {
+  const query = await requestJsonAllowError<Record<string, unknown>>(
+    `${input.config.foundationErpUrl}/api/v1/query/h2r_employee/${encodeURIComponent(input.entityId)}`,
+    {
+      method: "GET",
+      headers: foundationHeaders(input.req, input.config)
+    }
+  );
+
+  if (query.status >= 400 || !query.data || Array.isArray(query.data)) {
+    return null;
+  }
+
+  const attributes = query.data as Record<string, unknown>;
+  const stateCandidate = typeof attributes.state === "string" && attributes.state.trim().length > 0
+    ? attributes.state
+    : typeof attributes.status === "string" && attributes.status.trim().length > 0
+      ? attributes.status
+      : "Unknown";
+
+  return {
+    entityType: input.entityType,
+    entityId: input.entityId,
+    state: stateCandidate,
+    attributes,
+    links: []
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -331,6 +389,25 @@ export function createHubRouter(deps: {
         links: process.links
       });
     } catch (error) {
+      try {
+        const params = processPathSchema.parse(req.params ?? {});
+        if (isMissingH2rEmployeeAggregate(error, params.entityType)) {
+          const fallback = await buildEmployeeProcessFallback({
+            req,
+            config: deps.config,
+            entityType: params.entityType,
+            entityId: params.entityId
+          });
+
+          if (fallback) {
+            res.json(fallback);
+            return;
+          }
+        }
+      } catch {
+        // Ignore fallback errors and return original process error through standard handler.
+      }
+
       next(error);
     }
   });
