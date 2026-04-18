@@ -17,6 +17,7 @@ import { authRouter } from "./api/auth.routes";
 import projectsRouter from "./api/projects";
 import bomRouter from "./api/bom";
 import costElementsRouter from "./api/costElements";
+import internalTradesRouter from "./api/internalTrades";
 import { toProblem } from "./utils/errors";
 import { seedStarterAccounts } from "./domain/r2r/account/accountService";
 import { seedTaxConfiguration } from "./domain/tax/taxSeedService";
@@ -61,6 +62,7 @@ export function createApp() {
   app.use("/api/v1/projects", projectsRouter);
   app.use("/api/v1/bom", bomRouter);
   app.use("/api/v1/cost-elements", costElementsRouter);
+  app.use("/api/v1/internal-trades", internalTradesRouter);
   app.use("/api/v1/mcp", mcpRouter);
   app.use("/api/v1/hub", navlogRouter);
   app.use("/api/v1", eventRouter);

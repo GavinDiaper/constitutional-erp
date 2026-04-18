@@ -469,3 +469,46 @@ invRouter.post("/serials/:serialId/consume", validateBody(consumeSerialSchema), 
   const serial = consumeInventorySerial(req.params.serialId, req.body, req.actor);
   res.json(entityWithLinks(serial as Record<string, unknown>, serialLinks(req.params.serialId)));
 });
+
+// ─── Issue to Project ─────────────────────────────────────────────────────────
+const issueToProjectSchema = z.object({
+  skuId: z.string().min(1),
+  organizationId: z.string().min(1),
+  projectId: z.string().min(1),
+  quantity: z.number().positive(),
+  unitCost: z.number().nonnegative().optional(),
+  assignmentId: z.string().optional(),
+  bomId: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+/**
+ * POST /api/v1/inv/issue-to-project
+ * Issues inventory directly to a project WIP (material consumption)
+ */
+invRouter.post("/issue-to-project", validateBody(issueToProjectSchema), (req, res) => {
+  const { skuId, organizationId, projectId, quantity, unitCost, assignmentId, bomId, reason } = req.body as z.infer<typeof issueToProjectSchema>;
+
+  const movement = postInventoryMovement(
+    {
+      skuId,
+      organizationId,
+      movementType: "issue",
+      quantity,
+      unitCost,
+      projectId,
+      bomId,
+      bomComponentFlag: !!bomId,
+      referenceType: assignmentId ? "bom_assignment" : undefined,
+      referenceId: assignmentId,
+      reason: reason ?? "Issue to project",
+    },
+    req.actor
+  );
+
+  res.status(201).json({
+    success: true,
+    data: movement,
+    message: `Issued ${quantity} units of '${skuId}' to project '${projectId}'`,
+  });
+});

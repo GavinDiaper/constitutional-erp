@@ -1541,3 +1541,446 @@ test("Inventory lot and serial tracking enforces traceability constraints", asyn
   assert.equal(consumedLot.body.quantity_on_hand, 0);
   assert.equal(consumedLot.body.status, "Consumed");
 });
+
+test("BOM assignment links an Active project to a project-eligible BOM", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  // Create a SKU for the BOM
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-BOMPROJ-${unique}`,
+      description: "BOM project SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 50,
+    })
+    .expect(201);
+
+  // Create an organization
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `BOM Assign WH ${unique}` })
+    .expect(201);
+
+  // Create a BOM
+  const bom = await request(app)
+    .post("/api/v1/bom")
+    .set(headers)
+    .send({
+      skuId: sku.body.sku_id,
+      organizationId: org.body.organization_id,
+      revision: "A",
+      projectEligible: true,
+      costingProfile: "Standard",
+      effectiveDate: "2026-01-01",
+    })
+    .expect(201);
+
+  assert.equal(bom.body.success, true);
+  const bomId = bom.body.data.bomId;
+
+  // Create and activate a project
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `BOM Assign Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-BA-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  const projectId = project.body.data.projectId;
+
+  await request(app)
+    .post(`/api/v1/projects/${projectId}/activate`)
+    .set({ ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" })
+    .send({})
+    .expect(200);
+
+  // Assigning BOM to a project that hasn't been activated fails — verify Draft fails
+  const draftProject = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Draft Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-BA-DRAFT-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${draftProject.body.data.projectId}/bom-assignments`)
+    .set(headers)
+    .send({ bomId, quantityPlanned: 2 })
+    .expect(400);
+
+  // Assign BOM to the Active project
+  const assignment = await request(app)
+    .post(`/api/v1/projects/${projectId}/bom-assignments`)
+    .set(headers)
+    .send({ bomId, quantityPlanned: 10, wbsId: `WBS-${unique}` })
+    .expect(201);
+
+  assert.equal(assignment.body.success, true);
+  assert.equal(assignment.body.data.projectId, projectId);
+  assert.equal(assignment.body.data.bomId, bomId);
+  assert.equal(assignment.body.data.quantityPlanned, 10);
+  assert.equal(assignment.body.data.wbsId, `WBS-${unique}`);
+  assert.equal(assignment.body.data.status, "Active");
+
+  // GET list of BOM assignments
+  const list = await request(app)
+    .get(`/api/v1/projects/${projectId}/bom-assignments`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(list.body.success, true);
+  assert.equal(list.body.data.length, 1);
+  assert.equal(list.body.data[0].assignmentId, assignment.body.data.assignmentId);
+});
+
+test("Material consumption to project decrements on-hand and accrues WIP material cost", async () => {
+  const headers = authHeaders();
+  const authHeaders2 = { ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" };
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({ skuCode: `SKU-MCON-${unique}`, description: "Material consumption test SKU", uom: "EA", valuationMethod: "standard", standardCost: 25 })
+    .expect(201);
+
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `MCON WH ${unique}` })
+    .expect(201);
+
+  // Receive 20 units into stock
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({ skuId: sku.body.sku_id, organizationId: org.body.organization_id, movementType: "receipt", quantity: 20, unitCost: 25 })
+    .expect(201);
+
+  // Create and activate project
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Material Consumption Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 10000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-MC-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  const projectId = project.body.data.projectId;
+  await request(app).post(`/api/v1/projects/${projectId}/activate`).set(authHeaders2).send({}).expect(200);
+
+  // Issue 8 units to the project
+  const issue = await request(app)
+    .post("/api/v1/inv/issue-to-project")
+    .set(headers)
+    .send({ skuId: sku.body.sku_id, organizationId: org.body.organization_id, projectId, quantity: 8, reason: "Material consumption for project" })
+    .expect(201);
+
+  assert.equal(issue.body.success, true);
+  assert.equal(issue.body.data.movement_type, "issue");
+  assert.equal(issue.body.data.project_id, projectId);
+
+  // Verify on-hand = 12 (20 - 8)
+  const onHand = await request(app)
+    .get("/api/v1/inv/on-hand")
+    .query({ skuId: sku.body.sku_id, organizationId: org.body.organization_id })
+    .set(headers)
+    .expect(200);
+  assert.equal(onHand.body.data[0].quantity_on_hand, 12);
+
+  // Verify WIP material balance = 200 (8 × 25)
+  const wip = await request(app).get(`/api/v1/projects/${projectId}/wip`).set(headers).expect(200);
+  assert.equal(wip.body.data.wipMaterialBalance, 200);
+  assert.equal(wip.body.data.wipTotalBalance, 200);
+
+  // Shortage: issuing 50 when only 12 on-hand → 409
+  await request(app)
+    .post("/api/v1/inv/issue-to-project")
+    .set(headers)
+    .send({ skuId: sku.body.sku_id, organizationId: org.body.organization_id, projectId, quantity: 50 })
+    .expect(409);
+});
+
+test("Labour costing to project accrues WIP labor balance", async () => {
+  const headers = authHeaders();
+  const authHeaders2 = { ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" };
+  const unique = Date.now();
+
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Labor WH ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Labor Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 20000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-LAB-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  const projectId = project.body.data.projectId;
+  await request(app).post(`/api/v1/projects/${projectId}/activate`).set(authHeaders2).send({}).expect(200);
+
+  // Post 8 hours @ $50/hr = $400
+  const entry = await request(app)
+    .post(`/api/v1/projects/${projectId}/labor-entries`)
+    .set(headers)
+    .send({ resourceId: `EMP-LAB-${unique}`, hours: 8, rate: 50, wbsId: `WBS-${unique}`, costElementId: "LABOR-STD" })
+    .expect(201);
+
+  assert.equal(entry.body.success, true);
+  assert.equal(entry.body.data.projectId, projectId);
+  assert.equal(entry.body.data.hours, 8);
+  assert.equal(entry.body.data.rate, 50);
+  assert.equal(entry.body.data.totalCost, 400);
+
+  // Verify WIP labor balance = 400
+  const wip = await request(app).get(`/api/v1/projects/${projectId}/wip`).set(headers).expect(200);
+  assert.equal(wip.body.data.wipLaborBalance, 400);
+  assert.equal(wip.body.data.wipTotalBalance, 400);
+
+  // Post another 4 hours @ $75/hr = $300 (total = $700)
+  await request(app)
+    .post(`/api/v1/projects/${projectId}/labor-entries`)
+    .set(headers)
+    .send({ resourceId: `EMP-LAB2-${unique}`, hours: 4, rate: 75 })
+    .expect(201);
+
+  const wip2 = await request(app).get(`/api/v1/projects/${projectId}/wip`).set(headers).expect(200);
+  assert.equal(wip2.body.data.wipLaborBalance, 700);
+  assert.equal(wip2.body.data.wipTotalBalance, 700);
+
+  // List labor entries
+  const list = await request(app).get(`/api/v1/projects/${projectId}/labor-entries`).set(headers).expect(200);
+  assert.equal(list.body.success, true);
+  assert.equal(list.body.data.length, 2);
+
+  // Labor to Draft project fails
+  const draftProject = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Draft Labor Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-LAB-D-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${draftProject.body.data.projectId}/labor-entries`)
+    .set(headers)
+    .send({ resourceId: "EMP-DRAFT", hours: 1, rate: 50 })
+    .expect(400);
+});
+
+test("Project finished-item creation receipts WIP cost into inventory", async () => {
+  const headers = authHeaders();
+  const authHeaders2 = { ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" };
+  const unique = Date.now();
+
+  // SKU for raw material and SKU for finished good
+  const rawSku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({ skuCode: `SKU-RAW-${unique}`, description: "Raw material", uom: "EA", valuationMethod: "standard", standardCost: 20 })
+    .expect(201);
+
+  const fgSku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({ skuCode: `SKU-FG-${unique}`, description: "Finished good", uom: "EA", valuationMethod: "standard", standardCost: 0 })
+    .expect(201);
+
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `FG WH ${unique}` })
+    .expect(201);
+
+  // Stock raw material
+  await request(app)
+    .post("/api/v1/inv/movements")
+    .set(headers)
+    .send({ skuId: rawSku.body.sku_id, organizationId: org.body.organization_id, movementType: "receipt", quantity: 10, unitCost: 20 })
+    .expect(201);
+
+  // Create and activate project
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `FG Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-FG-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  const projectId = project.body.data.projectId;
+  await request(app).post(`/api/v1/projects/${projectId}/activate`).set(authHeaders2).send({}).expect(200);
+
+  // Issue 5 raw material units → WIP material = 100 (5 × 20)
+  await request(app)
+    .post("/api/v1/inv/issue-to-project")
+    .set(headers)
+    .send({ skuId: rawSku.body.sku_id, organizationId: org.body.organization_id, projectId, quantity: 5 })
+    .expect(201);
+
+  // Post 4 hours labor @ $50 = $200
+  await request(app)
+    .post(`/api/v1/projects/${projectId}/labor-entries`)
+    .set(headers)
+    .send({ resourceId: `EMP-FG-${unique}`, hours: 4, rate: 50 })
+    .expect(201);
+
+  // Verify WIP total = 300
+  const wipBefore = await request(app).get(`/api/v1/projects/${projectId}/wip`).set(headers).expect(200);
+  assert.equal(wipBefore.body.data.wipTotalBalance, 300);
+
+  // Create 1 finished good — unit cost = WIP total / qty = 300
+  const fgItem = await request(app)
+    .post(`/api/v1/projects/${projectId}/finished-items`)
+    .set(headers)
+    .send({ skuId: fgSku.body.sku_id, organizationId: org.body.organization_id, quantity: 1 })
+    .expect(201);
+
+  assert.equal(fgItem.body.success, true);
+  assert.equal(fgItem.body.data.quantity, 1);
+  assert.equal(fgItem.body.data.unitCost, 300);
+  assert.equal(fgItem.body.data.totalWipCost, 300);
+
+  // Verify FG SKU on-hand = 1
+  const fgOnHand = await request(app)
+    .get("/api/v1/inv/on-hand")
+    .query({ skuId: fgSku.body.sku_id, organizationId: org.body.organization_id })
+    .set(headers)
+    .expect(200);
+  assert.equal(fgOnHand.body.data[0].quantity_on_hand, 1);
+
+  // List finished items
+  const items = await request(app).get(`/api/v1/projects/${projectId}/finished-items`).set(headers).expect(200);
+  assert.equal(items.body.data.length, 1);
+  assert.equal(items.body.data[0].finishedItemId, fgItem.body.data.finishedItemId);
+});
+
+test("Internal trade lifecycle: Draft → Released → Approved", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `ITR Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `ITR Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 10000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-ITR-${unique}`,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set({ ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" })
+    .send({})
+    .expect(200);
+
+  // Create internal trade
+  const trade = await request(app)
+    .post("/api/v1/internal-trades")
+    .set(headers)
+    .send({
+      organizationId: org.body.organization_id,
+      tradeType: "InternalPO",
+      tradeNumber: `ITR-${unique}`,
+      tradeDate: "2026-01-15",
+      fromDepartment: "Operations",
+      toDepartment: "Projects",
+      projectId: project.body.data.projectId,
+      transferPricingMethod: "StandardCost",
+      transferPricingValue: 0,
+    })
+    .expect(201);
+
+  assert.equal(trade.body.success, true);
+  assert.equal(trade.body.data.status, "Draft");
+  assert.equal(trade.body.data.tradeType, "InternalPO");
+  assert.equal(trade.body.data.projectId, project.body.data.projectId);
+
+  const tradeId = trade.body.data.tradeId;
+
+  // GET by id
+  const fetched = await request(app).get(`/api/v1/internal-trades/${tradeId}`).set(headers).expect(200);
+  assert.equal(fetched.body.data.tradeId, tradeId);
+
+  // Release
+  const released = await request(app).post(`/api/v1/internal-trades/${tradeId}/release`).set(headers).send({}).expect(200);
+  assert.equal(released.body.data.status, "Released");
+
+  // Approve
+  const approved = await request(app).post(`/api/v1/internal-trades/${tradeId}/approve`).set(headers).send({}).expect(200);
+  assert.equal(approved.body.data.approvalStatus, "Approved");
+
+  // List by organizationId
+  const list = await request(app)
+    .get("/api/v1/internal-trades")
+    .query({ organizationId: org.body.organization_id })
+    .set(headers)
+    .expect(200);
+  assert.ok(list.body.data.some((t: { tradeId: string }) => t.tradeId === tradeId));
+});

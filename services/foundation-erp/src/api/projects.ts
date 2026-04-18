@@ -9,7 +9,14 @@ import {
   getProjectById,
   listProjects,
   getProjectWIPSummary,
+  assignBomToProject,
+  listProjectBomAssignments,
+  postLaborCost,
+  listLaborEntries,
+  createProjectFinishedItem,
+  listProjectFinishedItems,
 } from "../domain/proj/projectService";
+import { HttpError } from "../utils/errors";
 
 const router = Router();
 
@@ -288,6 +295,109 @@ router.get("/:projectId/wip", (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: wip });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/projects/:projectId/bom-assignments
+ * Assign a BOM to an Active project
+ */
+router.post("/:projectId/bom-assignments", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { bomId, wbsId, quantityPlanned } = req.body;
+    const actor = req.actor;
+
+    const assignment = assignBomToProject({ projectId, bomId, wbsId, quantityPlanned }, actor);
+
+    res.status(201).json({
+      success: true,
+      data: assignment,
+      message: `BOM '${bomId}' assigned to project '${projectId}'`,
+    });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    const status = err instanceof HttpError ? err.status : 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/projects/:projectId/bom-assignments
+ * List all BOM assignments for a project
+ */
+router.get("/:projectId/bom-assignments", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const assignments = listProjectBomAssignments(projectId);
+    res.json({ success: true, data: assignments, count: assignments.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/projects/:projectId/labor-entries
+ * Post labour cost to a project
+ */
+router.post("/:projectId/labor-entries", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { wbsId, resourceId, hours, rate, costElementId } = req.body;
+    const entry = postLaborCost({ projectId, wbsId, resourceId, hours, rate, costElementId }, req.actor);
+    res.status(201).json({ success: true, data: entry });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/projects/:projectId/labor-entries
+ * List labour entries for a project
+ */
+router.get("/:projectId/labor-entries", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const entries = listLaborEntries(projectId);
+    res.json({ success: true, data: entries, count: entries.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/projects/:projectId/finished-items
+ * Create a finished item from project WIP
+ */
+router.post("/:projectId/finished-items", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { skuId, organizationId, quantity, unitCost } = req.body;
+    const item = createProjectFinishedItem({ projectId, skuId, organizationId, quantity, unitCost }, req.actor);
+    res.status(201).json({ success: true, data: item });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/projects/:projectId/finished-items
+ * List finished items for a project
+ */
+router.get("/:projectId/finished-items", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const items = listProjectFinishedItems(projectId);
+    res.json({ success: true, data: items, count: items.length });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });

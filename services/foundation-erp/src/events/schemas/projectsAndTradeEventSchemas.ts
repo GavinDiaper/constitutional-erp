@@ -186,6 +186,77 @@ export interface EventPayload_CostElementCreated {
 }
 
 /**
+ * BOM Assignment Events
+ */
+
+export interface EventPayload_BomAssigned {
+  assignmentId: string;
+  projectId: string;
+  wbsId?: string;
+  bomId: string;
+  quantityPlanned: number;
+}
+
+export interface BomAssignmentProjection {
+  assignmentId: string;
+  projectId: string;
+  wbsId?: string;
+  bomId: string;
+  quantityPlanned: number;
+  status: "Active" | "Cancelled";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventPayload_LaborCosted {
+  entryId: string;
+  projectId: string;
+  wbsId?: string;
+  resourceId: string;
+  hours: number;
+  rate: number;
+  totalCost: number;
+  costElementId?: string;
+}
+
+export interface LaborEntryProjection {
+  entryId: string;
+  projectId: string;
+  wipId: string;
+  wbsId?: string;
+  resourceId: string;
+  hours: number;
+  rate: number;
+  totalCost: number;
+  costElementId?: string;
+  postedAt: string;
+  createdAt: string;
+}
+
+export interface EventPayload_FinishedItemCreated {
+  finishedItemId: string;
+  projectId: string;
+  skuId: string;
+  organizationId: string;
+  quantity: number;
+  unitCost: number;
+  totalWipCost: number;
+}
+
+export interface FinishedItemProjection {
+  finishedItemId: string;
+  projectId: string;
+  wipId: string;
+  skuId: string;
+  organizationId: string;
+  quantity: number;
+  unitCost: number;
+  totalWipCost: number;
+  movementId?: string;
+  createdAt: string;
+}
+
+/**
  * Internal Trade Events
  */
 

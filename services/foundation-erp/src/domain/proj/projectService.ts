@@ -2,6 +2,7 @@ import { db, transaction } from "../../db/connection";
 import { appendEvent, EventActor } from "../../events/eventStore";
 import { HttpError } from "../../utils/errors";
 import { newId } from "../../utils/id";
+import { postInventoryMovement } from "../inv/inventoryService";
 import {
   EventPayload_ProjectCreated,
   EventPayload_ProjectActivated,
@@ -12,6 +13,12 @@ import {
   EventPayload_WIPCreated,
   ProjectProjection,
   ProjectWIPProjection,
+  EventPayload_BomAssigned,
+  BomAssignmentProjection,
+  EventPayload_LaborCosted,
+  LaborEntryProjection,
+  EventPayload_FinishedItemCreated,
+  FinishedItemProjection,
 } from "../../events/schemas/projectsAndTradeEventSchemas";
 
 type ProjectStatus = "Draft" | "Active" | "OnHold" | "Completed" | "Cancelled";
@@ -692,4 +699,327 @@ export function getProjectWIPSummary(projectId: string): ProjectWIPProjection | 
     createdAt: wip.created_at,
     version: wip.version,
   };
+}
+
+interface BomAssignmentRow {
+  assignment_id: string;
+  project_id: string;
+  wbs_id: string | null;
+  bom_id: string;
+  quantity_planned: number;
+  status: "Active" | "Cancelled";
+  created_at: string;
+  updated_at: string;
+}
+
+function rowToBomAssignment(row: BomAssignmentRow): BomAssignmentProjection {
+  return {
+    assignmentId: row.assignment_id,
+    projectId: row.project_id,
+    wbsId: row.wbs_id ?? undefined,
+    bomId: row.bom_id,
+    quantityPlanned: row.quantity_planned,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * assignBomToProject
+ * Links a BOM to an Active project, emitting proj.bom.assigned event.
+ */
+export function assignBomToProject(
+  input: {
+    projectId: string;
+    bomId: string;
+    wbsId?: string;
+    quantityPlanned: number;
+  },
+  actor?: EventActor
+): BomAssignmentProjection {
+  const project = db
+    .prepare("SELECT * FROM proj_project WHERE project_id = ?")
+    .get(input.projectId) as ProjectRow | undefined;
+  if (!project) {
+    throw new HttpError(404, "project_not_found", `Project '${input.projectId}' not found`);
+  }
+  if (project.status !== "Active") {
+    throw new HttpError(400, "invalid_state", `Project must be Active to assign a BOM (current: ${project.status})`);
+  }
+
+  const bom = db
+    .prepare("SELECT bom_id, status FROM inv_bom_header WHERE bom_id = ?")
+    .get(input.bomId) as { bom_id: string; status: string } | undefined;
+  if (!bom) {
+    throw new HttpError(404, "bom_not_found", `BOM '${input.bomId}' not found`);
+  }
+
+  const assignmentId = newId("BASSIGN-");
+  const ts = now();
+
+  const payload: EventPayload_BomAssigned = {
+    assignmentId,
+    projectId: input.projectId,
+    wbsId: input.wbsId,
+    bomId: input.bomId,
+    quantityPlanned: input.quantityPlanned,
+  };
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO proj_bom_assignment(assignment_id, project_id, wbs_id, bom_id, quantity_planned, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'Active', ?, ?)`
+    ).run(assignmentId, input.projectId, input.wbsId ?? null, input.bomId, input.quantityPlanned, ts, ts);
+
+    appendEvent({
+      entityId: input.projectId,
+      entityType: "project",
+      eventType: "proj.bom.assigned",
+      version: 1,
+      governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "proj_bom_assigned" },
+      payload: payload as unknown as Record<string, unknown>,
+    });
+  });
+
+  return rowToBomAssignment(
+    db.prepare("SELECT * FROM proj_bom_assignment WHERE assignment_id = ?").get(assignmentId) as BomAssignmentRow
+  );
+}
+
+/**
+ * listProjectBomAssignments
+ * Returns all BOM assignments for a project
+ */
+export function listProjectBomAssignments(projectId: string): BomAssignmentProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM proj_bom_assignment WHERE project_id = ? ORDER BY created_at ASC")
+    .all(projectId) as BomAssignmentRow[];
+  return rows.map(rowToBomAssignment);
+}
+
+// ─── Labour Costing ───────────────────────────────────────────────────────────
+
+interface LaborEntryRow {
+  entry_id: string;
+  project_id: string;
+  wip_id: string;
+  wbs_id: string | null;
+  resource_id: string;
+  hours: number;
+  rate: number;
+  total_cost: number;
+  cost_element_id: string | null;
+  posted_at: string;
+  created_at: string;
+}
+
+function rowToLaborEntry(row: LaborEntryRow): LaborEntryProjection {
+  return {
+    entryId: row.entry_id,
+    projectId: row.project_id,
+    wipId: row.wip_id,
+    wbsId: row.wbs_id ?? undefined,
+    resourceId: row.resource_id,
+    hours: row.hours,
+    rate: row.rate,
+    totalCost: row.total_cost,
+    costElementId: row.cost_element_id ?? undefined,
+    postedAt: row.posted_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface PostLaborCostInput {
+  projectId: string;
+  wbsId?: string;
+  resourceId: string;
+  hours: number;
+  rate: number;
+  costElementId?: string;
+}
+
+export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): LaborEntryProjection {
+  const project = getProjectRow(input.projectId);
+
+  if (project.status !== "Active") {
+    throw new HttpError(400, "invalid_state", "Labour can only be posted to an Active project");
+  }
+
+  const wip = db
+    .prepare("SELECT * FROM proj_wip WHERE project_id = ? AND status = 'Open'")
+    .get(input.projectId) as ProjectWIPRow | undefined;
+
+  if (!wip) {
+    throw new HttpError(409, "wip_not_found", "No open WIP record found for this project");
+  }
+
+  const entryId = newId("LABR");
+  const totalCost = roundMoney(input.hours * input.rate);
+  const ts = now();
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO proj_labor_entry(entry_id, project_id, wip_id, wbs_id, resource_id, hours, rate, total_cost, cost_element_id, posted_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(entryId, input.projectId, wip.wip_id, input.wbsId ?? null, input.resourceId, input.hours, input.rate, totalCost, input.costElementId ?? null, ts, ts);
+
+    db.prepare(
+      `UPDATE proj_wip
+       SET wip_labor_balance = wip_labor_balance + ?,
+           wip_total_balance  = wip_total_balance  + ?,
+           labor_line_count   = labor_line_count   + 1,
+           last_labor_posted_at = ?,
+           version            = version + 1
+       WHERE wip_id = ?`
+    ).run(totalCost, totalCost, ts, wip.wip_id);
+
+    db.prepare(
+      `UPDATE proj_project
+       SET wip_labor_balance = wip_labor_balance + ?,
+           wip_total_balance  = wip_total_balance  + ?,
+           version            = version + 1,
+           last_event_at      = ?
+       WHERE project_id = ?`
+    ).run(totalCost, totalCost, ts, input.projectId);
+  });
+
+  const payload: EventPayload_LaborCosted = {
+    entryId,
+    projectId: input.projectId,
+    wbsId: input.wbsId,
+    resourceId: input.resourceId,
+    hours: input.hours,
+    rate: input.rate,
+    totalCost,
+    costElementId: input.costElementId,
+  };
+
+  appendEvent({
+    entityId: input.projectId,
+    entityType: "project",
+    eventType: "proj.labor.costed",
+    version: 1,
+    governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "proj_labor_costed" },
+    payload: payload as unknown as Record<string, unknown>,
+    actor,
+  });
+
+  const row = db.prepare("SELECT * FROM proj_labor_entry WHERE entry_id = ?").get(entryId) as LaborEntryRow;
+  return rowToLaborEntry(row);
+}
+
+export function listLaborEntries(projectId: string): LaborEntryProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM proj_labor_entry WHERE project_id = ? ORDER BY created_at ASC")
+    .all(projectId) as LaborEntryRow[];
+  return rows.map(rowToLaborEntry);
+}
+
+// ─── Finished-Item Creation ───────────────────────────────────────────────────
+
+interface FinishedItemRow {
+  finished_item_id: string;
+  project_id: string;
+  wip_id: string;
+  sku_id: string;
+  organization_id: string;
+  quantity: number;
+  unit_cost: number;
+  total_wip_cost: number;
+  movement_id: string | null;
+  created_at: string;
+}
+
+function rowToFinishedItem(row: FinishedItemRow): FinishedItemProjection {
+  return {
+    finishedItemId: row.finished_item_id,
+    projectId: row.project_id,
+    wipId: row.wip_id,
+    skuId: row.sku_id,
+    organizationId: row.organization_id,
+    quantity: row.quantity,
+    unitCost: row.unit_cost,
+    totalWipCost: row.total_wip_cost,
+    movementId: row.movement_id ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export interface CreateProjectFinishedItemInput {
+  projectId: string;
+  skuId: string;
+  organizationId: string;
+  quantity: number;
+  /** If omitted, unit cost is derived from total WIP cost / quantity */
+  unitCost?: number;
+}
+
+export function createProjectFinishedItem(input: CreateProjectFinishedItemInput, actor?: EventActor): FinishedItemProjection {
+  const project = getProjectRow(input.projectId);
+
+  if (project.status !== "Active") {
+    throw new HttpError(400, "invalid_state", "Finished items can only be created for an Active project");
+  }
+
+  const wip = db
+    .prepare("SELECT * FROM proj_wip WHERE project_id = ? AND status = 'Open'")
+    .get(input.projectId) as ProjectWIPRow | undefined;
+
+  if (!wip) {
+    throw new HttpError(409, "wip_not_found", "No open WIP record found for this project");
+  }
+
+  const totalWipCost = roundMoney(wip.wip_total_balance);
+  const unitCost = input.unitCost !== undefined ? input.unitCost : roundMoney(totalWipCost / input.quantity);
+
+  // Create a receipt movement to put the FG into stock
+  const movement = postInventoryMovement({
+    skuId: input.skuId,
+    organizationId: input.organizationId,
+    movementType: "receipt",
+    quantity: input.quantity,
+    unitCost,
+    referenceType: "project_finished_item",
+    referenceId: input.projectId,
+    isProjectFinishedGood: true,
+  }, actor);
+
+  const finishedItemId = newId("FGI");
+  const ts = now();
+
+  db.prepare(
+    `INSERT INTO proj_finished_item(finished_item_id, project_id, wip_id, sku_id, organization_id, quantity, unit_cost, total_wip_cost, movement_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(finishedItemId, input.projectId, wip.wip_id, input.skuId, input.organizationId, input.quantity, unitCost, totalWipCost, movement.movement_id, ts);
+
+  const payload: EventPayload_FinishedItemCreated = {
+    finishedItemId,
+    projectId: input.projectId,
+    skuId: input.skuId,
+    organizationId: input.organizationId,
+    quantity: input.quantity,
+    unitCost,
+    totalWipCost,
+  };
+
+  appendEvent({
+    entityId: input.projectId,
+    entityType: "project",
+    eventType: "proj.finished_item.created",
+    version: 1,
+    governance: { riskLevel: "Low", requiredTier: 1, governanceTag: "proj_finished_item_created" },
+    payload: payload as unknown as Record<string, unknown>,
+    actor,
+  });
+
+  const row = db.prepare("SELECT * FROM proj_finished_item WHERE finished_item_id = ?").get(finishedItemId) as FinishedItemRow;
+  return rowToFinishedItem(row);
+}
+
+export function listProjectFinishedItems(projectId: string): FinishedItemProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM proj_finished_item WHERE project_id = ? ORDER BY created_at ASC")
+    .all(projectId) as FinishedItemRow[];
+  return rows.map(rowToFinishedItem);
 }
