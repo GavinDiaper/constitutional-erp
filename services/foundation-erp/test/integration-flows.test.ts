@@ -1091,6 +1091,44 @@ test("Table query API returns data for all whitelisted tables", async () => {
   assert.equal(byIdResponse.body.data.customer_id, customer.body.customer_id);
 });
 
+test("Projects API persists WBS context", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Project WH ${unique}` })
+    .expect(201);
+
+  const created = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "WBS Linked Project",
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-WBS-1",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-${unique}`
+    })
+    .expect(201);
+
+  assert.equal(created.body.success, true);
+  assert.equal(created.body.data.wbsId, `WBS-${unique}`);
+
+  const fetched = await request(app)
+    .get(`/api/v1/projects/${created.body.data.projectId}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(fetched.body.success, true);
+  assert.equal(fetched.body.data.wbsId, `WBS-${unique}`);
+});
+
 test("Inventory reservations enforce hard allocation availability and support release", async () => {
   const headers = authHeaders();
   const unique = Date.now();

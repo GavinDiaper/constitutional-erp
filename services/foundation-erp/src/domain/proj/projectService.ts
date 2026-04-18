@@ -22,6 +22,7 @@ interface ProjectRow {
   description: string | null;
   customer_id: string | null;
   contract_id: string | null;
+  wbs_id: string | null;
   project_type: "Internal" | "Capital" | "Billable" | "Service";
   status: ProjectStatus;
   budget_amount: number;
@@ -154,6 +155,7 @@ export function createProject(
     projectType: "Internal" | "Capital" | "Billable" | "Service";
     customerId?: string;
     contractId?: string;
+    wbsId?: string;
     budgetAmount: number;
     defaultWIPAccountId: string;
     defaultCloseAccountId: string;
@@ -183,20 +185,21 @@ export function createProject(
       // Insert project row
       db.prepare(
         `INSERT INTO proj_project(
-          project_id, name, description, customer_id, contract_id, project_type, status,
+          project_id, name, description, customer_id, contract_id, wbs_id, project_type, status,
           budget_amount, actual_cost_amount, revenue_amount,
           default_wip_account_id, default_close_account_id,
           start_date, end_date, project_manager_id, organization_id,
           created_at, created_by, version, last_event_at,
           wip_material_balance, wip_labor_balance, wip_total_balance,
           closed_fg_cost, closed_expense_cost
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         projectId,
         input.name,
         input.description ?? null,
         input.customerId ?? null,
         input.contractId ?? null,
+        input.wbsId ?? null,
         input.projectType,
         "Draft",
         input.budgetAmount,
@@ -252,6 +255,7 @@ export function createProject(
         projectType: input.projectType,
         customerId: input.customerId,
         contractId: input.contractId,
+        wbsId: input.wbsId,
         budgetAmount: input.budgetAmount,
         defaultWIPAccountId: input.defaultWIPAccountId,
         defaultCloseAccountId: input.defaultCloseAccountId,
@@ -622,6 +626,7 @@ export function getProjectById(projectId: string): ProjectProjection | null {
     description: row.description ?? undefined,
     customerId: row.customer_id ?? undefined,
     contractId: row.contract_id ?? undefined,
+    wbsId: row.wbs_id ?? undefined,
     projectType: row.project_type,
     status: row.status,
     budgetAmount: row.budget_amount,
