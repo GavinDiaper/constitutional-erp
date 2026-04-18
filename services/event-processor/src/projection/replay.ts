@@ -2,6 +2,7 @@ import { loadConfig } from "../config/env";
 import { transaction } from "../db/connection";
 import { appendCanonicalEvent, recordDeadLetter } from "../domain/ledgerStore";
 import { createSourceDefinitions, SourceDefinition } from "../domain/sourceDefinitions";
+import { deriveProjectCostingEvents } from "../orchestration/projectCostingOrchestrator";
 import { getSourceCursor, upsertSourceCursor } from "../domain/sourceCursorStore";
 
 const BATCH_SIZE = 100;
@@ -37,7 +38,13 @@ async function replaySourceToHead(source: SourceDefinition): Promise<void> {
             receivedAt: new Date().toISOString()
           });
 
-          appendCanonicalEvent(event);
+          const inserted = appendCanonicalEvent(event);
+          if (inserted) {
+            const syntheticEvents = deriveProjectCostingEvents(event);
+            for (const syntheticEvent of syntheticEvents) {
+              appendCanonicalEvent(syntheticEvent);
+            }
+          }
           cursor = nextCursor;
           upsertSourceCursor({
             sourceSystem: source.sourceSystem,

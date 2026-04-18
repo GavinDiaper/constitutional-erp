@@ -28,6 +28,21 @@ type OnHandRow = {
   updated_at: string;
 };
 
+type ProjectRow = {
+  project_id: string;
+  status: "Draft" | "Active" | "OnHold" | "Completed" | "Cancelled";
+};
+
+type ProjectWipRow = {
+  wip_id: string;
+  project_id: string;
+  status: "Open" | "Closed";
+  wip_material_balance: number;
+  wip_total_balance: number;
+  material_line_count: number;
+  version: number;
+};
+
 function now(): string {
   return new Date().toISOString();
 }
@@ -74,6 +89,48 @@ function getOnHandRow(skuId: string, organizationId: string): OnHandRow | undefi
   return db
     .prepare("SELECT * FROM inv_on_hand WHERE sku_id = ? AND organization_id = ?")
     .get(skuId, organizationId) as OnHandRow | undefined;
+}
+
+function getProjectRow(projectId: string): ProjectRow {
+  const row = db
+    .prepare("SELECT project_id, status FROM proj_project WHERE project_id = ?")
+    .get(projectId) as ProjectRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project not found");
+  }
+
+  return row;
+}
+
+function getProjectWipByProjectId(projectId: string): ProjectWipRow {
+  const row = db
+    .prepare(
+      `SELECT wip_id, project_id, status, wip_material_balance, wip_total_balance, material_line_count, version
+       FROM proj_wip WHERE project_id = ?`
+    )
+    .get(projectId) as ProjectWipRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project WIP not found for project");
+  }
+
+  return row;
+}
+
+function getProjectWipById(wipId: string): ProjectWipRow {
+  const row = db
+    .prepare(
+      `SELECT wip_id, project_id, status, wip_material_balance, wip_total_balance, material_line_count, version
+       FROM proj_wip WHERE wip_id = ?`
+    )
+    .get(wipId) as ProjectWipRow | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project WIP not found");
+  }
+
+  return row;
 }
 
 function upsertOnHand(input: {
@@ -338,6 +395,11 @@ export function postInventoryMovement(input: {
   referenceType?: string;
   referenceId?: string;
   correlationKey?: string;
+  projectId?: string;
+  projectWipId?: string;
+  bomId?: string;
+  bomComponentFlag?: boolean;
+  isProjectFinishedGood?: boolean;
 }, actor?: EventActor) {
   const sku = getSkuRow(input.skuId);
   ensureOrganizationExists(input.organizationId);
@@ -350,6 +412,28 @@ export function postInventoryMovement(input: {
 
   if (input.movementType === "cost_update") {
     requireTier(actor, 3, "Inventory cost updates require authority tier 3 or higher");
+  }
+
+  let linkedProjectWip: ProjectWipRow | undefined;
+  if (input.projectId || input.projectWipId) {
+    const projectId = input.projectId ?? getProjectWipById(input.projectWipId as string).project_id;
+    const project = getProjectRow(projectId);
+
+    if (project.status !== "Active" && project.status !== "OnHold") {
+      throw new HttpError(400, "invalid_state", "Project must be Active or OnHold for inventory linkage");
+    }
+
+    linkedProjectWip = input.projectWipId
+      ? getProjectWipById(input.projectWipId)
+      : getProjectWipByProjectId(projectId);
+
+    if (linkedProjectWip.project_id !== projectId) {
+      throw new HttpError(400, "invalid_request", "projectWipId does not belong to provided projectId");
+    }
+
+    if (linkedProjectWip.status !== "Open") {
+      throw new HttpError(400, "invalid_state", "Project WIP is closed");
+    }
   }
 
   const onHandBefore = getOnHandRow(input.skuId, input.organizationId);
@@ -430,8 +514,10 @@ export function postInventoryMovement(input: {
       db.prepare(
         `INSERT INTO inv_movement(
           movement_id, sku_id, organization_id, movement_type, quantity, unit_cost, total_cost,
-          reason, reference_type, reference_id, correlation_key, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          reason, reference_type, reference_id, correlation_key,
+          project_id, project_wip_id, bom_id, bom_component_flag, is_project_finished_good,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         movementId,
         input.skuId,
@@ -444,8 +530,62 @@ export function postInventoryMovement(input: {
         input.referenceType ?? null,
         input.referenceId ?? null,
         input.correlationKey ?? null,
+        input.projectId ?? linkedProjectWip?.project_id ?? null,
+        linkedProjectWip?.wip_id ?? input.projectWipId ?? null,
+        input.bomId ?? null,
+        input.bomComponentFlag ? 1 : 0,
+        input.isProjectFinishedGood ? 1 : 0,
         timestamp
       );
+
+      if (input.movementType === "issue" && linkedProjectWip) {
+        const postedCost = Math.abs(totalCost);
+
+        db.prepare(
+          `UPDATE proj_wip
+           SET wip_material_balance = wip_material_balance + ?,
+               wip_total_balance = wip_total_balance + ?,
+               material_line_count = material_line_count + 1,
+               last_material_posted_at = ?,
+               version = version + 1
+           WHERE wip_id = ?`
+        ).run(postedCost, postedCost, timestamp, linkedProjectWip.wip_id);
+
+        db.prepare(
+          `UPDATE proj_project
+           SET wip_material_balance = wip_material_balance + ?,
+               wip_total_balance = wip_total_balance + ?,
+               actual_cost_amount = actual_cost_amount + ?,
+               version = version + 1,
+               last_event_at = ?
+           WHERE project_id = ?`
+        ).run(postedCost, postedCost, postedCost, timestamp, linkedProjectWip.project_id);
+
+        appendEvent({
+          entityId: linkedProjectWip.wip_id,
+          entityType: "project_wip",
+          eventType: "proj.wip_material_posted",
+          version: linkedProjectWip.version + 1,
+          actor,
+          governance: {
+            riskLevel: "Medium",
+            requiredTier: 1,
+            governanceTag: "project_wip_material_post"
+          },
+          payload: {
+            wipId: linkedProjectWip.wip_id,
+            projectId: linkedProjectWip.project_id,
+            inventoryIssueEventId: movementId,
+            skuId: input.skuId,
+            quantity: input.quantity,
+            quantityUom: sku.uom,
+            unitCost,
+            totalCost: postedCost,
+            costElement: "MATERIAL",
+            postedAt: timestamp
+          }
+        });
+      }
 
       const eventTypeMap: Record<MovementType, string> = {
         receipt: "inv.receipt.posted",
@@ -475,6 +615,11 @@ export function postInventoryMovement(input: {
           quantity: input.quantity,
           unitCost,
           totalCost,
+          projectId: input.projectId ?? linkedProjectWip?.project_id,
+          projectWipId: linkedProjectWip?.wip_id ?? input.projectWipId,
+          bomId: input.bomId,
+          bomComponentFlag: input.bomComponentFlag ?? false,
+          isProjectFinishedGood: input.isProjectFinishedGood ?? false,
           quantityAfter,
           inventoryValueAfter: valueAfter,
           movingAverageCostAfter: movingAverageAfter,

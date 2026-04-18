@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const canonicalSourceSystemSchema = z.enum([
+  "event-processor",
   "foundation-erp",
   "mesh-gateway",
   "authority-engine",

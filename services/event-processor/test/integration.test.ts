@@ -154,6 +154,56 @@ test("filters event queries by aggregate selectors", async () => {
   assert.equal(response.body.data[1].eventType, "P2P.PurchaseOrderIssued");
 });
 
+test("ingest derives synthetic SLA event for project WIP material postings", async () => {
+  setReplayStatus("Ready");
+  const app = createApp();
+  const baseEventId = `PROJ-WIP-${Date.now()}`;
+
+  const ingestResponse = await request(app)
+    .post("/api/v1/events/ingest")
+    .set("x-api-key", "test-key")
+    .send({
+      events: [
+        {
+          eventId: baseEventId,
+          eventType: "proj.wip_material_posted",
+          eventVersion: 1,
+          occurredAt: "2026-03-27T16:00:00.000Z",
+          source: { system: "foundation-erp", streamId: `${baseEventId}-stream`, sequence: 0 },
+          correlation: { correlationId: `${baseEventId}-corr` },
+          actor: { actorId: "EMP-10", impersonated: false },
+          domain: { domain: "PROJ", aggregateType: "project-wip", aggregateId: "WIP-10" },
+          payload: {
+            wipId: "WIP-10",
+            projectId: "PRJ-10",
+            totalCost: 321.45,
+            inventoryIssueEventId: "MOV-10"
+          },
+          metadata: {
+            schemaVersion: 1,
+            tags: ["foundation-erp", "PROJ"],
+            flags: { isReplay: false, isSynthetic: false }
+          }
+        }
+      ]
+    })
+    .expect(202);
+
+  assert.equal(ingestResponse.body.inserted, 2);
+  assert.equal(ingestResponse.body.duplicates, 0);
+
+  const replayResponse = await request(app)
+    .get("/api/v1/events")
+    .query({ aggregateType: "sla-posting", aggregateId: "WIP-10", limit: 10 })
+    .set("x-api-key", "test-key")
+    .expect(200);
+
+  assert.equal(replayResponse.body.data.length, 1);
+  assert.equal(replayResponse.body.data[0].eventType, "R2R.sla_posting_requested");
+  assert.equal(replayResponse.body.data[0].source.system, "event-processor");
+  assert.equal(replayResponse.body.data[0].payload.postingReason, "ProjectMaterialToWIP");
+});
+
 test("status endpoint returns source cursor rows", async () => {
   upsertSourceCursor({
     sourceSystem: "authority-engine",

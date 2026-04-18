@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { canonicalEventSchema, canonicalSourceSystemSchema } from "../contracts/canonicalSchemas";
 import { appendCanonicalEvent, listLedgerEvents } from "../domain/ledgerStore";
+import { deriveProjectCostingEvents } from "../orchestration/projectCostingOrchestrator";
 
 const querySchema = z.object({
   limit: z.coerce.number().int().positive().max(1000).optional(),
@@ -38,6 +39,16 @@ eventRouter.post("/events/ingest", (req, res, next) => {
       const wasInserted = appendCanonicalEvent(event);
       if (wasInserted) {
         inserted += 1;
+
+        const syntheticEvents = deriveProjectCostingEvents(event);
+        for (const syntheticEvent of syntheticEvents) {
+          const syntheticInserted = appendCanonicalEvent(syntheticEvent);
+          if (syntheticInserted) {
+            inserted += 1;
+          } else {
+            duplicates += 1;
+          }
+        }
       } else {
         duplicates += 1;
       }

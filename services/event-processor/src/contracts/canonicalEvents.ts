@@ -1,4 +1,5 @@
 export type CanonicalSourceSystem =
+  | "event-processor"
   | "foundation-erp"
   | "mesh-gateway"
   | "authority-engine"

@@ -39,7 +39,12 @@ const createMovementSchema = z.object({
   reason: z.string().optional(),
   referenceType: z.string().optional(),
   referenceId: z.string().optional(),
-  correlationKey: z.string().optional()
+  correlationKey: z.string().optional(),
+  projectId: z.string().min(1).optional(),
+  projectWipId: z.string().min(1).optional(),
+  bomId: z.string().min(1).optional(),
+  bomComponentFlag: z.boolean().optional(),
+  isProjectFinishedGood: z.boolean().optional()
 });
 
 function skuLinks(skuId: string) {
