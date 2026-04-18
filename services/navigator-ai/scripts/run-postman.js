@@ -43,6 +43,7 @@ async function preflightHealth(baseUrl) {
 function loadNewman() {
   const candidatePaths = [
     path.join(__dirname, "..", "node_modules", "newman"),
+    path.join(__dirname, "..", "..", "..", "node_modules", "newman"),
     path.join(__dirname, "..", "..", "integration-hub", "node_modules", "newman"),
     path.join(__dirname, "..", "..", "process-graph", "node_modules", "newman"),
     path.join(__dirname, "..", "..", "mesh-gateway", "node_modules", "newman"),
@@ -56,8 +57,23 @@ function loadNewman() {
     }
   }
 
+  // Fall back to Node's resolver to support hoisted installs and workspace layouts.
+  const resolverBasePaths = [
+    path.join(__dirname, ".."),
+    path.join(__dirname, "..", "..", "..")
+  ];
+
+  for (const basePath of resolverBasePaths) {
+    try {
+      const resolvedPath = require.resolve("newman", { paths: [basePath] });
+      return require(resolvedPath);
+    } catch {
+      // Continue searching other base paths.
+    }
+  }
+
   throw new Error(
-    `Unable to resolve 'newman' from Navigator AI or sibling services. Checked: ${candidatePaths.join(", ")}`
+    `Unable to resolve 'newman' from Navigator AI, workspace root, or sibling services. Checked: ${candidatePaths.join(", ")}`
   );
 }
 
