@@ -66,11 +66,30 @@
 		return colors[status] || 'bg-gray-100 text-gray-900';
 	}
 
+	function normalizeLifecycleToken(value: string | undefined): string {
+		return (value ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/[\s_-]+/g, '');
+	}
+
+	function isDraftStatus(status: string): boolean {
+		return normalizeLifecycleToken(status) === 'draft';
+	}
+
+	function isActiveStatus(status: string): boolean {
+		return ['active', 'activated', 'ongoing', 'inprogress'].includes(normalizeLifecycleToken(status));
+	}
+
+	function isCompletedStatus(status: string): boolean {
+		return ['completed', 'closed'].includes(normalizeLifecycleToken(status));
+	}
+
 	function getDashboardCounts() {
 		return {
-			draft: projects.filter((p) => p.status === 'Draft').length,
-			active: projects.filter((p) => p.status === 'Active').length,
-			completed: projects.filter((p) => p.status === 'Completed').length,
+			draft: projects.filter((p) => isDraftStatus(p.status)).length,
+			active: projects.filter((p) => isActiveStatus(p.status)).length,
+			completed: projects.filter((p) => isCompletedStatus(p.status)).length,
 			total: projects.length
 		};
 	}
