@@ -116,6 +116,9 @@
 		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/navigator/sessions')}>
 			Navigator Sessions
 		</a>
+		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/projects')}>
+			Projects
+		</a>
 	</div>
 
 	<div class={`app-shell-grid ${navigatorOpen ? 'app-shell-grid--nav' : 'app-shell-grid--full'}`}>

@@ -61,7 +61,12 @@ const tablePrimaryKeys = {
   tax_rate: "tax_rate_id",
   tax_rule: "tax_rule_id",
   tax_account_mapping: "tax_account_mapping_id",
-  tax_transaction_line: "tax_transaction_line_id"
+  tax_transaction_line: "tax_transaction_line_id",
+  proj_project: "project_id",
+  proj_wip: "wip_id",
+  proj_bom_assignment: "assignment_id",
+  proj_labor_entry: "entry_id",
+  proj_finished_item: "finished_item_id",
 } as const;
 
 type QueryTable = keyof typeof tablePrimaryKeys;
