@@ -81,7 +81,9 @@ const addQuoteLineSchema = z.object({
 });
 
 const convertQuoteSchema = z.object({
-  legalEntityId: z.string().min(1).optional()
+  legalEntityId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
+  wbsId: z.string().min(1).optional()
 });
 
 const registerPaymentSchema = z.object({
@@ -440,7 +442,7 @@ o2cRouter.post("/quotes/:quoteId/expire", (req, res) => {
 });
 
 o2cRouter.post("/quotes/:quoteId/convert", validateBody(convertQuoteSchema), (req, res) => {
-  const order = createOrderFromQuote(req.params.quoteId, req.body.legalEntityId);
+  const order = createOrderFromQuote(req.params.quoteId, req.body.legalEntityId, req.body.projectId, req.body.wbsId);
   res.status(201).json(entityWithLinks(order as any, orderLinks((order as any).order_id, (order as any).state)));
 });
 

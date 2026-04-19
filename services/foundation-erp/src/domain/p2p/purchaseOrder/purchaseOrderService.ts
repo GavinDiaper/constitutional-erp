@@ -21,11 +21,35 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function ensureProjectExists(projectId: string): void {
+  const row = db.prepare("SELECT project_id FROM proj_project WHERE project_id = ?").get(projectId) as
+    | { project_id: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project not found");
+  }
+}
+
+function getRequisitionLinkage(requisitionId: string): { project_id: string | null; wbs_id: string | null } {
+  const row = db
+    .prepare("SELECT project_id, wbs_id FROM p2p_requisition WHERE requisition_id = ?")
+    .get(requisitionId) as { project_id: string | null; wbs_id: string | null } | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Requisition not found");
+  }
+
+  return row;
+}
+
 export function getPurchaseOrderById(poId: string) {
   const row = db.prepare("SELECT * FROM p2p_purchase_order WHERE po_id = ?").get(poId) as
     | {
         po_id: string;
         requisition_id: string | null;
+        project_id: string | null;
+        wbs_id: string | null;
         supplier_id: string;
         state: PurchaseOrderState;
         total_amount: number;
@@ -57,6 +81,8 @@ export function createPurchaseOrder(
   input: {
     supplierId: string;
     requisitionId?: string;
+    projectId?: string;
+    wbsId?: string;
     totalAmount?: number;
     currencyCode?: string;
     deliveryAddress?: string;
@@ -68,16 +94,26 @@ export function createPurchaseOrder(
   const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
   ensureLegalEntityExists(effectiveLegalEntityId);
 
+  const requisitionLinkage = input.requisitionId ? getRequisitionLinkage(input.requisitionId) : null;
+  const effectiveProjectId = input.projectId ?? requisitionLinkage?.project_id ?? undefined;
+  const effectiveWbsId = input.wbsId ?? requisitionLinkage?.wbs_id ?? undefined;
+
+  if (effectiveProjectId) {
+    ensureProjectExists(effectiveProjectId);
+  }
+
   const poId = newId("PO-");
   const timestamp = now();
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, legal_entity_id, state, total_amount, currency_code, delivery_address, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'Draft', ?, ?, ?, 1, ?, ?)`
+      `INSERT INTO p2p_purchase_order(po_id, requisition_id, project_id, wbs_id, supplier_id, legal_entity_id, state, total_amount, currency_code, delivery_address, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'Draft', ?, ?, ?, 1, ?, ?)`
     ).run(
       poId,
       input.requisitionId ?? null,
+      effectiveProjectId ?? null,
+      effectiveWbsId ?? null,
       input.supplierId,
       effectiveLegalEntityId,
       input.totalAmount ?? 0,
@@ -94,6 +130,8 @@ export function createPurchaseOrder(
       version: 1,
       payload: {
         requisitionId: input.requisitionId ?? null,
+        projectId: effectiveProjectId ?? null,
+        wbsId: effectiveWbsId ?? null,
         supplierId: input.supplierId,
         totalAmount: input.totalAmount ?? 0,
         currencyCode: input.currencyCode ?? null,
@@ -111,7 +149,15 @@ export function createPurchaseOrderFromRequisition(
   actor?: EventActor
 ) {
   const requisition = db.prepare("SELECT * FROM p2p_requisition WHERE requisition_id = ?").get(input.requisitionId) as
-    | { requisition_id: string; state: string; total_amount: number; legal_entity_id: string | null; version: number }
+    | {
+        requisition_id: string;
+        state: string;
+        total_amount: number;
+        legal_entity_id: string | null;
+        project_id: string | null;
+        wbs_id: string | null;
+        version: number;
+      }
     | undefined;
 
   if (!requisition) {
@@ -155,9 +201,19 @@ export function createPurchaseOrderFromRequisition(
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_purchase_order(po_id, requisition_id, supplier_id, legal_entity_id, state, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'Draft', ?, 1, ?, ?)`
-    ).run(poId, input.requisitionId, input.supplierId, effectiveLegalEntityId, totalAmount, timestamp, timestamp);
+      `INSERT INTO p2p_purchase_order(po_id, requisition_id, project_id, wbs_id, supplier_id, legal_entity_id, state, total_amount, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'Draft', ?, 1, ?, ?)`
+    ).run(
+      poId,
+      input.requisitionId,
+      requisition.project_id ?? null,
+      requisition.wbs_id ?? null,
+      input.supplierId,
+      effectiveLegalEntityId,
+      totalAmount,
+      timestamp,
+      timestamp
+    );
 
     if (requisitionLines.length > 0) {
       const insertPOLine = db.prepare(
@@ -212,6 +268,8 @@ export function createPurchaseOrderFromRequisition(
       version: 1,
       payload: {
         requisitionId: input.requisitionId,
+        projectId: requisition.project_id ?? null,
+        wbsId: requisition.wbs_id ?? null,
         supplierId: input.supplierId,
         totalAmount,
         lineCount: requisitionLines.length,

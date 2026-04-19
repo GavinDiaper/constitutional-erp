@@ -17,13 +17,13 @@ const router = Router();
 router.post("/", (req: Request, res: Response) => {
   try {
     const actor = req.actor;
-    const { quoteId, legalEntityId } = req.body;
+    const { quoteId, legalEntityId, projectId, wbsId } = req.body;
 
     if (!quoteId) {
       return res.status(400).json({ success: false, error: "quoteId is required" });
     }
 
-    const so = createOrderFromQuote(quoteId, legalEntityId);
+    const so = createOrderFromQuote(quoteId, legalEntityId, projectId, wbsId);
 
     res.status(201).json({
       success: true,

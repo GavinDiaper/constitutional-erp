@@ -15,6 +15,9 @@ import {
   listLaborEntries,
   createProjectFinishedItem,
   listProjectFinishedItems,
+  listProjectRequisitions,
+  listProjectPurchaseOrders,
+  listProjectSalesOrders,
 } from "../domain/proj/projectService";
 import { HttpError } from "../utils/errors";
 
@@ -388,6 +391,42 @@ router.post("/:projectId/finished-items", (req: Request, res: Response) => {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(status).json({ success: false, error: error.message });
   }
+
+router.get("/:projectId/requisitions", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const requisitions = listProjectRequisitions(projectId);
+
+    res.json({ success: true, data: requisitions, count: requisitions.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:projectId/purchase-orders", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const purchaseOrders = listProjectPurchaseOrders(projectId);
+
+    res.json({ success: true, data: purchaseOrders, count: purchaseOrders.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:projectId/sales-orders", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const salesOrders = listProjectSalesOrders(projectId);
+
+    res.json({ success: true, data: salesOrders, count: salesOrders.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 });
 
 /**

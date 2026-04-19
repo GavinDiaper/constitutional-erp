@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { actorStore } from '$lib/stores/actorStore';
@@ -22,7 +23,7 @@
 	} from '$lib/api/projects';
 	import type { Project } from '$lib/types/projects';
 
-	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' = 'overview';
+	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'linked' = 'overview';
 	let loading = false;
 	let errorMessage = '';
 	let successMessage = '';
@@ -74,6 +75,14 @@
 		}
 
 		return actions;
+	}
+
+	function asCurrency(amount: number, currencyCode = 'USD'): string {
+		return new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: currencyCode,
+			maximumFractionDigits: 2
+		}).format(amount);
 	}
 
 	async function handleTransition(project: Project | null) {
@@ -354,7 +363,7 @@
 		<!-- Tabs -->
 		<div class="border-b border-gray-300 mb-6">
 			<div class="flex gap-4">
-				{#each (['overview', 'boms', 'labor', 'finished'] as const) as tab}
+				{#each (['overview', 'boms', 'labor', 'finished', 'linked'] as const) as tab}
 					<button
 						on:click={() => (activeTab = tab)}
 						class={`px-4 py-2 border-b-2 font-medium text-sm ${
@@ -363,7 +372,15 @@
 								: 'border-transparent text-gray-600 hover:text-gray-900'
 						}`}
 					>
-						{tab === 'overview' ? 'Overview' : tab === 'boms' ? 'BOM Assignments' : tab === 'labor' ? 'Labor Entries' : 'Finished Items'}
+						{tab === 'overview'
+							? 'Overview'
+							: tab === 'boms'
+								? 'BOM Assignments'
+								: tab === 'labor'
+									? 'Labor Entries'
+									: tab === 'finished'
+										? 'Finished Items'
+										: 'Demand & Supply'}
 					</button>
 				{/each}
 			</div>
@@ -610,6 +627,97 @@
 						No finished items yet. Create one above to get started.
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		{#if activeTab === 'linked'}
+			<div class="space-y-6">
+				<div class="bg-gray-50 border border-gray-300 rounded-lg p-6">
+					<h2 class="text-lg font-semibold mb-2">Project Demand And Supply Links</h2>
+					<p class="text-sm text-gray-600">
+						Procurements and customer orders linked with this project appear here using the shared <span class="font-semibold">projectId</span> reference.
+					</p>
+				</div>
+
+				<div class="grid gap-6 xl:grid-cols-3">
+					<section class="bg-white border border-gray-300 rounded-lg p-5">
+						<div class="flex items-center justify-between mb-4 gap-3">
+							<div>
+								<h3 class="text-base font-semibold">Linked Requisitions</h3>
+								<p class="text-xs text-gray-500">Project procurement demand.</p>
+							</div>
+							<span class="text-xs font-semibold rounded-full bg-blue-100 text-blue-800 px-2 py-1">{$projectStore.requisitions.length}</span>
+						</div>
+						{#if $projectStore.requisitions.length === 0}
+							<p class="text-sm text-gray-500">No requisitions linked yet.</p>
+						{:else}
+							<div class="space-y-3">
+								{#each $projectStore.requisitions as requisition (requisition.requisitionId)}
+									<a class="block rounded border border-gray-200 px-3 py-3 hover:bg-gray-50" href={resolve(`/canvas/p2p_requisition/${requisition.requisitionId}`)}>
+										<div class="flex items-center justify-between gap-3">
+											<span class="font-semibold text-sm">{requisition.requisitionId}</span>
+											<span class="text-[11px] rounded bg-slate-100 px-2 py-1">{requisition.state}</span>
+										</div>
+										<p class="mt-1 text-xs text-gray-600">Requester: {requisition.requester}</p>
+										<p class="mt-1 text-xs text-gray-600">{asCurrency(requisition.totalAmount, requisition.currencyCode ?? 'USD')}</p>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</section>
+
+					<section class="bg-white border border-gray-300 rounded-lg p-5">
+						<div class="flex items-center justify-between mb-4 gap-3">
+							<div>
+								<h3 class="text-base font-semibold">Linked Purchase Orders</h3>
+								<p class="text-xs text-gray-500">Supplier commitments for the project.</p>
+							</div>
+							<span class="text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 px-2 py-1">{$projectStore.purchaseOrders.length}</span>
+						</div>
+						{#if $projectStore.purchaseOrders.length === 0}
+							<p class="text-sm text-gray-500">No purchase orders linked yet.</p>
+						{:else}
+							<div class="space-y-3">
+								{#each $projectStore.purchaseOrders as po (po.poId)}
+									<a class="block rounded border border-gray-200 px-3 py-3 hover:bg-gray-50" href={resolve(`/canvas/p2p_purchase_order/${po.poId}`)}>
+										<div class="flex items-center justify-between gap-3">
+											<span class="font-semibold text-sm">{po.poId}</span>
+											<span class="text-[11px] rounded bg-slate-100 px-2 py-1">{po.state}</span>
+										</div>
+										<p class="mt-1 text-xs text-gray-600">Supplier: {po.supplierId}</p>
+										<p class="mt-1 text-xs text-gray-600">{asCurrency(po.totalAmount, po.currencyCode ?? 'USD')}</p>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</section>
+
+					<section class="bg-white border border-gray-300 rounded-lg p-5">
+						<div class="flex items-center justify-between mb-4 gap-3">
+							<div>
+								<h3 class="text-base font-semibold">Linked Sales Orders</h3>
+								<p class="text-xs text-gray-500">Customer orders tied to project delivery.</p>
+							</div>
+							<span class="text-xs font-semibold rounded-full bg-amber-100 text-amber-800 px-2 py-1">{$projectStore.salesOrders.length}</span>
+						</div>
+						{#if $projectStore.salesOrders.length === 0}
+							<p class="text-sm text-gray-500">No sales orders linked yet.</p>
+						{:else}
+							<div class="space-y-3">
+								{#each $projectStore.salesOrders as order (order.orderId)}
+									<a class="block rounded border border-gray-200 px-3 py-3 hover:bg-gray-50" href={resolve(`/canvas/o2c_sales_order/${order.orderId}`)}>
+										<div class="flex items-center justify-between gap-3">
+											<span class="font-semibold text-sm">{order.orderId}</span>
+											<span class="text-[11px] rounded bg-slate-100 px-2 py-1">{order.state}</span>
+										</div>
+										<p class="mt-1 text-xs text-gray-600">Customer: {order.customerId}</p>
+										<p class="mt-1 text-xs text-gray-600">{asCurrency(order.totalAmount, order.currencyCode)}</p>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</section>
+				</div>
 			</div>
 		{/if}
 	{:else}

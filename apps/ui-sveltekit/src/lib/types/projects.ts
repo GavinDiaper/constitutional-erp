@@ -85,6 +85,50 @@ export interface FinishedItem {
 	createdAt: string;
 }
 
+export interface ProjectRequisition {
+	requisitionId: string;
+	requester: string;
+	department?: string;
+	state: string;
+	totalAmount: number;
+	currencyCode?: string;
+	neededByDate?: string;
+	legalEntityId?: string;
+	projectId?: string;
+	wbsId?: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ProjectPurchaseOrder {
+	poId: string;
+	requisitionId?: string;
+	supplierId: string;
+	state: string;
+	totalAmount: number;
+	currencyCode?: string;
+	deliveryAddress?: string;
+	legalEntityId?: string;
+	projectId?: string;
+	wbsId?: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ProjectSalesOrder {
+	orderId: string;
+	quoteId?: string;
+	customerId: string;
+	state: string;
+	currencyCode: string;
+	totalAmount: number;
+	legalEntityId?: string;
+	projectId?: string;
+	wbsId?: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 // UI types
 export interface ProjectDashboard {
 	draftCount: number;

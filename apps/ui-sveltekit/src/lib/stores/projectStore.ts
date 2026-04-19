@@ -1,13 +1,26 @@
 import { writable, derived, get } from 'svelte/store';
 import type { ActorContext } from '$lib/stores/actorStore';
 import { actorStore } from '$lib/stores/actorStore';
-import type { Project, ProjectWIP, BomAssignment, LaborEntry, FinishedItem, StatusBadgeStyle } from '$lib/types/projects';
+import type {
+	Project,
+	ProjectWIP,
+	BomAssignment,
+	LaborEntry,
+	FinishedItem,
+	ProjectRequisition,
+	ProjectPurchaseOrder,
+	ProjectSalesOrder,
+	StatusBadgeStyle
+} from '$lib/types/projects';
 import {
 	getProjectById,
 	getProjectWIPSummary,
 	listProjectBomAssignments,
 	listLaborEntries,
-	listProjectFinishedItems
+	listProjectFinishedItems,
+	listProjectRequisitions,
+	listProjectPurchaseOrders,
+	listProjectSalesOrders
 } from '$lib/api/projects';
 
 interface ProjectStoreState {
@@ -16,6 +29,9 @@ interface ProjectStoreState {
 	bomAssignments: BomAssignment[];
 	laborEntries: LaborEntry[];
 	finishedItems: FinishedItem[];
+	requisitions: ProjectRequisition[];
+	purchaseOrders: ProjectPurchaseOrder[];
+	salesOrders: ProjectSalesOrder[];
 	loading: boolean;
 	error: string | null;
 }
@@ -26,6 +42,9 @@ const initialState: ProjectStoreState = {
 	bomAssignments: [],
 	laborEntries: [],
 	finishedItems: [],
+	requisitions: [],
+	purchaseOrders: [],
+	salesOrders: [],
 	loading: false,
 	error: null
 };
@@ -60,12 +79,15 @@ export async function loadProject(projectId: string): Promise<void> {
 		const actor = get(actorStore);
 
 		// Fetch all data in parallel
-		const [projectResponse, wipResponse, bomResponse, laborResponse, finishedResponse] = await Promise.all([
+		const [projectResponse, wipResponse, bomResponse, laborResponse, finishedResponse, requisitionsResponse, purchaseOrdersResponse, salesOrdersResponse] = await Promise.all([
 			getProjectById(actor, projectId),
 			getProjectWIPSummary(actor, projectId),
 			listProjectBomAssignments(actor, projectId),
 			listLaborEntries(actor, projectId),
-			listProjectFinishedItems(actor, projectId)
+			listProjectFinishedItems(actor, projectId),
+			listProjectRequisitions(actor, projectId),
+			listProjectPurchaseOrders(actor, projectId),
+			listProjectSalesOrders(actor, projectId)
 		]);
 
 		projectStore.set({
@@ -74,6 +96,9 @@ export async function loadProject(projectId: string): Promise<void> {
 			bomAssignments: bomResponse.data,
 			laborEntries: laborResponse.data,
 			finishedItems: finishedResponse.data,
+			requisitions: requisitionsResponse.data,
+			purchaseOrders: purchaseOrdersResponse.data,
+			salesOrders: salesOrdersResponse.data,
 			loading: false,
 			error: null
 		});

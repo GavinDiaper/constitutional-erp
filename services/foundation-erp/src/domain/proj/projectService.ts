@@ -952,6 +952,144 @@ function rowToFinishedItem(row: FinishedItemRow): FinishedItemProjection {
   };
 }
 
+  interface ProjectRequisitionRow {
+    requisition_id: string;
+    requester: string;
+    department: string | null;
+    state: string;
+    total_amount: number;
+    currency_code: string | null;
+    needed_by_date: string | null;
+    legal_entity_id: string | null;
+    project_id: string | null;
+    wbs_id: string | null;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ProjectPurchaseOrderRow {
+    po_id: string;
+    requisition_id: string | null;
+    supplier_id: string;
+    state: string;
+    total_amount: number;
+    currency_code: string | null;
+    delivery_address: string | null;
+    legal_entity_id: string | null;
+    project_id: string | null;
+    wbs_id: string | null;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface ProjectSalesOrderRow {
+    order_id: string;
+    quote_id: string | null;
+    customer_id: string;
+    state: string;
+    currency_code: string;
+    total_amount: number;
+    legal_entity_id: string | null;
+    project_id: string | null;
+    wbs_id: string | null;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface ProjectRequisitionProjection {
+    requisitionId: string;
+    requester: string;
+    department?: string;
+    state: string;
+    totalAmount: number;
+    currencyCode?: string;
+    neededByDate?: string;
+    legalEntityId?: string;
+    projectId?: string;
+    wbsId?: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface ProjectPurchaseOrderProjection {
+    poId: string;
+    requisitionId?: string;
+    supplierId: string;
+    state: string;
+    totalAmount: number;
+    currencyCode?: string;
+    deliveryAddress?: string;
+    legalEntityId?: string;
+    projectId?: string;
+    wbsId?: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface ProjectSalesOrderProjection {
+    orderId: string;
+    quoteId?: string;
+    customerId: string;
+    state: string;
+    currencyCode: string;
+    totalAmount: number;
+    legalEntityId?: string;
+    projectId?: string;
+    wbsId?: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  function rowToProjectRequisition(row: ProjectRequisitionRow): ProjectRequisitionProjection {
+    return {
+      requisitionId: row.requisition_id,
+      requester: row.requester,
+      department: row.department ?? undefined,
+      state: row.state,
+      totalAmount: row.total_amount,
+      currencyCode: row.currency_code ?? undefined,
+      neededByDate: row.needed_by_date ?? undefined,
+      legalEntityId: row.legal_entity_id ?? undefined,
+      projectId: row.project_id ?? undefined,
+      wbsId: row.wbs_id ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  function rowToProjectPurchaseOrder(row: ProjectPurchaseOrderRow): ProjectPurchaseOrderProjection {
+    return {
+      poId: row.po_id,
+      requisitionId: row.requisition_id ?? undefined,
+      supplierId: row.supplier_id,
+      state: row.state,
+      totalAmount: row.total_amount,
+      currencyCode: row.currency_code ?? undefined,
+      deliveryAddress: row.delivery_address ?? undefined,
+      legalEntityId: row.legal_entity_id ?? undefined,
+      projectId: row.project_id ?? undefined,
+      wbsId: row.wbs_id ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  function rowToProjectSalesOrder(row: ProjectSalesOrderRow): ProjectSalesOrderProjection {
+    return {
+      orderId: row.order_id,
+      quoteId: row.quote_id ?? undefined,
+      customerId: row.customer_id,
+      state: row.state,
+      currencyCode: row.currency_code,
+      totalAmount: row.total_amount,
+      legalEntityId: row.legal_entity_id ?? undefined,
+      projectId: row.project_id ?? undefined,
+      wbsId: row.wbs_id ?? undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
 export interface CreateProjectFinishedItemInput {
   projectId: string;
   skuId: string;
@@ -1028,4 +1166,25 @@ export function listProjectFinishedItems(projectId: string): FinishedItemProject
     .prepare("SELECT * FROM proj_finished_item WHERE project_id = ? ORDER BY created_at ASC")
     .all(projectId) as FinishedItemRow[];
   return rows.map(rowToFinishedItem);
+}
+
+export function listProjectRequisitions(projectId: string): ProjectRequisitionProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM p2p_requisition WHERE project_id = ? ORDER BY created_at DESC")
+    .all(projectId) as ProjectRequisitionRow[];
+  return rows.map(rowToProjectRequisition);
+}
+
+export function listProjectPurchaseOrders(projectId: string): ProjectPurchaseOrderProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM p2p_purchase_order WHERE project_id = ? ORDER BY created_at DESC")
+    .all(projectId) as ProjectPurchaseOrderRow[];
+  return rows.map(rowToProjectPurchaseOrder);
+}
+
+export function listProjectSalesOrders(projectId: string): ProjectSalesOrderProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM o2c_sales_order WHERE project_id = ? ORDER BY created_at DESC")
+    .all(projectId) as ProjectSalesOrderRow[];
+  return rows.map(rowToProjectSalesOrder);
 }

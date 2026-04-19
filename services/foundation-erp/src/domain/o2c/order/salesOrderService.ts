@@ -21,6 +21,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function ensureProjectExists(projectId: string): void {
+  const row = db.prepare("SELECT project_id FROM proj_project WHERE project_id = ?").get(projectId) as
+    | { project_id: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project not found");
+  }
+}
+
 export function getOrderById(orderId: string) {
   const row = db.prepare("SELECT * FROM o2c_sales_order WHERE order_id = ?").get(orderId) as
     | {
@@ -28,6 +38,8 @@ export function getOrderById(orderId: string) {
         state: SalesOrderState;
         customer_id: string;
         quote_id: string | null;
+        project_id: string | null;
+        wbs_id: string | null;
         legal_entity_id: string | null;
         version: number;
       }
@@ -50,7 +62,7 @@ function assertTransition(fromState: SalesOrderState, toState: SalesOrderState) 
   }
 }
 
-export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
+export function createOrderFromQuote(quoteId: string, legalEntityId?: string, projectId?: string, wbsId?: string) {
   const quote = db.prepare("SELECT * FROM o2c_quote WHERE quote_id = ?").get(quoteId) as
     | {
         quote_id: string;
@@ -77,6 +89,10 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
     ensureLegalEntityExists(effectiveLegalEntityId);
   }
 
+  if (projectId) {
+    ensureProjectExists(projectId);
+  }
+
   const quoteLines = db.prepare("SELECT * FROM o2c_quote_line WHERE quote_id = ?").all(quoteId) as Array<{
     sku: string;
     quantity: number;
@@ -93,9 +109,20 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO o2c_sales_order(order_id, quote_id, customer_id, legal_entity_id, state, currency_code, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'Draft', ?, ?, 1, ?, ?)`
-    ).run(orderId, quoteId, quote.customer_id, effectiveLegalEntityId, quote.currency_code, quote.total_amount, timestamp, timestamp);
+      `INSERT INTO o2c_sales_order(order_id, quote_id, customer_id, project_id, wbs_id, legal_entity_id, state, currency_code, total_amount, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'Draft', ?, ?, 1, ?, ?)`
+    ).run(
+      orderId,
+      quoteId,
+      quote.customer_id,
+      projectId ?? null,
+      wbsId ?? null,
+      effectiveLegalEntityId,
+      quote.currency_code,
+      quote.total_amount,
+      timestamp,
+      timestamp
+    );
 
     const insertLine = db.prepare(
       `INSERT INTO o2c_sales_order_line(
@@ -148,6 +175,8 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string) {
       payload: {
         quoteId,
         customerId: quote.customer_id,
+        projectId: projectId ?? null,
+        wbsId: wbsId ?? null,
         legalEntityId: effectiveLegalEntityId
       }
     });

@@ -73,7 +73,9 @@ const createRequisitionSchema = z.object({
   department: z.string().optional(),
   currencyCode: z.string().optional(),
   neededByDate: z.string().optional(),
-  legalEntityId: z.string().min(1).optional()
+  legalEntityId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
+  wbsId: z.string().min(1).optional()
 });
 
 const createSupplierSchema = z.object({
@@ -87,6 +89,8 @@ const createSupplierSchema = z.object({
 const createPurchaseOrderSchema = z.object({
   supplierId: z.string().min(1),
   requisitionId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
+  wbsId: z.string().min(1).optional(),
   totalAmount: z.number().nonnegative().optional(),
   currencyCode: z.string().optional(),
   deliveryAddress: z.string().optional(),

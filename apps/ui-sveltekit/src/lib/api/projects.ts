@@ -4,7 +4,10 @@ import type {
 	ProjectWIP,
 	BomAssignment,
 	LaborEntry,
-	FinishedItem
+	FinishedItem,
+	ProjectRequisition,
+	ProjectPurchaseOrder,
+	ProjectSalesOrder
 } from '$lib/types/projects';
 
 interface DataResponse<T> {
@@ -265,6 +268,39 @@ export function listProjectFinishedItems(
 ): Promise<DataListResponse<FinishedItem>> {
 	return requestHubJson<DataListResponse<FinishedItem>>(
 		`/api/hub/proj/${projectId}/finished-items`,
+		actor,
+		'GET'
+	);
+}
+
+export function listProjectRequisitions(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataListResponse<ProjectRequisition>> {
+	return requestHubJson<DataListResponse<ProjectRequisition>>(
+		`/api/hub/proj/${projectId}/requisitions`,
+		actor,
+		'GET'
+	);
+}
+
+export function listProjectPurchaseOrders(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataListResponse<ProjectPurchaseOrder>> {
+	return requestHubJson<DataListResponse<ProjectPurchaseOrder>>(
+		`/api/hub/proj/${projectId}/purchase-orders`,
+		actor,
+		'GET'
+	);
+}
+
+export function listProjectSalesOrders(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataListResponse<ProjectSalesOrder>> {
+	return requestHubJson<DataListResponse<ProjectSalesOrder>>(
+		`/api/hub/proj/${projectId}/sales-orders`,
 		actor,
 		'GET'
 	);

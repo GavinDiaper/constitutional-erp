@@ -17,12 +17,14 @@ const router = Router();
 router.post("/", (req: Request, res: Response) => {
   try {
     const actor = req.actor;
-    const { supplierId, requisitionId, totalAmount, currencyCode, deliveryAddress, legalEntityId } = req.body;
+    const { supplierId, requisitionId, projectId, wbsId, totalAmount, currencyCode, deliveryAddress, legalEntityId } = req.body;
 
     const po = createPurchaseOrder(
       {
         supplierId,
         requisitionId,
+        projectId,
+        wbsId,
         totalAmount,
         currencyCode,
         deliveryAddress,

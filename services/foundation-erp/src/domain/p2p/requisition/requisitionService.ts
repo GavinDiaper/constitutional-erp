@@ -19,6 +19,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function ensureProjectExists(projectId: string): void {
+  const row = db.prepare("SELECT project_id FROM proj_project WHERE project_id = ?").get(projectId) as
+    | { project_id: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project not found");
+  }
+}
+
 function getRequisition(requisitionId: string) {
   const row = db.prepare("SELECT * FROM p2p_requisition WHERE requisition_id = ?").get(requisitionId) as
     | {
@@ -49,7 +59,15 @@ function assertTransition(fromState: RequisitionState, toState: RequisitionState
 }
 
 export function createRequisition(
-  input: { requester: string; department?: string; currencyCode?: string; neededByDate?: string; legalEntityId?: string },
+  input: {
+    requester: string;
+    department?: string;
+    currencyCode?: string;
+    neededByDate?: string;
+    legalEntityId?: string;
+    projectId?: string;
+    wbsId?: string;
+  },
   actor?: EventActor
 ) {
   const requisitionId = newId("REQ-");
@@ -58,14 +76,20 @@ export function createRequisition(
   const effectiveLegalEntityId = input.legalEntityId ?? 'LE-SEED-DEFAULT';
   ensureLegalEntityExists(effectiveLegalEntityId);
 
+  if (input.projectId) {
+    ensureProjectExists(input.projectId);
+  }
+
   transaction(() => {
     db.prepare(
-      `INSERT INTO p2p_requisition(requisition_id, requester, legal_entity_id, state, total_amount, department, currency_code, needed_by_date, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', 0, ?, ?, ?, 1, ?, ?)`
+      `INSERT INTO p2p_requisition(requisition_id, requester, legal_entity_id, project_id, wbs_id, state, total_amount, department, currency_code, needed_by_date, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'Draft', 0, ?, ?, ?, 1, ?, ?)`
     ).run(
       requisitionId,
       input.requester,
       effectiveLegalEntityId,
+      input.projectId ?? null,
+      input.wbsId ?? null,
       input.department ?? null,
       input.currencyCode ?? null,
       input.neededByDate ?? null,
@@ -83,7 +107,9 @@ export function createRequisition(
         department: input.department ?? null,
         currencyCode: input.currencyCode ?? null,
         neededByDate: input.neededByDate ?? null,
-        legalEntityId: input.legalEntityId ?? null
+        legalEntityId: input.legalEntityId ?? null,
+        projectId: input.projectId ?? null,
+        wbsId: input.wbsId ?? null
       },
       actor
     });
