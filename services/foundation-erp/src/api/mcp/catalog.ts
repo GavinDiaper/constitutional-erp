@@ -1,6 +1,6 @@
 export interface McpFunctionDef {
   name: string;
-  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv";
+  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "proj";
   description: string;
   entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
   action?: string; // e.g., "create", "activate", "approve"
@@ -101,6 +101,44 @@ export const mcpCatalog: McpFunctionDef[] = [
 
   // ── INV ──────────────────────────────────────────────────────────────────
   { name: "inv_create_sku", domain: "inv", entity: "InventorySKU", action: "create", description: "Create an inventory SKU", riskLevel: "Low", governanceTag: "INV.SKU.Create" },
+  { name: "inv_list_skus", domain: "inv", entity: "InventorySKU", action: "list", description: "List all inventory SKUs", riskLevel: "Low", governanceTag: "INV.SKU.List" },
   { name: "inv_create_organization", domain: "inv", entity: "InventoryOrganization", action: "create", description: "Create an inventory organization/warehouse", riskLevel: "Medium", governanceTag: "INV.Organization.Create" },
-  { name: "inv_post_movement", domain: "inv", entity: "InventoryMovement", action: "post", description: "Post an inventory movement (receipt/issue/adjustment/cost_update)", riskLevel: "Medium", governanceTag: "INV.Movement.Post" }
+  { name: "inv_list_organizations", domain: "inv", entity: "InventoryOrganization", action: "list", description: "List all inventory organizations", riskLevel: "Low", governanceTag: "INV.Organization.List" },
+  { name: "inv_post_movement", domain: "inv", entity: "InventoryMovement", action: "post", description: "Post an inventory movement (receipt/issue/adjustment/cost_update)", riskLevel: "Medium", governanceTag: "INV.Movement.Post" },
+  { name: "inv_list_movements", domain: "inv", entity: "InventoryMovement", action: "list", description: "List all inventory movements", riskLevel: "Low", governanceTag: "INV.Movement.List" },
+  { name: "inv_list_on_hand", domain: "inv", entity: "InventoryOnHand", action: "list", description: "List on-hand inventory by SKU and organization", riskLevel: "Low", governanceTag: "INV.OnHand.List" },
+  { name: "inv_create_reservation", domain: "inv", entity: "InventoryReservation", action: "create", description: "Create an inventory reservation", riskLevel: "Low", governanceTag: "INV.Reservation.Create" },
+  { name: "inv_list_reservations", domain: "inv", entity: "InventoryReservation", action: "list", description: "List inventory reservations", riskLevel: "Low", governanceTag: "INV.Reservation.List" },
+  { name: "inv_release_reservation", domain: "inv", entity: "InventoryReservation", action: "release", description: "Release an inventory reservation", riskLevel: "Low", governanceTag: "INV.Reservation.Release" },
+  { name: "inv_create_bin", domain: "inv", entity: "InventoryBin", action: "create", description: "Create an inventory bin", riskLevel: "Low", governanceTag: "INV.Bin.Create" },
+  { name: "inv_list_bins", domain: "inv", entity: "InventoryBin", action: "list", description: "List inventory bins", riskLevel: "Low", governanceTag: "INV.Bin.List" },
+  { name: "inv_putaway_to_bin", domain: "inv", entity: "InventoryBin", action: "putaway", description: "Put away stock to an inventory bin", riskLevel: "Medium", governanceTag: "INV.Bin.Putaway" },
+  { name: "inv_pick_from_bin", domain: "inv", entity: "InventoryBin", action: "pick", description: "Pick stock from an inventory bin", riskLevel: "Medium", governanceTag: "INV.Bin.Pick" },
+  { name: "inv_create_cycle_count", domain: "inv", entity: "InventoryCycleCount", action: "create", description: "Create an inventory cycle count", riskLevel: "Low", governanceTag: "INV.CycleCount.Create" },
+  { name: "inv_list_cycle_counts", domain: "inv", entity: "InventoryCycleCount", action: "list", description: "List inventory cycle counts", riskLevel: "Low", governanceTag: "INV.CycleCount.List" },
+  { name: "inv_record_cycle_count_line", domain: "inv", entity: "InventoryCycleCount", action: "recordLine", description: "Record a line item in a cycle count", riskLevel: "Medium", governanceTag: "INV.CycleCount.RecordLine" },
+  { name: "inv_post_cycle_count", domain: "inv", entity: "InventoryCycleCount", action: "post", description: "Post a cycle count", riskLevel: "Medium", governanceTag: "INV.CycleCount.Post" },
+  { name: "inv_create_lot", domain: "inv", entity: "InventoryLot", action: "create", description: "Create an inventory lot for tracked items", riskLevel: "Low", governanceTag: "INV.Lot.Create" },
+  { name: "inv_list_lots", domain: "inv", entity: "InventoryLot", action: "list", description: "List inventory lots", riskLevel: "Low", governanceTag: "INV.Lot.List" },
+  { name: "inv_consume_lot", domain: "inv", entity: "InventoryLot", action: "consume", description: "Consume an inventory lot", riskLevel: "Medium", governanceTag: "INV.Lot.Consume" },
+  { name: "inv_create_serial", domain: "inv", entity: "InventorySerial", action: "create", description: "Create an inventory serial number", riskLevel: "Low", governanceTag: "INV.Serial.Create" },
+  { name: "inv_list_serials", domain: "inv", entity: "InventorySerial", action: "list", description: "List inventory serials", riskLevel: "Low", governanceTag: "INV.Serial.List" },
+  { name: "inv_consume_serial", domain: "inv", entity: "InventorySerial", action: "consume", description: "Consume an inventory serial", riskLevel: "Medium", governanceTag: "INV.Serial.Consume" },
+
+  // ── PROJ ─────────────────────────────────────────────────────────────────
+  { name: "proj_create_project", domain: "proj", entity: "Project", action: "create", description: "Create a project in Draft status", riskLevel: "Low", governanceTag: "PROJ.Project.Create" },
+  { name: "proj_list_projects", domain: "proj", entity: "Project", action: "list", description: "List all projects", riskLevel: "Low", governanceTag: "PROJ.Project.List" },
+  { name: "proj_get_project", domain: "proj", entity: "Project", action: "get", description: "Get a project by ID", riskLevel: "Low", governanceTag: "PROJ.Project.Get" },
+  { name: "proj_activate_project", domain: "proj", entity: "Project", action: "activate", description: "Activate a Draft project", riskLevel: "Medium", governanceTag: "PROJ.Project.Activate" },
+  { name: "proj_hold_project", domain: "proj", entity: "Project", action: "hold", description: "Place an Active project on hold", riskLevel: "Low", governanceTag: "PROJ.Project.Hold" },
+  { name: "proj_resume_project", domain: "proj", entity: "Project", action: "resume", description: "Resume an OnHold project", riskLevel: "Low", governanceTag: "PROJ.Project.Resume" },
+  { name: "proj_complete_project", domain: "proj", entity: "Project", action: "complete", description: "Complete an Active or OnHold project", riskLevel: "High", governanceTag: "PROJ.Project.Complete" },
+  { name: "proj_cancel_project", domain: "proj", entity: "Project", action: "cancel", description: "Cancel a project", riskLevel: "High", governanceTag: "PROJ.Project.Cancel" },
+  { name: "proj_get_wip_summary", domain: "proj", entity: "ProjectWIP", action: "get", description: "Get WIP summary for a project", riskLevel: "Low", governanceTag: "PROJ.WIP.Get" },
+  { name: "proj_assign_bom", domain: "proj", entity: "BOMAssignment", action: "create", description: "Assign a BOM to a project", riskLevel: "Medium", governanceTag: "PROJ.BOM.Assign" },
+  { name: "proj_list_bom_assignments", domain: "proj", entity: "BOMAssignment", action: "list", description: "List BOM assignments for a project", riskLevel: "Low", governanceTag: "PROJ.BOM.List" },
+  { name: "proj_post_labor_cost", domain: "proj", entity: "LaborEntry", action: "post", description: "Post labor cost to a project", riskLevel: "Medium", governanceTag: "PROJ.Labor.Post" },
+  { name: "proj_list_labor_entries", domain: "proj", entity: "LaborEntry", action: "list", description: "List labor entries for a project", riskLevel: "Low", governanceTag: "PROJ.Labor.List" },
+  { name: "proj_create_finished_item", domain: "proj", entity: "FinishedItem", action: "create", description: "Create a finished item from project WIP", riskLevel: "Medium", governanceTag: "PROJ.FinishedItem.Create" },
+  { name: "proj_list_finished_items", domain: "proj", entity: "FinishedItem", action: "list", description: "List finished items for a project", riskLevel: "Low", governanceTag: "PROJ.FinishedItem.List" }
 ];
