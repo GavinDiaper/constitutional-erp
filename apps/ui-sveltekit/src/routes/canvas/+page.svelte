@@ -407,9 +407,9 @@
 	<p class="muted mt-2 text-sm">
 		Explore all entities by domain and state, then jump directly into each process.
 	</p>
-	<div class="mt-3 rounded-lg border border-amber-400/35 bg-amber-500/10 p-3 text-xs text-amber-100">
+	<div class="w-full max-w-md rounded-md border dark:border-white/30 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm dark:text-white text-slate-900">
 		Need a joined-up cross-domain flow for manufacturing?
-		<a class="ml-2 font-semibold text-amber-100 underline decoration-amber-200/80 underline-offset-2" href={resolve('/canvas/business-flows/baked-bread')}>
+		<a class="ml-2 font-semibold dark:text-white text-slate-900 underline underline-offset-2" href={resolve('/canvas/business-flows/baked-bread')}>
 			Open Baked Bread Profit Flow
 		</a>
 	</div>
