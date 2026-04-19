@@ -627,6 +627,10 @@ export function getProjectById(projectId: string): ProjectProjection | null {
     return null;
   }
 
+  return toProjectProjection(row);
+}
+
+function toProjectProjection(row: ProjectRow): ProjectProjection {
   return {
     projectId: row.project_id,
     name: row.name,
@@ -662,11 +666,13 @@ export function getProjectById(projectId: string): ProjectProjection | null {
  * Lists all projects, paginated
  */
 export function listProjects(limit = 100, offset = 0) {
-  return db
+  const rows = db
     .prepare(
       `SELECT * FROM proj_project ORDER BY created_at DESC LIMIT ? OFFSET ?`
     )
-    .all(limit, offset);
+    .all(limit, offset) as ProjectRow[];
+
+  return rows.map(toProjectProjection);
 }
 
 /**

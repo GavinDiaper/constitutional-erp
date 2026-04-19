@@ -9768,7 +9768,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"skuCode\": \"SKU-INV-100\",\n  \"description\": \"Inventory Demo Item\",\n  \"category\": \"Raw\",\n  \"uom\": \"EA\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 12.5\n}"
+                            "raw": "{\n  \"skuCode\": \"{{invSkuCode}}\",\n  \"description\": \"Inventory Demo Item\",\n  \"category\": \"Raw\",\n  \"uom\": \"EA\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 12.5\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/inv/skus",
@@ -9818,7 +9818,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"name\": \"Main Warehouse\"\n}"
+                            "raw": "{\n  \"name\": \"{{invOrganizationName}}\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/inv/organizations",
@@ -9981,6 +9981,1004 @@
                             }
                         }
                     ]
+                },
+                {
+                    "name": "Post Inventory Issue Movement",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{invSkuId}}\",\n  \"organizationId\": \"{{invOrganizationId}}\",\n  \"movementType\": \"issue\",\n  \"quantity\": 5,\n  \"unitCost\": 12.5,\n  \"reason\": \"Postman issue verification\",\n  \"referenceType\": \"postman\",\n  \"referenceId\": \"issue-1\",\n  \"correlationKey\": \"{{invSkuId}}-{{invOrganizationId}}-issue-1\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('invIssueMovementId', body.movement_id);",
+                                    "pm.test('Movement is issue', function () { pm.expect(body.movement_type).to.eql('issue'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Inventory On Hand After Issue",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/on-hand?skuId={{invSkuId}}&organizationId={{invOrganizationId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "on-hand?skuId={{invSkuId}}&organizationId={{invOrganizationId}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "var row = body.data[0];",
+                                    "pm.test('On-hand quantity reflects issue', function () { pm.expect(Number(row.quantity_on_hand)).to.eql(15); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "41 - Projects Flow",
+            "item": [
+                {
+                    "name": "Create Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"{{projectName}}\",\n  \"projectType\": \"Internal\",\n  \"budgetAmount\": 1000,\n  \"defaultWIPAccountId\": \"ACCT-WIP-001\",\n  \"defaultCloseAccountId\": \"ACCT-CLOSE-001\",\n  \"startDate\": \"2026-04-19\",\n  \"projectManagerId\": \"principal.system\",\n  \"organizationId\": \"{{invOrganizationId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('projectId', body.data.projectId);",
+                                    "pm.test('Project captured', function () { pm.expect(body.data.projectId).to.be.a('string').and.not.empty; });",
+                                    "pm.test('Project starts in Draft', function () { pm.expect(body.data.status).to.eql('Draft'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Projects",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Created project is listed', function () { pm.expect(body.data.some(function (row) { return row.projectId === pm.environment.get('projectId'); })).to.eql(true); });",
+                                    "pm.test('Projects list returns projection shape', function () { pm.expect(body.data[0]).to.have.property('projectId'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Project By ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Fetched project matches projectId', function () { pm.expect(body.data.projectId).to.eql(pm.environment.get('projectId')); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Activate Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "activate"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is Active', function () { pm.expect(pm.response.json().data.status).to.eql('Active'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Hold Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"holdReason\": \"Postman hold verification\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/hold",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "hold"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is OnHold', function () { pm.expect(pm.response.json().data.status).to.eql('OnHold'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Resume Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/resume",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "resume"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is Active again', function () { pm.expect(pm.response.json().data.status).to.eql('Active'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Project BOM",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{invSkuId}}\",\n  \"organizationId\": \"{{invOrganizationId}}\",\n  \"revision\": \"{{bomRevision}}\",\n  \"description\": \"Project BOM for Postman flow\",\n  \"projectEligible\": true,\n  \"costingProfile\": \"Standard\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/bom",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "bom"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bomId', body.data.bomId);",
+                                    "pm.test('BOM captured', function () { pm.expect(body.data.bomId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Activate Project BOM",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/bom/{{bomId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "bom",
+                                "{{bomId}}",
+                                "activate"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('BOM is Active', function () { pm.expect(pm.response.json().data.status).to.eql('Active'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Assign BOM To Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"bomId\": \"{{bomId}}\",\n  \"quantityPlanned\": 2\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/bom-assignments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "bom-assignments"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('projectAssignmentId', body.data.assignmentId);",
+                                    "pm.test('Assignment captured', function () { pm.expect(body.data.assignmentId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Project BOM Assignments",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/bom-assignments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "bom-assignments"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Assignment is listed', function () { pm.expect(body.data.some(function (row) { return row.assignmentId === pm.environment.get('projectAssignmentId'); })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Post Project Labor Entry",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceId\": \"principal.system\",\n  \"hours\": 5,\n  \"rate\": 20\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/labor-entries",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "labor-entries"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('projectLaborEntryId', body.data.entryId);",
+                                    "pm.test('Labor entry total is correct', function () { pm.expect(Number(body.data.totalCost)).to.eql(100); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Project WIP Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/wip",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "wip"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('WIP labor balance reflects labor entry', function () { pm.expect(Number(body.data.wipLaborBalance)).to.eql(100); });",
+                                    "pm.test('WIP total balance reflects labor entry', function () { pm.expect(Number(body.data.wipTotalBalance)).to.eql(100); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Project Finished Item",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{invSkuId}}\",\n  \"organizationId\": \"{{invOrganizationId}}\",\n  \"quantity\": 2\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/finished-items",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "finished-items"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('projectFinishedItemId', body.data.finishedItemId);",
+                                    "pm.test('Finished item captured', function () { pm.expect(body.data.finishedItemId).to.be.a('string').and.not.empty; });",
+                                    "pm.test('Finished item total WIP cost is preserved', function () { pm.expect(Number(body.data.totalWipCost)).to.eql(100); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "List Project Finished Items",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/finished-items",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "finished-items"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Finished item is listed', function () { pm.expect(body.data.some(function (row) { return row.finishedItemId === pm.environment.get('projectFinishedItemId'); })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Complete Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"completionType\": \"FG_Conversion\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/complete",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{projectId}}",
+                                "complete"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is Completed', function () { pm.expect(pm.response.json().data.status).to.eql('Completed'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Project To Cancel",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"{{cancelProjectName}}\",\n  \"projectType\": \"Internal\",\n  \"budgetAmount\": 500,\n  \"defaultWIPAccountId\": \"ACCT-WIP-001\",\n  \"defaultCloseAccountId\": \"ACCT-CLOSE-001\",\n  \"startDate\": \"2026-04-19\",\n  \"projectManagerId\": \"principal.system\",\n  \"organizationId\": \"{{invOrganizationId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('cancelledProjectId', body.data.projectId);",
+                                    "pm.test('Cancellation candidate project captured', function () { pm.expect(body.data.projectId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Cancel Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"cancellationReason\": \"Postman cancel verification\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{cancelledProjectId}}/cancel",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{cancelledProjectId}}",
+                                "cancel"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is Cancelled', function () { pm.expect(pm.response.json().data.status).to.eql('Cancelled'); });"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         }
@@ -9996,8 +10994,16 @@
                     "  [",
                     "    'customerId','quoteId','orderId','invoiceId','paymentId',",
                     "    'supplierId','requisitionId','poId','receiptId','supplierInvoiceId','apPaymentId',",
-                    "    'accountId','fiscalYearId','fiscalPeriodId','journalId'",
+                    "    'accountId','fiscalYearId','fiscalPeriodId','journalId',",
+                    "    'invSkuId','invOrganizationId','invMovementId','invIssueMovementId',",
+                    "    'bomId','projectId','projectAssignmentId','projectLaborEntryId','projectFinishedItemId','cancelledProjectId'",
                     "  ].forEach(function (k) { pm.environment.unset(k); });",
+                    "  var runId = String(Date.now());",
+                    "  pm.environment.set('invSkuCode', 'SKU-INV-' + runId);",
+                    "  pm.environment.set('invOrganizationName', 'Warehouse ' + runId);",
+                    "  pm.environment.set('projectName', 'Postman Project ' + runId);",
+                    "  pm.environment.set('cancelProjectName', 'Postman Cancel Project ' + runId);",
+                    "  pm.environment.set('bomRevision', 'R' + runId);",
                     "  pm.environment.set('collectionInitialized', 'true');",
                     "}"
                 ]
