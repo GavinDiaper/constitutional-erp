@@ -18,6 +18,12 @@ export function inferDomainFromEntityType(entityType: string): CanonicalFlowDoma
 	if (normalized.startsWith('h2r_') || normalized === 'employee' || normalized === 'assignment') {
 		return 'H2R';
 	}
+	if (normalized.startsWith('inv_') || normalized.startsWith('inventory_') || normalized === 'inventory') {
+		return 'INV';
+	}
+	if (normalized.startsWith('proj_') || normalized.startsWith('project_') || normalized === 'project') {
+		return 'PROJ';
+	}
 	return null;
 }
 
@@ -29,6 +35,8 @@ export function domainToCanvasTab(domain: CanonicalFlowDomain): 'o2c' | 'p2p' | 
 			return 'p2p';
 		case 'R2R':
 			return 'r2r';
+		case 'INV':
+		case 'PROJ':
 		default:
 			return 'hcm';
 	}

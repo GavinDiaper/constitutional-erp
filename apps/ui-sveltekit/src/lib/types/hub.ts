@@ -69,7 +69,7 @@ export interface EntityActionSankeyModel {
 	links: EntityActionSankeyLink[];
 }
 
-export type CanonicalFlowDomain = 'O2C' | 'P2P' | 'R2R' | 'H2R';
+export type CanonicalFlowDomain = 'O2C' | 'P2P' | 'R2R' | 'H2R' | 'INV' | 'PROJ';
 
 export interface ProcessFlowNode {
 	id: string;

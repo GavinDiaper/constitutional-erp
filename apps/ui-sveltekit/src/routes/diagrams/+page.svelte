@@ -59,7 +59,7 @@
 	};
 
 	const processFlowDomains: Array<{
-		domain: 'o2c' | 'p2p' | 'r2r' | 'h2r';
+		domain: 'o2c' | 'p2p' | 'r2r' | 'h2r' | 'inventory' | 'projects';
 		title: string;
 		summary: string;
 		accentClass: string;
@@ -87,6 +87,18 @@
 			title: 'H2R Domain Process Flows',
 			summary: 'Employee lifecycle process variants across HR state transitions.',
 			accentClass: 'border-cyan-600/40 bg-cyan-50/70'
+		},
+		{
+			domain: 'inventory',
+			title: 'Inventory Domain Process Flows',
+			summary: 'Inventory movement and stock-control variants across fulfillment workflows.',
+			accentClass: 'border-emerald-600/40 bg-emerald-50/70'
+		},
+		{
+			domain: 'projects',
+			title: 'Projects Domain Process Flows',
+			summary: 'Project and WIP operational sequences from planning through closeout.',
+			accentClass: 'border-amber-600/40 bg-amber-50/70'
 		}
 	];
 

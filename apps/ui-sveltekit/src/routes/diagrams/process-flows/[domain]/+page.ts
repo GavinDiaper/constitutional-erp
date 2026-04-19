@@ -6,7 +6,9 @@ const domainBySlug: Record<string, CanonicalFlowDomain> = {
 	o2c: 'O2C',
 	p2p: 'P2P',
 	r2r: 'R2R',
-	h2r: 'H2R'
+	h2r: 'H2R',
+	inventory: 'INV',
+	projects: 'PROJ'
 };
 
 export const load: PageLoad = ({ params }) => {

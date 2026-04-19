@@ -5,7 +5,7 @@
 	import type { CanonicalFlowDomain } from '$lib/types/hub';
 
 	const domainCards: Array<{
-		slug: 'o2c' | 'p2p' | 'r2r' | 'h2r';
+		slug: 'o2c' | 'p2p' | 'r2r' | 'h2r' | 'inventory' | 'projects';
 		label: CanonicalFlowDomain;
 		summary: string;
 		accentClass: string;
@@ -33,6 +33,18 @@
 			label: 'H2R',
 			summary: 'Employee lifecycle and workforce process flow from hiring through status changes.',
 			accentClass: 'border-cyan-600/40 bg-cyan-50/70'
+		},
+		{
+			slug: 'inventory',
+			label: 'INV',
+			summary: 'Inventory movement, adjustment, and stock-control process sequences.',
+			accentClass: 'border-emerald-600/40 bg-emerald-50/70'
+		},
+		{
+			slug: 'projects',
+			label: 'PROJ',
+			summary: 'Project lifecycle, WIP, and completion flow variants for project operations.',
+			accentClass: 'border-amber-600/40 bg-amber-50/70'
 		}
 	];
 
@@ -68,7 +80,7 @@
 
 <section class="mt-6 rounded-2xl border dark:border-white/30 border-slate-300 dark:bg-white/75 bg-white/90 p-6 md:p-8">
 	<h2 class="text-xl font-semibold text-slate-900">Select A Domain</h2>
-	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each cardsWithCounts as item (item.slug)}
 			<a
 				class={`rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow ${item.accentClass}`}

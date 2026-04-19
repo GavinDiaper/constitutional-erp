@@ -16,7 +16,9 @@
 		{ slug: 'o2c', label: 'O2C' },
 		{ slug: 'p2p', label: 'P2P' },
 		{ slug: 'r2r', label: 'R2R' },
-		{ slug: 'h2r', label: 'H2R' }
+		{ slug: 'h2r', label: 'H2R' },
+		{ slug: 'inventory', label: 'INV' },
+		{ slug: 'projects', label: 'PROJ' }
 	] as const;
 
 	let selectedVariantKey = getDefaultFlowForDomain(data.domain)?.variantKey ?? 'base';
