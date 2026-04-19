@@ -10981,6 +10981,2139 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "70 - Baked Bread E2E",
+            "item": [
+                {
+                    "name": "Create Bread Inventory Organization",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"{{bakedBreadOrganizationName}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/organizations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "organizations"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadOrganizationId', body.organization_id);",
+                                    "pm.test('Bread organization captured', function () { pm.expect(body.organization_id).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Flour SKU",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuCode\": \"{{bakedBreadFlourSkuCode}}\",\n  \"description\": \"Bread Flour\",\n  \"category\": \"Raw\",\n  \"uom\": \"KG\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 10\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/skus",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "skus"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadFlourSkuId', body.sku_id);",
+                                    "pm.test('Flour SKU captured', function () { pm.expect(body.sku_id).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Salt SKU",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuCode\": \"{{bakedBreadSaltSkuCode}}\",\n  \"description\": \"Bread Salt\",\n  \"category\": \"Raw\",\n  \"uom\": \"G\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/skus",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "skus"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadSaltSkuId', body.sku_id);",
+                                    "pm.test('Salt SKU captured', function () { pm.expect(body.sku_id).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Yeast SKU",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuCode\": \"{{bakedBreadYeastSkuCode}}\",\n  \"description\": \"Bread Yeast\",\n  \"category\": \"Raw\",\n  \"uom\": \"G\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 0.7\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/skus",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "skus"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadYeastSkuId', body.sku_id);",
+                                    "pm.test('Yeast SKU captured', function () { pm.expect(body.sku_id).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Fresh Bread SKU",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuCode\": \"{{bakedBreadFreshBreadSkuCode}}\",\n  \"description\": \"Fresh Bread\",\n  \"category\": \"Finished\",\n  \"uom\": \"EA\",\n  \"valuationMethod\": \"standard\",\n  \"standardCost\": 10.75\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/skus",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "skus"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadFreshBreadSkuId', body.sku_id);",
+                                    "pm.test('Fresh bread SKU captured', function () { pm.expect(body.sku_id).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Receipt Flour Inventory",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadFlourSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"receipt\",\n  \"quantity\": 2,\n  \"unitCost\": 10,\n  \"reason\": \"Bread flour receipt\",\n  \"referenceType\": \"postman_baked_bread\",\n  \"referenceId\": \"flour-receipt\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-flour-receipt\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Flour receipt value is 20 AED', function () { pm.expect(Number(body.total_cost)).to.eql(20); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Receipt Salt Inventory",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadSaltSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"receipt\",\n  \"quantity\": 1,\n  \"unitCost\": 1,\n  \"reason\": \"Bread salt receipt\",\n  \"referenceType\": \"postman_baked_bread\",\n  \"referenceId\": \"salt-receipt\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-salt-receipt\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Salt receipt value is 1 AED', function () { pm.expect(Number(pm.response.json().total_cost)).to.eql(1); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Receipt Yeast Inventory",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadYeastSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"receipt\",\n  \"quantity\": 10,\n  \"unitCost\": 0.7,\n  \"reason\": \"Bread yeast receipt\",\n  \"referenceType\": \"postman_baked_bread\",\n  \"referenceId\": \"yeast-receipt\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-yeast-receipt\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Yeast receipt value is 7 AED', function () { pm.expect(Number(pm.response.json().total_cost)).to.eql(7); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Baked Bread Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"{{bakedBreadProjectName}}\",\n  \"projectType\": \"Internal\",\n  \"budgetAmount\": 100,\n  \"defaultWIPAccountId\": \"ACCT-WIP-001\",\n  \"defaultCloseAccountId\": \"ACCT-CLOSE-001\",\n  \"startDate\": \"2026-04-19\",\n  \"projectManagerId\": \"principal.system\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadProjectId', body.data.projectId);",
+                                    "pm.test('Project captured', function () { pm.expect(body.data.projectId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Activate Baked Bread Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "activate"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Project is Active', function () { pm.expect(pm.response.json().data.status).to.eql('Active'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Fresh Bread BOM",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadFreshBreadSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"revision\": \"{{bakedBreadBomRevision}}\",\n  \"description\": \"2kg purchased flour, 1kg consumed with salt and yeast for 4 loaves\",\n  \"projectEligible\": true,\n  \"costingProfile\": \"Standard\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/bom",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "bom"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadBomId', body.data.bomId);",
+                                    "pm.test('BOM captured', function () { pm.expect(body.data.bomId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Activate Fresh Bread BOM",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/bom/{{bakedBreadBomId}}/activate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "bom",
+                                "{{bakedBreadBomId}}",
+                                "activate"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('BOM is Active', function () { pm.expect(pm.response.json().data.status).to.eql('Active'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Assign BOM To Baked Bread Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"bomId\": \"{{bakedBreadBomId}}\",\n  \"quantityPlanned\": 4\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/bom-assignments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "bom-assignments"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadAssignmentId', body.data.assignmentId);",
+                                    "pm.test('BOM assignment captured', function () { pm.expect(body.data.assignmentId).to.be.a('string').and.not.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Bread Supplier",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"supplierName\": \"{{bakedBreadSupplierName}}\",\n  \"email\": \"bread-supplier@example.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/suppliers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "suppliers"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.environment.set('bakedBreadSupplierId', pm.response.json().supplier_id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Linked Bread Requisition",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"requester\": \"bread.buyer\",\n  \"currencyCode\": \"AED\",\n  \"legalEntityId\": \"LE-SEED-AE\",\n  \"projectId\": \"{{bakedBreadProjectId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadRequisitionId', body.requisition_id);",
+                                    "pm.test('Requisition linked to project', function () { pm.expect(body.project_id).to.eql(pm.environment.get('bakedBreadProjectId')); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Flour Requisition Line",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"description\": \"2kg flour for baked bread\",\n  \"quantity\": 2,\n  \"unitPrice\": 10\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/lines",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "lines"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Requisition total after flour is 20', function () { pm.expect(Number(pm.response.json().requisition.total_amount)).to.eql(20); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Salt Requisition Line",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"description\": \"1g salt for baked bread\",\n  \"quantity\": 1,\n  \"unitPrice\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/lines",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "lines"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Requisition total after salt is 21', function () { pm.expect(Number(pm.response.json().requisition.total_amount)).to.eql(21); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Yeast Requisition Line",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"description\": \"10g yeast for baked bread\",\n  \"quantity\": 10,\n  \"unitPrice\": 0.7\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/lines",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "lines"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Requisition total after yeast is 28', function () { pm.expect(Number(pm.response.json().requisition.total_amount)).to.eql(28); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Submit Bread Requisition",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/submit",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "submit"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread requisition submitted', function () { pm.expect(pm.response.json().state).to.eql('Submitted'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Approve Bread Requisition",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/approve",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "approve"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread requisition approved', function () { pm.expect(pm.response.json().state).to.eql('Approved'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Convert Bread Requisition To PO",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"supplierId\": \"{{bakedBreadSupplierId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/p2p/requisitions/{{bakedBreadRequisitionId}}/convert",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "p2p",
+                                "requisitions",
+                                "{{bakedBreadRequisitionId}}",
+                                "convert"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadPoId', body.po_id);",
+                                    "pm.test('Bread PO linked to project', function () { pm.expect(body.project_id).to.eql(pm.environment.get('bakedBreadProjectId')); });",
+                                    "pm.test('Bread PO total is 28 AED', function () { pm.expect(Number(body.total_amount)).to.eql(28); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Project Requisitions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/requisitions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "requisitions"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Project requisitions list includes bread requisition', function () { pm.expect(body.data.some(function (row) { return row.requisitionId === pm.environment.get('bakedBreadRequisitionId'); })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Project Purchase Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/purchase-orders",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "purchase-orders"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Project purchase orders list includes bread PO', function () { pm.expect(body.data.some(function (row) { return row.poId === pm.environment.get('bakedBreadPoId'); })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Issue Flour To Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadFlourSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"issue\",\n  \"quantity\": 1,\n  \"reason\": \"Consume flour for bread batch\",\n  \"referenceType\": \"bom_assignment\",\n  \"referenceId\": \"{{bakedBreadAssignmentId}}\",\n  \"projectId\": \"{{bakedBreadProjectId}}\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-flour-issue\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Flour issue posts 10 AED to project', function () { pm.expect(Math.abs(Number(pm.response.json().total_cost))).to.eql(10); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Issue Salt To Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadSaltSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"issue\",\n  \"quantity\": 1,\n  \"reason\": \"Consume salt for bread batch\",\n  \"referenceType\": \"bom_assignment\",\n  \"referenceId\": \"{{bakedBreadAssignmentId}}\",\n  \"projectId\": \"{{bakedBreadProjectId}}\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-salt-issue\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Salt issue posts 1 AED to project', function () { pm.expect(Math.abs(Number(pm.response.json().total_cost))).to.eql(1); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Issue Yeast To Project",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadYeastSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"movementType\": \"issue\",\n  \"quantity\": 10,\n  \"reason\": \"Consume yeast for bread batch\",\n  \"referenceType\": \"bom_assignment\",\n  \"referenceId\": \"{{bakedBreadAssignmentId}}\",\n  \"projectId\": \"{{bakedBreadProjectId}}\",\n  \"correlationKey\": \"{{bakedBreadRunId}}-yeast-issue\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/movements",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "movements"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Yeast issue posts 7 AED to project', function () { pm.expect(Math.abs(Number(pm.response.json().total_cost))).to.eql(7); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Post Bread Labor Entry",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceId\": \"bread.baker\",\n  \"hours\": 2,\n  \"rate\": 12.5\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/labor-entries",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "labor-entries"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadLaborEntryId', body.data.entryId);",
+                                    "pm.test('Bread labor total is 25 AED', function () { pm.expect(Number(body.data.totalCost)).to.eql(25); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Bread Project WIP Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/wip",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "wip"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Material balance is 18 AED', function () { pm.expect(Number(body.data.wipMaterialBalance)).to.eql(18); });",
+                                    "pm.test('Labor balance is 25 AED', function () { pm.expect(Number(body.data.wipLaborBalance)).to.eql(25); });",
+                                    "pm.test('Total WIP is 43 AED', function () { pm.expect(Number(body.data.wipTotalBalance)).to.eql(43); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Bread Finished Item",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "x-actor-type",
+                                "value": "system"
+                            },
+                            {
+                                "key": "x-actor-id",
+                                "value": "principal.system"
+                            },
+                            {
+                                "key": "x-actor-tier",
+                                "value": "5"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"skuId\": \"{{bakedBreadFreshBreadSkuId}}\",\n  \"organizationId\": \"{{bakedBreadOrganizationId}}\",\n  \"quantity\": 4\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/finished-items",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "finished-items"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadFinishedItemId', body.data.finishedItemId);",
+                                    "pm.test('Finished item total cost is 43 AED', function () { pm.expect(Number(body.data.totalWipCost)).to.eql(43); });",
+                                    "pm.test('Finished item unit cost is 10.75 AED', function () { pm.expect(Number(body.data.unitCost)).to.eql(10.75); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Check Fresh Bread On Hand",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inv/on-hand?skuId={{bakedBreadFreshBreadSkuId}}&organizationId={{bakedBreadOrganizationId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "inv",
+                                "on-hand?skuId={{bakedBreadFreshBreadSkuId}}&organizationId={{bakedBreadOrganizationId}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "var row = body.data[0];",
+                                    "pm.test('Fresh bread on-hand quantity is 4', function () { pm.expect(Number(row.quantity_on_hand)).to.eql(4); });",
+                                    "pm.test('Fresh bread inventory value is 43 AED', function () { pm.expect(Number(row.inventory_value)).to.eql(43); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Bread Customer",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customerName\": \"{{bakedBreadCustomerName}}\",\n  \"email\": \"bread-customer@example.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/customers",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "customers"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.environment.set('bakedBreadCustomerId', pm.response.json().customer_id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Bread Quote",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customerId\": \"{{bakedBreadCustomerId}}\",\n  \"currencyCode\": \"AED\",\n  \"legalEntityId\": \"LE-SEED-AE\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/quotes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "quotes"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.environment.set('bakedBreadQuoteId', pm.response.json().quote_id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Add Bread Quote Line",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sku\": \"{{bakedBreadFreshBreadSkuCode}}\",\n  \"quantity\": 4,\n  \"unitPrice\": 10\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/quotes/{{bakedBreadQuoteId}}/lines",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "quotes",
+                                "{{bakedBreadQuoteId}}",
+                                "lines"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('Bread quote total is 40 AED', function () { pm.expect(Number(pm.response.json().total_amount)).to.eql(40); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Send Bread Quote",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/quotes/{{bakedBreadQuoteId}}/send",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "quotes",
+                                "{{bakedBreadQuoteId}}",
+                                "send"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread quote sent', function () { pm.expect(pm.response.json().state).to.eql('Sent'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Accept Bread Quote",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/quotes/{{bakedBreadQuoteId}}/accept",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "quotes",
+                                "{{bakedBreadQuoteId}}",
+                                "accept"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread quote accepted', function () { pm.expect(pm.response.json().state).to.eql('Accepted'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Convert Bread Quote To Linked Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"legalEntityId\": \"LE-SEED-AE\",\n  \"projectId\": \"{{bakedBreadProjectId}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/quotes/{{bakedBreadQuoteId}}/convert",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "quotes",
+                                "{{bakedBreadQuoteId}}",
+                                "convert"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadOrderId', body.order_id);",
+                                    "pm.test('Order linked to project', function () { pm.expect(body.project_id).to.eql(pm.environment.get('bakedBreadProjectId')); });",
+                                    "pm.test('Bread order total is 40 AED', function () { pm.expect(Number(body.total_amount)).to.eql(40); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Project Sales Orders",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/sales-orders",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "sales-orders"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "pm.test('Project sales orders list includes bread order', function () { pm.expect(body.data.some(function (row) { return row.orderId === pm.environment.get('bakedBreadOrderId'); })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Confirm Bread Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/orders/{{bakedBreadOrderId}}/confirm",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "orders",
+                                "{{bakedBreadOrderId}}",
+                                "confirm"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread order confirmed', function () { pm.expect(pm.response.json().state).to.eql('Confirmed'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Allocate Bread Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/orders/{{bakedBreadOrderId}}/allocate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "orders",
+                                "{{bakedBreadOrderId}}",
+                                "allocate"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread order allocated', function () { pm.expect(pm.response.json().state).to.eql('Allocated'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Ship Bread Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/orders/{{bakedBreadOrderId}}/ship",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "orders",
+                                "{{bakedBreadOrderId}}",
+                                "ship"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread order shipped', function () { pm.expect(pm.response.json().state).to.eql('Shipped'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Generate Bread Invoice",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/orders/{{bakedBreadOrderId}}/generate-invoice",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "orders",
+                                "{{bakedBreadOrderId}}",
+                                "generate-invoice"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadInvoiceId', body.invoice_id);",
+                                    "pm.test('Bread invoice created in Draft', function () { pm.expect(body.state).to.eql('Draft'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Post Bread Invoice",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/invoices/{{bakedBreadInvoiceId}}/post",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "invoices",
+                                "{{bakedBreadInvoiceId}}",
+                                "post"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('Bread invoice posted', function () { pm.expect(pm.response.json().state).to.eql('Posted'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Register Bread Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"invoiceId\": \"{{bakedBreadInvoiceId}}\",\n  \"amount\": 40\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/o2c/payments",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "o2c",
+                                "payments"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                                    "var body = pm.response.json();",
+                                    "pm.environment.set('bakedBreadPaymentId', body.payment_id);",
+                                    "pm.test('Bread payment applied', function () { pm.expect(body.state).to.eql('Applied'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Baked Bread Profit Assertions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "x-api-key",
+                                "value": "{{apiKey}}"
+                            },
+                            {
+                                "key": "x-ingress-id",
+                                "value": "{{ingressId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/projects/{{bakedBreadProjectId}}/wip",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "projects",
+                                "{{bakedBreadProjectId}}",
+                                "wip"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                                    "var body = pm.response.json();",
+                                    "var totalCost = Number(body.data.wipTotalBalance);",
+                                    "var loaves = Number(pm.environment.get('bakedBreadLoafQty'));",
+                                    "var loafPrice = Number(pm.environment.get('bakedBreadLoafUnitPrice'));",
+                                    "var revenue = loaves * loafPrice;",
+                                    "var unitCost = totalCost / loaves;",
+                                    "var margin = revenue - totalCost;",
+                                    "pm.test('Total cost is 43 AED', function () { pm.expect(totalCost).to.eql(43); });",
+                                    "pm.test('Revenue is 40 AED', function () { pm.expect(revenue).to.eql(40); });",
+                                    "pm.test('Cost per loaf is 10.75 AED', function () { pm.expect(unitCost).to.eql(10.75); });",
+                                    "pm.test('Gross margin is negative 3 AED', function () { pm.expect(margin).to.eql(-3); });",
+                                    "pm.test('Margin percentage is -7.5%', function () { pm.expect(Number(((margin / revenue) * 100).toFixed(2))).to.eql(-7.5); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
         }
     ],
     "event": [
@@ -10996,14 +13129,30 @@
                     "    'supplierId','requisitionId','poId','receiptId','supplierInvoiceId','apPaymentId',",
                     "    'accountId','fiscalYearId','fiscalPeriodId','journalId',",
                     "    'invSkuId','invOrganizationId','invMovementId','invIssueMovementId',",
-                    "    'bomId','projectId','projectAssignmentId','projectLaborEntryId','projectFinishedItemId','cancelledProjectId'",
+                    "    'bomId','projectId','projectAssignmentId','projectLaborEntryId','projectFinishedItemId','cancelledProjectId',",
+                    "    'bakedBreadOrganizationId','bakedBreadFlourSkuId','bakedBreadSaltSkuId','bakedBreadYeastSkuId','bakedBreadFreshBreadSkuId',",
+                    "    'bakedBreadProjectId','bakedBreadBomId','bakedBreadAssignmentId','bakedBreadSupplierId','bakedBreadRequisitionId',",
+                    "    'bakedBreadPoId','bakedBreadLaborEntryId','bakedBreadFinishedItemId','bakedBreadCustomerId','bakedBreadQuoteId',",
+                    "    'bakedBreadOrderId','bakedBreadInvoiceId','bakedBreadPaymentId'",
                     "  ].forEach(function (k) { pm.environment.unset(k); });",
                     "  var runId = String(Date.now());",
+                    "  pm.environment.set('bakedBreadRunId', runId);",
                     "  pm.environment.set('invSkuCode', 'SKU-INV-' + runId);",
                     "  pm.environment.set('invOrganizationName', 'Warehouse ' + runId);",
                     "  pm.environment.set('projectName', 'Postman Project ' + runId);",
                     "  pm.environment.set('cancelProjectName', 'Postman Cancel Project ' + runId);",
                     "  pm.environment.set('bomRevision', 'R' + runId);",
+                    "  pm.environment.set('bakedBreadOrganizationName', 'Bread Bakery ' + runId);",
+                    "  pm.environment.set('bakedBreadProjectName', 'Baked Bread Batch ' + runId);",
+                    "  pm.environment.set('bakedBreadSupplierName', 'Bread Supplier ' + runId);",
+                    "  pm.environment.set('bakedBreadCustomerName', 'Bread Customer ' + runId);",
+                    "  pm.environment.set('bakedBreadFlourSkuCode', 'SKU-BREAD-FLOUR-' + runId);",
+                    "  pm.environment.set('bakedBreadSaltSkuCode', 'SKU-BREAD-SALT-' + runId);",
+                    "  pm.environment.set('bakedBreadYeastSkuCode', 'SKU-BREAD-YEAST-' + runId);",
+                    "  pm.environment.set('bakedBreadFreshBreadSkuCode', 'SKU-BREAD-FRESH-' + runId);",
+                    "  pm.environment.set('bakedBreadBomRevision', 'BB-' + runId);",
+                    "  pm.environment.set('bakedBreadLoafQty', '4');",
+                    "  pm.environment.set('bakedBreadLoafUnitPrice', '10');",
                     "  pm.environment.set('collectionInitialized', 'true');",
                     "}"
                 ]
