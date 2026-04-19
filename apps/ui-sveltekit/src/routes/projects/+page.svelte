@@ -221,8 +221,17 @@
 	}
 
 	onMount(() => {
-		void refreshProjects();
-		void loadCreateProjectOptions();
+		const unsubscribeActor = actorStore.subscribe(() => {
+			selectedProjectId = null;
+			clearProjectStore();
+			void refreshProjects();
+			void loadCreateProjectOptions();
+		});
+
+		return () => {
+			unsubscribeActor();
+			clearProjectStore();
+		};
 	});
 
 	$: filteredProjects = applyFilters();
