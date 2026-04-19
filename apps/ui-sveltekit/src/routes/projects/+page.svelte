@@ -23,6 +23,28 @@
 		full_name?: string;
 	}
 
+	interface ProjectTableRow {
+		project_id: string;
+		name: string;
+		project_type?: string;
+		status?: string;
+		budget_amount?: number;
+		actual_cost_amount?: number;
+		default_wip_account_id?: string;
+		default_close_account_id?: string;
+		start_date?: string;
+		end_date?: string;
+		project_manager_id?: string;
+		organization_id?: string;
+		created_at?: string;
+		created_by?: string;
+		version?: number;
+		last_event_at?: string;
+		wip_material_balance?: number;
+		wip_labor_balance?: number;
+		wip_total_balance?: number;
+	}
+
 	let loading = false;
 	let errorMessage = '';
 	let successMessage = '';
@@ -94,13 +116,49 @@
 		};
 	}
 
+	function mapProjectRow(row: ProjectTableRow): Project {
+		return {
+			projectId: row.project_id,
+			name: row.name,
+			description: undefined,
+			customerId: undefined,
+			contractId: undefined,
+			wbsId: undefined,
+			projectType: (row.project_type as Project['projectType']) ?? 'Internal',
+			status: (row.status as Project['status']) ?? 'Draft',
+			budgetAmount: row.budget_amount ?? 0,
+			actualCostAmount: row.actual_cost_amount ?? 0,
+			revenueAmount: undefined,
+			defaultWIPAccountId: row.default_wip_account_id ?? 'ACCT-WIP-001',
+			defaultCloseAccountId: row.default_close_account_id ?? 'ACCT-CLOSE-001',
+			startDate: row.start_date ?? '',
+			endDate: row.end_date,
+			projectManagerId: row.project_manager_id ?? '',
+			organizationId: row.organization_id ?? '',
+			createdAt: row.created_at ?? new Date().toISOString(),
+			createdBy: row.created_by ?? 'system',
+			version: row.version ?? 1,
+			lastEventAt: row.last_event_at ?? row.created_at ?? new Date().toISOString(),
+			wipMaterialBalance: row.wip_material_balance ?? 0,
+			wipLaborBalance: row.wip_labor_balance ?? 0,
+			wipTotalBalance: row.wip_total_balance ?? 0,
+			closedFGCost: undefined,
+			closedExpenseCost: undefined
+		};
+	}
+
 	async function refreshProjects() {
 		loading = true;
 		errorMessage = '';
 		try {
 			const actor = $actorStore;
 			const response = await listProjects(actor);
-			projects = response.data;
+			projects = response.data ?? [];
+
+			if (projects.length === 0) {
+				const fallback = await queryTable<ProjectTableRow>('proj_project', actor, 500, 0);
+				projects = (fallback.data ?? []).map(mapProjectRow);
+			}
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
 		} finally {
@@ -176,7 +234,7 @@
 				defaultCloseAccountId: newProjectCloseAccountId
 			});
 
-			projects = [...projects, newProject];
+			await refreshProjects();
 			successMessage = `Project "${newProject.name}" created successfully!`;
 			showCreateForm = false;
 

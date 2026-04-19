@@ -15,6 +15,28 @@ interface DataListResponse<T> {
 	data: T[];
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function unwrapData<T>(payload: unknown): T {
+	const record = asRecord(payload);
+	if (record && 'data' in record) {
+		return record.data as T;
+	}
+
+	return payload as T;
+}
+
+function unwrapList<T>(payload: unknown): DataListResponse<T> {
+	const data = unwrapData<unknown>(payload);
+	if (Array.isArray(data)) {
+		return { data: data as T[] };
+	}
+
+	return { data: [] };
+}
+
 /**
  * Create a new project in Draft status
  */
@@ -37,8 +59,8 @@ export function createProject(
 		organizationId: string;
 	}
 ): Promise<Project> {
-	return requestHubJson<DataResponse<Project>>('/api/hub/proj', actor, 'POST', payload).then(
-		(response) => response.data
+	return requestHubJson<unknown>('/api/hub/proj', actor, 'POST', payload).then((response) =>
+		unwrapData<Project>(response)
 	);
 }
 
@@ -57,7 +79,9 @@ export function listProjects(
 		params.set('offset', String(filters.offset));
 	}
 	const suffix = params.toString() ? `?${params.toString()}` : '';
-	return requestHubJson<DataListResponse<Project>>(`/api/hub/proj${suffix}`, actor, 'GET');
+	return requestHubJson<unknown>(`/api/hub/proj${suffix}`, actor, 'GET').then((response) =>
+		unwrapList<Project>(response)
+	);
 }
 
 /**
