@@ -63,6 +63,19 @@ export const diagramCatalog: DiagramItem[] = [
     F_p2p_purchase_order ||--o{ F_p2p_supplier_invoice : billed_by
     F_p2p_supplier_invoice ||--o{ F_p2p_ap_payment : settled_by`
 	},
+    {
+        id: 'foundation-inventory',
+        title: 'Foundation Inventory Domain',
+        system: 'FoundationERP',
+        summary: 'SKU, inventory organization, on-hand balances, and movement posting.',
+        accentClass: 'border-emerald-500/40 bg-emerald-50/70',
+        definition: `erDiagram
+    F_inv_sku ||--o{ F_inv_on_hand : tracked_in
+    F_inv_organization ||--o{ F_inv_on_hand : scoped_by
+    F_inv_sku ||--o{ F_inv_movement : posted_as
+    F_inv_organization ||--o{ F_inv_movement : posted_in
+    F_inv_movement ||--o{ F_inv_on_hand : updates`
+    },
 	{
 		id: 'foundation-r2r',
 		title: 'Foundation R2R Domain',
