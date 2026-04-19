@@ -206,7 +206,7 @@ class D1,D2,D3,D4 fabric;`;
 	<p class="mt-3 text-sm text-slate-800/95">
 		Manage manufacturing projects with work-in-progress (WIP) tracking, bill of materials assignments, labor costing, and finished goods creation. Projects follow a lifecycle from Draft through Completion with full audit trail.
 	</p>
-	<div class="mt-5 grid gap-3 sm:grid-cols-2">
+	<div class="mt-5 grid gap-3 sm:grid-cols-3">
 		<a class="rounded-lg border border-lime-500/40 bg-lime-50/70 p-4 transition hover:-translate-y-0.5 hover:shadow" href={resolve('/projects')}>
 			<p class="text-sm font-semibold text-slate-900">Projects Master List</p>
 			<p class="mt-2 text-xs text-slate-700">View, create, and manage projects with filtering, dashboard KPIs, and inline detail pane.</p>
@@ -214,6 +214,10 @@ class D1,D2,D3,D4 fabric;`;
 		<a class="rounded-lg border border-emerald-500/40 bg-emerald-50/70 p-4 transition hover:-translate-y-0.5 hover:shadow" href={resolve('/dashboard')}>
 			<p class="text-sm font-semibold text-slate-900">Dashboard with Projects KPIs</p>
 			<p class="mt-2 text-xs text-slate-700">See Draft, Active, and Completed project counts on the main operational dashboard.</p>
+		</a>
+		<a class="rounded-lg border border-amber-600/40 bg-amber-50/70 p-4 transition hover:-translate-y-0.5 hover:shadow" href={resolve('/canvas/business-flows/baked-bread')}>
+			<p class="text-sm font-semibold text-slate-900">Baked Bread Profit Flow</p>
+			<p class="mt-2 text-xs text-slate-700">Walk management from recipe BOM and P2P sourcing to project conversion, inventory, and O2C fulfillment.</p>
 		</a>
 	</div>
 </section>
