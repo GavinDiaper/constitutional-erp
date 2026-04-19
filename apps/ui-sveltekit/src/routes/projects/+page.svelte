@@ -2,10 +2,26 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { createInventoryOrganization } from '$lib/api/inventory';
+	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { projectStore, projectStatusBadge, loadProject, clearProjectStore } from '$lib/stores/projectStore';
 	import { listProjects, createProject, activateProject } from '$lib/api/projects';
 	import type { Project, ProjectFilter } from '$lib/types/projects';
+
+	interface OrganizationRow {
+		organization_id: string;
+		organization_name?: string;
+		name?: string;
+	}
+
+	interface EmployeeRow {
+		employee_id: string;
+		first_name?: string;
+		last_name?: string;
+		display_name?: string;
+		full_name?: string;
+	}
 
 	let loading = false;
 	let errorMessage = '';
@@ -33,6 +49,8 @@
 	let newProjectOrganizationId = '';
 	let newProjectWIPAccountId = 'ACCT-WIP-001';
 	let newProjectCloseAccountId = 'ACCT-CLOSE-001';
+	let organizationOptions: OrganizationRow[] = [];
+	let managerOptions: EmployeeRow[] = [];
 
 	const statusOptions = ['Draft', 'Active', 'OnHold', 'Completed', 'Cancelled'];
 	const typeOptions: Array<'Internal' | 'Capital' | 'Billable' | 'Service'> = ['Internal', 'Capital', 'Billable', 'Service'];
@@ -71,11 +89,60 @@
 		}
 	}
 
+	async function loadCreateProjectOptions() {
+		try {
+			const actor = $actorStore;
+			const [organizationResponse, employeeResponse] = await Promise.all([
+				queryTable<OrganizationRow>('inv_organization', actor),
+				queryTable<EmployeeRow>('h2r_employee', actor)
+			]);
+
+			organizationOptions = organizationResponse.data ?? [];
+			managerOptions = employeeResponse.data ?? [];
+
+			if (organizationOptions.length === 0) {
+				const organization = await createInventoryOrganization(actor, {
+					name: 'Projects Default Organization'
+				});
+				organizationOptions = [
+					{
+						organization_id: organization.organization_id,
+						name: organization.name
+					}
+				];
+			}
+
+			if (!newProjectOrganizationId && organizationOptions.length > 0) {
+				newProjectOrganizationId = organizationOptions[0].organization_id;
+			}
+
+			if (!newProjectManagerId) {
+				newProjectManagerId = managerOptions[0]?.employee_id ?? actor.actorId;
+			}
+		} catch {
+			if (!newProjectManagerId) {
+				newProjectManagerId = $actorStore.actorId;
+			}
+		}
+	}
+
 	async function handleCreateProject() {
 		loading = true;
 		errorMessage = '';
 		successMessage = '';
 		try {
+			if (!newProjectName.trim()) {
+				throw new Error('Project name is required');
+			}
+
+			if (!newProjectManagerId.trim()) {
+				throw new Error('Project manager is required');
+			}
+
+			if (!newProjectOrganizationId.trim()) {
+				throw new Error('Organization is required');
+			}
+
 			const actor = $actorStore;
 			const newProject = await createProject(actor, {
 				name: newProjectName,
@@ -100,8 +167,8 @@
 			newProjectBudget = '10000';
 			newProjectStartDate = new Date().toISOString().split('T')[0];
 			newProjectEndDate = '';
-			newProjectManagerId = '';
-			newProjectOrganizationId = '';
+			newProjectManagerId = managerOptions[0]?.employee_id ?? actor.actorId;
+			newProjectOrganizationId = organizationOptions[0]?.organization_id ?? '';
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to create project';
 		} finally {
@@ -155,6 +222,7 @@
 
 	onMount(() => {
 		void refreshProjects();
+		void loadCreateProjectOptions();
 	});
 
 	$: filteredProjects = applyFilters();
@@ -253,11 +321,31 @@
 				</div>
 				<div>
 					<label for="manager" class="block text-sm font-medium mb-1">Project Manager ID</label>
-					<input id="manager" type="text" bind:value={newProjectManagerId} class="border rounded w-full px-3 py-2" placeholder="emp-001" />
+					{#if managerOptions.length > 0}
+						<select id="manager" bind:value={newProjectManagerId} class="border rounded w-full px-3 py-2">
+							{#each managerOptions as manager}
+								<option value={manager.employee_id}>
+									{manager.display_name || manager.full_name || [manager.first_name, manager.last_name].filter(Boolean).join(' ') || manager.employee_id}
+								</option>
+							{/each}
+						</select>
+					{:else}
+						<input id="manager" type="text" bind:value={newProjectManagerId} class="border rounded w-full px-3 py-2" placeholder="principal.system" />
+					{/if}
 				</div>
 				<div>
 					<label for="org" class="block text-sm font-medium mb-1">Organization ID</label>
-					<input id="org" type="text" bind:value={newProjectOrganizationId} class="border rounded w-full px-3 py-2" placeholder="org-001" />
+					{#if organizationOptions.length > 0}
+						<select id="org" bind:value={newProjectOrganizationId} class="border rounded w-full px-3 py-2">
+							{#each organizationOptions as organization}
+								<option value={organization.organization_id}>
+									{organization.organization_name || organization.name || organization.organization_id}
+								</option>
+							{/each}
+						</select>
+					{:else}
+						<input id="org" type="text" bind:value={newProjectOrganizationId} class="border rounded w-full px-3 py-2" placeholder="Select a valid organization" />
+					{/if}
 				</div>
 			</div>
 			<button

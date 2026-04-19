@@ -37,7 +37,9 @@ export function createProject(
 		organizationId: string;
 	}
 ): Promise<Project> {
-	return requestHubJson<Project>('/api/hub/proj', actor, 'POST', payload);
+	return requestHubJson<DataResponse<Project>>('/api/hub/proj', actor, 'POST', payload).then(
+		(response) => response.data
+	);
 }
 
 /**
@@ -268,7 +270,14 @@ async function requestHubJson<T>(
 		const contentType = response.headers.get('content-type') ?? '';
 		if (contentType.includes('application/json')) {
 			const problem = (await response.json()) as Record<string, unknown>;
-			const detail = typeof problem.detail === 'string' ? problem.detail : `Request failed (${response.status})`;
+			const detail =
+				typeof problem.detail === 'string'
+					? problem.detail
+					: typeof problem.error === 'string'
+						? problem.error
+						: typeof problem.message === 'string'
+							? problem.message
+							: `Request failed (${response.status})`;
 			throw new Error(detail);
 		}
 

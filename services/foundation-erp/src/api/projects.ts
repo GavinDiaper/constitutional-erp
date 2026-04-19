@@ -70,8 +70,9 @@ router.post("/", (req: Request, res: Response) => {
       message: `Project '${project.projectId}' created successfully`,
     });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
