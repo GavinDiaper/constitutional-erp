@@ -6,8 +6,14 @@
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { projectStore, projectStatusBadge, loadProject, clearProjectStore } from '$lib/stores/projectStore';
-	import { listProjects, createProject, activateProject } from '$lib/api/projects';
+	import { createProject, activateProject } from '$lib/api/projects';
 	import type { Project, ProjectFilter } from '$lib/types/projects';
+
+	export let data: {
+		initialProjects: Project[];
+		initialOrganizations: OrganizationRow[];
+		initialManagers: EmployeeRow[];
+	};
 
 	interface OrganizationRow {
 		organization_id: string;
@@ -49,7 +55,7 @@
 	let errorMessage = '';
 	let successMessage = '';
 
-	let projects: Project[] = [];
+	let projects: Project[] = data.initialProjects ?? [];
 	let selectedProjectId: string | null = null;
 
 	// Filter state
@@ -71,8 +77,8 @@
 	let newProjectOrganizationId = '';
 	let newProjectWIPAccountId = 'ACCT-WIP-001';
 	let newProjectCloseAccountId = 'ACCT-CLOSE-001';
-	let organizationOptions: OrganizationRow[] = [];
-	let managerOptions: EmployeeRow[] = [];
+	let organizationOptions: OrganizationRow[] = data.initialOrganizations ?? [];
+	let managerOptions: EmployeeRow[] = data.initialManagers ?? [];
 
 	const statusOptions = ['Draft', 'Active', 'OnHold', 'Completed', 'Cancelled'];
 	const typeOptions: Array<'Internal' | 'Capital' | 'Billable' | 'Service'> = ['Internal', 'Capital', 'Billable', 'Service'];
@@ -152,13 +158,8 @@
 		errorMessage = '';
 		try {
 			const actor = $actorStore;
-			const response = await listProjects(actor);
-			projects = response.data ?? [];
-
-			if (projects.length === 0) {
-				const fallback = await queryTable<ProjectTableRow>('proj_project', actor, 500, 0);
-				projects = (fallback.data ?? []).map(mapProjectRow);
-			}
+			const response = await queryTable<ProjectTableRow>('proj_project', actor, 500, 0);
+			projects = (response.data ?? []).map(mapProjectRow);
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to load projects';
 		} finally {
@@ -313,6 +314,12 @@
 
 	$: filteredProjects = applyFilters();
 	$: dashboardCounts = getDashboardCounts();
+	$: if (!newProjectOrganizationId && organizationOptions.length > 0) {
+		newProjectOrganizationId = organizationOptions[0].organization_id;
+	}
+	$: if (!newProjectManagerId) {
+		newProjectManagerId = managerOptions[0]?.employee_id ?? $actorStore.actorId;
+	}
 </script>
 
 <div class="container mx-auto px-4 py-8">
