@@ -1,4 +1,4 @@
-export type DomainCode = "o2c" | "p2p" | "r2r" | "h2r";
+export type DomainCode = "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "proj";
 
 export type OperationType = "create" | "update" | "transition" | "query";
 
