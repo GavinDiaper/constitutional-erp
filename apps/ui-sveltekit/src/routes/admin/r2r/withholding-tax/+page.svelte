@@ -26,7 +26,6 @@
 
 	onMount(() => {
 		const unsub = actorStore.subscribe(() => { void loadData(); });
-		void loadData();
 		return unsub;
 	});
 

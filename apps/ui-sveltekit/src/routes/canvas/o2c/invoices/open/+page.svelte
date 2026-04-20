@@ -14,10 +14,6 @@
 			void loadOpenInvoices();
 		});
 
-		if (openInvoices.length === 0) {
-			void loadOpenInvoices();
-		}
-
 		return () => {
 			unsubscribeActor();
 		};

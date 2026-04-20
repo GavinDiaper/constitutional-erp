@@ -56,8 +56,6 @@
 			void loadSessionData();
 		});
 
-		void loadSessionData();
-
 		return () => {
 			unsubscribeActor();
 			unsubscribePage();

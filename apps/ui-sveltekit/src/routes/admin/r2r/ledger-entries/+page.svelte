@@ -66,8 +66,6 @@
 			void loadEntries();
 		});
 
-		void loadEntries();
-
 		return () => {
 			unsubscribeActor();
 		};

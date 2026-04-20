@@ -23,10 +23,6 @@
 			void loadOpenOrders();
 		});
 
-		if (openOrders.length === 0) {
-			void loadOpenOrders();
-		}
-
 		return () => {
 			unsubscribeActor();
 		};

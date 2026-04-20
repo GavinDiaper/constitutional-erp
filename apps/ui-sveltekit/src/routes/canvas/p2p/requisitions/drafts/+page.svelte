@@ -22,8 +22,6 @@
 			void loadDraftRequisitions();
 		});
 
-		void loadDraftRequisitions();
-
 		return () => {
 			unsubscribeActor();
 		};

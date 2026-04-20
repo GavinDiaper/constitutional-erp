@@ -22,8 +22,6 @@
 			void loadSessions();
 		});
 
-		void loadSessions();
-
 		return () => {
 			unsubscribeActor();
 		};

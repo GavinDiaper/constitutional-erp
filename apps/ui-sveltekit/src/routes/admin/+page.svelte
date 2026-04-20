@@ -40,8 +40,6 @@
 			void loadSankeyData();
 		});
 
-		void loadSankeyData();
-
 		return () => {
 			unsubscribeActor();
 		};

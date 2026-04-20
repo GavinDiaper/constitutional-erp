@@ -99,8 +99,6 @@
 			void loadProcess();
 		});
 
-		void loadProcess();
-
 		return () => {
 			unsubscribeActor();
 			unsubscribePage();

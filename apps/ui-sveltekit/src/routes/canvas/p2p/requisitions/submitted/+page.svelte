@@ -22,8 +22,6 @@
 			void loadSubmittedRequisitions();
 		});
 
-		void loadSubmittedRequisitions();
-
 		return () => {
 			unsubscribeActor();
 		};

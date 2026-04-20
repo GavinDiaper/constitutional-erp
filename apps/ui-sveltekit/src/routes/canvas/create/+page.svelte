@@ -218,8 +218,6 @@
 			void loadLookups();
 		});
 
-		void loadLookups();
-
 		return () => {
 			unsubscribeActor();
 		};

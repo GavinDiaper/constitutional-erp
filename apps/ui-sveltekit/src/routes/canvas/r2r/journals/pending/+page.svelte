@@ -20,8 +20,6 @@
 			void loadPendingJournals();
 		});
 
-		void loadPendingJournals();
-
 		return () => {
 			unsubscribeActor();
 		};

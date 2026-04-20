@@ -26,8 +26,6 @@
 			void loadActiveEmployees();
 		});
 
-		void loadActiveEmployees();
-
 		return () => {
 			unsubscribeActor();
 		};

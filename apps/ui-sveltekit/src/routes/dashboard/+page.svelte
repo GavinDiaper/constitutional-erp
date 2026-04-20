@@ -118,8 +118,6 @@
 			void loadDashboardData();
 		});
 
-		void loadDashboardData();
-
 		return () => {
 			unsubscribeActor();
 		};

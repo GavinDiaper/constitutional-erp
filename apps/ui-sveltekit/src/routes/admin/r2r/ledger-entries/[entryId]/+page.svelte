@@ -71,8 +71,6 @@
 			void loadData();
 		});
 
-		void loadData();
-
 		return () => {
 			unsubscribeActor();
 			unsubscribePage();

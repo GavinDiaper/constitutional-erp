@@ -14,10 +14,6 @@
 			void loadDraftQuotes();
 		});
 
-		if (draftQuotes.length === 0) {
-			void loadDraftQuotes();
-		}
-
 		return () => {
 			unsubscribeActor();
 		};

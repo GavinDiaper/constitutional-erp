@@ -22,8 +22,6 @@
 			void loadApprovedOrders();
 		});
 
-		void loadApprovedOrders();
-
 		return () => {
 			unsubscribeActor();
 		};

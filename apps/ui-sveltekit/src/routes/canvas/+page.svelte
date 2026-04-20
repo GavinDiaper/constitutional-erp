@@ -124,8 +124,6 @@
 			void loadLandingData();
 		});
 
-		void loadLandingData();
-
 		return () => {
 			unsubscribeActor();
 		};

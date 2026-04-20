@@ -22,8 +22,6 @@
 			void resetAndLoad();
 		});
 
-		void resetAndLoad();
-
 		return () => {
 			unsubscribeActor();
 		};
