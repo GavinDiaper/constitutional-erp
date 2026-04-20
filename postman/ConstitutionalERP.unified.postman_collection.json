@@ -3286,6 +3286,3060 @@
               ]
             },
             {
+              "name": "31 - R2R Financial Seeding",
+              "description": "Creates a realistic IFRS-aligned chart of accounts, FY2026 fiscal calendar (two open periods), and a set of posted journals covering opening balances, revenue, COGS, payroll, AP, depreciation and tax accrual. Run this folder once against a fresh service to populate meaningful data for all five Financial Reports tabs.",
+              "item": [
+                {
+                  "name": "Create Account – ASSET-CURRENT (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-1000-{{$timestamp}}\",\n  \"accountName\": \"Current Assets\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_current_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – ASSET-NONCURRENT (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-1500-{{$timestamp}}\",\n  \"accountName\": \"Non-Current Assets\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_noncurrent_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – LIAB-CURRENT (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-2000-{{$timestamp}}\",\n  \"accountName\": \"Current Liabilities\",\n  \"accountType\": \"Liability\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_curliab_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – LIAB-NONCURRENT (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-2500-{{$timestamp}}\",\n  \"accountName\": \"Non-Current Liabilities\",\n  \"accountType\": \"Liability\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_ncliab_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – EQUITY (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-3000-{{$timestamp}}\",\n  \"accountName\": \"Equity\",\n  \"accountType\": \"Equity\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_equity_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – REVENUE (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-4000-{{$timestamp}}\",\n  \"accountName\": \"Revenue\",\n  \"accountType\": \"Revenue\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_revenue_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – EXPENSE (parent)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-5000-{{$timestamp}}\",\n  \"accountName\": \"Expenses\",\n  \"accountType\": \"Expense\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_expense_parent\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Cash & Equivalents (FS-CASH-010)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-CASH-010-{{$timestamp}}\",\n  \"accountName\": \"Cash and Cash Equivalents\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "var body = pm.response.json();",
+                          "var id = pm.response.code === 201 ? body.account_id : body.account_id || 'FS-CASH-010';",
+                          "pm.environment.set(\"fs_cash_acct\", id || 'FS-CASH-010');"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Accounts Receivable (FS-AR-020)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-AR-020-{{$timestamp}}\",\n  \"accountName\": \"Accounts Receivable\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_ar_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Inventory (FS-INVENT-030)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-INVENT-030-{{$timestamp}}\",\n  \"accountName\": \"Finished Goods Inventory\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_inv_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – PPE (FS-PPE-050)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-PPE-050-{{$timestamp}}\",\n  \"accountName\": \"Property Plant and Equipment\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_ppe_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Accumulated Depreciation (FS-ACCDEPR-055)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-ACCDEPR-055-{{$timestamp}}\",\n  \"accountName\": \"Accumulated Depreciation\",\n  \"accountType\": \"Asset\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_accdepr_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Accounts Payable (FS-AP-200)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-AP-200-{{$timestamp}}\",\n  \"accountName\": \"Accounts Payable\",\n  \"accountType\": \"Liability\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_ap_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Income Tax Payable (FS-TAXPAY-220)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-TAXPAY-220-{{$timestamp}}\",\n  \"accountName\": \"Income Tax Payable\",\n  \"accountType\": \"Liability\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_taxpay_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Long-term Debt (FS-LTDEBT-300)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-LTDEBT-300-{{$timestamp}}\",\n  \"accountName\": \"Long-term Debt\",\n  \"accountType\": \"Liability\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_ltdebt_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Share Capital (FS-SHARECAP-400)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-SHARECAP-400-{{$timestamp}}\",\n  \"accountName\": \"Share Capital\",\n  \"accountType\": \"Equity\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_sharecap_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Retained Earnings (FS-RETAINED-410)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-RETAINED-410-{{$timestamp}}\",\n  \"accountName\": \"Retained Earnings\",\n  \"accountType\": \"Equity\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_retained_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Sales Revenue (FS-SALESREV-500)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-SALESREV-500-{{$timestamp}}\",\n  \"accountName\": \"Sales Revenue\",\n  \"accountType\": \"Revenue\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_salesrev_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – COGS (FS-COGS-600)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-COGS-600-{{$timestamp}}\",\n  \"accountName\": \"Cost of Goods Sold\",\n  \"accountType\": \"Expense\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_cogs_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Salaries (FS-SALARIES-610)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-SALARIES-610-{{$timestamp}}\",\n  \"accountName\": \"Salaries and Wages\",\n  \"accountType\": \"Expense\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_salaries_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Depreciation Expense (FS-DEPREXP-630)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-DEPREXP-630-{{$timestamp}}\",\n  \"accountName\": \"Depreciation Expense\",\n  \"accountType\": \"Expense\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_deprexp_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Account – Income Tax Expense (FS-TAXEXP-650)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountCode\": \"FS-TAXEXP-650-{{$timestamp}}\",\n  \"accountName\": \"Income Tax Expense\",\n  \"accountType\": \"Expense\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/accounts",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "accounts"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) { pm.environment.set(\"fs_taxexp_acct\", pm.response.json().account_id); }"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create FY2026 Fiscal Year",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"yearLabel\": \"FY2026\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-years",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "fiscal-years"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status 201 or 409\", function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                          "if (pm.response.code === 201) {",
+                          "  pm.environment.set(\"fy2026Id\", pm.response.json().fiscal_year_id);",
+                          "  pm.test(\"FY2026 open\", function () { pm.expect(pm.response.json().state).to.eql(\"Open\"); });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Period P1 – Jan 2026",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalYearId\": \"{{fy2026Id}}\",\n  \"periodNumber\": 1,\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "fiscal-periods"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (!pm.environment.get('fy2026Id')) throw new Error('fy2026Id not set – run Create FY2026 first');"
+                        ]
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fyp1Id\", pm.response.json().fiscal_period_id);",
+                          "pm.test(\"P1 open\", function () { pm.expect(pm.response.json().state).to.eql(\"Open\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Create Period P2 – Feb 2026",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalYearId\": \"{{fy2026Id}}\",\n  \"periodNumber\": 2,\n  \"startDate\": \"2026-02-01\",\n  \"endDate\": \"2026-02-28\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/fiscal-periods",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "fiscal-periods"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fyp2Id\", pm.response.json().fiscal_period_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J1 – Create: Opening Balances",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"FY2026 Opening Balances\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j1\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J1 – Line: Cash Dr 850000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 850000,\n  \"creditAmount\": 0,\n  \"memo\": \"Opening cash balance\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j1}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J1 – Line: Share Capital Cr 500000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_sharecap_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Opening share capital\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j1}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J1 – Line: Retained Earnings Cr 350000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_retained_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 350000,\n  \"memo\": \"Opening retained earnings\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j1}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J1 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j1}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j1}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J1 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J2 – Create: PPE Opening",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"PPE Opening Balance\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j2\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J2 – Line: PPE Dr 500000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_ppe_acct}}\",\n  \"debitAmount\": 500000,\n  \"creditAmount\": 0,\n  \"memo\": \"Property plant and equipment opening\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j2}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j2}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J2 – Line: LT Debt Cr 500000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_ltdebt_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Long-term debt for PPE financing\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j2}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j2}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J2 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j2}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j2}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J2 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J3 – Create: Jan Sales",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"January Sales Revenue\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j3\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J3 – Line: AR Dr 380000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January customer revenue on account\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j3}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j3}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J3 – Line: Sales Revenue Cr 380000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_salesrev_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"January sales revenue recognised\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j3}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j3}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J3 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j3}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j3}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J3 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J4 – Create: Jan COGS",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"January Cost of Goods Sold\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j4\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J4 – Line: COGS Dr 152000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_cogs_acct}}\",\n  \"debitAmount\": 152000,\n  \"creditAmount\": 0,\n  \"memo\": \"Cost of goods sold January\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j4}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j4}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J4 – Line: Inventory Cr 152000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_inv_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 152000,\n  \"memo\": \"Inventory consumed for sales\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j4}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j4}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J4 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j4}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j4}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J4 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J5 – Create: Jan Payroll",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"January Payroll\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j5\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J5 – Line: Salaries Dr 95000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_salaries_acct}}\",\n  \"debitAmount\": 95000,\n  \"creditAmount\": 0,\n  \"memo\": \"January salaries and wages\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j5}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j5}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J5 – Line: Cash Cr 95000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 95000,\n  \"memo\": \"Cash paid for payroll\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j5}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j5}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J5 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j5}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j5}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J5 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J6 – Create: Jan Depreciation",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp1Id}}\",\n  \"description\": \"January Depreciation\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j6\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J6 – Line: Depreciation Expense Dr 8333",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_deprexp_acct}}\",\n  \"debitAmount\": 8333,\n  \"creditAmount\": 0,\n  \"memo\": \"PPE depreciation January (500000/60 months)\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j6}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j6}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J6 – Line: Accum Depreciation Cr 8333",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_accdepr_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 8333,\n  \"memo\": \"Accumulated depreciation on PPE\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j6}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j6}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 J6 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j6}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j6}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J6 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P1 – Verify Trial Balance (parity check)",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/trial-balance/{{fyp1Id}}",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "trial-balance",
+                        "{{fyp1Id}}"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "var rows = pm.response.json().data || [];",
+                          "pm.test(\"P1 trial balance has rows\", function () { pm.expect(rows.length).to.be.above(0); });",
+                          "var debit = rows.reduce(function(s, r) { return s + Number(r.debit_total || 0); }, 0);",
+                          "var credit = rows.reduce(function(s, r) { return s + Number(r.credit_total || 0); }, 0);",
+                          "pm.test(\"P1 trial balance is balanced\", function () { pm.expect(Math.round(debit * 100)).to.eql(Math.round(credit * 100)); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J7 – Create: Feb Sales",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp2Id}}\",\n  \"description\": \"February Sales Revenue\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j7\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J7 – Line: AR Dr 290000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 290000,\n  \"creditAmount\": 0,\n  \"memo\": \"February sales on account\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j7}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j7}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J7 – Line: Sales Revenue Cr 290000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_salesrev_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 290000,\n  \"memo\": \"February revenue recognised\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j7}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j7}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J7 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j7}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j7}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J7 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J8 – Create: AR Collection Feb",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp2Id}}\",\n  \"description\": \"February AR Cash Collection\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j8\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J8 – Line: Cash Dr 380000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January AR collected in February\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j8}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j8}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J8 – Line: AR Cr 380000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"AR cleared on cash receipt\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j8}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j8}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J8 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j8}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j8}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J8 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J9 – Create: Tax Accrual Feb",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"fiscalPeriodId\": \"{{fyp2Id}}\",\n  \"description\": \"February Income Tax Accrual\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });",
+                          "pm.environment.set(\"fs_j9\", pm.response.json().journal_id);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J9 – Line: Tax Expense Dr 62000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_taxexp_acct}}\",\n  \"debitAmount\": 62000,\n  \"creditAmount\": 0,\n  \"memo\": \"Estimated income tax charge Q1\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j9}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j9}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J9 – Line: Tax Payable Cr 62000",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"accountId\": \"{{fs_taxpay_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 62000,\n  \"memo\": \"Income tax liability accrued\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j9}}/lines",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j9}}",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 J9 – Post",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/journals/{{fs_j9}}/post",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "journals",
+                        "{{fs_j9}}",
+                        "post"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "pm.test(\"J9 posted\", function () { pm.expect(pm.response.json().state).to.eql(\"Posted\"); });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "P2 – Verify Trial Balance (parity + revenue check)",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "x-api-key",
+                        "value": "{{apiKey}}"
+                      },
+                      {
+                        "key": "x-ingress-id",
+                        "value": "{{ingressId}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{foundationBaseUrl}}/api/v1/r2r/trial-balance/{{fyp2Id}}",
+                      "host": [
+                        "{{foundationBaseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "r2r",
+                        "trial-balance",
+                        "{{fyp2Id}}"
+                      ]
+                    }
+                  },
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                          "var rows = pm.response.json().data || [];",
+                          "pm.test(\"P2 trial balance has rows\", function () { pm.expect(rows.length).to.be.above(0); });",
+                          "var debit = rows.reduce(function(s, r) { return s + Number(r.debit_total || 0); }, 0);",
+                          "var credit = rows.reduce(function(s, r) { return s + Number(r.credit_total || 0); }, 0);",
+                          "pm.test(\"P2 trial balance is balanced\", function () { pm.expect(Math.round(debit * 100)).to.eql(Math.round(credit * 100)); });",
+                          "var hasRev = rows.some(function(r) { return String(r.account_id) === String(pm.environment.get('fs_salesrev_acct')); });",
+                          "pm.test(\"P2 contains sales revenue account\", function () { pm.expect(hasRev).to.eql(true); });"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "name": "40 - Events",
               "item": [
                 {
