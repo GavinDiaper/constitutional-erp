@@ -174,6 +174,11 @@
 		return `${num}${dates}${state}`;
 	}
 
+	function rowKey(row: EnrichedRow, index: number, scope: string): string {
+		const base = row.trial_balance_row_id || row.account_id || 'row';
+		return `${scope}:${base}:${index}`;
+	}
+
 	// ── Derived data ──────────────────────────────────────────────────────────
 
 	$: accountMap = new Map<string, AccountRow>(accounts.map((a) => [a.account_id, a]));
@@ -349,7 +354,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each visibleRows as row (row.trial_balance_row_id)}
+							{#each visibleRows as row, i (rowKey(row, i, 'tb-visible'))}
 								<tr class="border-b dark:border-white/10 border-slate-200 dark:hover:bg-white/5 hover:bg-slate-50">
 									<td class="px-3 py-2 font-mono text-xs">{row.account_code}</td>
 									<td class="px-3 py-2">{row.account_name}</td>
@@ -423,7 +428,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each assetRows as r (r.trial_balance_row_id)}
+								{#each assetRows as r, i (rowKey(r, i, 'sfp-asset'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2">
 											<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
@@ -453,7 +458,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each liabilityRows as r (r.trial_balance_row_id)}
+								{#each liabilityRows as r, i (rowKey(r, i, 'sfp-liability'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2">
 											<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
@@ -474,7 +479,7 @@
 						<h3 class="mb-2 mt-5 text-sm font-semibold uppercase tracking-wider dark:text-white/70 text-slate-600">Equity</h3>
 						<table class="min-w-full text-sm">
 							<tbody>
-								{#each equityRows as r (r.trial_balance_row_id)}
+								{#each equityRows as r, i (rowKey(r, i, 'sfp-equity'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2">
 											<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
@@ -534,7 +539,7 @@
 						<h3 class="mb-2 border-b dark:border-white/15 border-slate-200 pb-1 text-sm font-semibold uppercase tracking-wider dark:text-emerald-400 text-emerald-600">Revenue</h3>
 						<table class="min-w-full text-sm">
 							<tbody>
-								{#each revenueRows as r (r.trial_balance_row_id)}
+								{#each revenueRows as r, i (rowKey(r, i, 'sopl-revenue'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2">
 											<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
@@ -558,7 +563,7 @@
 						<h3 class="mb-2 border-b dark:border-white/15 border-slate-200 pb-1 text-sm font-semibold uppercase tracking-wider dark:text-red-400 text-red-600">Expenses</h3>
 						<table class="min-w-full text-sm">
 							<tbody>
-								{#each expenseRows as r (r.trial_balance_row_id)}
+								{#each expenseRows as r, i (rowKey(r, i, 'sopl-expense'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2">
 											<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
@@ -610,13 +615,13 @@
 									<td class="px-2 py-2">Net income for the period</td>
 									<td class="px-2 py-2 text-right tabular-nums">{fmt(netIncome)}</td>
 								</tr>
-								{#each expenseRows.filter(r => r.account_name.toLowerCase().includes('depreciation') || r.account_code.toLowerCase().includes('depr')) as r (r.trial_balance_row_id)}
+								{#each expenseRows.filter(r => r.account_name.toLowerCase().includes('depreciation') || r.account_code.toLowerCase().includes('depr')) as r, i (rowKey(r, i, 'scf-depr'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2 dark:text-white/70 text-slate-600">Add: Depreciation ({r.account_name})</td>
 										<td class="px-2 py-2 text-right tabular-nums">{fmt(r.net)}</td>
 									</tr>
 								{/each}
-								{#each liabilityRows as r (r.trial_balance_row_id)}
+								{#each liabilityRows as r, i (rowKey(r, i, 'scf-liability'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2 dark:text-white/70 text-slate-600">Change in {r.account_name}</td>
 										<td class="px-2 py-2 text-right tabular-nums">{fmt(Math.abs(r.net))}</td>
@@ -637,7 +642,7 @@
 						<h3 class="mb-2 border-b dark:border-white/15 border-slate-200 pb-1 text-sm font-semibold uppercase tracking-wider dark:text-white/70 text-slate-600">Investing Activities</h3>
 						<table class="min-w-full text-sm">
 							<tbody>
-								{#each assetRows.filter(r => r.account_name.toLowerCase().includes('ppe') || r.account_name.toLowerCase().includes('property') || r.account_name.toLowerCase().includes('equipment') || r.account_code.toLowerCase().includes('ppe')) as r (r.trial_balance_row_id)}
+								{#each assetRows.filter(r => r.account_name.toLowerCase().includes('ppe') || r.account_name.toLowerCase().includes('property') || r.account_name.toLowerCase().includes('equipment') || r.account_code.toLowerCase().includes('ppe')) as r, i (rowKey(r, i, 'scf-ppe'))}
 									<tr class="border-b dark:border-white/10 border-slate-100">
 										<td class="px-2 py-2 dark:text-white/70 text-slate-600">Capital expenditure – {r.account_name}</td>
 										<td class="px-2 py-2 text-right tabular-nums">{fmt(-r.net)}</td>
@@ -661,7 +666,7 @@
 						{:else}
 							<table class="min-w-full text-sm">
 								<tbody>
-									{#each equityRows as r (r.trial_balance_row_id)}
+									{#each equityRows as r, i (rowKey(r, i, 'scf-equity'))}
 										<tr class="border-b dark:border-white/10 border-slate-100">
 											<td class="px-2 py-2 dark:text-white/70 text-slate-600">Capital contribution – {r.account_name}</td>
 											<td class="px-2 py-2 text-right tabular-nums">{fmt(Math.abs(r.net))}</td>
@@ -678,7 +683,7 @@
 							<span class="font-semibold">Net movement in cash (period)</span>
 							<span class="tabular-nums font-semibold">{fmt(netCashMovement)}</span>
 						</div>
-						{#each cashRows as r (r.trial_balance_row_id)}
+						{#each cashRows as r, i (rowKey(r, i, 'scf-cash'))}
 							<div class="mt-1 flex items-center justify-between text-xs dark:text-white/60 text-slate-500">
 								<span>{r.account_name}</span>
 								<span class="tabular-nums">{fmt(r.net)}</span>
@@ -712,7 +717,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each equityRows as r (r.trial_balance_row_id)}
+							{#each equityRows as r, i (rowKey(r, i, 'sce-equity'))}
 								<tr class="border-b dark:border-white/10 border-slate-100">
 									<td class="px-3 py-2">
 										<span class="text-xs font-mono dark:text-white/50 text-slate-400">{r.account_code}</span>
