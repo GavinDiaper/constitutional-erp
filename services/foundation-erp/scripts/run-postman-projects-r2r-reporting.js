@@ -16,6 +16,13 @@ const serviceRoot = resolve(__dirname, "..");
 
 mkdirSync("reports/newman", { recursive: true });
 
+// Pre-step folders: tax configuration setup (run first)
+const FOLDER_R2R_TAX_CONFIG = "31 - R2R Tax Config";
+const FOLDER_O2C_UAE_VAT = "11 - O2C Flow UAE VAT (VAT5)";
+const FOLDER_P2P_UAE_VAT = "21 - P2P Flow UAE VAT (VAT5)";
+const FOLDER_P2P_UAE_RC = "22 - P2P Flow UAE Reverse Charge (RC5)";
+
+// Main test folders (run after tax config)
 const FOLDER_R2R_SEEDING = "31 - R2R Financial Seeding";
 const FOLDER_PROJECTS_FLOW = "41 - Projects Flow";
 
@@ -183,6 +190,16 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       "postman/FoundationERP.postman_collection.json",
       "-e",
       "postman/FoundationERP.local.postman_environment.json",
+      // Pre-step: tax configuration setup
+      "--folder",
+      FOLDER_R2R_TAX_CONFIG,
+      "--folder",
+      FOLDER_O2C_UAE_VAT,
+      "--folder",
+      FOLDER_P2P_UAE_VAT,
+      "--folder",
+      FOLDER_P2P_UAE_RC,
+      // Main test folders
       "--folder",
       FOLDER_R2R_SEEDING,
       "--folder",
