@@ -11,6 +11,7 @@ This directory centralizes Newman execution for all ConstitutionalERP components
   - `postman\\newman\\run-all.cmd`
 - Run a single component:
   - `postman\\newman\\run-foundationerp.cmd`
+  - `postman\\newman\\run-foundation-projects-r2r-reporting.cmd`
   - `postman\\newman\\run-authority-engine.cmd`
   - `postman\\newman\\run-governance-engine.cmd`
   - `postman\\newman\\run-mesh-gateway.cmd`
@@ -33,6 +34,7 @@ Use the unified Node runner directly:
 
 - `node postman/newman/run-newman.js all`
 - `node postman/newman/run-newman.js foundation`
+- `node postman/newman/run-newman.js foundation-projects-r2r-reporting`
 - `node postman/newman/run-newman.js authority`
 - `node postman/newman/run-newman.js governance`
 - `node postman/newman/run-newman.js mesh`
@@ -43,6 +45,17 @@ Use the unified Node runner directly:
 - `node postman/newman/run-newman.js mesh-all`
 
 Each target executes the component's existing npm Newman script in its own project directory.
+
+## Focused FoundationERP Data Set
+
+Use the focused FoundationERP runner when you want a smaller, more meaningful dataset:
+
+- Runs only `31 - R2R Financial Seeding` and `41 - Projects Flow`
+- Bootstraps minimal inventory prerequisites for the Projects flow
+- Applies clearer project and organization naming
+- Exports reports to:
+  - `services/foundation-erp/reports/newman/projects-r2r-reporting.results.json`
+  - `services/foundation-erp/reports/newman/projects-r2r-reporting.results.xml`
 
 ## End-to-End Sequence
 

@@ -13,7 +13,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
     "test:integration": "node scripts/run-integration-tests.js",
-    "test:postman": "node scripts/run-postman.js"
+    "test:postman": "node scripts/run-postman.js",
+    "test:postman:projects-r2r-reporting": "node scripts/run-postman-projects-r2r-reporting.js"
   },
   "engines": {
     "node": ">=20"

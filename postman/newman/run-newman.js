@@ -11,6 +11,11 @@ const targets = {
     cwd: path.join(root, "services", "foundation-erp"),
     npmScript: "test:postman"
   },
+  "foundation-projects-r2r-reporting": {
+    label: "FoundationERP Projects + R2R Reporting",
+    cwd: path.join(root, "services", "foundation-erp"),
+    npmScript: "test:postman:projects-r2r-reporting"
+  },
   authority: {
     label: "Authority Engine",
     cwd: path.join(root, "services", "authority-engine"),
@@ -76,6 +81,7 @@ function printHelp() {
   console.log("");
   console.log("Targets:");
   console.log("  foundation     Run FoundationERP postman suite");
+  console.log("  foundation-projects-r2r-reporting Run focused FoundationERP projects + R2R reporting suite");
   console.log("  authority      Run Authority Engine postman suite");
   console.log("  governance     Run Governance Engine postman suite");
   console.log("  mesh           Run Mesh Gateway postman suite");
