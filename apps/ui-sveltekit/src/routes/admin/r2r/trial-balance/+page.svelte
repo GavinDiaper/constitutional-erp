@@ -68,7 +68,8 @@
 		const unsubscribeActor = actorStore.subscribe(() => {
 			void loadPageData();
 		});
-		void loadPageData();
+		// actorStore.subscribe invokes immediately with current value,
+		// so this yields a single initial load and avoids duplicate races.
 		return unsubscribeActor;
 	});
 
