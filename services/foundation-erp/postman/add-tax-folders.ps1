@@ -502,9 +502,12 @@ $t21 = @(
 
   PostReq "Convert UAE Requisition To PO" `
     '{"supplierId":"{{uaeSupplierId}}"}' `
-    (Url "{{baseUrl}}/api/v1/p2p/requisitions/{{uaeReqId}}/convert-to-po" @("api","v1","p2p","requisitions","{{uaeReqId}}","convert-to-po")) @(
+    (Url "{{baseUrl}}/api/v1/p2p/requisitions/{{uaeReqId}}/convert" @("api","v1","p2p","requisitions","{{uaeReqId}}","convert")) @(
       'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
-      'pm.environment.set("uaePoId", pm.response.json().purchase_order_id);'
+      'var body = pm.response.json();'
+      'var poId = body.po_id || body.purchase_order_id;'
+      'pm.environment.set("uaePoId", poId);'
+      'pm.test("UAE PO created", function () { pm.expect(poId).to.be.a("string").and.not.empty; });'
     )
 
   PostNoBody "Approve UAE PO" `
@@ -648,9 +651,12 @@ $t22 = @(
 
   PostReq "Convert RC Requisition To PO" `
     '{"supplierId":"{{rcSupplierId}}"}' `
-    (Url "{{baseUrl}}/api/v1/p2p/requisitions/{{rcReqId}}/convert-to-po" @("api","v1","p2p","requisitions","{{rcReqId}}","convert-to-po")) @(
+    (Url "{{baseUrl}}/api/v1/p2p/requisitions/{{rcReqId}}/convert" @("api","v1","p2p","requisitions","{{rcReqId}}","convert")) @(
       'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
-      'pm.environment.set("rcPoId", pm.response.json().purchase_order_id);'
+      'var body = pm.response.json();'
+      'var poId = body.po_id || body.purchase_order_id;'
+      'pm.environment.set("rcPoId", poId);'
+      'pm.test("RC PO created", function () { pm.expect(poId).to.be.a("string").and.not.empty; });'
     )
 
   PostNoBody "Approve RC PO" `
@@ -687,8 +693,8 @@ $t22 = @(
       'var body = pm.response.json();'
       'pm.environment.set("rcSupplierInvoiceId", body.supplier_invoice_id);'
       'pm.test("RC invoice draft", function () { pm.expect(body.state).to.eql("Draft"); });'
-      'pm.test("amount_due equals base (RC does not gross-up AP amount)", function () {'
-      '  pm.expect(parseFloat(body.amount_due)).to.be.closeTo(8000, 1);'
+      'pm.test("amount_due includes 5% RC tax (8000 base => 8400)", function () {'
+      '  pm.expect(parseFloat(body.amount_due)).to.be.closeTo(8400, 1);'
       '});'
     )
 

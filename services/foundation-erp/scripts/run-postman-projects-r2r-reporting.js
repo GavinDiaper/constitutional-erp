@@ -213,6 +213,7 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       "reports/newman/projects-r2r-reporting.results.json",
       "--reporter-junit-export",
       "reports/newman/projects-r2r-reporting.results.xml",
+      "--disable-unicode",
       "--bail"
     ];
 
@@ -238,9 +239,23 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       args.push("--env-var", `${key}=${value}`);
     });
 
-    execFileSync(cmd, args, { stdio: "inherit" });
+    const output = execFileSync(cmd, args, {
+      stdio: "pipe",
+      encoding: "utf8",
+      maxBuffer: 20 * 1024 * 1024
+    });
+
+    if (output) {
+      process.stdout.write(output);
+    }
   })
   .catch((error) => {
+    if (error?.stdout) {
+      process.stdout.write(error.stdout);
+    }
+    if (error?.stderr) {
+      process.stderr.write(error.stderr);
+    }
     console.error(`Focused Postman run failed: ${error.message}`);
     process.exit(1);
   });
