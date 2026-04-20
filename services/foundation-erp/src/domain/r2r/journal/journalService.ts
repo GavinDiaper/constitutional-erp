@@ -270,20 +270,49 @@ export function cancelJournal(journalId: string, actor?: EventActor) {
 }
 
 export function getTrialBalance(fiscalPeriodId: string) {
-  getFiscalPeriodById(fiscalPeriodId);
+  const period = getFiscalPeriodById(fiscalPeriodId);
 
+  // Get the fiscal year to find prior periods
+  const fiscalYear = db
+    .prepare("SELECT * FROM r2r_fiscal_year WHERE fiscal_year_id = ?")
+    .get(period.fiscal_year_id) as { fiscal_year_id: string; year_label: string; start_date: string; end_date: string } | undefined;
+
+  if (!fiscalYear) {
+    throw new Error("Fiscal year not found for period");
+  }
+
+  // Query includes:
+  // 1. Opening balance from period 0 (year-opening) if it exists for this fiscal year
+  // 2. All periods BEFORE the current period in the same fiscal year
+  // 3. ALL periods from prior fiscal years (to get historic carry-forward)
   const rows = db
     .prepare(
       `SELECT
-         account_id,
-         SUM(debit_amount) AS debit_total,
-         SUM(credit_amount) AS credit_total
+         le.account_id,
+         SUM(le.debit_amount) AS debit_total,
+         SUM(le.credit_amount) AS credit_total
        FROM r2r_ledger_entry le
        JOIN r2r_journal j ON j.journal_id = le.journal_id
-       WHERE j.fiscal_period_id = ?
-       GROUP BY account_id`
+       JOIN r2r_fiscal_period fp ON fp.fiscal_period_id = j.fiscal_period_id
+       JOIN r2r_fiscal_year fy ON fy.fiscal_year_id = fp.fiscal_year_id
+       WHERE (
+         -- Include this period's entries
+         j.fiscal_period_id = ?
+         OR
+         -- Include prior periods in the same fiscal year
+         (fp.fiscal_year_id = ? AND fp.period_number < (SELECT period_number FROM r2r_fiscal_period WHERE fiscal_period_id = ?))
+         OR
+         -- Include all periods from prior fiscal years (brought-forward logic)
+         fy.end_date < ?
+       )
+       GROUP BY le.account_id`
     )
-    .all(fiscalPeriodId) as Array<{
+    .all(
+      fiscalPeriodId,
+      period.fiscal_year_id,
+      fiscalPeriodId,
+      fiscalYear.start_date
+    ) as Array<{
       account_id: string;
       debit_total: number;
       credit_total: number;
