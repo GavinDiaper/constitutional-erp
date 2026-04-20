@@ -3290,7 +3290,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-1000\",\n  \"accountName\": \"Current Assets\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-1000-{{$timestamp}}\",\n  \"accountName\": \"Current Assets\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3307,7 +3307,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-1500\",\n  \"accountName\": \"Non-Current Assets\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-1500-{{$timestamp}}\",\n  \"accountName\": \"Non-Current Assets\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3324,7 +3324,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-2000\",\n  \"accountName\": \"Current Liabilities\",\n  \"accountType\": \"Liability\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-2000-{{$timestamp}}\",\n  \"accountName\": \"Current Liabilities\",\n  \"accountType\": \"Liability\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3341,7 +3341,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-2500\",\n  \"accountName\": \"Non-Current Liabilities\",\n  \"accountType\": \"Liability\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-2500-{{$timestamp}}\",\n  \"accountName\": \"Non-Current Liabilities\",\n  \"accountType\": \"Liability\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3358,7 +3358,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-3000\",\n  \"accountName\": \"Equity\",\n  \"accountType\": \"Equity\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-3000-{{$timestamp}}\",\n  \"accountName\": \"Equity\",\n  \"accountType\": \"Equity\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3375,7 +3375,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-4000\",\n  \"accountName\": \"Revenue\",\n  \"accountType\": \"Revenue\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-4000-{{$timestamp}}\",\n  \"accountName\": \"Revenue\",\n  \"accountType\": \"Revenue\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3392,7 +3392,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-5000\",\n  \"accountName\": \"Expenses\",\n  \"accountType\": \"Expense\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-5000-{{$timestamp}}\",\n  \"accountName\": \"Expenses\",\n  \"accountType\": \"Expense\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3409,7 +3409,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-CASH-010\",\n  \"accountName\": \"Cash and Cash Equivalents\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-CASH-010-{{$timestamp}}\",\n  \"accountName\": \"Cash and Cash Equivalents\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3428,7 +3428,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-AR-020\",\n  \"accountName\": \"Accounts Receivable\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-AR-020-{{$timestamp}}\",\n  \"accountName\": \"Accounts Receivable\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3445,7 +3445,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-INVENT-030\",\n  \"accountName\": \"Finished Goods Inventory\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-INVENT-030-{{$timestamp}}\",\n  \"accountName\": \"Finished Goods Inventory\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3462,7 +3462,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-PPE-050\",\n  \"accountName\": \"Property Plant and Equipment\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-PPE-050-{{$timestamp}}\",\n  \"accountName\": \"Property Plant and Equipment\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3479,7 +3479,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-ACCDEPR-055\",\n  \"accountName\": \"Accumulated Depreciation\",\n  \"accountType\": \"Asset\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-ACCDEPR-055-{{$timestamp}}\",\n  \"accountName\": \"Accumulated Depreciation\",\n  \"accountType\": \"Asset\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3496,7 +3496,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-AP-200\",\n  \"accountName\": \"Accounts Payable\",\n  \"accountType\": \"Liability\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-AP-200-{{$timestamp}}\",\n  \"accountName\": \"Accounts Payable\",\n  \"accountType\": \"Liability\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3513,7 +3513,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-TAXPAY-220\",\n  \"accountName\": \"Income Tax Payable\",\n  \"accountType\": \"Liability\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-TAXPAY-220-{{$timestamp}}\",\n  \"accountName\": \"Income Tax Payable\",\n  \"accountType\": \"Liability\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3530,7 +3530,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-LTDEBT-300\",\n  \"accountName\": \"Long-term Debt\",\n  \"accountType\": \"Liability\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-LTDEBT-300-{{$timestamp}}\",\n  \"accountName\": \"Long-term Debt\",\n  \"accountType\": \"Liability\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3547,7 +3547,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SHARECAP-400\",\n  \"accountName\": \"Share Capital\",\n  \"accountType\": \"Equity\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SHARECAP-400-{{$timestamp}}\",\n  \"accountName\": \"Share Capital\",\n  \"accountType\": \"Equity\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3564,7 +3564,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-RETAINED-410\",\n  \"accountName\": \"Retained Earnings\",\n  \"accountType\": \"Equity\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-RETAINED-410-{{$timestamp}}\",\n  \"accountName\": \"Retained Earnings\",\n  \"accountType\": \"Equity\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3581,7 +3581,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SALESREV-500\",\n  \"accountName\": \"Sales Revenue\",\n  \"accountType\": \"Revenue\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SALESREV-500-{{$timestamp}}\",\n  \"accountName\": \"Sales Revenue\",\n  \"accountType\": \"Revenue\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3598,7 +3598,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-COGS-600\",\n  \"accountName\": \"Cost of Goods Sold\",\n  \"accountType\": \"Expense\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-COGS-600-{{$timestamp}}\",\n  \"accountName\": \"Cost of Goods Sold\",\n  \"accountType\": \"Expense\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3615,7 +3615,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SALARIES-610\",\n  \"accountName\": \"Salaries and Wages\",\n  \"accountType\": \"Expense\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-SALARIES-610-{{$timestamp}}\",\n  \"accountName\": \"Salaries and Wages\",\n  \"accountType\": \"Expense\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3632,7 +3632,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-DEPREXP-630\",\n  \"accountName\": \"Depreciation Expense\",\n  \"accountType\": \"Expense\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-DEPREXP-630-{{$timestamp}}\",\n  \"accountName\": \"Depreciation Expense\",\n  \"accountType\": \"Expense\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3649,7 +3649,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-TAXEXP-650\",\n  \"accountName\": \"Income Tax Expense\",\n  \"accountType\": \"Expense\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountCode\": \"FS-TAXEXP-650-{{$timestamp}}\",\n  \"accountName\": \"Income Tax Expense\",\n  \"accountType\": \"Expense\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","accounts"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
@@ -3743,7 +3743,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-CASH-010\",\n  \"debitAmount\": 850000,\n  \"creditAmount\": 0,\n  \"memo\": \"Opening cash balance\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 850000,\n  \"creditAmount\": 0,\n  \"memo\": \"Opening cash balance\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j1}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3757,7 +3757,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-SHARECAP-400\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Opening share capital\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_sharecap_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Opening share capital\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j1}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3771,7 +3771,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-RETAINED-410\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 350000,\n  \"memo\": \"Opening retained earnings\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_retained_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 350000,\n  \"memo\": \"Opening retained earnings\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j1}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j1}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3817,7 +3817,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-PPE-050\",\n  \"debitAmount\": 500000,\n  \"creditAmount\": 0,\n  \"memo\": \"Property plant and equipment opening\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_ppe_acct}}\",\n  \"debitAmount\": 500000,\n  \"creditAmount\": 0,\n  \"memo\": \"Property plant and equipment opening\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j2}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j2}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3831,7 +3831,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-LTDEBT-300\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Long-term debt for PPE financing\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_ltdebt_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 500000,\n  \"memo\": \"Long-term debt for PPE financing\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j2}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j2}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3877,7 +3877,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-AR-020\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January customer revenue on account\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January customer revenue on account\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j3}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j3}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3891,7 +3891,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-SALESREV-500\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"January sales revenue recognised\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_salesrev_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"January sales revenue recognised\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j3}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j3}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3937,7 +3937,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-COGS-600\",\n  \"debitAmount\": 152000,\n  \"creditAmount\": 0,\n  \"memo\": \"Cost of goods sold January\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_cogs_acct}}\",\n  \"debitAmount\": 152000,\n  \"creditAmount\": 0,\n  \"memo\": \"Cost of goods sold January\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j4}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j4}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3951,7 +3951,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-INVENT-030\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 152000,\n  \"memo\": \"Inventory consumed for sales\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_inv_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 152000,\n  \"memo\": \"Inventory consumed for sales\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j4}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j4}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -3997,7 +3997,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-SALARIES-610\",\n  \"debitAmount\": 95000,\n  \"creditAmount\": 0,\n  \"memo\": \"January salaries and wages\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_salaries_acct}}\",\n  \"debitAmount\": 95000,\n  \"creditAmount\": 0,\n  \"memo\": \"January salaries and wages\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j5}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j5}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4011,7 +4011,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-CASH-010\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 95000,\n  \"memo\": \"Cash paid for payroll\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 95000,\n  \"memo\": \"Cash paid for payroll\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j5}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j5}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4057,7 +4057,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-DEPREXP-630\",\n  \"debitAmount\": 8333,\n  \"creditAmount\": 0,\n  \"memo\": \"PPE depreciation January (500000/60 months)\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_deprexp_acct}}\",\n  \"debitAmount\": 8333,\n  \"creditAmount\": 0,\n  \"memo\": \"PPE depreciation January (500000/60 months)\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j6}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j6}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4071,7 +4071,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-ACCDEPR-055\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 8333,\n  \"memo\": \"Accumulated depreciation on PPE\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_accdepr_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 8333,\n  \"memo\": \"Accumulated depreciation on PPE\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j6}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j6}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4136,7 +4136,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-AR-020\",\n  \"debitAmount\": 290000,\n  \"creditAmount\": 0,\n  \"memo\": \"February sales on account\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 290000,\n  \"creditAmount\": 0,\n  \"memo\": \"February sales on account\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j7}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j7}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4150,7 +4150,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-SALESREV-500\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 290000,\n  \"memo\": \"February revenue recognised\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_salesrev_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 290000,\n  \"memo\": \"February revenue recognised\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j7}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j7}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4196,7 +4196,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-CASH-010\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January AR collected in February\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_cash_acct}}\",\n  \"debitAmount\": 380000,\n  \"creditAmount\": 0,\n  \"memo\": \"January AR collected in February\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j8}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j8}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4210,7 +4210,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-AR-020\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"AR cleared on cash receipt\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_ar_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 380000,\n  \"memo\": \"AR cleared on cash receipt\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j8}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j8}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4256,7 +4256,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-TAXEXP-650\",\n  \"debitAmount\": 62000,\n  \"creditAmount\": 0,\n  \"memo\": \"Estimated income tax charge Q1\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_taxexp_acct}}\",\n  \"debitAmount\": 62000,\n  \"creditAmount\": 0,\n  \"memo\": \"Estimated income tax charge Q1\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j9}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j9}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4270,7 +4270,7 @@
                             { "key": "x-ingress-id", "value": "{{ingressId}}" },
                             { "key": "Content-Type", "value": "application/json" }
                         ],
-                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"FS-TAXPAY-220\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 62000,\n  \"memo\": \"Income tax liability accrued\"\n}" },
+                        "body": { "mode": "raw", "raw": "{\n  \"accountId\": \"{{fs_taxpay_acct}}\",\n  \"debitAmount\": 0,\n  \"creditAmount\": 62000,\n  \"memo\": \"Income tax liability accrued\"\n}" },
                         "url": { "raw": "{{baseUrl}}/api/v1/r2r/journals/{{fs_j9}}/lines", "host": ["{{baseUrl}}"], "path": ["api","v1","r2r","journals","{{fs_j9}}","lines"] }
                     },
                     "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Status is 201\", function () { pm.response.to.have.status(201); });"]}}]
@@ -4307,7 +4307,7 @@
                         "var debit = rows.reduce(function(s, r) { return s + Number(r.debit_total || 0); }, 0);",
                         "var credit = rows.reduce(function(s, r) { return s + Number(r.credit_total || 0); }, 0);",
                         "pm.test(\"P2 trial balance is balanced\", function () { pm.expect(Math.round(debit * 100)).to.eql(Math.round(credit * 100)); });",
-                        "var hasRev = rows.some(function(r) { return String(r.account_id).indexOf('SALESREV') !== -1; });",
+                        "var hasRev = rows.some(function(r) { return String(r.account_id) === String(pm.environment.get('fs_salesrev_acct')); });",
                         "pm.test(\"P2 contains sales revenue account\", function () { pm.expect(hasRev).to.eql(true); });"
                     ]}}]
                 }

@@ -234,6 +234,40 @@ function Test-UiIdentityAuthSmoke {
   }
 }
 
+function Get-DbBackedComposeServices {
+  return @(
+    "foundation-erp",
+    "authority-engine",
+    "governance-engine",
+    "mesh-gateway",
+    "event-processor",
+    "process-graph",
+    "user-identity",
+    "navigator-ai"
+  )
+}
+
+function Reset-DockerServiceDatabases {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$DockerCommand,
+    [Parameter(Mandatory = $true)]
+    [string[]]$ComposeArguments
+  )
+
+  $dbServices = Get-DbBackedComposeServices
+
+  # Stop DB-backed services so SQLite files can be removed safely.
+  & $DockerCommand @(@() + $ComposeArguments + @("stop") + $dbServices)
+
+  foreach ($service in $dbServices) {
+    $cleanupScript = "rm -f /data/*.db /data/*.db-wal /data/*.db-shm"
+    & $DockerCommand @(@() + $ComposeArguments + @("run", "--rm", "--no-deps", "--entrypoint", "/bin/sh", $service, "-c", $cleanupScript))
+  }
+
+  & $DockerCommand @(@() + $ComposeArguments + @("up", "-d") + $dbServices)
+}
+
 $docker = Get-DockerCommand
 $composeArgs = @("compose", "-f", $ComposeFile)
 if (Test-Path $ComposeEnvFile) {
@@ -257,6 +291,12 @@ try {
     }
     $upArgs += @("-d")
     & $docker @upArgs
+  }
+
+  if (-not $SkipPostman) {
+    Invoke-Stage -Name "Reset DB-backed service databases" -Action {
+      Reset-DockerServiceDatabases -DockerCommand $docker -ComposeArguments $composeArgs
+    }
   }
 
   if (-not $SkipHealthCheck) {
