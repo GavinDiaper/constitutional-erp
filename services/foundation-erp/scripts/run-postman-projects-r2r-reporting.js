@@ -17,6 +17,7 @@ const serviceRoot = resolve(__dirname, "..");
 mkdirSync("reports/newman", { recursive: true });
 
 // Pre-step folders: tax configuration setup (run first)
+const FOLDER_R2R_FY2025_CARRY_FORWARD = "30 - R2R FY2025 Carry Forward";
 const FOLDER_R2R_TAX_CONFIG = "31 - R2R Tax Config";
 const FOLDER_O2C_UAE_VAT = "11 - O2C Flow UAE VAT (VAT5)";
 const FOLDER_P2P_UAE_VAT = "21 - P2P Flow UAE VAT (VAT5)";
@@ -190,7 +191,9 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       "postman/FoundationERP.postman_collection.json",
       "-e",
       "postman/FoundationERP.local.postman_environment.json",
-      // Pre-step: tax configuration setup
+      // Pre-step: prior-year carry forward and tax configuration setup
+      "--folder",
+      FOLDER_R2R_FY2025_CARRY_FORWARD,
       "--folder",
       FOLDER_R2R_TAX_CONFIG,
       "--folder",

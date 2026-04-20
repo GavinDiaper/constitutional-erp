@@ -1,5 +1,6 @@
 # add-tax-folders.ps1
-# Adds 31-R2R Tax Config, 11-O2C UAE VAT, 21-P2P UAE VAT, 22-P2P UAE Reverse Charge
+# Adds 30-R2R FY2025 Carry Forward, 31-R2R Tax Config, 11-O2C UAE VAT,
+# 21-P2P UAE VAT, 22-P2P UAE Reverse Charge
 # folders to the FoundationERP Postman collection (and copies result to unified).
 
 param(
@@ -45,6 +46,126 @@ function PostReq([string]$name, [string]$body, [hashtable]$url, [string[]]$tests
 function PostNoBody([string]$name, [hashtable]$url, [string[]]$tests) {
   @{ name=$name; request=@{ method="POST"; header=(H); url=$url }; event=(TestScript $tests) }
 }
+
+# ─── 30 - R2R FY2025 Carry Forward ──────────────────────────────────────────
+
+$t30 = @(
+
+  GetReq "Lookup FY2025 Fiscal Year" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-years" @("api","v1","r2r","fiscal-years")) @(
+      'pm.test("Status is 200", function () { pm.response.to.have.status(200); });'
+      'var rows = pm.response.json().data || [];'
+      'var fy = rows.find(function(r){ return r.year_label === "FY2025"; });'
+      'if (fy) { pm.environment.set("fy2025Id", fy.fiscal_year_id); }'
+    )
+
+  PostReq "Create FY2025 Fiscal Year" `
+    '{"yearLabel":"FY2025","startDate":"2025-01-01","endDate":"2025-12-31"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-years" @("api","v1","r2r","fiscal-years")) @(
+      'pm.test("Status 201 or 409", function () { pm.expect([201,409]).to.include(pm.response.code); });'
+      'if (pm.response.code === 201) {'
+      '  pm.environment.set("fy2025Id", pm.response.json().fiscal_year_id);'
+      '}'
+      'pm.test("FY2025 id available", function () { pm.expect(pm.environment.get("fy2025Id")).to.exist; });'
+    )
+
+  GetReq "Lookup FY2025 Periods" `
+    (QUrl "{{baseUrl}}/api/v1/r2r/fiscal-periods?fiscalYearId={{fy2025Id}}" `
+      @("api","v1","r2r","fiscal-periods") `
+      @(@{key="fiscalYearId";value="{{fy2025Id}}"})) @(
+      'pm.test("Status is 200", function () { pm.response.to.have.status(200); });'
+      'var rows = pm.response.json().data || [];'
+      'var p1 = rows.find(function(r){ return Number(r.period_number) === 1; });'
+      'var p12 = rows.find(function(r){ return Number(r.period_number) === 12; });'
+      'if (p1) { pm.environment.set("fy25p1Id", p1.fiscal_period_id); }'
+      'if (p12) { pm.environment.set("fy25p12Id", p12.fiscal_period_id); }'
+    )
+
+  PostReq "Create FY2025 P1" `
+    '{"fiscalYearId":"{{fy2025Id}}","periodNumber":1,"startDate":"2025-01-01","endDate":"2025-01-31"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods" @("api","v1","r2r","fiscal-periods")) @(
+      'pm.test("Status 201 or 409", function () { pm.expect([201,409]).to.include(pm.response.code); });'
+      'if (pm.response.code === 201) { pm.environment.set("fy25p1Id", pm.response.json().fiscal_period_id); }'
+      'pm.test("FY2025 P1 id available", function () { pm.expect(pm.environment.get("fy25p1Id")).to.exist; });'
+    )
+
+  PostReq "Create FY2025 P12" `
+    '{"fiscalYearId":"{{fy2025Id}}","periodNumber":12,"startDate":"2025-12-01","endDate":"2025-12-31"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods" @("api","v1","r2r","fiscal-periods")) @(
+      'pm.test("Status 201 or 409", function () { pm.expect([201,409]).to.include(pm.response.code); });'
+      'if (pm.response.code === 201) { pm.environment.set("fy25p12Id", pm.response.json().fiscal_period_id); }'
+      'pm.test("FY2025 P12 id available", function () { pm.expect(pm.environment.get("fy25p12Id")).to.exist; });'
+    )
+
+  PostReq "Create FY2025 Opening Cash Account" `
+    '{"accountCode":"FY25-CASH-{{$timestamp}}","accountName":"FY2025 Opening Cash","accountType":"Asset"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/accounts" @("api","v1","r2r","accounts")) @(
+      'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
+      'pm.environment.set("fy25_cash_acct", pm.response.json().account_id);'
+    )
+
+  PostReq "Create FY2025 Opening Equity Account" `
+    '{"accountCode":"FY25-EQUITY-{{$timestamp}}","accountName":"FY2025 Opening Equity","accountType":"Equity"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/accounts" @("api","v1","r2r","accounts")) @(
+      'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
+      'pm.environment.set("fy25_equity_acct", pm.response.json().account_id);'
+    )
+
+  PostReq "FY2025 P1 Opening Journal Create" `
+    '{"fiscalPeriodId":"{{fy25p1Id}}","description":"FY2025 Opening Balances"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/journals" @("api","v1","r2r","journals")) @(
+      'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
+      'pm.environment.set("fy25_j1", pm.response.json().journal_id);'
+    )
+
+  PostReq "FY2025 P1 Line Cash Dr" `
+    '{"accountId":"{{fy25_cash_acct}}","debitAmount":500000,"creditAmount":0,"memo":"FY2025 opening cash"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/journals/{{fy25_j1}}/lines" @("api","v1","r2r","journals","{{fy25_j1}}","lines")) @(
+      'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
+    )
+
+  PostReq "FY2025 P1 Line Equity Cr" `
+    '{"accountId":"{{fy25_equity_acct}}","debitAmount":0,"creditAmount":500000,"memo":"FY2025 opening equity"}' `
+    (Url "{{baseUrl}}/api/v1/r2r/journals/{{fy25_j1}}/lines" @("api","v1","r2r","journals","{{fy25_j1}}","lines")) @(
+      'pm.test("Status is 201", function () { pm.response.to.have.status(201); });'
+    )
+
+  PostNoBody "FY2025 P1 Post Opening Journal" `
+    (Url "{{baseUrl}}/api/v1/r2r/journals/{{fy25_j1}}/post" @("api","v1","r2r","journals","{{fy25_j1}}","post")) @(
+      'pm.test("Status is 200", function () { pm.response.to.have.status(200); });'
+      'pm.test("Journal posted", function () { pm.expect(pm.response.json().state).to.eql("Posted"); });'
+    )
+
+  PostNoBody "FY2025 P1 Start Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods/{{fy25p1Id}}/start-close" @("api","v1","r2r","fiscal-periods","{{fy25p1Id}}","start-close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+
+  PostNoBody "FY2025 P1 Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods/{{fy25p1Id}}/close" @("api","v1","r2r","fiscal-periods","{{fy25p1Id}}","close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+
+  PostNoBody "FY2025 P12 Start Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods/{{fy25p12Id}}/start-close" @("api","v1","r2r","fiscal-periods","{{fy25p12Id}}","start-close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+
+  PostNoBody "FY2025 P12 Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-periods/{{fy25p12Id}}/close" @("api","v1","r2r","fiscal-periods","{{fy25p12Id}}","close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+
+  PostNoBody "FY2025 Start Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-years/{{fy2025Id}}/start-close" @("api","v1","r2r","fiscal-years","{{fy2025Id}}","start-close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+
+  PostNoBody "FY2025 Close" `
+    (Url "{{baseUrl}}/api/v1/r2r/fiscal-years/{{fy2025Id}}/close" @("api","v1","r2r","fiscal-years","{{fy2025Id}}","close")) @(
+      'pm.test("Status 200 or 409", function () { pm.expect([200,409]).to.include(pm.response.code); });'
+    )
+)
 
 # ─── 31 - R2R Tax Config ────────────────────────────────────────────────────
 
@@ -649,6 +770,7 @@ $t22 = @(
 # ─── Insert new folders ──────────────────────────────────────────────────────
 
 $newFolders = @(
+  @{ name="30 - R2R FY2025 Carry Forward";  item=$t30 }
   @{ name="31 - R2R Tax Config";             item=$t31 }
   @{ name="11 - O2C Flow UAE VAT (VAT5)";    item=$t11 }
   @{ name="21 - P2P Flow UAE VAT (VAT5)";    item=$t21 }
