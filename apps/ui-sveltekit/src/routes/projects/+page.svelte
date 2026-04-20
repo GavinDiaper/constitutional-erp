@@ -322,41 +322,41 @@
 	}
 </script>
 
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-8 text-slate-900 dark:text-white">
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold mb-2">Projects</h1>
-		<p class="text-gray-600">Manage internal manufacturing projects, WIP costing, and finished item creation.</p>
+		<p class="ui-muted">Manage internal manufacturing projects, WIP costing, and finished item creation.</p>
 	</div>
 
 	<!-- Dashboard Cards -->
 	<div class="grid grid-cols-4 gap-4 mb-8">
-		<div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+		<div class="bg-blue-50 border border-blue-200 dark:bg-blue-950/35 dark:border-blue-700 rounded-lg p-6">
 			<div class="text-3xl font-bold text-blue-600">{dashboardCounts.total}</div>
-			<div class="text-gray-600">Total Projects</div>
+			<div class="ui-muted">Total Projects</div>
 		</div>
-		<div class="bg-green-50 border border-green-200 rounded-lg p-6">
+		<div class="bg-green-50 border border-green-200 dark:bg-green-950/35 dark:border-green-700 rounded-lg p-6">
 			<div class="text-3xl font-bold text-green-600">{dashboardCounts.active}</div>
-			<div class="text-gray-600">Active</div>
+			<div class="ui-muted">Active</div>
 		</div>
-		<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+		<div class="bg-yellow-50 border border-yellow-200 dark:bg-yellow-950/35 dark:border-yellow-700 rounded-lg p-6">
 			<div class="text-3xl font-bold text-yellow-600">{dashboardCounts.draft}</div>
-			<div class="text-gray-600">Draft</div>
+			<div class="ui-muted">Draft</div>
 		</div>
-		<div class="bg-blue-100 border border-blue-300 rounded-lg p-6">
+		<div class="bg-blue-100 border border-blue-300 dark:bg-indigo-950/35 dark:border-indigo-700 rounded-lg p-6">
 			<div class="text-3xl font-bold text-blue-700">{dashboardCounts.completed}</div>
-			<div class="text-gray-600">Completed</div>
+			<div class="ui-muted">Completed</div>
 		</div>
 	</div>
 
 	<!-- Messages -->
 	{#if errorMessage}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+		<div class="bg-red-100 border border-red-400 text-red-700 dark:bg-red-950/40 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded mb-4">
 			{errorMessage}
 		</div>
 	{/if}
 
 	{#if successMessage}
-		<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+		<div class="bg-green-100 border border-green-400 text-green-700 dark:bg-green-950/40 dark:border-green-500/50 dark:text-green-200 px-4 py-3 rounded mb-4">
 			{successMessage}
 		</div>
 	{/if}
@@ -381,16 +381,16 @@
 
 	<!-- Create Project Form -->
 	{#if showCreateForm}
-		<div class="bg-gray-50 border border-gray-300 rounded-lg p-6 mb-8">
+		<div class="section-card p-6 mb-8">
 			<h2 class="text-xl font-semibold mb-4">Create New Project</h2>
 			<div class="grid grid-cols-2 gap-4">
 				<div>
 					<label for="name" class="block text-sm font-medium mb-1">Name</label>
-					<input id="name" type="text" bind:value={newProjectName} class="border rounded w-full px-3 py-2" placeholder="Project name" />
+					<input id="name" type="text" bind:value={newProjectName} class="input-base w-full" placeholder="Project name" />
 				</div>
 				<div>
 					<label for="type" class="block text-sm font-medium mb-1">Type</label>
-					<select id="type" bind:value={newProjectType} class="border rounded w-full px-3 py-2">
+					<select id="type" bind:value={newProjectType} class="input-base w-full">
 						{#each typeOptions as type}
 							<option value={type}>{type}</option>
 						{/each}
@@ -398,24 +398,24 @@
 				</div>
 				<div>
 					<label for="description" class="block text-sm font-medium mb-1">Description</label>
-					<input id="description" type="text" bind:value={newProjectDescription} class="border rounded w-full px-3 py-2" placeholder="Description (optional)" />
+					<input id="description" type="text" bind:value={newProjectDescription} class="input-base w-full" placeholder="Description (optional)" />
 				</div>
 				<div>
 					<label for="budget" class="block text-sm font-medium mb-1">Budget Amount</label>
-					<input id="budget" type="number" bind:value={newProjectBudget} class="border rounded w-full px-3 py-2" placeholder="10000" />
+					<input id="budget" type="number" bind:value={newProjectBudget} class="input-base w-full" placeholder="10000" />
 				</div>
 				<div>
 					<label for="startDate" class="block text-sm font-medium mb-1">Start Date</label>
-					<input id="startDate" type="date" bind:value={newProjectStartDate} class="border rounded w-full px-3 py-2" />
+					<input id="startDate" type="date" bind:value={newProjectStartDate} class="input-base w-full" />
 				</div>
 				<div>
 					<label for="endDate" class="block text-sm font-medium mb-1">End Date (optional)</label>
-					<input id="endDate" type="date" bind:value={newProjectEndDate} class="border rounded w-full px-3 py-2" />
+					<input id="endDate" type="date" bind:value={newProjectEndDate} class="input-base w-full" />
 				</div>
 				<div>
 					<label for="manager" class="block text-sm font-medium mb-1">Project Manager ID</label>
 					{#if managerOptions.length > 0}
-						<select id="manager" bind:value={newProjectManagerId} class="border rounded w-full px-3 py-2">
+						<select id="manager" bind:value={newProjectManagerId} class="input-base w-full">
 							{#each managerOptions as manager}
 								<option value={manager.employee_id}>
 									{manager.display_name || manager.full_name || [manager.first_name, manager.last_name].filter(Boolean).join(' ') || manager.employee_id}
@@ -423,13 +423,13 @@
 							{/each}
 						</select>
 					{:else}
-						<input id="manager" type="text" bind:value={newProjectManagerId} class="border rounded w-full px-3 py-2" placeholder="principal.system" />
+						<input id="manager" type="text" bind:value={newProjectManagerId} class="input-base w-full" placeholder="principal.system" />
 					{/if}
 				</div>
 				<div>
 					<label for="org" class="block text-sm font-medium mb-1">Organization ID</label>
 					{#if organizationOptions.length > 0}
-						<select id="org" bind:value={newProjectOrganizationId} class="border rounded w-full px-3 py-2">
+						<select id="org" bind:value={newProjectOrganizationId} class="input-base w-full">
 							{#each organizationOptions as organization}
 								<option value={organization.organization_id}>
 									{organization.organization_name || organization.name || organization.organization_id}
@@ -437,7 +437,7 @@
 							{/each}
 						</select>
 					{:else}
-						<input id="org" type="text" bind:value={newProjectOrganizationId} class="border rounded w-full px-3 py-2" placeholder="Select a valid organization" />
+						<input id="org" type="text" bind:value={newProjectOrganizationId} class="input-base w-full" placeholder="Select a valid organization" />
 					{/if}
 				</div>
 			</div>
@@ -452,40 +452,40 @@
 	{/if}
 
 	<!-- Filters -->
-	<div class="bg-gray-50 border border-gray-300 rounded-lg p-4 mb-6">
+	<div class="section-card p-4 mb-6">
 		<h3 class="text-sm font-semibold mb-3">Filters</h3>
 		<div class="grid grid-cols-5 gap-3">
-			<select bind:value={filterStatus} class="border rounded px-2 py-1 text-sm">
+			<select bind:value={filterStatus} class="input-base text-sm px-2 py-1">
 				<option value="">All Statuses</option>
 				{#each statusOptions as status}
 					<option value={status}>{status}</option>
 				{/each}
 			</select>
-			<input type="number" bind:value={filterBudgetMin} placeholder="Min Budget" class="border rounded px-2 py-1 text-sm" />
-			<input type="number" bind:value={filterBudgetMax} placeholder="Max Budget" class="border rounded px-2 py-1 text-sm" />
-			<input type="date" bind:value={filterDateFrom} class="border rounded px-2 py-1 text-sm" />
-			<input type="date" bind:value={filterDateTo} class="border rounded px-2 py-1 text-sm" />
+			<input type="number" bind:value={filterBudgetMin} placeholder="Min Budget" class="input-base text-sm px-2 py-1" />
+			<input type="number" bind:value={filterBudgetMax} placeholder="Max Budget" class="input-base text-sm px-2 py-1" />
+			<input type="date" bind:value={filterDateFrom} class="input-base text-sm px-2 py-1" />
+			<input type="date" bind:value={filterDateTo} class="input-base text-sm px-2 py-1" />
 		</div>
 	</div>
 
 	<!-- Projects Table -->
 	<div class="overflow-x-auto">
-		<table class="min-w-full border-collapse border border-gray-300">
-			<thead class="bg-gray-100">
+		<table class="min-w-full ui-table">
+			<thead>
 				<tr>
-					<th class="border border-gray-300 px-4 py-2 text-left">Name</th>
-					<th class="border border-gray-300 px-4 py-2 text-left">Type</th>
-					<th class="border border-gray-300 px-4 py-2 text-left text-center">Status</th>
-					<th class="border border-gray-300 px-4 py-2 text-right">Budget</th>
-					<th class="border border-gray-300 px-4 py-2 text-right">WIP Balance</th>
-					<th class="border border-gray-300 px-4 py-2 text-left">Start Date</th>
-					<th class="border border-gray-300 px-4 py-2 text-center">Actions</th>
+					<th class="px-4 py-2 text-left">Name</th>
+					<th class="px-4 py-2 text-left">Type</th>
+					<th class="px-4 py-2 text-left text-center">Status</th>
+					<th class="px-4 py-2 text-right">Budget</th>
+					<th class="px-4 py-2 text-right">WIP Balance</th>
+					<th class="px-4 py-2 text-left">Start Date</th>
+					<th class="px-4 py-2 text-center">Actions</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each filteredProjects as project (project.projectId)}
-					<tr class={selectedProjectId === project.projectId ? 'bg-blue-50' : 'hover:bg-gray-50 cursor-pointer'} on:click={() => navigateToProjectDetail(project.projectId)}>
-						<td class="border border-gray-300 px-4 py-2">
+					<tr class={selectedProjectId === project.projectId ? 'bg-blue-50 dark:bg-blue-950/30' : 'ui-table-row-hover cursor-pointer'} on:click={() => navigateToProjectDetail(project.projectId)}>
+						<td class="px-4 py-2">
 							<button
 								on:click|stopPropagation={() => handleSelectProject(project.projectId)}
 								class="text-blue-600 hover:underline font-medium"
@@ -493,16 +493,16 @@
 								{project.name}
 							</button>
 						</td>
-						<td class="border border-gray-300 px-4 py-2 text-sm">{project.projectType}</td>
-						<td class="border border-gray-300 px-4 py-2 text-center">
+						<td class="px-4 py-2 text-sm">{project.projectType}</td>
+						<td class="px-4 py-2 text-center">
 							<span class="px-2 py-1 rounded text-xs font-semibold {getStatusColor(project.status)}">
 								{project.status}
 							</span>
 						</td>
-						<td class="border border-gray-300 px-4 py-2 text-right">${project.budgetAmount.toFixed(2)}</td>
-						<td class="border border-gray-300 px-4 py-2 text-right">${project.wipTotalBalance.toFixed(2)}</td>
-						<td class="border border-gray-300 px-4 py-2 text-sm">{project.startDate.split('T')[0]}</td>
-						<td class="border border-gray-300 px-4 py-2 text-center" on:click|stopPropagation>
+						<td class="px-4 py-2 text-right">${project.budgetAmount.toFixed(2)}</td>
+						<td class="px-4 py-2 text-right">${project.wipTotalBalance.toFixed(2)}</td>
+						<td class="px-4 py-2 text-sm">{project.startDate.split('T')[0]}</td>
+						<td class="px-4 py-2 text-center" on:click|stopPropagation>
 							{#if project.status === 'Draft'}
 								<button
 									on:click={() => handleActivateProject(project.projectId)}
@@ -527,7 +527,7 @@
 	</div>
 
 	{#if filteredProjects.length === 0}
-		<div class="text-center py-8 text-gray-500">
+		<div class="text-center py-8 ui-muted">
 			{projects.length === 0 ? 'No projects yet. Create one to get started!' : 'No projects match your filters.'}
 		</div>
 	{/if}
@@ -536,35 +536,35 @@
 	{#if selectedProjectId && $projectStore.currentProject}
 		<div class="mt-8 border-t pt-8">
 			<h2 class="text-2xl font-bold mb-4">Project Details</h2>
-			<div class="grid grid-cols-2 gap-6 bg-gray-50 border border-gray-300 rounded-lg p-6">
+			<div class="grid grid-cols-2 gap-6 section-card p-6">
 				<div>
-					<div class="text-sm text-gray-500">Project ID</div>
+					<div class="text-sm ui-muted">Project ID</div>
 					<div class="font-semibold">{$projectStore.currentProject.projectId}</div>
 				</div>
 				<div>
-					<div class="text-sm text-gray-500">Status</div>
+					<div class="text-sm ui-muted">Status</div>
 					<div class="font-semibold {getStatusColor($projectStore.currentProject.status)}">
 						{$projectStore.currentProject.status}
 					</div>
 				</div>
 				<div>
-					<div class="text-sm text-gray-500">Budget Amount</div>
+					<div class="text-sm ui-muted">Budget Amount</div>
 					<div class="font-semibold">${$projectStore.currentProject.budgetAmount.toFixed(2)}</div>
 				</div>
 				<div>
-					<div class="text-sm text-gray-500">WIP Total Balance</div>
+					<div class="text-sm ui-muted">WIP Total Balance</div>
 					<div class="font-semibold">${$projectStore.currentProject.wipTotalBalance.toFixed(2)}</div>
 				</div>
 				<div>
-					<div class="text-sm text-gray-500">WIP Material</div>
+					<div class="text-sm ui-muted">WIP Material</div>
 					<div class="font-semibold">${$projectStore.currentProject.wipMaterialBalance.toFixed(2)}</div>
 				</div>
 				<div>
-					<div class="text-sm text-gray-500">WIP Labor</div>
+					<div class="text-sm ui-muted">WIP Labor</div>
 					<div class="font-semibold">${$projectStore.currentProject.wipLaborBalance.toFixed(2)}</div>
 				</div>
 				<div class="col-span-2">
-					<div class="text-sm text-gray-500 mb-2">Description</div>
+					<div class="text-sm ui-muted mb-2">Description</div>
 					<div class="font-semibold">{$projectStore.currentProject.description || 'N/A'}</div>
 				</div>
 			</div>
@@ -574,16 +574,16 @@
 				<div class="mt-6">
 					<h3 class="text-lg font-semibold mb-4">WIP Summary</h3>
 					<div class="grid grid-cols-3 gap-4">
-						<div class="bg-blue-50 border border-blue-200 rounded p-4">
-							<div class="text-xs text-gray-500 mb-1">Material Balance</div>
+						<div class="bg-blue-50 border border-blue-200 dark:bg-blue-950/35 dark:border-blue-700 rounded p-4">
+							<div class="text-xs ui-muted mb-1">Material Balance</div>
 							<div class="text-2xl font-bold text-blue-600">${$projectStore.wipSummary.wipMaterialBalance.toFixed(2)}</div>
 						</div>
-						<div class="bg-purple-50 border border-purple-200 rounded p-4">
-							<div class="text-xs text-gray-500 mb-1">Labor Balance</div>
+						<div class="bg-purple-50 border border-purple-200 dark:bg-purple-950/35 dark:border-purple-700 rounded p-4">
+							<div class="text-xs ui-muted mb-1">Labor Balance</div>
 							<div class="text-2xl font-bold text-purple-600">${$projectStore.wipSummary.wipLaborBalance.toFixed(2)}</div>
 						</div>
-						<div class="bg-green-50 border border-green-200 rounded p-4">
-							<div class="text-xs text-gray-500 mb-1">Total Balance</div>
+						<div class="bg-green-50 border border-green-200 dark:bg-green-950/35 dark:border-green-700 rounded p-4">
+							<div class="text-xs ui-muted mb-1">Total Balance</div>
 							<div class="text-2xl font-bold text-green-600">${$projectStore.wipSummary.wipTotalBalance.toFixed(2)}</div>
 						</div>
 					</div>
@@ -591,11 +591,11 @@
 			{/if}
 
 			{#if $projectStore.loading}
-				<div class="mt-4 text-center text-gray-500">Loading details...</div>
+				<div class="mt-4 text-center ui-muted">Loading details...</div>
 			{/if}
 
 			{#if $projectStore.error}
-				<div class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+				<div class="mt-4 bg-red-100 border border-red-400 text-red-700 dark:bg-red-950/40 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded">
 					{$projectStore.error}
 				</div>
 			{/if}

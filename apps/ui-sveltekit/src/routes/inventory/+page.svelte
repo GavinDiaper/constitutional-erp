@@ -155,73 +155,73 @@
 	}
 </script>
 
-<section class="space-y-6">
+<section class="space-y-6 text-slate-900 dark:text-white">
 	<header class="glass-panel p-5">
 		<h1 class="text-2xl font-semibold">Inventory Console</h1>
-		<p class="mt-2 text-sm opacity-80">
+		<p class="mt-2 text-sm ui-muted">
 			Manage foundational inventory entities and post movements for constitutional inventory flows.
 		</p>
 	</header>
 
 	{#if errorMessage}
-		<p class="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{errorMessage}</p>
+		<p class="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{errorMessage}</p>
 	{/if}
 	{#if infoMessage}
-		<p class="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{infoMessage}</p>
+		<p class="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200">{infoMessage}</p>
 	{/if}
 
 	<div class="grid gap-4 lg:grid-cols-3">
 		<form class="glass-panel space-y-3 p-4" on:submit={onCreateSku}>
 			<h2 class="text-base font-semibold">Create SKU</h2>
-			<input class="w-full rounded bg-black/20 p-2" bind:value={skuCode} placeholder="SKU code" required />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={skuDescription} placeholder="Description" required />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={skuCategory} placeholder="Category" />
-			<select class="w-full rounded bg-black/20 p-2" bind:value={skuUom}>
+			<input class="input-base w-full" bind:value={skuCode} placeholder="SKU code" required />
+			<input class="input-base w-full" bind:value={skuDescription} placeholder="Description" required />
+			<input class="input-base w-full" bind:value={skuCategory} placeholder="Category" />
+			<select class="input-base w-full" bind:value={skuUom}>
 				{#each unitOptions as unit}
 					<option value={unit}>{unit}</option>
 				{/each}
 			</select>
-			<select class="w-full rounded bg-black/20 p-2" bind:value={skuValuationMethod}>
+			<select class="input-base w-full" bind:value={skuValuationMethod}>
 				<option value="standard">Standard</option>
 				<option value="moving_average">Moving Average</option>
 			</select>
-			<input class="w-full rounded bg-black/20 p-2" bind:value={skuStandardCost} type="number" min="0" step="0.01" />
+			<input class="input-base w-full" bind:value={skuStandardCost} type="number" min="0" step="0.01" />
 			<button class="rounded bg-sky-600 px-3 py-2 text-sm font-semibold" type="submit">Create SKU</button>
 		</form>
 
 		<form class="glass-panel space-y-3 p-4" on:submit={onCreateOrganization}>
 			<h2 class="text-base font-semibold">Create Organization</h2>
-			<input class="w-full rounded bg-black/20 p-2" bind:value={organizationName} placeholder="Warehouse name" required />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={organizationLedgerId} placeholder="Ledger ID (optional)" />
+			<input class="input-base w-full" bind:value={organizationName} placeholder="Warehouse name" required />
+			<input class="input-base w-full" bind:value={organizationLedgerId} placeholder="Ledger ID (optional)" />
 			<button class="rounded bg-cyan-600 px-3 py-2 text-sm font-semibold" type="submit">Create Organization</button>
 		</form>
 
 		<form class="glass-panel space-y-3 p-4" on:submit={onPostMovement}>
 			<h2 class="text-base font-semibold">Post Movement</h2>
-			<select class="w-full rounded bg-black/20 p-2" bind:value={movementSkuId} required>
+			<select class="input-base w-full" bind:value={movementSkuId} required>
 				<option value="" disabled>Select SKU</option>
 				{#each skus as sku}
 					<option value={sku.sku_id}>{sku.sku_code} ({sku.valuation_method})</option>
 				{/each}
 			</select>
-			<select class="w-full rounded bg-black/20 p-2" bind:value={movementOrganizationId} required>
+			<select class="input-base w-full" bind:value={movementOrganizationId} required>
 				<option value="" disabled>Select Organization</option>
 				{#each organizations as org}
 					<option value={org.organization_id}>{org.name}</option>
 				{/each}
 			</select>
-			<select class="w-full rounded bg-black/20 p-2" bind:value={movementType}>
+			<select class="input-base w-full" bind:value={movementType}>
 				<option value="receipt">Receipt</option>
 				<option value="issue">Issue</option>
 				<option value="adjustment">Adjustment</option>
 				<option value="cost_update">Cost Update</option>
 			</select>
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementQuantity} type="number" step="0.01" />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementUnitCost} type="number" step="0.01" min="0" />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementReason} placeholder="Reason" />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementReferenceType} placeholder="Reference type" />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementReferenceId} placeholder="Reference ID" />
-			<input class="w-full rounded bg-black/20 p-2" bind:value={movementCorrelationKey} placeholder="Correlation key" />
+			<input class="input-base w-full" bind:value={movementQuantity} type="number" step="0.01" />
+			<input class="input-base w-full" bind:value={movementUnitCost} type="number" step="0.01" min="0" />
+			<input class="input-base w-full" bind:value={movementReason} placeholder="Reason" />
+			<input class="input-base w-full" bind:value={movementReferenceType} placeholder="Reference type" />
+			<input class="input-base w-full" bind:value={movementReferenceId} placeholder="Reference ID" />
+			<input class="input-base w-full" bind:value={movementCorrelationKey} placeholder="Correlation key" />
 			<button class="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold" type="submit">Post Movement</button>
 		</form>
 	</div>
@@ -230,12 +230,12 @@
 		<section class="glass-panel p-4">
 			<div class="mb-2 flex items-center justify-between">
 				<h2 class="text-base font-semibold">On Hand</h2>
-				<button class="rounded bg-white/10 px-2 py-1 text-xs" on:click={() => refreshAll()} disabled={loading}>Refresh</button>
+				<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => refreshAll()} disabled={loading}>Refresh</button>
 			</div>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/10">
+						<tr class="ui-table-compact-head">
 							<th class="py-1">SKU</th>
 							<th class="py-1">Org</th>
 							<th class="py-1">Qty</th>
@@ -245,10 +245,10 @@
 					</thead>
 					<tbody>
 						{#if onHandRows.length === 0}
-							<tr><td class="py-2 opacity-70" colspan="5">No inventory on hand yet.</td></tr>
+							<tr><td class="py-2 ui-muted" colspan="5">No inventory on hand yet.</td></tr>
 						{:else}
 							{#each onHandRows as row}
-								<tr class="border-b border-white/5">
+								<tr class="ui-table-compact-row">
 									<td class="py-1">{row.sku_id}</td>
 									<td class="py-1">{row.organization_id}</td>
 									<td class="py-1">{row.quantity_on_hand}</td>
@@ -267,7 +267,7 @@
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
 					<thead>
-						<tr class="border-b border-white/10">
+						<tr class="ui-table-compact-head">
 							<th class="py-1">Movement</th>
 							<th class="py-1">Type</th>
 							<th class="py-1">SKU</th>
@@ -277,10 +277,10 @@
 					</thead>
 					<tbody>
 						{#if movements.length === 0}
-							<tr><td class="py-2 opacity-70" colspan="5">No movements posted yet.</td></tr>
+							<tr><td class="py-2 ui-muted" colspan="5">No movements posted yet.</td></tr>
 						{:else}
 							{#each movements as movement}
-								<tr class="border-b border-white/5">
+								<tr class="ui-table-compact-row">
 									<td class="py-1">{movement.movement_id}</td>
 									<td class="py-1">{movement.movement_type}</td>
 									<td class="py-1">{movement.sku_id}</td>
