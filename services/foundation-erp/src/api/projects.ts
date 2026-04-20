@@ -391,6 +391,7 @@ router.post("/:projectId/finished-items", (req: Request, res: Response) => {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(status).json({ success: false, error: error.message });
   }
+});
 
 router.get("/:projectId/requisitions", (req: Request, res: Response) => {
   try {
