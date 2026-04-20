@@ -428,7 +428,6 @@ router.get("/:projectId/sales-orders", (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-});
 
 /**
  * GET /api/v1/projects/:projectId/finished-items
