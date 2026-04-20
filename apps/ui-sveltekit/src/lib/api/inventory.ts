@@ -43,6 +43,22 @@ export interface InventoryMovement {
 	created_at: string;
 }
 
+export interface InventoryBomHeader {
+	bomId: string;
+	skuId: string;
+	organizationId: string;
+	revision: string;
+	description?: string;
+	status: 'Draft' | 'Active' | 'Inactive';
+	projectEligible: boolean;
+	costingProfile: string;
+	createdBy: string;
+	createdAt: string;
+	effectiveDate?: string;
+	endDate?: string;
+	version: number;
+}
+
 interface DataResponse<T> {
 	data: T;
 }
@@ -114,6 +130,37 @@ export function postInventoryMovement(
 	}
 ): Promise<InventoryMovement> {
 	return requestHubJson<InventoryMovement>('/api/hub/inv/movements', actor, 'POST', payload);
+}
+
+export function listInventoryBoms(
+	actor: ActorContext,
+	filters: { organizationId: string; limit?: number; offset?: number }
+): Promise<DataListResponse<InventoryBomHeader>> {
+	const params = new URLSearchParams();
+	params.set('organizationId', filters.organizationId);
+	if (typeof filters.limit === 'number') {
+		params.set('limit', String(filters.limit));
+	}
+	if (typeof filters.offset === 'number') {
+		params.set('offset', String(filters.offset));
+	}
+	return requestHubJson<DataListResponse<InventoryBomHeader>>(`/api/hub/inv/boms?${params.toString()}`, actor, 'GET');
+}
+
+export function createInventoryBom(
+	actor: ActorContext,
+	payload: {
+		skuId: string;
+		organizationId: string;
+		revision: string;
+		description?: string;
+		projectEligible?: boolean;
+		costingProfile?: string;
+		effectiveDate?: string;
+		endDate?: string;
+	}
+): Promise<DataResponse<InventoryBomHeader>> {
+	return requestHubJson<DataResponse<InventoryBomHeader>>('/api/hub/inv/boms', actor, 'POST', payload);
 }
 
 async function requestHubJson<T>(

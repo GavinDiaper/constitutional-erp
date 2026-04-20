@@ -2,13 +2,16 @@
 	import { onMount } from 'svelte';
 	import { actorStore } from '$lib/stores/actorStore';
 	import {
+		createInventoryBom,
 		createInventoryOrganization,
 		createInventorySku,
+		listInventoryBoms,
 		listInventoryMovements,
 		listInventoryOnHand,
 		listInventoryOrganizations,
 		listInventorySkus,
 		postInventoryMovement,
+		type InventoryBomHeader,
 		type InventoryMovement,
 		type InventoryOnHand,
 		type InventoryOrganization,
@@ -23,6 +26,7 @@
 	let organizations: InventoryOrganization[] = [];
 	let onHandRows: InventoryOnHand[] = [];
 	let movements: InventoryMovement[] = [];
+	let boms: InventoryBomHeader[] = [];
 
 	let skuCode = '';
 	let skuDescription = '';
@@ -44,6 +48,13 @@
 	let movementReferenceType = '';
 	let movementReferenceId = '';
 	let movementCorrelationKey = '';
+
+	let bomSkuId = '';
+	let bomOrganizationId = '';
+	let bomRevision = 'A';
+	let bomDescription = '';
+	let bomProjectEligible = true;
+	let bomCostingProfile = 'Standard';
 
 	onMount(() => {
 		void refreshAll();
@@ -72,11 +83,29 @@
 			if (!movementOrganizationId && organizations.length > 0) {
 				movementOrganizationId = organizations[0].organization_id;
 			}
+			if (!bomSkuId && skus.length > 0) {
+				bomSkuId = skus[0].sku_id;
+			}
+			if (!bomOrganizationId && organizations.length > 0) {
+				bomOrganizationId = organizations[0].organization_id;
+			}
+
+			await refreshBoms();
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Failed to load inventory data.';
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function refreshBoms(): Promise<void> {
+		if (!bomOrganizationId) {
+			boms = [];
+			return;
+		}
+
+		const bomRes = await listInventoryBoms($actorStore, { organizationId: bomOrganizationId, limit: 100, offset: 0 });
+		boms = bomRes.data ?? [];
 	}
 
 	async function onCreateSku(event: SubmitEvent): Promise<void> {
@@ -153,6 +182,30 @@
 			errorMessage = error instanceof Error ? error.message : 'Unable to post movement.';
 		}
 	}
+
+	async function onCreateBom(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+		errorMessage = '';
+		infoMessage = '';
+
+		try {
+			const created = await createInventoryBom($actorStore, {
+				skuId: bomSkuId,
+				organizationId: bomOrganizationId,
+				revision: bomRevision,
+				description: bomDescription || undefined,
+				projectEligible: bomProjectEligible,
+				costingProfile: bomCostingProfile || undefined
+			});
+
+			infoMessage = `BoM ${created.data.bomId} created in Draft status.`;
+			bomRevision = 'A';
+			bomDescription = '';
+			await refreshBoms();
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Unable to create BoM.';
+		}
+	}
 </script>
 
 <section class="space-y-6 text-slate-900 dark:text-white">
@@ -170,7 +223,7 @@
 		<p class="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200">{infoMessage}</p>
 	{/if}
 
-	<div class="grid gap-4 lg:grid-cols-3">
+	<div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
 		<form class="glass-panel space-y-3 p-4" on:submit={onCreateSku}>
 			<h2 class="text-base font-semibold">Create SKU</h2>
 			<input class="input-base w-full" bind:value={skuCode} placeholder="SKU code" required />
@@ -223,6 +276,30 @@
 			<input class="input-base w-full" bind:value={movementReferenceId} placeholder="Reference ID" />
 			<input class="input-base w-full" bind:value={movementCorrelationKey} placeholder="Correlation key" />
 			<button class="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold" type="submit">Post Movement</button>
+		</form>
+
+		<form class="glass-panel space-y-3 p-4" on:submit={onCreateBom}>
+			<h2 class="text-base font-semibold">Create BoM</h2>
+			<select class="input-base w-full" bind:value={bomSkuId} required>
+				<option value="" disabled>Select Parent SKU</option>
+				{#each skus as sku}
+					<option value={sku.sku_id}>{sku.sku_code}</option>
+				{/each}
+			</select>
+			<select class="input-base w-full" bind:value={bomOrganizationId} on:change={() => refreshBoms()} required>
+				<option value="" disabled>Select Organization</option>
+				{#each organizations as org}
+					<option value={org.organization_id}>{org.name}</option>
+				{/each}
+			</select>
+			<input class="input-base w-full" bind:value={bomRevision} placeholder="Revision (e.g. A)" required />
+			<input class="input-base w-full" bind:value={bomDescription} placeholder="Description (optional)" />
+			<input class="input-base w-full" bind:value={bomCostingProfile} placeholder="Costing profile" />
+			<label class="flex items-center gap-2 text-sm">
+				<input type="checkbox" bind:checked={bomProjectEligible} />
+				<span>Project Eligible</span>
+			</label>
+			<button class="rounded bg-emerald-600 px-3 py-2 text-sm font-semibold" type="submit" disabled={!bomSkuId || !bomOrganizationId}>Create BoM</button>
 		</form>
 	</div>
 
@@ -294,4 +371,50 @@
 			</div>
 		</section>
 	</div>
+
+	<section class="glass-panel p-4">
+		<div class="mb-2 flex items-center justify-between gap-3">
+			<h2 class="text-base font-semibold">BoM Headers</h2>
+			<div class="flex items-center gap-2">
+				<select class="input-base" bind:value={bomOrganizationId} on:change={() => refreshBoms()}>
+					<option value="" disabled>Select Organization</option>
+					{#each organizations as org}
+						<option value={org.organization_id}>{org.name}</option>
+					{/each}
+				</select>
+				<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => refreshBoms()} disabled={loading || !bomOrganizationId}>Refresh</button>
+			</div>
+		</div>
+
+		<div class="overflow-x-auto">
+			<table class="w-full text-left text-sm">
+				<thead>
+					<tr class="ui-table-compact-head">
+						<th class="py-1">BoM</th>
+						<th class="py-1">Parent SKU</th>
+						<th class="py-1">Revision</th>
+						<th class="py-1">Status</th>
+						<th class="py-1">Project Eligible</th>
+						<th class="py-1">Created</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#if boms.length === 0}
+						<tr><td class="py-2 ui-muted" colspan="6">No BoMs found for the selected organization.</td></tr>
+					{:else}
+						{#each boms as bom}
+							<tr class="ui-table-compact-row">
+								<td class="py-1">{bom.bomId}</td>
+								<td class="py-1">{bom.skuId}</td>
+								<td class="py-1">{bom.revision}</td>
+								<td class="py-1">{bom.status}</td>
+								<td class="py-1">{bom.projectEligible ? 'Yes' : 'No'}</td>
+								<td class="py-1">{bom.createdAt.split('T')[0]}</td>
+							</tr>
+						{/each}
+					{/if}
+				</tbody>
+			</table>
+		</div>
+	</section>
 </section>

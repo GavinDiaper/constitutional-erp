@@ -67,14 +67,18 @@ export const diagramCatalog: DiagramItem[] = [
         id: 'foundation-inventory',
         title: 'Foundation Inventory Domain',
         system: 'FoundationERP',
-        summary: 'SKU, inventory organization, on-hand balances, and movement posting.',
+        summary: 'SKU, inventory organization, BoM header/components, on-hand balances, and movement posting.',
         accentClass: 'border-emerald-500/40 bg-emerald-50/70',
         definition: `erDiagram
     F_inv_sku ||--o{ F_inv_on_hand : tracked_in
     F_inv_organization ||--o{ F_inv_on_hand : scoped_by
     F_inv_sku ||--o{ F_inv_movement : posted_as
     F_inv_organization ||--o{ F_inv_movement : posted_in
-    F_inv_movement ||--o{ F_inv_on_hand : updates`
+    F_inv_movement ||--o{ F_inv_on_hand : updates
+    F_inv_sku ||--o{ F_inv_bom_header : parent_sku
+    F_inv_organization ||--o{ F_inv_bom_header : maintained_in
+    F_inv_bom_header ||--o{ F_inv_bom_component : contains
+    F_inv_sku ||--o{ F_inv_bom_component : component_sku`
     },
 	{
 		id: 'foundation-r2r',
