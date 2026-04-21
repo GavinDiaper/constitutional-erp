@@ -167,9 +167,36 @@ export function extractJsonObject(text: string): Record<string, unknown> | undef
 }
 
 export function normalizeCreatePayload(operation: NavigatorCreateOperation, payload: Record<string, unknown>): Record<string, unknown> {
-  const normalized = { ...payload };
+  let normalized = { ...payload };
 
   if (operation === "create-supplier") {
+    // LLMs often return supplier details nested under payload.supplier or payload.data.
+    const supplierLike =
+      (normalized["supplier"] && typeof normalized["supplier"] === "object" && !Array.isArray(normalized["supplier"]))
+        ? (normalized["supplier"] as Record<string, unknown>)
+        : (normalized["data"] && typeof normalized["data"] === "object" && !Array.isArray(normalized["data"]))
+          ? (normalized["data"] as Record<string, unknown>)
+          : undefined;
+
+    if (supplierLike) {
+      normalized = {
+        ...supplierLike,
+        ...normalized
+      };
+    }
+
+    if (typeof normalized["name"] === "string" && !normalized["supplierName"]) {
+      normalized["supplierName"] = normalized["name"];
+    }
+
+    if (typeof normalized["currency"] === "string" && !normalized["currencyCode"]) {
+      normalized["currencyCode"] = normalized["currency"];
+    }
+
+    if (typeof normalized["payment_terms"] === "string" && !normalized["paymentTerms"]) {
+      normalized["paymentTerms"] = normalized["payment_terms"];
+    }
+
     if (typeof normalized["country"] === "string" && !normalized["countryCode"]) {
       const country = String(normalized["country"]).trim().toUpperCase();
       if (country === "UAE" || country === "UNITED ARAB EMIRATES") {
