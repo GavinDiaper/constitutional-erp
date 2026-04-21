@@ -115,7 +115,10 @@ async function main() {
       p2p_purchase_order: "purchase-order",
       r2r_fiscal_year: "fiscal-year",
       r2r_fiscal_period: "fiscal-period",
-      o2c_payment: "ar-payment"
+      o2c_payment: "ar-payment",
+      inv_sku: "sku",
+      inv_organization: "organization",
+      proj_project: "project"
     };
     const domainByEntityType: Record<string, Domain> = {
       p2p_supplier: "P2P",
@@ -123,7 +126,10 @@ async function main() {
       p2p_purchase_order: "P2P",
       r2r_fiscal_year: "R2R",
       r2r_fiscal_period: "R2R",
-      o2c_payment: "O2C"
+      o2c_payment: "O2C",
+      inv_sku: "INV",
+      inv_organization: "INV",
+      proj_project: "PROJ"
     };
 
     const entityType = String(created.entityType ?? "");
@@ -185,7 +191,7 @@ async function main() {
           // Manual entry: use domain type id
           const domain = normalizeDomain(args[0]);
           if (!domain) {
-            result = "Invalid domain. Supported domains: P2P, O2C, H2R, R2R.";
+            result = "Invalid domain. Supported domains: P2P, O2C, H2R, R2R, INV, PROJ.";
             const rendered = render(result);
             output.write(`${rendered}\n`);
             if (session.sessionId) {
@@ -290,6 +296,9 @@ async function main() {
           | "create-fiscal-year"
           | "create-fiscal-period"
           | "create-payment"
+          | "create-inventory-sku"
+          | "create-inventory-organization"
+          | "create-project"
           | undefined;
         const validOperations = new Set([
           "create-supplier",
@@ -297,11 +306,14 @@ async function main() {
           "create-purchase-order",
           "create-fiscal-year",
           "create-fiscal-period",
-          "create-payment"
+          "create-payment",
+          "create-inventory-sku",
+          "create-inventory-organization",
+          "create-project"
         ]);
 
         if (!operation || !validOperations.has(operation)) {
-          result = "Usage: create <create-supplier|create-requisition|create-purchase-order|create-fiscal-year|create-fiscal-period|create-payment> [json]";
+          result = "Usage: create <create-supplier|create-requisition|create-purchase-order|create-fiscal-year|create-fiscal-period|create-payment|create-inventory-sku|create-inventory-organization|create-project> [json]";
         } else if (!session.actorId) {
           result = "Set actor first: set actor <actorId>";
         } else {

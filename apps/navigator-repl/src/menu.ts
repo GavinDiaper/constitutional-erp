@@ -4,7 +4,9 @@ export const DOMAIN_MENU = {
   "P2P": "Procure-to-Pay",
   "O2C": "Order-to-Cash",
   "H2R": "Hire-to-Retire",
-  "R2R": "Record-to-Report"
+  "R2R": "Record-to-Report",
+  "INV": "Inventory",
+  "PROJ": "Projects"
 };
 
 export type DomainKey = keyof typeof DOMAIN_MENU;
@@ -13,7 +15,9 @@ export const AGGREGATE_TYPES: Record<DomainKey, string[]> = {
   "P2P": ["requisition", "purchase-order", "supplier-invoice", "ap-payment"],
   "O2C": ["quote", "sales-order", "ar-invoice", "ar-payment"],
   "H2R": ["employee", "leave-request"],
-  "R2R": ["journal", "fiscal-period"]
+  "R2R": ["journal", "fiscal-period"],
+  "INV": ["sku", "organization", "movement", "reservation", "bin"],
+  "PROJ": ["project", "wip", "bom-assignment", "labor-entry", "finished-item"]
 };
 
 export function normalizeDomain(input: string): DomainKey | undefined {
@@ -44,7 +48,7 @@ export async function selectDomain(rl: Interface): Promise<string> {
   });
   
   while (true) {
-    const choice = await rl.question("Enter domain number (1-4): ");
+    const choice = await rl.question(`Enter domain number (1-${domains.length}): `);
     const index = parseInt(choice) - 1;
     
     if (index >= 0 && index < domains.length) {
@@ -53,7 +57,7 @@ export async function selectDomain(rl: Interface): Promise<string> {
       return selected;
     }
     
-    console.log("Invalid choice. Please enter 1-4.");
+    console.log(`Invalid choice. Please enter 1-${domains.length}.`);
   }
 }
 

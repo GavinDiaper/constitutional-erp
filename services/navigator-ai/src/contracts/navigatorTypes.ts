@@ -7,7 +7,7 @@ export interface ActionInputSchema {
 }
 
 export interface SessionContext {
-  domain: "P2P" | "O2C" | "R2R" | "H2R";
+  domain: "P2P" | "O2C" | "R2R" | "H2R" | "INV" | "PROJ";
   aggregateType: string;
   aggregateId: string;
   actorId: string;
@@ -124,7 +124,10 @@ export type NavigatorCreateOperation =
   | "create-purchase-order"
   | "create-fiscal-year"
   | "create-fiscal-period"
-  | "create-payment";
+  | "create-payment"
+  | "create-inventory-sku"
+  | "create-inventory-organization"
+  | "create-project";
 
 export type NavigatorLookupKind =
   | "suppliers"

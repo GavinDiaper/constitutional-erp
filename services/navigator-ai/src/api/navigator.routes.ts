@@ -4,7 +4,14 @@ import { NavigatorService } from "../services/navigatorService";
 import { HttpError } from "../utils/errors";
 import { recordTranscript } from "../domain/stores/navigatorStore";
 
-const domainSchema = z.union([z.literal("P2P"), z.literal("O2C"), z.literal("R2R"), z.literal("H2R")]);
+const domainSchema = z.union([
+  z.literal("P2P"),
+  z.literal("O2C"),
+  z.literal("R2R"),
+  z.literal("H2R"),
+  z.literal("INV"),
+  z.literal("PROJ")
+]);
 
 const contextSchema = z.object({
   domain: z.string().transform((value) => value.toUpperCase()).pipe(domainSchema),
@@ -34,7 +41,10 @@ const createOperationSchema = z.union([
   z.literal("create-purchase-order"),
   z.literal("create-fiscal-year"),
   z.literal("create-fiscal-period"),
-  z.literal("create-payment")
+  z.literal("create-payment"),
+  z.literal("create-inventory-sku"),
+  z.literal("create-inventory-organization"),
+  z.literal("create-project")
 ]);
 
 const createLookupKindSchema = z.union([

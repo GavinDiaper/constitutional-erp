@@ -99,7 +99,10 @@ const createOperationSchema = z.union([
   z.literal("create-purchase-order"),
   z.literal("create-fiscal-year"),
   z.literal("create-fiscal-period"),
-  z.literal("create-payment")
+  z.literal("create-payment"),
+  z.literal("create-inventory-sku"),
+  z.literal("create-inventory-organization"),
+  z.literal("create-project")
 ]);
 
 const lookupKindSchema = z.union([
@@ -151,6 +154,21 @@ const CREATE_OPERATION_CONFIG: Record<
     route: "/api/v1/o2c/payments",
     entityType: "o2c_payment",
     entityIdField: "payment_id"
+  },
+  "create-inventory-sku": {
+    route: "/api/v1/inv/skus",
+    entityType: "inv_sku",
+    entityIdField: "sku_id"
+  },
+  "create-inventory-organization": {
+    route: "/api/v1/inv/organizations",
+    entityType: "inv_organization",
+    entityIdField: "organization_id"
+  },
+  "create-project": {
+    route: "/api/v1/projects",
+    entityType: "proj_project",
+    entityIdField: "projectId"
   }
 };
 

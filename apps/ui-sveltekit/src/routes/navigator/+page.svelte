@@ -49,12 +49,14 @@
 
 	type CreatePanelTab = 'prompt' | 'quick';
 
-	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R'] as const;
+	const DOMAINS = ['P2P', 'O2C', 'R2R', 'H2R', 'INV', 'PROJ'] as const;
 	const AGGREGATE_TYPES: Record<(typeof DOMAINS)[number], string[]> = {
 		P2P: ['requisition', 'supplier', 'purchase-order', 'goods-receipt', 'supplier-invoice', 'ap-payment'],
 		O2C: ['quote', 'sales-order', 'ar-invoice', 'ar-payment'],
 		R2R: ['account', 'fiscal-year', 'fiscal-period', 'journal'],
-		H2R: ['employee', 'position', 'assignment', 'credential', 'authority-rule']
+		H2R: ['employee', 'position', 'assignment', 'credential', 'authority-rule'],
+		INV: ['sku', 'organization', 'movement', 'reservation', 'bin', 'bom'],
+		PROJ: ['project', 'wip', 'bom-assignment', 'labor-entry', 'finished-item']
 	};
 	const QUICK_CREATE_PRESETS: QuickCreatePreset[] = [
 		{
@@ -120,7 +122,18 @@
 		position: { table: 'h2r_position', idField: 'position_id' },
 		assignment: { table: 'h2r_assignment', idField: 'assignment_id' },
 		credential: { table: 'h2r_credential', idField: 'credential_id' },
-		'authority-rule': { table: 'h2r_authority_rule', idField: 'authority_rule_id' }
+		'authority-rule': { table: 'h2r_authority_rule', idField: 'authority_rule_id' },
+		sku: { table: 'inv_sku', idField: 'sku_id' },
+		organization: { table: 'inv_organization', idField: 'organization_id' },
+		movement: { table: 'inv_movement', idField: 'movement_id' },
+		reservation: { table: 'inv_reservation', idField: 'reservation_id' },
+		bin: { table: 'inv_bin', idField: 'bin_id' },
+		bom: { table: 'inv_bom_header', idField: 'bom_id' },
+		project: { table: 'proj_project', idField: 'project_id' },
+		wip: { table: 'proj_wip', idField: 'wip_id' },
+		'bom-assignment': { table: 'proj_bom_assignment', idField: 'assignment_id' },
+		'labor-entry': { table: 'proj_labor_entry', idField: 'entry_id' },
+		'finished-item': { table: 'proj_finished_item', idField: 'finished_item_id' }
 	};
 
 	let domain: (typeof DOMAINS)[number] = 'P2P';
@@ -688,7 +701,10 @@
 			p2p_purchase_order: { domain: 'P2P', aggregateType: 'purchase-order' },
 			r2r_fiscal_year: { domain: 'R2R', aggregateType: 'fiscal-year' },
 			r2r_fiscal_period: { domain: 'R2R', aggregateType: 'fiscal-period' },
-			o2c_payment: { domain: 'O2C', aggregateType: 'ar-payment' }
+			o2c_payment: { domain: 'O2C', aggregateType: 'ar-payment' },
+			inv_sku: { domain: 'INV', aggregateType: 'sku' },
+			inv_organization: { domain: 'INV', aggregateType: 'organization' },
+			proj_project: { domain: 'PROJ', aggregateType: 'project' }
 		};
 
 		if (!entityType) {

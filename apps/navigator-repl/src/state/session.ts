@@ -1,5 +1,5 @@
 export interface SessionContext {
-  domain?: "P2P" | "O2C" | "R2R" | "H2R";
+  domain?: "P2P" | "O2C" | "R2R" | "H2R" | "INV" | "PROJ";
   aggregateType?: string;
   aggregateId?: string;
   actorId?: string;

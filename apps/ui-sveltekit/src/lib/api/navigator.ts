@@ -104,7 +104,10 @@ export type NavigatorCreateOperation =
 	| 'create-purchase-order'
 	| 'create-fiscal-year'
 	| 'create-fiscal-period'
-	| 'create-payment';
+	| 'create-payment'
+	| 'create-inventory-sku'
+	| 'create-inventory-organization'
+	| 'create-project';
 
 export type NavigatorCreateLookupKind = 'suppliers' | 'ledgers' | 'fiscal-years' | 'invoices';
 

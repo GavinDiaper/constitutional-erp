@@ -176,7 +176,10 @@ export class NavigatorClient {
       | "create-purchase-order"
       | "create-fiscal-year"
       | "create-fiscal-period"
-      | "create-payment";
+      | "create-payment"
+      | "create-inventory-sku"
+      | "create-inventory-organization"
+      | "create-project";
     actorId: string;
     payload: Record<string, unknown>;
   }): Promise<unknown> {
@@ -205,7 +208,7 @@ export class NavigatorClient {
   async promptCreate(input: {
     prompt: string;
     actorId: string;
-    domain?: "P2P" | "O2C" | "R2R" | "H2R";
+    domain?: "P2P" | "O2C" | "R2R" | "H2R" | "INV" | "PROJ";
     dryRun?: boolean;
   }): Promise<unknown> {
     return this.request("/create/prompt", {

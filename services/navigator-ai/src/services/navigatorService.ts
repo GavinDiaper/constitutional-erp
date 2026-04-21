@@ -38,7 +38,10 @@ const createOperationRequirements: Record<NavigatorCreateOperation, string[]> = 
   "create-purchase-order": ["supplierId", "totalAmount", "currencyCode", "deliveryAddress"],
   "create-fiscal-year": ["ledgerId", "year", "startDate", "endDate"],
   "create-fiscal-period": ["fiscalYearId", "periodNumber", "startDate", "endDate"],
-  "create-payment": ["invoiceId", "amount", "currencyCode", "method"]
+  "create-payment": ["invoiceId", "amount", "currencyCode", "method"],
+  "create-inventory-sku": ["skuCode", "description", "uom", "valuationMethod"],
+  "create-inventory-organization": ["name"],
+  "create-project": ["name", "projectType", "budgetAmount", "startDate", "defaultWIPAccountId", "defaultCloseAccountId", "projectManagerId", "organizationId"]
 };
 
 const nextStepPlaybook: Record<string, Array<{ operation: NavigatorCreateOperation; score: number; rationale: string; prerequisites: string[] }>> = {
@@ -62,6 +65,22 @@ const nextStepPlaybook: Record<string, Array<{ operation: NavigatorCreateOperati
       score: 0.78,
       rationale: "Approved requisitions usually progress to purchase-order issuance.",
       prerequisites: ["Requisition approved", "Supplier selected"]
+    }
+  ],
+  sku: [
+    {
+      operation: "create-inventory-organization",
+      score: 0.62,
+      rationale: "New SKU setup is usually followed by assigning or validating an inventory organization context.",
+      prerequisites: ["Organization structure defined", "Ledger mapping available"]
+    }
+  ],
+  project: [
+    {
+      operation: "create-inventory-sku",
+      score: 0.57,
+      rationale: "Projects that produce deliverables often require a finished-goods SKU for closure and inventory receipt.",
+      prerequisites: ["Deliverable definition ready", "UOM and valuation method agreed"]
     }
   ]
 };
@@ -189,6 +208,9 @@ export function missingRequiredFields(operation: NavigatorCreateOperation, paylo
 
 export function inferOperationFromPrompt(prompt: string): NavigatorCreateOperation | undefined {
   const lower = prompt.toLowerCase();
+  if (lower.includes("inventory sku") || lower.includes("create sku") || lower.includes("new sku")) return "create-inventory-sku";
+  if (lower.includes("inventory organization") || lower.includes("warehouse") || lower.includes("create organization")) return "create-inventory-organization";
+  if (lower.includes("create project") || lower.includes("new project")) return "create-project";
   if (lower.includes("requisition")) return "create-requisition";
   if (lower.includes("purchase order") || lower.includes("purchase-order") || /\bpo\b/.test(lower)) return "create-purchase-order";
   if (lower.includes("fiscal year")) return "create-fiscal-year";
@@ -355,6 +377,36 @@ function applyPromptContextDefaults(input: PromptCreateRequest, operation: Navig
   if (operation === "create-purchase-order") {
     if (!enriched["supplierId"] && context?.aggregateType?.toLowerCase() === "supplier" && context.aggregateId) {
       enriched["supplierId"] = context.aggregateId;
+    }
+  }
+
+  if (operation === "create-inventory-sku") {
+    if (!enriched["uom"]) {
+      enriched["uom"] = "EA";
+    }
+    if (!enriched["valuationMethod"]) {
+      enriched["valuationMethod"] = "moving_average";
+    }
+  }
+
+  if (operation === "create-project") {
+    if (!enriched["projectType"]) {
+      enriched["projectType"] = "Internal";
+    }
+    if (!enriched["startDate"]) {
+      enriched["startDate"] = todayIsoDate();
+    }
+    if (!enriched["defaultWIPAccountId"]) {
+      enriched["defaultWIPAccountId"] = "1510-WIP";
+    }
+    if (!enriched["defaultCloseAccountId"]) {
+      enriched["defaultCloseAccountId"] = "1590-WIP-CLOSE";
+    }
+    if (!enriched["projectManagerId"]) {
+      enriched["projectManagerId"] = input.actorId;
+    }
+    if (!enriched["organizationId"]) {
+      enriched["organizationId"] = "ORG-DEFAULT";
     }
   }
 
@@ -1117,7 +1169,10 @@ export class NavigatorService {
         p2p_purchase_order: "P2P",
         r2r_fiscal_year: "R2R",
         r2r_fiscal_period: "R2R",
-        o2c_payment: "O2C"
+        o2c_payment: "O2C",
+        inv_sku: "INV",
+        inv_organization: "INV",
+        proj_project: "PROJ"
       };
       const aggregateTypeByEntity: Record<string, string> = {
         p2p_supplier: "supplier",
@@ -1125,7 +1180,10 @@ export class NavigatorService {
         p2p_purchase_order: "purchase-order",
         r2r_fiscal_year: "fiscal-year",
         r2r_fiscal_period: "fiscal-period",
-        o2c_payment: "ar-payment"
+        o2c_payment: "ar-payment",
+        inv_sku: "sku",
+        inv_organization: "organization",
+        proj_project: "project"
       };
       const entityType = String(result.entityType ?? "");
       const domain = domainByType[entityType];
@@ -1158,7 +1216,7 @@ export class NavigatorService {
           operation: "create-supplier",
           payload: {},
           missingFields: ["operation"],
-          clarification: "Specify what to create (supplier, requisition, purchase order, fiscal year, fiscal period, or payment)."
+          clarification: "Specify what to create (supplier, requisition, purchase order, fiscal year, fiscal period, payment, inventory SKU, inventory organization, or project)."
         }
       };
     }
