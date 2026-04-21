@@ -1,5 +1,12 @@
 import { Router, Request, Response } from "express";
-import { createBOMHeader, activateBOMHeader, getBOMHeaderById, listBOMHeaders } from "../domain/inv/bomService";
+import {
+  createBOMHeader,
+  activateBOMHeader,
+  getBOMHeaderById,
+  listBOMHeaders,
+  addBOMComponent,
+  listBOMComponents,
+} from "../domain/inv/bomService";
 
 const router = Router();
 
@@ -84,6 +91,72 @@ router.get("/", (req: Request, res: Response) => {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/bom/:bomId/components
+ * List all components for a BOM
+ */
+router.get("/:bomId/components", (req: Request, res: Response) => {
+  try {
+    const { bomId } = req.params;
+    const components = listBOMComponents(bomId);
+    res.json({ success: true, data: components, count: components.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/bom/:bomId/components
+ * Add a component SKU line to a BOM
+ */
+router.post("/:bomId/components", (req: Request, res: Response) => {
+  try {
+    const { bomId } = req.params;
+    const {
+      componentSkuId,
+      componentLineNumber,
+      componentDescription,
+      quantity,
+      quantityUom,
+      scrapPercentage,
+      isPhantom,
+      standardCost,
+      costElementId,
+    } = req.body;
+
+    const component = addBOMComponent(
+      {
+        bomId,
+        componentSkuId,
+        componentLineNumber,
+        componentDescription,
+        quantity,
+        quantityUom,
+        scrapPercentage,
+        isPhantom,
+        standardCost,
+        costElementId,
+      },
+      req.actor
+    );
+
+    res.status(201).json({
+      success: true,
+      data: component,
+      message: `Component '${component.componentId}' added to BOM '${bomId}'`,
+    });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    const statusCode = error.message.includes("not found")
+      ? 404
+      : error.message.includes("invalid_state")
+      ? 400
+      : 500;
+    res.status(statusCode).json({ success: false, error: error.message });
   }
 });
 

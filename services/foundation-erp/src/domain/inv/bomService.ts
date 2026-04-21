@@ -28,6 +28,24 @@ interface BOMHeaderRow {
   version: number;
 }
 
+interface BOMComponentRow {
+  component_id: string;
+  bom_id: string;
+  component_sku_id: string | null;
+  component_line_number: number;
+  component_description: string | null;
+  component_type: "Material" | "LaborCostElement" | "OtherCostElement";
+  quantity: number;
+  quantity_uom: string;
+  scrap_percentage: number;
+  is_phantom: boolean;
+  standard_cost: number;
+  cost_element_id: string | null;
+  created_by: string;
+  created_at: string;
+  version: number;
+}
+
 export interface BOMHeaderProjection {
   bomId: string;
   skuId: string;
@@ -42,6 +60,44 @@ export interface BOMHeaderProjection {
   effectiveDate?: string;
   endDate?: string;
   version: number;
+}
+
+export interface BOMComponentProjection {
+  componentId: string;
+  bomId: string;
+  componentSkuId?: string;
+  componentLineNumber: number;
+  componentDescription?: string;
+  componentType: "Material" | "LaborCostElement" | "OtherCostElement";
+  quantity: number;
+  quantityUom: string;
+  scrapPercentage: number;
+  isPhantom: boolean;
+  standardCost: number;
+  costElementId?: string;
+  createdBy: string;
+  createdAt: string;
+  version: number;
+}
+
+function mapBOMComponentRow(row: BOMComponentRow): BOMComponentProjection {
+  return {
+    componentId: row.component_id,
+    bomId: row.bom_id,
+    componentSkuId: row.component_sku_id ?? undefined,
+    componentLineNumber: row.component_line_number,
+    componentDescription: row.component_description ?? undefined,
+    componentType: row.component_type,
+    quantity: row.quantity,
+    quantityUom: row.quantity_uom,
+    scrapPercentage: row.scrap_percentage,
+    isPhantom: !!row.is_phantom,
+    standardCost: row.standard_cost,
+    costElementId: row.cost_element_id ?? undefined,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    version: row.version,
+  };
 }
 
 export function createBOMHeader(
@@ -188,4 +244,90 @@ export function listBOMHeaders(organizationId: string, limit = 100, offset = 0) 
     endDate: row.end_date ?? undefined,
     version: row.version,
   }));
+}
+
+export function addBOMComponent(
+  input: {
+    bomId: string;
+    componentSkuId: string;
+    componentLineNumber?: number;
+    componentDescription?: string;
+    quantity: number;
+    quantityUom: string;
+    scrapPercentage?: number;
+    isPhantom?: boolean;
+    standardCost?: number;
+    costElementId?: string;
+  },
+  actor?: EventActor
+): BOMComponentProjection {
+  const bom = getBOMHeaderById(input.bomId);
+  if (!bom) {
+    throw new HttpError(404, "not_found", "BOM not found");
+  }
+
+  if (bom.status !== "Draft") {
+    throw new HttpError(400, "invalid_state", "BOM components can only be edited while BOM is Draft");
+  }
+
+  const componentId = newId("BOMC-");
+  const timestamp = now();
+  const nextLineNumberRow = db
+    .prepare("SELECT COALESCE(MAX(component_line_number), 0) AS max_line FROM inv_bom_component WHERE bom_id = ?")
+    .get(input.bomId) as { max_line: number };
+  const lineNumber = input.componentLineNumber ?? nextLineNumberRow.max_line + 10;
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO inv_bom_component(
+        component_id, bom_id, component_sku_id, component_line_number,
+        component_description, component_type, quantity, quantity_uom,
+        scrap_percentage, is_phantom, standard_cost, cost_element_id,
+        created_by, created_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      componentId,
+      input.bomId,
+      input.componentSkuId,
+      lineNumber,
+      input.componentDescription ?? null,
+      "Material",
+      input.quantity,
+      input.quantityUom,
+      input.scrapPercentage ?? 0,
+      input.isPhantom ? 1 : 0,
+      input.standardCost ?? 0,
+      input.costElementId ?? null,
+      actor?.id ?? "system",
+      timestamp,
+      1
+    );
+
+    appendEvent({
+      entityId: componentId,
+      entityType: "bom_component",
+      eventType: "inv.bom_component_added",
+      version: 1,
+      actor,
+      payload: {
+        componentId,
+        bomId: input.bomId,
+        componentSkuId: input.componentSkuId,
+        componentLineNumber: lineNumber,
+        quantity: input.quantity,
+      } as unknown as Record<string, unknown>,
+    });
+  });
+
+  const row = db
+    .prepare("SELECT * FROM inv_bom_component WHERE component_id = ?")
+    .get(componentId) as BOMComponentRow;
+  return mapBOMComponentRow(row);
+}
+
+export function listBOMComponents(bomId: string): BOMComponentProjection[] {
+  const rows = db
+    .prepare("SELECT * FROM inv_bom_component WHERE bom_id = ? ORDER BY component_line_number ASC")
+    .all(bomId) as BOMComponentRow[];
+  return rows.map(mapBOMComponentRow);
 }

@@ -59,6 +59,24 @@ export interface InventoryBomHeader {
 	version: number;
 }
 
+export interface InventoryBomComponent {
+	componentId: string;
+	bomId: string;
+	componentSkuId?: string;
+	componentLineNumber: number;
+	componentDescription?: string;
+	componentType: 'Material' | 'LaborCostElement' | 'OtherCostElement';
+	quantity: number;
+	quantityUom: string;
+	scrapPercentage: number;
+	isPhantom: boolean;
+	standardCost: number;
+	costElementId?: string;
+	createdBy: string;
+	createdAt: string;
+	version: number;
+}
+
 interface DataResponse<T> {
 	data: T;
 }
@@ -161,6 +179,40 @@ export function createInventoryBom(
 	}
 ): Promise<DataResponse<InventoryBomHeader>> {
 	return requestHubJson<DataResponse<InventoryBomHeader>>('/api/hub/inv/boms', actor, 'POST', payload);
+}
+
+export function listInventoryBomComponents(
+	actor: ActorContext,
+	bomId: string
+): Promise<DataListResponse<InventoryBomComponent>> {
+	return requestHubJson<DataListResponse<InventoryBomComponent>>(
+		`/api/hub/inv/boms/${encodeURIComponent(bomId)}/components`,
+		actor,
+		'GET'
+	);
+}
+
+export function createInventoryBomComponent(
+	actor: ActorContext,
+	bomId: string,
+	payload: {
+		componentSkuId: string;
+		componentLineNumber?: number;
+		componentDescription?: string;
+		quantity: number;
+		quantityUom: string;
+		scrapPercentage?: number;
+		isPhantom?: boolean;
+		standardCost?: number;
+		costElementId?: string;
+	}
+): Promise<DataResponse<InventoryBomComponent>> {
+	return requestHubJson<DataResponse<InventoryBomComponent>>(
+		`/api/hub/inv/boms/${encodeURIComponent(bomId)}/components`,
+		actor,
+		'POST',
+		payload
+	);
 }
 
 async function requestHubJson<T>(
