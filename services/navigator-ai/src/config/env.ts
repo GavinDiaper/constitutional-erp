@@ -49,6 +49,8 @@ export interface AppConfig {
   openAiBaseUrl: string;
   openAiMaxTokens: number;
   deterministicSeed: string;
+  llmTraceStdout: boolean;
+  llmTraceMaxChars: number;
 }
 
 function required(name: string, fallback?: string): string {
@@ -105,6 +107,8 @@ export function loadConfig(): AppConfig {
     openAiModel: usingOpenAi ? required("OPENAI_MODEL") : process.env.OPENAI_MODEL ?? "",
     openAiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
     openAiMaxTokens: Number(process.env.OPENAI_MAX_TOKENS ?? 4096),
-    deterministicSeed: process.env.LLM_DETERMINISTIC_SEED ?? "constitutional-erp"
+    deterministicSeed: process.env.LLM_DETERMINISTIC_SEED ?? "constitutional-erp",
+    llmTraceStdout: process.env.NAVIGATOR_LLM_TRACE_STDOUT === "1",
+    llmTraceMaxChars: Number(process.env.NAVIGATOR_LLM_TRACE_MAX_CHARS ?? 6000)
   };
 }

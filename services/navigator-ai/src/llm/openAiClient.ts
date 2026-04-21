@@ -3,6 +3,7 @@ import { AppConfig } from "../config/env";
 import { recordLlmInteraction } from "../domain/stores/navigatorStore";
 import { HttpError } from "../utils/errors";
 import { LlmClient, LlmMessage } from "./types";
+import { maybeTraceLlm } from "./trace";
 
 function hashContext(messages: LlmMessage[]): string {
   const digest = createHash("sha256");
@@ -40,6 +41,13 @@ export class OpenAiClient implements LlmClient {
       max_completion_tokens: this.config.openAiMaxTokens
     };
 
+    maybeTraceLlm(this.config, "request", {
+      provider: this.provider,
+      model: this.model,
+      url,
+      payload
+    });
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -51,12 +59,26 @@ export class OpenAiClient implements LlmClient {
 
     if (!response.ok) {
       const text = await response.text();
+      maybeTraceLlm(this.config, "error", {
+        provider: this.provider,
+        model: this.model,
+        status: response.status,
+        statusText: response.statusText,
+        error: text
+      });
       throw new HttpError(502, "llm_unavailable", `OpenAI call failed: ${text}`);
     }
 
     const body = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
+
+    maybeTraceLlm(this.config, "response", {
+      provider: this.provider,
+      model: this.model,
+      status: response.status,
+      body
+    });
 
     const content = body.choices?.[0]?.message?.content;
     if (!content) {
@@ -67,7 +89,7 @@ export class OpenAiClient implements LlmClient {
       id: randomUUID(),
       kind: "chat",
       model: `${this.provider}:${this.model}`,
-      promptJson: JSON.stringify(messages),
+      promptJson: JSON.stringify(payload),
       responseText: content,
       contextHash: hashContext(messages)
     });

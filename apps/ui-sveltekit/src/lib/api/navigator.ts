@@ -150,6 +150,46 @@ export interface NextStepResult {
 	};
 }
 
+export interface LlmTraceMessage {
+	role?: string;
+	content?: string;
+}
+
+export interface LlmTraceRow {
+	id: string;
+	kind: string;
+	model: string;
+	contextHash?: string | null;
+	createdAt: string;
+	request: {
+		messageCount: number;
+		messages: LlmTraceMessage[];
+		maxCompletionTokens?: number;
+		model?: string;
+	};
+	response: {
+		text: string;
+		parsedJson?: unknown;
+	};
+	raw?: {
+		promptJson: string;
+		responseText: string;
+	};
+}
+
+export interface LlmTraceListResponse {
+	data: LlmTraceRow[];
+	paging: {
+		limit: number;
+		offset: number;
+		count: number;
+	};
+}
+
+export interface LlmTraceSingleResponse {
+	data: LlmTraceRow;
+}
+
 function actorHeaders(actor: ActorContext): HeadersInit {
 	return {
 		'content-type': 'application/json',
@@ -418,6 +458,55 @@ export async function getNextSteps(
 	}
 
 	return (await response.json()) as NextStepResult;
+}
+
+export async function getLlmTraces(
+	actor: ActorContext,
+	input: {
+		limit?: number;
+		offset?: number;
+		includeRaw?: boolean;
+	} = {}
+): Promise<LlmTraceListResponse> {
+	const query = new URLSearchParams();
+	query.set('limit', String(input.limit ?? 50));
+	query.set('offset', String(input.offset ?? 0));
+	if (input.includeRaw) {
+		query.set('includeRaw', 'true');
+	}
+
+	const response = await fetch(`/api/navigator/llm/traces?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator LLM traces request failed'));
+	}
+
+	return (await response.json()) as LlmTraceListResponse;
+}
+
+export async function getLlmTrace(
+	id: string,
+	actor: ActorContext,
+	includeRaw = true
+): Promise<LlmTraceSingleResponse> {
+	const query = new URLSearchParams();
+	if (includeRaw) {
+		query.set('includeRaw', 'true');
+	}
+
+	const response = await fetch(`/api/navigator/llm/traces/${encodeURIComponent(id)}?${query.toString()}`, {
+		method: 'GET',
+		headers: actorHeaders(actor)
+	});
+
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, 'Navigator LLM trace request failed'));
+	}
+
+	return (await response.json()) as LlmTraceSingleResponse;
 }
 
 export async function getApprovalRequests(
