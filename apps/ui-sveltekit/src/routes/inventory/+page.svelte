@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { actorStore } from '$lib/stores/actorStore';
 	import {
+		activateInventoryBom,
 		createInventoryBom,
 		createInventoryBomComponent,
 		createInventoryOrganization,
@@ -60,6 +61,7 @@
 	let bomProjectEligible = true;
 	let bomCostingProfile = 'Standard';
 	let selectedBomId = '';
+	let activatingBomId = '';
 
 	let componentBomId = '';
 	let componentSkuId = '';
@@ -290,6 +292,25 @@
 		}
 	}
 
+	async function onActivateBom(bomId: string): Promise<void> {
+		errorMessage = '';
+		infoMessage = '';
+		activatingBomId = bomId;
+
+		try {
+			const activated = await activateInventoryBom($actorStore, bomId);
+			infoMessage = `BoM ${activated.data.bomId} activated.`;
+			await refreshBoms();
+			if (selectedBomId === bomId) {
+				await refreshBomComponents();
+			}
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Unable to activate BoM.';
+		} finally {
+			activatingBomId = '';
+		}
+	}
+
 	function onSelectedBomChanged(): void {
 		componentBomId = selectedBomId;
 		void refreshBomComponents();
@@ -494,11 +515,12 @@
 						<th class="py-1">Status</th>
 						<th class="py-1">Project Eligible</th>
 						<th class="py-1">Created</th>
+						<th class="py-1 text-center">Actions</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#if boms.length === 0}
-						<tr><td class="py-2 ui-muted" colspan="6">No BoMs found for the selected organization.</td></tr>
+						<tr><td class="py-2 ui-muted" colspan="7">No BoMs found for the selected organization.</td></tr>
 					{:else}
 						{#each boms as bom}
 							<tr class="ui-table-compact-row">
@@ -508,6 +530,19 @@
 								<td class="py-1">{bom.status}</td>
 								<td class="py-1">{bom.projectEligible ? 'Yes' : 'No'}</td>
 								<td class="py-1">{bom.createdAt.split('T')[0]}</td>
+								<td class="py-1 text-center">
+									{#if bom.status === 'Draft'}
+										<button
+											on:click={() => onActivateBom(bom.bomId)}
+											class="text-green-600 hover:text-green-800 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+											disabled={loading || activatingBomId === bom.bomId}
+										>
+											{activatingBomId === bom.bomId ? 'Activating...' : 'Activate'}
+										</button>
+									{:else}
+										<span class="ui-muted text-xs">-</span>
+									{/if}
+								</td>
 							</tr>
 						{/each}
 					{/if}

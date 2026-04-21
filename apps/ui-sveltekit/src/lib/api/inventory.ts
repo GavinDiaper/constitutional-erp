@@ -181,6 +181,17 @@ export function createInventoryBom(
 	return requestHubJson<DataResponse<InventoryBomHeader>>('/api/hub/inv/boms', actor, 'POST', payload);
 }
 
+export function activateInventoryBom(
+	actor: ActorContext,
+	bomId: string
+): Promise<DataResponse<InventoryBomHeader>> {
+	return requestHubJson<DataResponse<InventoryBomHeader>>(
+		`/api/hub/inv/boms/${encodeURIComponent(bomId)}/activate`,
+		actor,
+		'POST'
+	);
+}
+
 export function listInventoryBomComponents(
 	actor: ActorContext,
 	bomId: string
