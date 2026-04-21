@@ -91,6 +91,11 @@
 		name?: string;
 	}
 
+	interface ProjectRow {
+		project_id: string;
+		name?: string;
+	}
+
 	interface LedgerRow {
 		ledger_id: string;
 		name?: string;
@@ -116,6 +121,7 @@
 	let accounts: AccountRow[] = [];
 	let legalEntities: LegalEntityRow[] = [];
 	let ledgers: LedgerRow[] = [];
+	let projects: ProjectRow[] = [];
 
 	$: filteredLedgers = journalForm.legalEntityId
 		? ledgers.filter((ledger) => ledger.legal_entity_id === journalForm.legalEntityId)
@@ -166,6 +172,7 @@
 		requester: '',
 		department: '',
 		legalEntityId: '',
+		projectId: '',
 		currencyCode: 'USD',
 		neededByDate: ''
 	};
@@ -237,7 +244,8 @@
 				periodResult,
 				accountResult,
 				legalEntityResult,
-				ledgerResult
+				ledgerResult,
+				projectResult
 			] = await Promise.all([
 				queryTable<CustomerRow>('o2c_customer', $actorStore),
 				queryTable<SupplierRow>('p2p_supplier', $actorStore),
@@ -250,7 +258,8 @@
 				queryTable<FiscalPeriodRow>('r2r_fiscal_period', $actorStore),
 				queryTable<AccountRow>('r2r_account', $actorStore),
 				queryTable<LegalEntityRow>('r2r_legal_entity', $actorStore),
-				queryTable<LedgerRow>('r2r_ledger', $actorStore)
+				queryTable<LedgerRow>('r2r_ledger', $actorStore),
+				queryTable<ProjectRow>('proj_project', $actorStore)
 			]);
 
 			customers = customerResult.data ?? [];
@@ -265,6 +274,7 @@
 			accounts = accountResult.data ?? [];
 			legalEntities = legalEntityResult.data ?? [];
 			ledgers = ledgerResult.data ?? [];
+			projects = projectResult.data ?? [];
 
 			if (!paymentForm.invoiceId && invoices.length > 0) {
 				paymentForm.invoiceId = invoices[0].invoice_id;
@@ -349,6 +359,10 @@
 
 	function supplierLabel(supplier: SupplierRow): string {
 		return supplier.supplier_name ? `${supplier.supplier_name} (${supplier.supplier_id})` : supplier.supplier_id;
+	}
+
+	function projectLabel(project: ProjectRow): string {
+		return project.name ? `${project.name} (${project.project_id})` : project.project_id;
 	}
 
 	function invoiceLabel(invoice: InvoiceRow): string {
@@ -575,6 +589,12 @@
 						<option value="">Select legal entity</option>
 						{#each legalEntities as entity (entity.legal_entity_id)}
 							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
+						{/each}
+					</select>
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={requisitionForm.projectId}>
+						<option value="">No project link</option>
+						{#each projects as project (project.project_id)}
+							<option value={project.project_id}>{projectLabel(project)}</option>
 						{/each}
 					</select>
 					<div class="grid grid-cols-2 gap-2">

@@ -241,6 +241,7 @@ async function createRequisition(headers: Headers, payload: BootstrapPayload): P
 	const requester = asNonEmptyString(payload.requester) ?? 'principal.system';
 	const department = asOptionalString(payload.department) ?? 'Operations';
 	const legalEntityId = asOptionalString(payload.legalEntityId);
+	const projectId = asOptionalString(payload.projectId);
 	const currencyCode = asCurrency(payload.currencyCode) ?? 'USD';
 	const neededByDate = asOptionalString(payload.neededByDate);
 
@@ -249,6 +250,7 @@ async function createRequisition(headers: Headers, payload: BootstrapPayload): P
 			requester,
 			department,
 			legalEntityId,
+			projectId,
 			currencyCode,
 			neededByDate
 		})
