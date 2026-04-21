@@ -50,6 +50,8 @@
 	let procurementPreview: ProjectProcurementPreview | null = null;
 	let procurementPreviewLoading = false;
 	let procurementGenerateLoading = false;
+	let procurementPreviewAttempted = false;
+	let procurementPreviewProjectId = '';
 
 	$: projectId = $page.params.projectId || '';
 
@@ -228,6 +230,8 @@
 	async function handleLoadProcurementPreview() {
 		if (!$projectStore.currentProject) return;
 
+		procurementPreviewAttempted = true;
+		procurementPreviewProjectId = $projectStore.currentProject.projectId;
 		procurementPreviewLoading = true;
 		errorMessage = '';
 
@@ -236,7 +240,10 @@
 			const response = await getProjectProcurementPreview(actor, $projectStore.currentProject.projectId);
 			procurementPreview = response.data;
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Failed to load procurement preview';
+			const detail = err instanceof Error ? err.message : 'Failed to load procurement preview';
+			errorMessage = detail.toLowerCase().includes('404')
+				? 'Procurement preview endpoint is not available in the running backend yet. Restart Foundation ERP service to load the new routes, then click Preview Procurement Gaps again.'
+				: detail;
 		} finally {
 			procurementPreviewLoading = false;
 		}
@@ -263,8 +270,20 @@
 		}
 	}
 
-	$: if (activeTab === 'linked' && $projectStore.currentProject && !procurementPreview && !procurementPreviewLoading) {
+	$: if (
+		activeTab === 'linked' &&
+		$projectStore.currentProject &&
+		!procurementPreview &&
+		!procurementPreviewLoading &&
+		!procurementPreviewAttempted
+	) {
 		void handleLoadProcurementPreview();
+	}
+
+	$: if (projectId && projectId !== procurementPreviewProjectId) {
+		procurementPreview = null;
+		procurementPreviewAttempted = false;
+		procurementPreviewProjectId = projectId;
 	}
 
 	onMount(() => {
