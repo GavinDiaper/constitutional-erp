@@ -27,6 +27,10 @@ export interface AppConfig {
   databasePath: string;
   integrationHubUrl: string;
   integrationHubApiKey: string;
+  foundationErpUrl: string;
+  foundationErpApiKey: string;
+  foundationErpIngressIdHeader: string;
+  foundationErpIngressId: string;
   pgeUrl: string;
   pgeApiKey: string;
   meshGatewayUrl: string;
@@ -84,6 +88,10 @@ export function loadConfig(): AppConfig {
     databasePath: process.env.DATABASE_PATH ?? "navigator-ai.db",
     integrationHubUrl: required("INTEGRATION_HUB_URL", "http://localhost:4017"),
     integrationHubApiKey: required("INTEGRATION_HUB_API_KEY", process.env.API_KEY ?? "change-me"),
+    foundationErpUrl: required("FOUNDATION_ERP_URL", "http://localhost:3000"),
+    foundationErpApiKey: required("FOUNDATION_ERP_API_KEY", process.env.API_KEY ?? "change-me"),
+    foundationErpIngressIdHeader: required("FOUNDATION_ERP_INGRESS_ID_HEADER", "x-ingress-id"),
+    foundationErpIngressId: required("FOUNDATION_ERP_INGRESS_ID", "foundation-ingress"),
     pgeUrl: required("PGE_URL", "http://localhost:4005"),
     pgeApiKey: required("PGE_API_KEY", "change-me"),
     meshGatewayUrl: required("MESH_GATEWAY_URL", "http://localhost:4003"),

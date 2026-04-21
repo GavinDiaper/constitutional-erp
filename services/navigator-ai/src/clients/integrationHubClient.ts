@@ -132,6 +132,15 @@ export class IntegrationHubClient {
     };
   }
 
+  private foundationHeaders(actorId: string): Record<string, string> {
+    return {
+      "x-api-key": this.config.foundationErpApiKey,
+      [this.config.foundationErpIngressIdHeader]: this.config.foundationErpIngressId,
+      "x-actor-id": actorId,
+      "x-actor-tier": "5"
+    };
+  }
+
   async getResource(ctx: SessionContext): Promise<CanonicalResource> {
     const url = `${this.config.integrationHubUrl}/api/v1/hub/process/${encodeURIComponent(ctx.aggregateType)}/${encodeURIComponent(ctx.aggregateId)}`;
     try {
@@ -291,10 +300,10 @@ export class IntegrationHubClient {
   }): Promise<T[]> {
     const limit = input.limit ?? IntegrationHubClient.defaultQueryLimit;
     const offset = input.offset ?? 0;
-    const url = `${this.config.integrationHubUrl}/api/v1/hub/query/${encodeURIComponent(input.table)}?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
+    const url = `${this.config.foundationErpUrl}/api/v1/query/${encodeURIComponent(input.table)}?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`;
     const response = await requestJson<{ data?: T[] }>(url, {
       method: "GET",
-      headers: this.headers(input.actorId)
+      headers: this.foundationHeaders(input.actorId)
     });
 
     return Array.isArray(response.data.data) ? response.data.data : [];
@@ -305,10 +314,10 @@ export class IntegrationHubClient {
     id: string;
     actorId: string;
   }): Promise<T | undefined> {
-    const url = `${this.config.integrationHubUrl}/api/v1/hub/query/${encodeURIComponent(input.table)}/${encodeURIComponent(input.id)}`;
+    const url = `${this.config.foundationErpUrl}/api/v1/query/${encodeURIComponent(input.table)}/${encodeURIComponent(input.id)}`;
     const response = await requestJson<{ data?: T }>(url, {
       method: "GET",
-      headers: this.headers(input.actorId)
+      headers: this.foundationHeaders(input.actorId)
     });
 
     return response.data.data;

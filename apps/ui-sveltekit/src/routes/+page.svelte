@@ -5,6 +5,7 @@
 
 	const logoUrl = `${base}/images/Provisa.svg`;
 	const frontPageBackgroundUrl = `${base}/images/BusinessIdea1.png`;
+	const frontPageBackgroundVideoUrl = `${base}/images/Linaworks.webm`;
 	const gMarkUrl = `${base}/images/Lina1.png`;
 	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
 	const architectureFutureDefinition = `%%{init: {'themeVariables': {'fontSize': '44px'}, 'themeCSS': '.nodeLabel, .edgeLabel, .cluster-label { font-weight: 700; line-height: 1.2; } .node .label { padding-top: 18px; padding-bottom: 10px; }'}}%%
@@ -129,11 +130,17 @@ class D1,D2,D3,D4 fabric;`;
 </script>
 
 <section class="home-shell relative overflow-hidden rounded-2xl border dark:border-white/30 border-slate-300 p-6 md:p-10">
-	<img
-		class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-28"
-		src={frontPageBackgroundUrl}
-		alt=""
-	/>
+	<video
+		class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+		autoplay
+		muted
+		loop
+		playsinline
+		poster={frontPageBackgroundUrl}
+	>
+		<source src={frontPageBackgroundVideoUrl} type="video/webm" />
+	</video>
+	<div class="pointer-events-none absolute inset-0 bg-white/70 dark:bg-slate-900/45"></div>
 	<img
 		class="pointer-events-none absolute right-4 top-4 w-36 opacity-80 md:w-44"
 		src={gMarkUrl}
