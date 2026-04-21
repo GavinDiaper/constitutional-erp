@@ -171,11 +171,17 @@ export class IntegrationHubClient {
         throw error;
       }
 
-      const queryRow = await this.queryRow<Record<string, unknown>>({
-        table: fallbackConfig.table,
-        id: ctx.aggregateId,
-        actorId: ctx.actorId
-      });
+      let queryRow: Record<string, unknown> | undefined;
+      try {
+        queryRow = await this.queryRow<Record<string, unknown>>({
+          table: fallbackConfig.table,
+          id: ctx.aggregateId,
+          actorId: ctx.actorId
+        });
+      } catch {
+        // Some tables are not resolvable via /query/{table}/{id}; fall back to list+scan.
+        queryRow = undefined;
+      }
 
       let resolvedRow = queryRow;
       if (!resolvedRow) {
