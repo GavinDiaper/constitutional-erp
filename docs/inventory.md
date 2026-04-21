@@ -1,5 +1,19 @@
 # 🧱 1. Does Inventory “belong” in FoundationERP Core?
 
+## MCP Function Coverage (Current Implementation)
+
+The Integration Hub MCP catalog currently exposes inventory operations under `inv_*`, including:
+
+- `inv_create_sku`, `inv_list_skus`
+- `inv_create_organization`, `inv_list_organizations`
+- `inv_post_movement`, `inv_list_movements`, `inv_list_on_hand`
+- `inv_create_reservation`, `inv_list_reservations`, `inv_release_reservation`
+- `inv_create_bin`, `inv_list_bins`, `inv_putaway_to_bin`, `inv_pick_from_bin`
+- `inv_create_cycle_count`, `inv_list_cycle_counts`, `inv_record_cycle_count_line`, `inv_post_cycle_count`
+- `inv_create_lot`, `inv_list_lots`, `inv_consume_lot`
+- `inv_create_serial`, `inv_list_serials`, `inv_consume_serial`
+- `inv_issue_to_project`
+
 **Yes — but only the *constitutional* parts of inventory.**
 
 There are two very different layers of “inventory” in enterprise systems:

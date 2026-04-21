@@ -1,5 +1,16 @@
 # Constitutional‑safe spec for Project BOM, Internal Trade, and Labour Costing
 
+## MCP Function Coverage (Current Implementation)
+
+Integration Hub MCP now includes explicit BOM and project function families used by this flow:
+
+- BOM (`bom_*`):
+  `bom_create_bom`, `bom_list_boms`, `bom_get_bom`, `bom_add_component`, `bom_list_components`, `bom_activate_bom`
+- Projects (`proj_*`):
+  `proj_create_project`, `proj_list_projects`, `proj_get_project`, `proj_activate_project`, `proj_hold_project`, `proj_resume_project`, `proj_complete_project`, `proj_cancel_project`, `proj_get_wip_summary`, `proj_assign_bom`, `proj_list_bom_assignments`, `proj_post_labor_cost`, `proj_list_labor_entries`, `proj_create_finished_item`, `proj_list_finished_items`
+- Inventory bridge used by projects:
+  `inv_issue_to_project`
+
 > “This roadmap is intentionally shaped around your architectural philosophy: **process‑first, event‑sourced, governance‑aware, and ERP‑agnostic.**”   [docs.oracle.com](https://docs.oracle.com/en/cloud/saas/readiness/erp/24a/ppm24a/24A-ppm-wn-f30826.htm)  
 
 This spec assumes your existing **two‑layer inventory architecture**: constitutional inventory in the core, operational modules outside it.   [docs.oracle.com](https://docs.oracle.com/en/cloud/saas/readiness/erp/24a/ppm24a/24A-ppm-wn-f30826.htm)  

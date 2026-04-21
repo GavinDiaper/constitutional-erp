@@ -1,6 +1,6 @@
 export interface McpFunctionDef {
   name: string;
-  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "proj";
+  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "bom" | "proj";
   description: string;
   entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
   action?: string; // e.g., "create", "activate", "approve"
@@ -124,6 +124,15 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "inv_create_serial", domain: "inv", entity: "InventorySerial", action: "create", description: "Create an inventory serial number", riskLevel: "Low", governanceTag: "INV.Serial.Create" },
   { name: "inv_list_serials", domain: "inv", entity: "InventorySerial", action: "list", description: "List inventory serials", riskLevel: "Low", governanceTag: "INV.Serial.List" },
   { name: "inv_consume_serial", domain: "inv", entity: "InventorySerial", action: "consume", description: "Consume an inventory serial", riskLevel: "Medium", governanceTag: "INV.Serial.Consume" },
+  { name: "inv_issue_to_project", domain: "inv", entity: "InventoryMovement", action: "issueToProject", description: "Issue inventory to an active project WIP", riskLevel: "Medium", governanceTag: "INV.Movement.IssueToProject" },
+
+  // ── BOM ──────────────────────────────────────────────────────────────────
+  { name: "bom_create_bom", domain: "bom", entity: "BOMHeader", action: "create", description: "Create a BOM header in Draft status", riskLevel: "Medium", governanceTag: "BOM.Header.Create" },
+  { name: "bom_list_boms", domain: "bom", entity: "BOMHeader", action: "list", description: "List BOM headers for an inventory organization", riskLevel: "Low", governanceTag: "BOM.Header.List" },
+  { name: "bom_get_bom", domain: "bom", entity: "BOMHeader", action: "get", description: "Get a BOM header by ID", riskLevel: "Low", governanceTag: "BOM.Header.Get" },
+  { name: "bom_add_component", domain: "bom", entity: "BOMComponent", action: "add", description: "Add a component line to a Draft BOM", riskLevel: "Medium", governanceTag: "BOM.Component.Add" },
+  { name: "bom_list_components", domain: "bom", entity: "BOMComponent", action: "list", description: "List component lines for a BOM", riskLevel: "Low", governanceTag: "BOM.Component.List" },
+  { name: "bom_activate_bom", domain: "bom", entity: "BOMHeader", action: "activate", description: "Activate a Draft BOM", riskLevel: "Medium", governanceTag: "BOM.Header.Activate" },
 
   // ── PROJ ─────────────────────────────────────────────────────────────────
   { name: "proj_create_project", domain: "proj", entity: "Project", action: "create", description: "Create a project in Draft status", riskLevel: "Low", governanceTag: "PROJ.Project.Create" },

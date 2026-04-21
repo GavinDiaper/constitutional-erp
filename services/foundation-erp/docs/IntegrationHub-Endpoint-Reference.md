@@ -964,6 +964,7 @@ GET /api/v1/query/o2c_customer/CUST-123
 ### GET /api/v1/mcp/functions
 
 - list supported semantic function names
+- includes O2C, P2P, R2R, H2R, Inventory (`inv_*`), BOM (`bom_*`), and Projects (`proj_*`)
 
 ### POST /api/v1/mcp/invoke
 
@@ -977,6 +978,44 @@ Example request:
   "input": {
     "customerId": "CUST-123",
     "currencyCode": "USD"
+  }
+}
+```
+
+Additional MCP examples:
+
+```json
+{
+  "functionName": "inv_post_movement",
+  "input": {
+    "skuId": "SKU-100",
+    "organizationId": "IORG-100",
+    "movementType": "receipt",
+    "quantity": 10,
+    "unitCost": 25
+  }
+}
+```
+
+```json
+{
+  "functionName": "bom_create_bom",
+  "input": {
+    "skuId": "SKU-100",
+    "organizationId": "IORG-100",
+    "revision": "R1",
+    "projectEligible": true
+  }
+}
+```
+
+```json
+{
+  "functionName": "proj_assign_bom",
+  "input": {
+    "projectId": "PRJ-100",
+    "bomId": "BOM-100",
+    "quantityPlanned": 5
   }
 }
 ```

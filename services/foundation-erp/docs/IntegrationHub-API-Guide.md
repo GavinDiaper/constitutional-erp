@@ -76,6 +76,16 @@ The MCP surface exposes named business functions and a function invocation endpo
 
 Use it when an integration layer wants to call semantic actions rather than raw resource URLs.
 
+Current MCP function families include:
+
+- O2C (`o2c_*`)
+- P2P (`p2p_*`)
+- R2R (`r2r_*`)
+- H2R (`h2r_*`)
+- Inventory (`inv_*`)
+- BOM (`bom_*`)
+- Projects (`proj_*`)
+
 Endpoints:
 
 - `GET /api/v1/mcp/functions`
@@ -156,6 +166,33 @@ These values are aligned across:
 - `/api/v1/h2r/assignments`
 - `/api/v1/h2r/credentials`
 - `/api/v1/h2r/authority-rules`
+
+### Inventory
+
+- `/api/v1/inv/skus`
+- `/api/v1/inv/organizations`
+- `/api/v1/inv/movements`
+- `/api/v1/inv/on-hand`
+- `/api/v1/inv/reservations`
+- `/api/v1/inv/bins`
+- `/api/v1/inv/cycle-counts`
+- `/api/v1/inv/lots`
+- `/api/v1/inv/serials`
+- `/api/v1/inv/issue-to-project`
+
+### BOM
+
+- `/api/v1/bom`
+- `/api/v1/bom/:bomId/components`
+- `/api/v1/bom/:bomId/activate`
+
+### Projects
+
+- `/api/v1/projects`
+- `/api/v1/projects/:projectId/wip`
+- `/api/v1/projects/:projectId/bom-assignments`
+- `/api/v1/projects/:projectId/labor-entries`
+- `/api/v1/projects/:projectId/finished-items`
 
 ### Events
 
@@ -266,6 +303,56 @@ Implementation boundary:
 
 - Foundation ERP exposes canonical H2R data and transitions
 - cross-domain authority enforcement is intentionally handled by Constitutional ERP governance and mesh layers
+
+### Inventory capabilities
+
+Foundation ERP supports core inventory operations across stock, allocation, and traceability:
+
+- create and list SKUs
+- create and list inventory organizations
+- post and list inventory movements
+- query on-hand balances
+- create/list/release reservations
+- create/list bins and execute putaway/pick
+- create/list/post cycle counts
+- create/list/consume lots and serials
+- issue inventory to project WIP
+
+Typical integration use cases:
+
+- WMS and fulfillment systems synchronize stock movements
+- planning and order orchestration checks on-hand and reservations
+- audit and compliance systems consume lot/serial traceability
+
+### BOM capabilities
+
+Foundation ERP supports canonical BOM management for project and manufacturing costing:
+
+- create and list BOM headers
+- get BOM by ID
+- add and list BOM components
+- activate BOM revisions
+
+Typical integration use cases:
+
+- engineering or PLM systems publish canonical BOM revisions
+- project costing services link approved BOMs to work packages
+
+### Projects capabilities
+
+Foundation ERP supports project lifecycle and WIP costing transitions:
+
+- create, activate, hold, resume, complete, and cancel projects
+- retrieve project WIP summary
+- assign/list BOM assignments to projects
+- post/list labor costs
+- create/list finished items from project WIP
+
+Typical integration use cases:
+
+- PM systems control project state and milestones
+- costing engines accumulate material/labor in WIP
+- production and inventory systems receipt finished goods from project completion
 
 ## Hypermedia Behavior
 

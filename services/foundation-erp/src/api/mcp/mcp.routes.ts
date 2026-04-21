@@ -110,6 +110,57 @@ import {
 } from "../../domain/h2r/assignment/assignmentService";
 import { expireCredential, issueCredential, revokeCredential } from "../../domain/h2r/credential/credentialService";
 import { createAuthorityRule } from "../../domain/h2r/authorityRule/authorityRuleService";
+import {
+  consumeInventoryLot,
+  consumeInventorySerial,
+  createCycleCount,
+  createInventoryBin,
+  createInventoryLot,
+  createInventorySerial,
+  createInventoryOrganization,
+  createReservation,
+  createSku,
+  listCycleCounts,
+  listInventoryBins,
+  listInventoryLots,
+  listInventoryOrganizations,
+  listInventorySerials,
+  listMovements,
+  listOnHand,
+  listReservations,
+  listSkus,
+  pickFromBin,
+  postCycleCount,
+  postInventoryMovement,
+  putawayToBin,
+  recordCycleCountLine,
+  releaseReservation
+} from "../../domain/inv/inventoryService";
+import {
+  activateBOMHeader,
+  addBOMComponent,
+  createBOMHeader,
+  getBOMHeaderById,
+  listBOMComponents,
+  listBOMHeaders
+} from "../../domain/inv/bomService";
+import {
+  activateProject,
+  assignBomToProject,
+  cancelProject,
+  completeProject,
+  createProject,
+  createProjectFinishedItem,
+  getProjectById,
+  getProjectWIPSummary,
+  holdProject,
+  listLaborEntries,
+  listProjectBomAssignments,
+  listProjectFinishedItems,
+  listProjects,
+  postLaborCost,
+  resumeProject
+} from "../../domain/proj/projectService";
 import { HttpError } from "../../utils/errors";
 
 const invokeSchema = z.object({
@@ -488,6 +539,337 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           threshold: Number(input.threshold),
           requiredTier: Number(input.requiredTier)
         }, actor);
+        break;
+
+      // ── INV ─────────────────────────────────────────────────────────────────
+      case "inv_create_sku":
+        result = createSku({
+          skuCode: input.skuCode,
+          description: input.description,
+          category: input.category,
+          uom: input.uom,
+          valuationMethod: input.valuationMethod,
+          standardCost: input.standardCost !== undefined ? Number(input.standardCost) : undefined
+        }, actor);
+        break;
+      case "inv_list_skus":
+        result = listSkus();
+        break;
+      case "inv_create_organization":
+        result = createInventoryOrganization({
+          name: input.name,
+          ledgerId: input.ledgerId,
+          inventoryAssetAccountCode: input.inventoryAssetAccountCode,
+          cogsAccountCode: input.cogsAccountCode
+        }, actor);
+        break;
+      case "inv_list_organizations":
+        result = listInventoryOrganizations();
+        break;
+      case "inv_post_movement":
+        result = postInventoryMovement({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          movementType: input.movementType,
+          quantity: Number(input.quantity),
+          unitCost: input.unitCost !== undefined ? Number(input.unitCost) : undefined,
+          reason: input.reason,
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          correlationKey: input.correlationKey,
+          projectId: input.projectId,
+          projectWipId: input.projectWipId,
+          bomId: input.bomId,
+          bomComponentFlag: input.bomComponentFlag,
+          isProjectFinishedGood: input.isProjectFinishedGood
+        }, actor);
+        break;
+      case "inv_list_movements":
+        result = listMovements();
+        break;
+      case "inv_list_on_hand":
+        result = listOnHand({ skuId: input.skuId, organizationId: input.organizationId });
+        break;
+      case "inv_create_reservation":
+        result = createReservation({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          reservationType: input.reservationType,
+          quantity: Number(input.quantity),
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          reason: input.reason,
+          correlationKey: input.correlationKey,
+          expiresAt: input.expiresAt
+        }, actor);
+        break;
+      case "inv_list_reservations":
+        result = listReservations({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          status: input.status,
+          reservationType: input.reservationType
+        });
+        break;
+      case "inv_release_reservation":
+        result = releaseReservation(
+          input.reservationId,
+          {
+            reason: input.reason,
+            expectedVersion: input.expectedVersion !== undefined ? Number(input.expectedVersion) : undefined
+          },
+          actor
+        );
+        break;
+      case "inv_create_bin":
+        result = createInventoryBin({
+          organizationId: input.organizationId,
+          binCode: input.binCode,
+          zone: input.zone,
+          aisle: input.aisle,
+          rack: input.rack,
+          shelfLevel: input.shelfLevel
+        }, actor);
+        break;
+      case "inv_list_bins":
+        result = listInventoryBins({
+          organizationId: input.organizationId,
+          isActive: input.isActive
+        });
+        break;
+      case "inv_putaway_to_bin":
+        result = putawayToBin({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          binId: input.binId,
+          quantity: Number(input.quantity),
+          reason: input.reason,
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          correlationKey: input.correlationKey
+        }, actor);
+        break;
+      case "inv_pick_from_bin":
+        result = pickFromBin({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          binId: input.binId,
+          quantity: Number(input.quantity),
+          reason: input.reason,
+          referenceType: input.referenceType,
+          referenceId: input.referenceId,
+          correlationKey: input.correlationKey
+        }, actor);
+        break;
+      case "inv_create_cycle_count":
+        result = createCycleCount({
+          organizationId: input.organizationId,
+          binId: input.binId,
+          reason: input.reason,
+          scheduledFor: input.scheduledFor
+        }, actor);
+        break;
+      case "inv_list_cycle_counts":
+        result = listCycleCounts({
+          organizationId: input.organizationId,
+          binId: input.binId,
+          status: input.status
+        });
+        break;
+      case "inv_record_cycle_count_line":
+        result = recordCycleCountLine({
+          cycleCountId: input.cycleCountId,
+          skuId: input.skuId,
+          countedQuantity: Number(input.countedQuantity),
+          reason: input.reason
+        }, actor);
+        break;
+      case "inv_post_cycle_count":
+        result = postCycleCount(input.cycleCountId, actor);
+        break;
+      case "inv_create_lot":
+        result = createInventoryLot({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          lotCode: input.lotCode,
+          quantityOnHand: Number(input.quantityOnHand),
+          manufactureDate: input.manufactureDate,
+          expiryDate: input.expiryDate
+        }, actor);
+        break;
+      case "inv_list_lots":
+        result = listInventoryLots({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          status: input.status
+        });
+        break;
+      case "inv_consume_lot":
+        result = consumeInventoryLot(input.lotId, {
+          quantity: Number(input.quantity),
+          reason: input.reason
+        }, actor);
+        break;
+      case "inv_create_serial":
+        result = createInventorySerial({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          serialNumber: input.serialNumber,
+          lotId: input.lotId
+        }, actor);
+        break;
+      case "inv_list_serials":
+        result = listInventorySerials({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          lotId: input.lotId,
+          status: input.status
+        });
+        break;
+      case "inv_consume_serial":
+        result = consumeInventorySerial(input.serialId, { reason: input.reason }, actor);
+        break;
+      case "inv_issue_to_project":
+        result = postInventoryMovement({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          movementType: "issue",
+          quantity: Number(input.quantity),
+          unitCost: input.unitCost !== undefined ? Number(input.unitCost) : undefined,
+          reason: input.reason ?? "Issue to project",
+          referenceType: input.assignmentId ? "bom_assignment" : undefined,
+          referenceId: input.assignmentId,
+          projectId: input.projectId,
+          bomId: input.bomId,
+          bomComponentFlag: Boolean(input.bomId)
+        }, actor);
+        break;
+
+      // ── BOM ─────────────────────────────────────────────────────────────────
+      case "bom_create_bom":
+        result = createBOMHeader({
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          revision: input.revision,
+          description: input.description,
+          projectEligible: input.projectEligible,
+          costingProfile: input.costingProfile,
+          effectiveDate: input.effectiveDate,
+          endDate: input.endDate
+        }, actor);
+        break;
+      case "bom_list_boms":
+        result = listBOMHeaders(
+          input.organizationId,
+          input.limit !== undefined ? Number(input.limit) : undefined,
+          input.offset !== undefined ? Number(input.offset) : undefined
+        );
+        break;
+      case "bom_get_bom":
+        result = getBOMHeaderById(input.bomId);
+        break;
+      case "bom_add_component":
+        result = addBOMComponent({
+          bomId: input.bomId,
+          componentSkuId: input.componentSkuId,
+          componentLineNumber: input.componentLineNumber !== undefined ? Number(input.componentLineNumber) : undefined,
+          componentDescription: input.componentDescription,
+          quantity: Number(input.quantity),
+          quantityUom: input.quantityUom,
+          scrapPercentage: input.scrapPercentage !== undefined ? Number(input.scrapPercentage) : undefined,
+          isPhantom: input.isPhantom,
+          standardCost: input.standardCost !== undefined ? Number(input.standardCost) : undefined,
+          costElementId: input.costElementId
+        }, actor);
+        break;
+      case "bom_list_components":
+        result = listBOMComponents(input.bomId);
+        break;
+      case "bom_activate_bom":
+        result = activateBOMHeader(input.bomId, actor);
+        break;
+
+      // ── PROJ ────────────────────────────────────────────────────────────────
+      case "proj_create_project":
+        result = createProject({
+          projectId: input.projectId,
+          name: input.name,
+          description: input.description,
+          projectType: input.projectType,
+          customerId: input.customerId,
+          contractId: input.contractId,
+          wbsId: input.wbsId,
+          budgetAmount: Number(input.budgetAmount),
+          defaultWIPAccountId: input.defaultWIPAccountId,
+          defaultCloseAccountId: input.defaultCloseAccountId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          projectManagerId: input.projectManagerId,
+          organizationId: input.organizationId
+        }, actor);
+        break;
+      case "proj_list_projects":
+        result = listProjects(
+          input.limit !== undefined ? Number(input.limit) : undefined,
+          input.offset !== undefined ? Number(input.offset) : undefined
+        );
+        break;
+      case "proj_get_project":
+        result = getProjectById(input.projectId);
+        break;
+      case "proj_activate_project":
+        result = activateProject(input.projectId, actor);
+        break;
+      case "proj_hold_project":
+        result = holdProject(input.projectId, input.holdReason, actor);
+        break;
+      case "proj_resume_project":
+        result = resumeProject(input.projectId, actor);
+        break;
+      case "proj_complete_project":
+        result = completeProject(input.projectId, input.completionType, input.closeAccountId, actor);
+        break;
+      case "proj_cancel_project":
+        result = cancelProject(input.projectId, input.cancellationReason, input.forceCancel, actor);
+        break;
+      case "proj_get_wip_summary":
+        result = getProjectWIPSummary(input.projectId);
+        break;
+      case "proj_assign_bom":
+        result = assignBomToProject({
+          projectId: input.projectId,
+          bomId: input.bomId,
+          wbsId: input.wbsId,
+          quantityPlanned: Number(input.quantityPlanned)
+        }, actor);
+        break;
+      case "proj_list_bom_assignments":
+        result = listProjectBomAssignments(input.projectId);
+        break;
+      case "proj_post_labor_cost":
+        result = postLaborCost({
+          projectId: input.projectId,
+          wbsId: input.wbsId,
+          resourceId: input.resourceId,
+          hours: Number(input.hours),
+          rate: Number(input.rate),
+          costElementId: input.costElementId
+        }, actor);
+        break;
+      case "proj_list_labor_entries":
+        result = listLaborEntries(input.projectId);
+        break;
+      case "proj_create_finished_item":
+        result = createProjectFinishedItem({
+          projectId: input.projectId,
+          skuId: input.skuId,
+          organizationId: input.organizationId,
+          quantity: Number(input.quantity),
+          unitCost: input.unitCost !== undefined ? Number(input.unitCost) : undefined
+        }, actor);
+        break;
+      case "proj_list_finished_items":
+        result = listProjectFinishedItems(input.projectId);
         break;
 
       default:

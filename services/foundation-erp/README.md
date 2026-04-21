@@ -33,6 +33,9 @@ Local runs load values from `.env` automatically. Keep `postman/FoundationERP.lo
 - O2C Hypermedia: `/api/v1/o2c/*`
 - P2P Hypermedia: `/api/v1/p2p/*`
 - R2R Hypermedia: `/api/v1/r2r/*`
+- Inventory: `/api/v1/inv/*`
+- BOM: `/api/v1/bom/*`
+- Projects: `/api/v1/projects/*`
 - MCP: `/api/v1/mcp/functions` and `/api/v1/mcp/invoke`
 - Events feed: `/api/v1/events?limit=100&after=<timestamp>`
 - Table query API: `/api/v1/query/tables`, `/api/v1/query/:table?limit=100&offset=0`, `/api/v1/query/:table/:id`
