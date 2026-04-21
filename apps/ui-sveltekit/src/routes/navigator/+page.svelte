@@ -24,6 +24,7 @@
 		type CanonicalResource,
 		type DecisionOutcome,
 		type ExecutionResult,
+		type NextStepSuggestion,
 		type NextStepResult,
 		type NavigatorCreateOperation,
 		type NavigatorCreateResult,
@@ -156,6 +157,9 @@
 	let nextStepsLoading = false;
 	let nextStepsError = '';
 	let nextStepsResult: NextStepResult | null = null;
+	let nextStepApplyLoadingId = '';
+	let nextStepApplyError = '';
+	let nextStepApplySuccess = '';
 	let approvalsLoading = false;
 	let approvalsError = '';
 	let approvalItems: ApprovalAttentionItem[] = [];
@@ -437,6 +441,8 @@
 					method: paymentForm.method
 				};
 		}
+
+		throw new Error(`Unsupported create operation: ${operation}`);
 	}
 
 	async function loadCreateLookups(): Promise<void> {
@@ -772,6 +778,8 @@
 		nextStepsLoading = true;
 		nextStepsError = '';
 		nextStepsResult = null;
+		nextStepApplyError = '';
+		nextStepApplySuccess = '';
 
 		try {
 			nextStepsResult = await getNextSteps(buildContext(), selectedActor(), 6);
@@ -779,6 +787,60 @@
 			nextStepsError = err instanceof Error ? err.message : 'Next-step recommendation request failed.';
 		} finally {
 			nextStepsLoading = false;
+		}
+	}
+
+	function buildPromptFromSuggestion(operation: NavigatorCreateOperation): string {
+		const basePromptByOperation: Record<NavigatorCreateOperation, string> = {
+			'create-supplier': 'Create a new supplier in AED named Next Step Supplier with NET30 terms.',
+			'create-requisition': 'Create a requisition for office supplies in USD for Operations department.',
+			'create-purchase-order': 'Create a purchase order using the active supplier with realistic delivery address and amount.',
+			'create-fiscal-year': 'Create a new fiscal year for the primary ledger with valid start and end dates.',
+			'create-fiscal-period': 'Create the next fiscal period for the active fiscal year with valid dates.',
+			'create-payment': 'Create an AR payment for an open invoice using bank transfer and a realistic amount.',
+			'create-inventory-sku': 'Create a new inventory SKU with moving average valuation and sensible defaults.',
+			'create-inventory-organization': 'Create an inventory organization with a clear business name.',
+			'create-project': 'Create a project with a manager, budget, and default WIP/close accounts.'
+		};
+
+		const aggregateContext = aggregateType.trim() && aggregateId.trim()
+			? ` Current context: ${aggregateType} ${aggregateId}.`
+			: '';
+
+		return `${basePromptByOperation[operation]}${aggregateContext}`;
+	}
+
+	async function handleApplyNextStepSuggestion(suggestion: NextStepSuggestion): Promise<void> {
+		nextStepApplyLoadingId = suggestion.stepId;
+		nextStepApplyError = '';
+		nextStepApplySuccess = '';
+
+		try {
+			if (suggestion.kind === 'ACTION') {
+				const actionId = suggestion.actionId;
+				if (!actionId) {
+					throw new Error('Selected action recommendation does not include an actionId.');
+				}
+
+				selectedActionId = actionId;
+				await handleExplain(actionId);
+				await handleExecute(actionId);
+				nextStepApplySuccess = `Executed recommended action '${actionId}'.`;
+				return;
+			}
+
+			const operation = suggestion.operation;
+			if (!operation) {
+				throw new Error('Selected create recommendation does not include an operation.');
+			}
+
+			promptCreateText = buildPromptFromSuggestion(operation);
+			await handlePromptCreate(false);
+			nextStepApplySuccess = `Submitted create recommendation '${operation}' through prompt-create.`;
+		} catch (err) {
+			nextStepApplyError = err instanceof Error ? err.message : 'Failed to apply next-step recommendation.';
+		} finally {
+			nextStepApplyLoadingId = '';
 		}
 	}
 
@@ -1275,17 +1337,37 @@
 				<p class="mt-3 text-xs dark:text-white/60 text-slate-500">
 					Events analyzed: {nextStepsResult.historySignals.eventCount} | Recent entity created: {nextStepsResult.historySignals.hasRecentEntityCreated ? 'yes' : 'no'}
 				</p>
+				{#if nextStepApplyError}
+					<p class="mt-3 rounded-md border border-red-500/55 bg-red-500/10 p-3 text-sm text-red-200">{nextStepApplyError}</p>
+				{/if}
+				{#if nextStepApplySuccess}
+					<p class="mt-3 rounded-md border border-emerald-500/55 bg-emerald-500/10 p-3 text-sm text-emerald-100">{nextStepApplySuccess}</p>
+				{/if}
 				<ul class="mt-3 space-y-2">
 					{#each nextStepsResult.suggestions as suggestion (suggestion.stepId)}
-						<li class="rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-3 text-sm">
-							<p class="font-semibold dark:text-white/90 text-slate-800">
-								{suggestion.kind === 'ACTION' ? `Action: ${suggestion.actionId}` : `Create: ${suggestion.operation}`}
-								<span class="ml-2 text-xs dark:text-white/60 text-slate-500">score {suggestion.score.toFixed(2)}</span>
-							</p>
-							<p class="mt-1 dark:text-white/75 text-slate-700">{suggestion.rationale}</p>
-							{#if suggestion.prerequisites.length > 0}
-								<p class="mt-1 text-xs dark:text-white/55 text-slate-500">Prerequisites: {suggestion.prerequisites.join(', ')}</p>
-							{/if}
+						<li>
+							<button
+								type="button"
+								class="w-full rounded-md border dark:border-white/15 border-slate-200 dark:bg-[#0e2038] bg-slate-200/60 p-3 text-left text-sm transition dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+								on:click={() => void handleApplyNextStepSuggestion(suggestion)}
+								disabled={nextStepApplyLoadingId.length > 0}
+							>
+								<p class="font-semibold dark:text-white/90 text-slate-800">
+									{suggestion.kind === 'ACTION' ? `Action: ${suggestion.actionId}` : `Create: ${suggestion.operation}`}
+									<span class="ml-2 text-xs dark:text-white/60 text-slate-500">score {suggestion.score.toFixed(2)}</span>
+								</p>
+								<p class="mt-1 dark:text-white/75 text-slate-700">{suggestion.rationale}</p>
+								{#if suggestion.prerequisites.length > 0}
+									<p class="mt-1 text-xs dark:text-white/55 text-slate-500">Prerequisites: {suggestion.prerequisites.join(', ')}</p>
+								{/if}
+								<p class="mt-2 text-xs dark:text-white/50 text-slate-500">
+									{#if nextStepApplyLoadingId === suggestion.stepId}
+										Applying recommendation...
+									{:else}
+										Click to apply this recommendation
+									{/if}
+								</p>
+							</button>
 						</li>
 					{/each}
 				</ul>
