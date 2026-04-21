@@ -19,9 +19,11 @@
 		cancelProject,
 		assignBomToProject,
 		postLaborCost,
-		createProjectFinishedItem
+		createProjectFinishedItem,
+		getProjectProcurementPreview,
+		generateProjectRequisitionLines
 	} from '$lib/api/projects';
-	import type { Project } from '$lib/types/projects';
+	import type { Project, ProjectProcurementPreview } from '$lib/types/projects';
 
 	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'linked' = 'overview';
 	let loading = false;
@@ -45,6 +47,9 @@
 	let selectedTransition: 'activate' | 'hold' | 'resume' | 'complete' | 'cancel' | null = null;
 	let transitionReason = '';
 	let transitionCompletionType: 'FG_Conversion' | 'Expense_Close' = 'FG_Conversion';
+	let procurementPreview: ProjectProcurementPreview | null = null;
+	let procurementPreviewLoading = false;
+	let procurementGenerateLoading = false;
 
 	$: projectId = $page.params.projectId || '';
 
@@ -218,6 +223,48 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function handleLoadProcurementPreview() {
+		if (!$projectStore.currentProject) return;
+
+		procurementPreviewLoading = true;
+		errorMessage = '';
+
+		try {
+			const actor = $actorStore;
+			const response = await getProjectProcurementPreview(actor, $projectStore.currentProject.projectId);
+			procurementPreview = response.data;
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to load procurement preview';
+		} finally {
+			procurementPreviewLoading = false;
+		}
+	}
+
+	async function handleGenerateRequisitionLines() {
+		if (!$projectStore.currentProject) return;
+
+		procurementGenerateLoading = true;
+		errorMessage = '';
+		successMessage = '';
+
+		try {
+			const actor = $actorStore;
+			const response = await generateProjectRequisitionLines(actor, $projectStore.currentProject.projectId);
+			const result = response.data;
+			successMessage = `Generated ${result.generatedLineCount} requisition lines in ${result.requisitionId}.`;
+			procurementPreview = result.preview;
+			await loadProject($projectStore.currentProject.projectId);
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to generate requisition lines';
+		} finally {
+			procurementGenerateLoading = false;
+		}
+	}
+
+	$: if (activeTab === 'linked' && $projectStore.currentProject && !procurementPreview && !procurementPreviewLoading) {
+		void handleLoadProcurementPreview();
 	}
 
 	onMount(() => {
@@ -637,6 +684,66 @@
 					<p class="text-sm text-slate-600 dark:text-white/70">
 						Procurements and customer orders linked with this project appear here using the shared <span class="font-semibold">projectId</span> reference.
 					</p>
+					<div class="mt-4 flex flex-wrap items-center gap-2">
+						<button
+							on:click={handleLoadProcurementPreview}
+							class="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-white/90 text-white px-3 py-2 rounded text-sm font-semibold"
+							disabled={procurementPreviewLoading || procurementGenerateLoading}
+						>
+							{procurementPreviewLoading ? 'Loading Preview...' : 'Preview Procurement Gaps'}
+						</button>
+						<button
+							on:click={handleGenerateRequisitionLines}
+							class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-semibold"
+							disabled={procurementPreviewLoading || procurementGenerateLoading}
+						>
+							{procurementGenerateLoading ? 'Generating...' : 'Generate Requisition Lines'}
+						</button>
+					</div>
+
+					{#if procurementPreview}
+						<div class="mt-4 grid gap-3 sm:grid-cols-3">
+							<div class="rounded border border-slate-200 dark:border-white/15 bg-white dark:bg-white/5 px-3 py-2">
+								<p class="text-[11px] text-slate-500 dark:text-white/60">Required Quantity</p>
+								<p class="text-sm font-semibold">{procurementPreview.totalRequiredQuantity}</p>
+							</div>
+							<div class="rounded border border-slate-200 dark:border-white/15 bg-white dark:bg-white/5 px-3 py-2">
+								<p class="text-[11px] text-slate-500 dark:text-white/60">Shortage Quantity</p>
+								<p class="text-sm font-semibold">{procurementPreview.totalShortageQuantity}</p>
+							</div>
+							<div class="rounded border border-slate-200 dark:border-white/15 bg-white dark:bg-white/5 px-3 py-2">
+								<p class="text-[11px] text-slate-500 dark:text-white/60">Shortage Lines</p>
+								<p class="text-sm font-semibold">{procurementPreview.shortageLineCount} / {procurementPreview.lineCount}</p>
+							</div>
+						</div>
+
+						{#if procurementPreview.lines.length > 0}
+							<div class="mt-4 overflow-x-auto">
+								<table class="min-w-full border-collapse border border-slate-300 dark:border-white/15 text-xs">
+									<thead class="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white/75">
+										<tr>
+											<th class="border border-slate-300 dark:border-white/15 px-2 py-2 text-left">SKU</th>
+											<th class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">Required</th>
+											<th class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">On Hand</th>
+											<th class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">Shortage</th>
+											<th class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">Suggested Unit Cost</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each procurementPreview.lines as line (line.skuId + '-' + line.organizationId + '-' + line.quantityUom)}
+											<tr class={line.shortageQuantity > 0 ? 'bg-amber-50 dark:bg-amber-900/15' : ''}>
+												<td class="border border-slate-300 dark:border-white/15 px-2 py-2">{line.skuId}</td>
+												<td class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">{line.requiredQuantity} {line.quantityUom}</td>
+												<td class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">{line.onHandQuantity}</td>
+												<td class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right font-semibold">{line.shortageQuantity}</td>
+												<td class="border border-slate-300 dark:border-white/15 px-2 py-2 text-right">{asCurrency(line.suggestedUnitPrice)}</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						{/if}
+					{/if}
 				</div>
 
 				<div class="grid gap-6 xl:grid-cols-3">

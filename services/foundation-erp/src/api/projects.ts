@@ -18,6 +18,8 @@ import {
   listProjectRequisitions,
   listProjectPurchaseOrders,
   listProjectSalesOrders,
+  getProjectProcurementPreview,
+  generateProjectRequisitionLinesFromPreview,
 } from "../domain/proj/projectService";
 import { HttpError } from "../utils/errors";
 
@@ -426,6 +428,51 @@ router.get("/:projectId/sales-orders", (req: Request, res: Response) => {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:projectId/procurement-preview", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const preview = getProjectProcurementPreview(projectId);
+    res.json({ success: true, data: preview });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/generate-requisition-lines", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const {
+      requisitionId,
+      requester,
+      department,
+      currencyCode,
+      neededByDate,
+      legalEntityId,
+    } = req.body ?? {};
+
+    const result = generateProjectRequisitionLinesFromPreview(
+      projectId,
+      {
+        requisitionId,
+        requester,
+        department,
+        currencyCode,
+        neededByDate,
+        legalEntityId,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: result });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 

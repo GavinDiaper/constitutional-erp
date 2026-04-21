@@ -129,6 +129,37 @@ export interface ProjectSalesOrder {
 	updatedAt: string;
 }
 
+export interface ProjectProcurementPreviewLine {
+	skuId: string;
+	organizationId: string;
+	quantityUom: string;
+	requiredQuantity: number;
+	onHandQuantity: number;
+	shortageQuantity: number;
+	suggestedUnitPrice: number;
+	sourceBomIds: string[];
+	sourceAssignmentIds: string[];
+}
+
+export interface ProjectProcurementPreview {
+	projectId: string;
+	generatedAt: string;
+	lineCount: number;
+	shortageLineCount: number;
+	totalRequiredQuantity: number;
+	totalShortageQuantity: number;
+	lines: ProjectProcurementPreviewLine[];
+}
+
+export interface ProjectRequisitionGenerationResult {
+	projectId: string;
+	requisitionId: string;
+	generatedLineCount: number;
+	skippedLineCount: number;
+	totalShortageQuantity: number;
+	preview: ProjectProcurementPreview;
+}
+
 // UI types
 export interface ProjectDashboard {
 	draftCount: number;

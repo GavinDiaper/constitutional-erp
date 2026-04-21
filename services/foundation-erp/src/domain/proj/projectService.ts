@@ -3,6 +3,8 @@ import { appendEvent, EventActor } from "../../events/eventStore";
 import { HttpError } from "../../utils/errors";
 import { newId } from "../../utils/id";
 import { postInventoryMovement } from "../inv/inventoryService";
+import { addRequisitionLine } from "../p2p/requisition/requisitionLineService";
+import { createRequisition, getRequisitionById } from "../p2p/requisition/requisitionService";
 import {
   EventPayload_ProjectCreated,
   EventPayload_ProjectActivated,
@@ -1040,6 +1042,46 @@ function rowToFinishedItem(row: FinishedItemRow): FinishedItemProjection {
     updatedAt: string;
   }
 
+  export interface ProjectProcurementPreviewLine {
+    skuId: string;
+    organizationId: string;
+    quantityUom: string;
+    requiredQuantity: number;
+    onHandQuantity: number;
+    shortageQuantity: number;
+    suggestedUnitPrice: number;
+    sourceBomIds: string[];
+    sourceAssignmentIds: string[];
+  }
+
+  export interface ProjectProcurementPreview {
+    projectId: string;
+    generatedAt: string;
+    lineCount: number;
+    shortageLineCount: number;
+    totalRequiredQuantity: number;
+    totalShortageQuantity: number;
+    lines: ProjectProcurementPreviewLine[];
+  }
+
+  export interface GenerateProjectRequisitionLinesInput {
+    requisitionId?: string;
+    requester?: string;
+    department?: string;
+    currencyCode?: string;
+    neededByDate?: string;
+    legalEntityId?: string;
+  }
+
+  export interface ProjectRequisitionGenerationResult {
+    projectId: string;
+    requisitionId: string;
+    generatedLineCount: number;
+    skippedLineCount: number;
+    totalShortageQuantity: number;
+    preview: ProjectProcurementPreview;
+  }
+
   function rowToProjectRequisition(row: ProjectRequisitionRow): ProjectRequisitionProjection {
     return {
       requisitionId: row.requisition_id,
@@ -1166,6 +1208,230 @@ export function listProjectFinishedItems(projectId: string): FinishedItemProject
     .prepare("SELECT * FROM proj_finished_item WHERE project_id = ? ORDER BY created_at ASC")
     .all(projectId) as FinishedItemRow[];
   return rows.map(rowToFinishedItem);
+}
+
+interface ProcurementComponentDemandRow {
+  assignment_id: string;
+  bom_id: string;
+  organization_id: string;
+  component_sku_id: string;
+  quantity_uom: string;
+  quantity_planned: number;
+  component_quantity: number;
+  scrap_percentage: number;
+  standard_cost: number;
+}
+
+interface OnHandQuantityRow {
+  quantity_on_hand: number;
+}
+
+function roundQuantity(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
+export function getProjectProcurementPreview(projectId: string): ProjectProcurementPreview {
+  getProjectRow(projectId);
+
+  const demandRows = db.prepare(
+    `SELECT
+       a.assignment_id,
+       a.bom_id,
+       h.organization_id,
+       c.component_sku_id,
+       c.quantity_uom,
+       a.quantity_planned,
+       c.quantity AS component_quantity,
+       COALESCE(c.scrap_percentage, 0) AS scrap_percentage,
+       COALESCE(c.standard_cost, 0) AS standard_cost
+     FROM proj_bom_assignment a
+     JOIN inv_bom_header h ON h.bom_id = a.bom_id
+     JOIN inv_bom_component c ON c.bom_id = a.bom_id
+     WHERE a.project_id = ?
+       AND a.status = 'Active'
+       AND c.component_type = 'Material'
+       AND c.component_sku_id IS NOT NULL
+       AND COALESCE(c.is_phantom, 0) = 0
+     ORDER BY c.component_sku_id ASC, a.bom_id ASC, a.assignment_id ASC`
+  ).all(projectId) as ProcurementComponentDemandRow[];
+
+  if (demandRows.length === 0) {
+    return {
+      projectId,
+      generatedAt: now(),
+      lineCount: 0,
+      shortageLineCount: 0,
+      totalRequiredQuantity: 0,
+      totalShortageQuantity: 0,
+      lines: [],
+    };
+  }
+
+  const demandMap = new Map<string, {
+    skuId: string;
+    organizationId: string;
+    quantityUom: string;
+    requiredQuantity: number;
+    weightedCostNumerator: number;
+    weightedCostDenominator: number;
+    sourceBomIds: Set<string>;
+    sourceAssignmentIds: Set<string>;
+  }>();
+
+  for (const row of demandRows) {
+    const requiredRaw = row.quantity_planned * row.component_quantity * (1 + row.scrap_percentage / 100);
+    const requiredQuantity = roundQuantity(requiredRaw);
+    if (requiredQuantity <= 0) {
+      continue;
+    }
+
+    const key = `${row.component_sku_id}|${row.organization_id}|${row.quantity_uom}`;
+    const existing = demandMap.get(key);
+
+    if (existing) {
+      existing.requiredQuantity = roundQuantity(existing.requiredQuantity + requiredQuantity);
+      if (row.standard_cost > 0) {
+        existing.weightedCostNumerator = roundMoney(existing.weightedCostNumerator + requiredQuantity * row.standard_cost);
+        existing.weightedCostDenominator = roundQuantity(existing.weightedCostDenominator + requiredQuantity);
+      }
+      existing.sourceBomIds.add(row.bom_id);
+      existing.sourceAssignmentIds.add(row.assignment_id);
+      continue;
+    }
+
+    demandMap.set(key, {
+      skuId: row.component_sku_id,
+      organizationId: row.organization_id,
+      quantityUom: row.quantity_uom,
+      requiredQuantity,
+      weightedCostNumerator: row.standard_cost > 0 ? roundMoney(requiredQuantity * row.standard_cost) : 0,
+      weightedCostDenominator: row.standard_cost > 0 ? requiredQuantity : 0,
+      sourceBomIds: new Set([row.bom_id]),
+      sourceAssignmentIds: new Set([row.assignment_id]),
+    });
+  }
+
+  const onHandQuery = db.prepare(
+    `SELECT COALESCE(SUM(quantity_on_hand), 0) AS quantity_on_hand
+     FROM inv_on_hand
+     WHERE sku_id = ? AND organization_id = ?`
+  );
+
+  const lines: ProjectProcurementPreviewLine[] = [];
+
+  for (const demand of demandMap.values()) {
+    const onHandRow = onHandQuery.get(demand.skuId, demand.organizationId) as OnHandQuantityRow | undefined;
+    const onHandQuantity = roundQuantity(onHandRow?.quantity_on_hand ?? 0);
+    const shortageQuantity = roundQuantity(Math.max(demand.requiredQuantity - onHandQuantity, 0));
+    const suggestedUnitPrice =
+      demand.weightedCostDenominator > 0
+        ? roundMoney(demand.weightedCostNumerator / demand.weightedCostDenominator)
+        : 0;
+
+    lines.push({
+      skuId: demand.skuId,
+      organizationId: demand.organizationId,
+      quantityUom: demand.quantityUom,
+      requiredQuantity: demand.requiredQuantity,
+      onHandQuantity,
+      shortageQuantity,
+      suggestedUnitPrice,
+      sourceBomIds: Array.from(demand.sourceBomIds),
+      sourceAssignmentIds: Array.from(demand.sourceAssignmentIds),
+    });
+  }
+
+  lines.sort((a, b) => {
+    if (b.shortageQuantity !== a.shortageQuantity) {
+      return b.shortageQuantity - a.shortageQuantity;
+    }
+    return a.skuId.localeCompare(b.skuId);
+  });
+
+  const totalRequiredQuantity = roundQuantity(lines.reduce((sum, line) => sum + line.requiredQuantity, 0));
+  const totalShortageQuantity = roundQuantity(lines.reduce((sum, line) => sum + line.shortageQuantity, 0));
+  const shortageLineCount = lines.filter((line) => line.shortageQuantity > 0).length;
+
+  return {
+    projectId,
+    generatedAt: now(),
+    lineCount: lines.length,
+    shortageLineCount,
+    totalRequiredQuantity,
+    totalShortageQuantity,
+    lines,
+  };
+}
+
+export function generateProjectRequisitionLinesFromPreview(
+  projectId: string,
+  input: GenerateProjectRequisitionLinesInput = {},
+  actor?: EventActor
+): ProjectRequisitionGenerationResult {
+  const preview = getProjectProcurementPreview(projectId);
+  const shortageLines = preview.lines.filter((line) => line.shortageQuantity > 0);
+
+  if (shortageLines.length === 0) {
+    throw new HttpError(409, "no_shortage", "No procurement shortages were found for this project");
+  }
+
+  const project = getProjectRow(projectId);
+
+  let requisitionId = input.requisitionId;
+  if (requisitionId) {
+    const existing = getRequisitionById(requisitionId) as {
+      requisition_id: string;
+      state: string;
+      project_id?: string | null;
+    };
+
+    if ((existing.project_id ?? null) !== projectId) {
+      throw new HttpError(400, "invalid_request", "Provided requisitionId is not linked to this project");
+    }
+
+    if (existing.state !== "Draft") {
+      throw new HttpError(409, "invalid_state", "Requisition must be in Draft state to add generated lines");
+    }
+  } else {
+    const created = createRequisition(
+      {
+        requester: input.requester ?? actor?.id ?? "principal.system",
+        department: input.department ?? "Project Procurement",
+        currencyCode: input.currencyCode ?? "USD",
+        neededByDate: input.neededByDate,
+        legalEntityId: input.legalEntityId,
+        projectId: project.project_id,
+        wbsId: project.wbs_id ?? undefined,
+      },
+      actor
+    ) as { requisition_id: string };
+
+    requisitionId = created.requisition_id;
+  }
+
+  let generatedLineCount = 0;
+
+  for (const line of shortageLines) {
+    addRequisitionLine(
+      {
+        requisitionId,
+        description: `Auto-generated from project ${projectId} BOM demand for SKU ${line.skuId}`,
+        quantity: line.shortageQuantity,
+        unitPrice: line.suggestedUnitPrice,
+      },
+      actor
+    );
+    generatedLineCount += 1;
+  }
+
+  return {
+    projectId,
+    requisitionId,
+    generatedLineCount,
+    skippedLineCount: preview.lineCount - generatedLineCount,
+    totalShortageQuantity: preview.totalShortageQuantity,
+    preview,
+  };
 }
 
 export function listProjectRequisitions(projectId: string): ProjectRequisitionProjection[] {

@@ -7,7 +7,9 @@ import type {
 	FinishedItem,
 	ProjectRequisition,
 	ProjectPurchaseOrder,
-	ProjectSalesOrder
+	ProjectSalesOrder,
+	ProjectProcurementPreview,
+	ProjectRequisitionGenerationResult
 } from '$lib/types/projects';
 
 interface DataResponse<T> {
@@ -303,6 +305,37 @@ export function listProjectSalesOrders(
 		`/api/hub/proj/${projectId}/sales-orders`,
 		actor,
 		'GET'
+	);
+}
+
+export function getProjectProcurementPreview(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataResponse<ProjectProcurementPreview>> {
+	return requestHubJson<DataResponse<ProjectProcurementPreview>>(
+		`/api/hub/proj/${projectId}/procurement-preview`,
+		actor,
+		'GET'
+	);
+}
+
+export function generateProjectRequisitionLines(
+	actor: ActorContext,
+	projectId: string,
+	payload: {
+		requisitionId?: string;
+		requester?: string;
+		department?: string;
+		currencyCode?: string;
+		neededByDate?: string;
+		legalEntityId?: string;
+	} = {}
+): Promise<DataResponse<ProjectRequisitionGenerationResult>> {
+	return requestHubJson<DataResponse<ProjectRequisitionGenerationResult>>(
+		`/api/hub/proj/${projectId}/generate-requisition-lines`,
+		actor,
+		'POST',
+		payload
 	);
 }
 
