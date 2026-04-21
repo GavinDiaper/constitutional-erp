@@ -16864,6 +16864,393 @@
                                                 }
                                   }
                               ]
+                 },
+                 {
+                     "name":  "42 - MCP Inventory + BOM Bridge",
+                     "item":  [
+                                  {
+                                      "name":  "GET /api/v1/mcp/functions includes BOM + INV bridge",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/functions",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "functions"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     }
+                                                                 ]
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"Catalog is an array\", function () { pm.expect(Array.isArray(body.data)).to.eql(true); });",
+                                                                                "var names = (body.data || []).map(function (x) { return x && x.name; });",
+                                                                                "pm.test(\"Contains bom_create_bom\", function () { pm.expect(names).to.include(\"bom_create_bom\"); });",
+                                                                                "pm.test(\"Contains inv_issue_to_project\", function () { pm.expect(names).to.include(\"inv_issue_to_project\"); });"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke inv_create_sku",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"inv_create_sku\",\n  \"input\": {\n    \"skuCode\": \"MCP-SKU-{{$timestamp}}\",\n    \"description\": \"MCP validation SKU\",\n    \"category\": \"MCP\",\n    \"uom\": \"EA\",\n    \"valuationMethod\": \"standard\",\n    \"standardCost\": 5\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"inv_create_sku\"); });",
+                                                                                "pm.test(\"SKU id returned\", function () { pm.expect(body.result && body.result.sku_id).to.exist; });",
+                                                                                "pm.environment.set(\"mcpSkuId\", body.result.sku_id);"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke inv_create_organization",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"inv_create_organization\",\n  \"input\": {\n    \"name\": \"MCP Warehouse {{$timestamp}}\"\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"inv_create_organization\"); });",
+                                                                                "pm.test(\"Organization id returned\", function () { pm.expect(body.result && body.result.organization_id).to.exist; });",
+                                                                                "pm.environment.set(\"mcpOrganizationId\", body.result.organization_id);"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke inv_post_movement receipt",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"inv_post_movement\",\n  \"input\": {\n    \"skuId\": \"{{mcpSkuId}}\",\n    \"organizationId\": \"{{mcpOrganizationId}}\",\n    \"movementType\": \"receipt\",\n    \"quantity\": 20,\n    \"unitCost\": 5,\n    \"reason\": \"MCP inventory setup for issue-to-project\"\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"inv_post_movement\"); });",
+                                                                                "pm.test(\"Movement id returned\", function () { pm.expect(body.result && body.result.movement_id).to.exist; });"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke proj_create_project",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"proj_create_project\",\n  \"input\": {\n    \"name\": \"MCP Project {{$timestamp}}\",\n    \"projectType\": \"Internal\",\n    \"budgetAmount\": 1000,\n    \"defaultWIPAccountId\": \"ACCT-WIP-001\",\n    \"defaultCloseAccountId\": \"ACCT-CLOSE-001\",\n    \"startDate\": \"2026-04-21\",\n    \"projectManagerId\": \"principal.system\",\n    \"organizationId\": \"{{mcpOrganizationId}}\"\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"proj_create_project\"); });",
+                                                                                "pm.test(\"Project id returned\", function () { pm.expect(body.result && body.result.projectId).to.exist; });",
+                                                                                "pm.environment.set(\"mcpProjectId\", body.result.projectId);"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke proj_activate_project",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"proj_activate_project\",\n  \"input\": {\n    \"projectId\": \"{{mcpProjectId}}\"\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"Project transitioned to Active\", function () { pm.expect(body.result && body.result.status).to.eql(\"Active\"); });"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke bom_create_bom",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"bom_create_bom\",\n  \"input\": {\n    \"skuId\": \"{{mcpSkuId}}\",\n    \"organizationId\": \"{{mcpOrganizationId}}\",\n    \"revision\": \"MCP-R{{$timestamp}}\",\n    \"projectEligible\": true\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"bom_create_bom\"); });",
+                                                                                "pm.test(\"BOM id returned\", function () { pm.expect(body.result && body.result.bomId).to.exist; });",
+                                                                                "pm.environment.set(\"mcpBomId\", body.result.bomId);"
+                                                                            ]
+                                                               }
+                                                }
+                                  },
+                                  {
+                                      "name":  "POST /api/v1/mcp/invoke inv_issue_to_project",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "url":  {
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "raw":  "{{baseUrl}}/api/v1/mcp/invoke",
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "v1",
+                                                                               "mcp",
+                                                                               "invoke"
+                                                                           ]
+                                                              },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "x-api-key",
+                                                                         "value":  "{{apiKey}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "x-ingress-id",
+                                                                         "value":  "{{ingressId}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"functionName\": \"inv_issue_to_project\",\n  \"input\": {\n    \"skuId\": \"{{mcpSkuId}}\",\n    \"organizationId\": \"{{mcpOrganizationId}}\",\n    \"projectId\": \"{{mcpProjectId}}\",\n    \"quantity\": 2,\n    \"reason\": \"MCP bridge validation issue\"\n  }\n}"
+                                                               }
+                                                  },
+                                      "event":  {
+                                                    "listen":  "test",
+                                                    "script":  {
+                                                                   "type":  "text/javascript",
+                                                                   "exec":  [
+                                                                                "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                                                                                "var body = pm.response.json();",
+                                                                                "pm.test(\"MCP function echoed\", function () { pm.expect(body.functionName).to.eql(\"inv_issue_to_project\"); });",
+                                                                                "pm.test(\"Issue movement linked to project\", function () { pm.expect(body.result && body.result.project_id).to.eql(pm.environment.get(\"mcpProjectId\")); });",
+                                                                                "pm.test(\"Movement type is issue\", function () { pm.expect(body.result && body.result.movement_type).to.eql(\"issue\"); });"
+                                                                            ]
+                                                               }
+                                                }
+                                  }
+                              ]
                  }
              ],
     "event":  [

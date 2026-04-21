@@ -50,8 +50,9 @@ Each target executes the component's existing npm Newman script in its own proje
 
 Use the focused FoundationERP runner when you want a smaller, more meaningful dataset:
 
-- Runs only `31 - R2R Financial Seeding` and `41 - Projects Flow`
+- Runs targeted folders for tax setup, financial seeding, projects flow, and MCP bridge validation
 - Bootstraps minimal inventory prerequisites for the Projects flow
+- Validates MCP coverage for `bom_create_bom` and `inv_issue_to_project`
 - Applies clearer project and organization naming
 - Exports reports to:
   - `services/foundation-erp/reports/newman/projects-r2r-reporting.results.json`

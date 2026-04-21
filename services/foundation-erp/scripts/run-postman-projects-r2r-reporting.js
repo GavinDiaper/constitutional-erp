@@ -26,6 +26,7 @@ const FOLDER_P2P_UAE_RC = "22 - P2P Flow UAE Reverse Charge (RC5)";
 // Main test folders (run after tax config)
 const FOLDER_R2R_SEEDING = "31 - R2R Financial Seeding";
 const FOLDER_PROJECTS_FLOW = "41 - Projects Flow";
+const FOLDER_MCP_INV_BOM_BRIDGE = "42 - MCP Inventory + BOM Bridge";
 
 async function assertFoundationErpEndpoint(baseUrl, envOverrides) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
@@ -207,6 +208,8 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       FOLDER_R2R_SEEDING,
       "--folder",
       FOLDER_PROJECTS_FLOW,
+      "--folder",
+      FOLDER_MCP_INV_BOM_BRIDGE,
       "--reporters",
       "cli,json,junit",
       "--reporter-json-export",
