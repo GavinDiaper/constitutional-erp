@@ -7,6 +7,7 @@ import {
   SessionContext
 } from "../contracts/navigatorTypes";
 import { requestJsonAllowError, requestJson } from "./http";
+import { HttpError } from "../utils/errors";
 
 interface HubProcessLink {
   rel: string;
@@ -36,6 +37,89 @@ function normalizeDomain(aggregateType: string): string {
   return aggregateType;
 }
 
+interface QueryFallbackConfig {
+  table: string;
+  stateFields: string[];
+}
+
+const QUERY_FALLBACK_BY_AGGREGATE_TYPE: Record<string, QueryFallbackConfig> = {
+  project: { table: "proj_project", stateFields: ["status", "state"] },
+  wip: { table: "proj_wip", stateFields: ["status", "state"] },
+  "bom-assignment": { table: "proj_bom_assignment", stateFields: ["status", "state"] },
+  "labor-entry": { table: "proj_labor_entry", stateFields: ["status", "state"] },
+  "finished-item": { table: "proj_finished_item", stateFields: ["status", "state"] },
+  sku: { table: "inv_sku", stateFields: ["status", "state"] },
+  organization: { table: "inv_organization", stateFields: ["status", "state"] },
+  movement: { table: "inv_movement", stateFields: ["movement_type", "status", "state"] },
+  reservation: { table: "inv_reservation", stateFields: ["status", "state"] },
+  bin: { table: "inv_bin", stateFields: ["status", "state"] },
+  bom: { table: "inv_bom_header", stateFields: ["status", "state"] }
+};
+
+function normalizeAggregateToken(input: string): string {
+  return input.trim().toLowerCase();
+}
+
+function shouldUseQueryFallback(error: unknown): boolean {
+  if (!(error instanceof HttpError)) {
+    return false;
+  }
+
+  if (error.status !== 404) {
+    return false;
+  }
+
+  return error.message.includes("Unsupported process entity") || error.message.includes("entity_not_supported");
+}
+
+function resolveStateFromRow(row: Record<string, unknown>, stateFields: string[]): string {
+  for (const key of stateFields) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return "Unknown";
+}
+
+function rowMatchesId(row: Record<string, unknown>, targetId: string): boolean {
+  const candidates = [
+    "id",
+    "projectId",
+    "project_id",
+    "wipId",
+    "wip_id",
+    "skuId",
+    "sku_id",
+    "organizationId",
+    "organization_id",
+    "movementId",
+    "movement_id",
+    "reservationId",
+    "reservation_id",
+    "binId",
+    "bin_id",
+    "bomId",
+    "bom_id",
+    "assignmentId",
+    "assignment_id",
+    "entryId",
+    "entry_id",
+    "finishedItemId",
+    "finished_item_id"
+  ];
+
+  for (const key of candidates) {
+    const value = row[key];
+    if (typeof value === "string" && value === targetId) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export class IntegrationHubClient {
   constructor(private readonly config: AppConfig) {}
 
@@ -50,31 +134,73 @@ export class IntegrationHubClient {
 
   async getResource(ctx: SessionContext): Promise<CanonicalResource> {
     const url = `${this.config.integrationHubUrl}/api/v1/hub/process/${encodeURIComponent(ctx.aggregateType)}/${encodeURIComponent(ctx.aggregateId)}`;
-    const response = await requestJson<HubProcessResponse>(url, {
-      method: "GET",
-      headers: this.headers(ctx.actorId)
-    });
+    try {
+      const response = await requestJson<HubProcessResponse>(url, {
+        method: "GET",
+        headers: this.headers(ctx.actorId)
+      });
 
-    const links: CanonicalResource["links"] = {};
-    for (const link of response.data.links ?? []) {
-      links[link.rel] = {
-        href: link.href,
-        method: link.method?.toUpperCase() === "GET" ? "GET" : "POST",
-        rel: link.rel,
-        requiredTier: link.governance?.requiredTier,
-        riskLevel: link.governance?.riskLevel,
-        inputSchema: link.requiredInput
+      const links: CanonicalResource["links"] = {};
+      for (const link of response.data.links ?? []) {
+        links[link.rel] = {
+          href: link.href,
+          method: link.method?.toUpperCase() === "GET" ? "GET" : "POST",
+          rel: link.rel,
+          requiredTier: link.governance?.requiredTier,
+          riskLevel: link.governance?.riskLevel,
+          inputSchema: link.requiredInput
+        };
+      }
+
+      return {
+        id: response.data.entityId,
+        domain: normalizeDomain(response.data.entityType),
+        type: response.data.entityType,
+        state: response.data.state,
+        attributes: response.data.attributes,
+        links
+      };
+    } catch (error) {
+      if (!shouldUseQueryFallback(error)) {
+        throw error;
+      }
+
+      const aggregateToken = normalizeAggregateToken(ctx.aggregateType);
+      const fallbackConfig = QUERY_FALLBACK_BY_AGGREGATE_TYPE[aggregateToken];
+      if (!fallbackConfig) {
+        throw error;
+      }
+
+      const queryRow = await this.queryRow<Record<string, unknown>>({
+        table: fallbackConfig.table,
+        id: ctx.aggregateId,
+        actorId: ctx.actorId
+      });
+
+      let resolvedRow = queryRow;
+      if (!resolvedRow) {
+        const rows = await this.queryTable<Record<string, unknown>>({
+          table: fallbackConfig.table,
+          actorId: ctx.actorId,
+          limit: 1000,
+          offset: 0
+        });
+        resolvedRow = rows.find((row) => rowMatchesId(row, ctx.aggregateId));
+      }
+
+      if (!resolvedRow) {
+        throw error;
+      }
+
+      return {
+        id: ctx.aggregateId,
+        domain: ctx.domain,
+        type: ctx.aggregateType,
+        state: resolveStateFromRow(resolvedRow, fallbackConfig.stateFields),
+        attributes: resolvedRow,
+        links: {}
       };
     }
-
-    return {
-      id: response.data.entityId,
-      domain: normalizeDomain(response.data.entityType),
-      type: response.data.entityType,
-      state: response.data.state,
-      attributes: response.data.attributes,
-      links
-    };
   }
 
   async executeAction(input: {
