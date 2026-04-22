@@ -79,6 +79,16 @@ function normalizeAction(action: string): string {
 function toBackendAction(domain: string, resource: string, action: string): string {
   const actionKey = normalizeAction(action);
 
+  if (domain === "p2p" && resource === "goods-receipt") {
+    if (actionKey === "receivegoods") {
+      return "receive";
+    }
+
+    if (actionKey === "acceptgoods") {
+      return "accept";
+    }
+  }
+
   if (domain === "r2r" && resource === "journal") {
     if (actionKey === "postjournal") {
       return "post";
