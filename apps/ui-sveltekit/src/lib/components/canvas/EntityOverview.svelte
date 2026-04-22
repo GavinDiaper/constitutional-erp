@@ -5,6 +5,7 @@
 	const lineFieldKeys = new Set([
 		'quoteLineId',
 		'quote_line_id',
+		'order_line_id',
 		'sku',
 		'requisitionLineId',
 		'poLineId',
@@ -24,6 +25,9 @@
 	$: normalizedEntityType = entityTypeValue.toLowerCase();
 	$: supportsLineLayout =
 		normalizedEntityType === 'o2c_quote' ||
+		normalizedEntityType === 'o2c_sales_order' ||
+		normalizedEntityType === 'sales-order' ||
+		normalizedEntityType === 'salesorder' ||
 		normalizedEntityType === 'o2c_invoice' ||
 		normalizedEntityType === 'invoice' ||
 		normalizedEntityType === 'ar-invoice' ||
@@ -232,7 +236,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each lineRows as line, index (`${String(line.quote_line_id ?? line.requisition_line_id ?? line.po_line_id ?? index)}`)}
+								{#each lineRows as line, index (`${String(line.order_line_id ?? line.quote_line_id ?? line.requisition_line_id ?? line.po_line_id ?? index)}`)}
 									<tr class="border-t border-white/10">
 										<td class="px-3 py-2">{String(line.description ?? line.sku ?? '')}</td>
 										<td class="px-3 py-2 text-right">{String(line.quantity ?? '')}</td>

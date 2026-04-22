@@ -56,6 +56,29 @@ export function listOrders() {
   return db.prepare("SELECT * FROM o2c_sales_order ORDER BY created_at DESC LIMIT 100").all();
 }
 
+export function listOrderLines(orderId: string) {
+  getOrderById(orderId);
+  return db
+    .prepare(
+      `SELECT
+         order_line_id,
+         order_id,
+         sku,
+         quantity,
+         unit_price,
+         line_total,
+         tax_code_id,
+         tax_applicability,
+         tax_rate_percent,
+         tax_amount,
+         created_at
+       FROM o2c_sales_order_line
+       WHERE order_id = ?
+       ORDER BY created_at ASC`
+    )
+    .all(orderId);
+}
+
 function assertTransition(fromState: SalesOrderState, toState: SalesOrderState) {
   if (!transitions[fromState].includes(toState)) {
     throw new HttpError(409, "invalid_transition", `Cannot transition order from ${fromState} to ${toState}`);

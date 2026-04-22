@@ -25,6 +25,7 @@ import {
   createOrderFromQuote,
   getOrderById,
   listOrders,
+  listOrderLines,
   assignOrderProject,
   confirmOrder,
   allocateOrder,
@@ -481,6 +482,11 @@ o2cRouter.get("/orders", (_req, res) => {
 o2cRouter.get("/orders/:orderId", (req, res) => {
   const order = getOrderById(req.params.orderId);
   res.json(entityWithLinks(order as any, orderLinks(req.params.orderId, (order as any).state)));
+});
+
+o2cRouter.get("/orders/:orderId/lines", (req, res) => {
+  const lines = listOrderLines(req.params.orderId);
+  res.json({ data: lines });
 });
 
 o2cRouter.post("/orders/:orderId/confirm", (req, res) => {

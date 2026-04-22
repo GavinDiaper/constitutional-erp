@@ -296,6 +296,9 @@
 		if (normalized === 'o2c_quote' || normalized === 'quote') {
 			return `/api/v1/o2c/quotes/${entityIdValue}/lines`;
 		}
+		if (normalized === 'o2c_sales_order' || normalized === 'sales-order' || normalized === 'salesorder') {
+			return `/api/v1/o2c/orders/${entityIdValue}/lines`;
+		}
 		if (normalized === 'o2c_invoice' || normalized === 'invoice' || normalized === 'ar-invoice') {
 			return `/api/v1/o2c/invoices/${entityIdValue}/lines`;
 		}
@@ -376,6 +379,7 @@
 			['customer_id', 'customerId'],
 			['currency_code', 'currencyCode'],
 			['project_id', 'projectId'],
+			['wbs_id', 'wbsId'],
 			['quote_id', 'quoteId']
 		];
 
@@ -404,13 +408,24 @@
 		entityIdValue: string
 	): Promise<Record<string, unknown> | null> {
 		const normalized = entityTypeValue.toLowerCase();
-		if (normalized !== 'o2c_quote' && normalized !== 'quote') {
+		if (
+			normalized !== 'o2c_quote' &&
+			normalized !== 'quote' &&
+			normalized !== 'o2c_sales_order' &&
+			normalized !== 'sales-order' &&
+			normalized !== 'salesorder'
+		) {
 			return null;
 		}
 
+		const queryPath =
+			normalized === 'o2c_quote' || normalized === 'quote'
+				? `/api/hub/query/o2c_quote/${entityIdValue}`
+				: `/api/hub/query/o2c_sales_order/${entityIdValue}`;
+
 		try {
 			const payload = await fetchHubJson<Record<string, unknown> | { data?: unknown }>(
-				`/api/hub/query/o2c_quote/${entityIdValue}`,
+				queryPath,
 				$actorStore
 			);
 
