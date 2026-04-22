@@ -27,6 +27,8 @@ const tablePrimaryKeys = {
   inv_organization: "organization_id",
   inv_on_hand: "on_hand_id",
   inv_movement: "movement_id",
+  inv_reservation: "reservation_id",
+  inv_bin: "bin_id",
   inv_bom_header: "bom_id",
   inv_bom_component: "component_id",
   r2r_account: "account_id",

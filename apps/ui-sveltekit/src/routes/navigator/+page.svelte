@@ -236,6 +236,32 @@
 	let execution: ExecutionResult | null = null;
 	let executionLoading = false;
 	let executionError = '';
+	let llmLoadingMessage: string;
+
+	$: llmLoadingActive =
+		loading ||
+		promptCreateLoading ||
+		nextStepsLoading ||
+		explanationLoading ||
+		simulationLoading ||
+		decisionLoading ||
+		executionLoading;
+
+	$: llmLoadingMessage = loading
+		? 'Ranking actions'
+		: promptCreateLoading
+			? 'Resolving prompt'
+			: nextStepsLoading
+				? 'Analyzing next steps'
+				: explanationLoading
+					? 'Generating explanation'
+					: simulationLoading
+						? 'Running simulation'
+						: decisionLoading
+							? 'Making decision'
+							: executionLoading
+								? 'Executing action'
+								: 'Processing request';
 
 	$: if (!getAggregateTypeOptions(domain).includes(aggregateType)) {
 		aggregateType = getAggregateTypeOptions(domain)[0] ?? '';
@@ -1016,6 +1042,15 @@
 	/>
 	<h2 class="text-2xl font-semibold">Navigator AI</h2>
 	<p class="muted mt-2 text-sm">Run the full Navigator workflow with domain-aligned dropdowns and Postman-compatible fixture values.</p>
+	{#if llmLoadingActive}
+		<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
+			<div class="mx-4 w-full max-w-sm rounded-xl border dark:border-white/20 border-slate-200 bg-slate-900/95 p-6 text-center shadow-2xl">
+				<img src={linaSpinnerUrl} alt="Waiting for AI response" class="mx-auto h-24 w-24 rounded-full object-cover" />
+				<p class="mt-4 text-lg font-semibold text-white">Navigator AI is working</p>
+				<p class="mt-1 text-sm text-white/75">{llmLoadingMessage}...</p>
+			</div>
+		</div>
+	{/if}
 <section class="glass-panel relative overflow-hidden p-6">
 	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 		<div>
@@ -1105,20 +1140,6 @@
 
 
 
-		<div class="flex justify-start items-end">
-			<button
-				class="w-full inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
-				disabled={loading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
-				on:click={handleRank}
-			>
-				{#if loading}
-					<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-					<span>Ranking...</span>
-				{:else}
-					<span>Propose Actions</span>
-				{/if}
-			</button>
-		</div>
 	</div>
 
 	<p class="mt-3 text-xs dark:text-white/55 text-slate-500">
@@ -1169,24 +1190,14 @@
 						disabled={promptCreateLoading}
 						on:click={() => void handlePromptCreate(true)}
 					>
-						{#if promptCreateLoading}
-							<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-							<span>Resolving...</span>
-						{:else}
-							<span>Resolve Only</span>
-						{/if}
+						{promptCreateLoading ? 'Resolving...' : 'Resolve Only'}
 					</button>
 					<button
 						class="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
 						disabled={promptCreateLoading}
 						on:click={() => void handlePromptCreate(false)}
 					>
-						{#if promptCreateLoading}
-							<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-							<span>Creating...</span>
-						{:else}
-							<span>Resolve + Create</span>
-						{/if}
+						{promptCreateLoading ? 'Creating...' : 'Resolve + Create'}
 					</button>
 				</div>
 
@@ -1341,12 +1352,7 @@
 					disabled={nextStepsLoading}
 					on:click={handleLoadNextSteps}
 				>
-					{#if nextStepsLoading}
-						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-						<span>Analyzing...</span>
-					{:else}
-						<span>Suggest Next Steps</span>
-					{/if}
+					{nextStepsLoading ? 'Analyzing...' : 'Suggest Next Steps'}
 				</button>
 			</div>
 
@@ -1576,48 +1582,28 @@
 											disabled={explanationLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleExplain(action.actionId); }}
 										>
-											{#if explanationLoading}
-												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-												<span>Loading...</span>
-											{:else}
-												<span>Explain</span>
-											{/if}
+											{explanationLoading ? 'Loading...' : 'Explain'}
 										</button>
 										<button
 											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={simulationLoading}
 											on:click={() => void handleSimulate(action.actionId)}
 										>
-											{#if simulationLoading}
-												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-												<span>Simulating...</span>
-											{:else}
-												<span>Simulate</span>
-											{/if}
+											{simulationLoading ? 'Simulating...' : 'Simulate'}
 										</button>
 										<button
 											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={decisionLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleDecide(); }}
 										>
-											{#if decisionLoading}
-												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-												<span>Deciding...</span>
-											{:else}
-												<span>Decide</span>
-											{/if}
+											{decisionLoading ? 'Deciding...' : 'Decide'}
 										</button>
 										<button
 											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={executionLoading}
 											on:click={() => void handleExecute(action.actionId)}
 										>
-											{#if executionLoading}
-												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-												<span>Executing...</span>
-											{:else}
-												<span>Execute</span>
-											{/if}
+											{executionLoading ? 'Executing...' : 'Execute'}
 										</button>
 									</div>
 								</td>
@@ -1633,24 +1619,14 @@
 					disabled={explanationLoading}
 					on:click={() => { selectedActionId = ''; void handleExplain(); }}
 				>
-					{#if explanationLoading}
-						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-						<span>Loading...</span>
-					{:else}
-						<span>Explain All (Overview)</span>
-					{/if}
+					{explanationLoading ? 'Loading...' : 'Explain All (Overview)'}
 				</button>
 				<button
 					class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={decisionLoading}
 					on:click={handleDecide}
 				>
-					{#if decisionLoading}
-						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-						<span>Deciding...</span>
-					{:else}
-						<span>Run Decide</span>
-					{/if}
+					{decisionLoading ? 'Deciding...' : 'Run Decide'}
 				</button>
 			</div>
 		</div>
@@ -1702,12 +1678,7 @@
 					disabled={executionLoading}
 					on:click={() => void handleExecute(decision?.action?.actionId)}
 				>
-					{#if executionLoading}
-						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
-						<span>Executing...</span>
-					{:else}
-						<span>Execute Decision Action</span>
-					{/if}
+					{executionLoading ? 'Executing...' : 'Execute Decision Action'}
 				</button>
 			{/if}
 		</div>
