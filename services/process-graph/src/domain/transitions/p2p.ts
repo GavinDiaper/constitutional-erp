@@ -45,12 +45,20 @@ export const p2pTransitions: CanonicalTransition[] = [
 
   // ── Purchase Order ─────────────────────────────────────────────────────────
   {
-    id: "P2P.PurchaseOrder.issue",
+    id: "P2P.PurchaseOrder.approve",
     domain: "P2P",
     aggregateType: "purchase-order",
     fromStates: ["Draft"],
+    toStates: ["Approved"],
+    action: "approve"
+  },
+  {
+    id: "P2P.PurchaseOrder.send",
+    domain: "P2P",
+    aggregateType: "purchase-order",
+    fromStates: ["Approved"],
     toStates: ["Issued"],
-    action: "issue"
+    action: "send"
   },
   {
     id: "P2P.PurchaseOrder.acknowledge",
@@ -88,7 +96,7 @@ export const p2pTransitions: CanonicalTransition[] = [
     id: "P2P.PurchaseOrder.cancel",
     domain: "P2P",
     aggregateType: "purchase-order",
-    fromStates: ["Draft", "Issued", "Acknowledged"],
+    fromStates: ["Draft", "Approved", "Issued", "Acknowledged"],
     toStates: ["Cancelled"],
     action: "cancel"
   },

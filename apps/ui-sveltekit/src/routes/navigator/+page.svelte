@@ -3,6 +3,7 @@
 	import { base, resolve } from '$app/paths';
 	const frontPageBackgroundUrl = `${base}/images/BusinessIdea.jpg`;
 	const linaUrl = `${base}/images/Lina1.png`;
+	const linaSpinnerUrl = `${base}/images/Linaspinner.gif`;
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
@@ -1106,11 +1107,16 @@
 
 		<div class="flex justify-start items-end">
 			<button
-				class="w-full rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+				class="w-full inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 				disabled={loading || getAggregateIdLoading(aggregateType) || !aggregateId.trim()}
 				on:click={handleRank}
 			>
-				{loading ? 'Ranking...' : 'Propose Actions'}
+				{#if loading}
+					<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+					<span>Ranking...</span>
+				{:else}
+					<span>Propose Actions</span>
+				{/if}
 			</button>
 		</div>
 	</div>
@@ -1159,18 +1165,28 @@
 				></textarea>
 				<div class="mt-3 flex flex-wrap gap-3">
 					<button
-						class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+						class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 						disabled={promptCreateLoading}
 						on:click={() => void handlePromptCreate(true)}
 					>
-						{promptCreateLoading ? 'Resolving...' : 'Resolve Only'}
+						{#if promptCreateLoading}
+							<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+							<span>Resolving...</span>
+						{:else}
+							<span>Resolve Only</span>
+						{/if}
 					</button>
 					<button
-						class="rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
+						class="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-400/55 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10 disabled:opacity-50"
 						disabled={promptCreateLoading}
 						on:click={() => void handlePromptCreate(false)}
 					>
-						{promptCreateLoading ? 'Creating...' : 'Resolve + Create'}
+						{#if promptCreateLoading}
+							<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+							<span>Creating...</span>
+						{:else}
+							<span>Resolve + Create</span>
+						{/if}
 					</button>
 				</div>
 
@@ -1321,11 +1337,16 @@
 			</p>
 			<div class="mt-3 flex flex-wrap gap-3">
 				<button
-					class="rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+					class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-4 py-2 text-sm dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={nextStepsLoading}
 					on:click={handleLoadNextSteps}
 				>
-					{nextStepsLoading ? 'Analyzing...' : 'Suggest Next Steps'}
+					{#if nextStepsLoading}
+						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+						<span>Analyzing...</span>
+					{:else}
+						<span>Suggest Next Steps</span>
+					{/if}
 				</button>
 			</div>
 
@@ -1551,32 +1572,52 @@
 								<td class="px-3 py-3">
 									<div class="flex flex-wrap gap-2">
 										<button
-											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={explanationLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleExplain(action.actionId); }}
 										>
-											Explain
+											{#if explanationLoading}
+												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+												<span>Loading...</span>
+											{:else}
+												<span>Explain</span>
+											{/if}
 										</button>
 										<button
-											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={simulationLoading}
 											on:click={() => void handleSimulate(action.actionId)}
 										>
-											Simulate
+											{#if simulationLoading}
+												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+												<span>Simulating...</span>
+											{:else}
+												<span>Simulate</span>
+											{/if}
 										</button>
 										<button
-											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={decisionLoading}
 											on:click={() => { selectedActionId = action.actionId; void handleDecide(); }}
 										>
-											Decide
+											{#if decisionLoading}
+												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+												<span>Deciding...</span>
+											{:else}
+												<span>Decide</span>
+											{/if}
 										</button>
 										<button
-											class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+											class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 											disabled={executionLoading}
 											on:click={() => void handleExecute(action.actionId)}
 										>
-											Execute
+											{#if executionLoading}
+												<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+												<span>Executing...</span>
+											{:else}
+												<span>Execute</span>
+											{/if}
 										</button>
 									</div>
 								</td>
@@ -1588,18 +1629,28 @@
 
 			<div class="mt-3 flex gap-2">
 				<button
-					class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+					class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={explanationLoading}
 					on:click={() => { selectedActionId = ''; void handleExplain(); }}
 				>
-					{explanationLoading ? 'Loading...' : 'Explain All (Overview)'}
+					{#if explanationLoading}
+						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+						<span>Loading...</span>
+					{:else}
+						<span>Explain All (Overview)</span>
+					{/if}
 				</button>
 				<button
-					class="rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+					class="inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={decisionLoading}
 					on:click={handleDecide}
 				>
-					{decisionLoading ? 'Deciding...' : 'Run Decide'}
+					{#if decisionLoading}
+						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+						<span>Deciding...</span>
+					{:else}
+						<span>Run Decide</span>
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -1647,11 +1698,16 @@
 			<p class="mt-2 text-sm leading-relaxed">{decision.explanation}</p>
 			{#if decision.mode === 'EXECUTE' || decision.mode === 'REQUEST_APPROVAL'}
 				<button
-					class="mt-3 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
+					class="mt-3 inline-flex items-center justify-center gap-2 rounded-md border dark:border-white/35 border-slate-300 px-3 py-2 text-xs dark:text-white text-slate-900 dark:hover:bg-white/10 hover:bg-slate-500/10 disabled:opacity-50"
 					disabled={executionLoading}
 					on:click={() => void handleExecute(decision?.action?.actionId)}
 				>
-					{executionLoading ? 'Executing...' : 'Execute Decision Action'}
+					{#if executionLoading}
+						<img src={linaSpinnerUrl} alt="Waiting for AI response" class="h-4 w-4 rounded-full object-cover" />
+						<span>Executing...</span>
+					{:else}
+						<span>Execute Decision Action</span>
+					{/if}
 				</button>
 			{/if}
 		</div>

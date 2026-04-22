@@ -49,7 +49,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 test("transition registries expose expected counts and stable ids", () => {
   assert.equal(getTransitionsForAggregate("P2P", "requisition").length, 5);
-  assert.equal(getTransitionsForAggregate("P2P", "purchase-order").length, 6);
+  assert.equal(getTransitionsForAggregate("P2P", "purchase-order").length, 7);
   assert.equal(getTransitionsForAggregate("O2C", "sales-order").length, 6);
   assert.equal(getTransitionsForAggregate("R2R", "journal").length, 4);
   assert.equal(getTransitionsForAggregate("R2R", "fiscal-period").length, 3);

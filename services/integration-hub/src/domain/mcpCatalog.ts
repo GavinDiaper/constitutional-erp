@@ -107,6 +107,17 @@ const FUNCTION_DEFS = [
     riskLevel: "High",
     governanceTag: "P2P.PO.Approve"
   },
+  {
+    id: "p2p_send_po",
+    entity: "PurchaseOrder",
+    domain: "p2p",
+    aggregateType: "purchase-order",
+    action: "send",
+    operationType: "transition",
+    description: "Send approved purchase order",
+    riskLevel: "Medium",
+    governanceTag: "P2P.PO.Send"
+  },
   { id: "p2p_acknowledge_po", entity: "PurchaseOrder", domain: "p2p", aggregateType: "purchase-order", action: "acknowledge_po", operationType: "transition", description: "Acknowledge purchase order", riskLevel: "Low", governanceTag: "P2P.PO.Acknowledge" },
   { id: "p2p_create_goods_receipt", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "create_goods_receipt", operationType: "create", description: "Create goods receipt", riskLevel: "Low", governanceTag: "P2P.GoodsReceipt.Create" },
   { id: "p2p_receive_goods", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "receive_goods", operationType: "transition", description: "Receive goods", riskLevel: "Low", governanceTag: "P2P.GoodsReceipt.Receive" },
