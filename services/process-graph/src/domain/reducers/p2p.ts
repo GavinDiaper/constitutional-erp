@@ -39,6 +39,11 @@ const eventTypeToState: Record<string, string> = {
   "P2P.po.closed": "Closed",
   "P2P.po.cancelled": "Cancelled",
 
+  // Goods Receipt
+  "P2P.goods-receipt.created": "Draft",
+  "P2P.goods-receipt.received": "Received",
+  "P2P.goods-receipt.accepted": "Accepted",
+
   // Supplier Invoice
   "P2P.SupplierInvoiceCreated": "Draft",
   "P2P.SupplierInvoiceValidated": "Validated",

@@ -1043,11 +1043,11 @@
 	<h2 class="text-2xl font-semibold">Navigator AI</h2>
 	<p class="muted mt-2 text-sm">Run the full Navigator workflow with domain-aligned dropdowns and Postman-compatible fixture values.</p>
 	{#if llmLoadingActive}
-		<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
-			<div class="mx-4 w-full max-w-sm rounded-xl border dark:border-white/20 border-slate-200 bg-slate-900/95 p-6 text-center shadow-2xl">
+		<div class="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/45 pt-16 backdrop-blur-sm md:pt-20">
+			<div class="mx-4 w-full max-w-sm rounded-xl border border-blue-200 bg-white p-6 text-center shadow-2xl">
 				<img src={linaSpinnerUrl} alt="Waiting for AI response" class="mx-auto h-24 w-24 rounded-full object-cover" />
-				<p class="mt-4 text-lg font-semibold text-white">Navigator AI is working</p>
-				<p class="mt-1 text-sm text-white/75">{llmLoadingMessage}...</p>
+				<p class="mt-4 text-lg font-semibold text-blue-700">Navigator AI is working</p>
+				<p class="mt-1 text-sm text-blue-600">{llmLoadingMessage}...</p>
 			</div>
 		</div>
 	{/if}
@@ -1121,8 +1121,8 @@
 			</select>
 			{#if getAggregateIdError(aggregateType)}
 				<p class="mt-2 text-xs text-red-200">{getAggregateIdError(aggregateType)}</p>
-			{:else if !getAggregateIdLoading(aggregateType) && getAggregateIdOptions(aggregateType).length === 0}
-				<p class="mt-2 text-xs dark:text-white/55 text-slate-500">No live aggregate IDs are available for this type yet. Click the dropdown to retry.</p>
+			<!-- {:else if !getAggregateIdLoading(aggregateType) && getAggregateIdOptions(aggregateType).length === 0}
+				<p class="mt-2 text-xs dark:text-white/55 text-slate-500">No live aggregate IDs are available for this type yet. Click the dropdown to retry.</p> -->
 			{/if}
 		</div>
 

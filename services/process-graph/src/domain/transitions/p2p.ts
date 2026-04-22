@@ -101,6 +101,24 @@ export const p2pTransitions: CanonicalTransition[] = [
     action: "cancel"
   },
 
+  // ── Goods Receipt ─────────────────────────────────────────────────────────
+  {
+    id: "P2P.GoodsReceipt.receive",
+    domain: "P2P",
+    aggregateType: "goods-receipt",
+    fromStates: ["Draft"],
+    toStates: ["Received"],
+    action: "receive_goods"
+  },
+  {
+    id: "P2P.GoodsReceipt.accept",
+    domain: "P2P",
+    aggregateType: "goods-receipt",
+    fromStates: ["Received"],
+    toStates: ["Accepted"],
+    action: "accept_goods"
+  },
+
   // ── Supplier Invoice ───────────────────────────────────────────────────────
   {
     id: "P2P.SupplierInvoice.validate",
