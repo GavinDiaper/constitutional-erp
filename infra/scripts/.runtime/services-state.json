@@ -1,5 +1,11 @@
 {
     "services":  [
-
+                     {
+                         "name":  "foundation-erp",
+                         "pid":  113184,
+                         "startedAt":  "2026-04-22T13:07:55.1098227+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.err.log"
+                     }
                  ]
 }
