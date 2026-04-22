@@ -38,15 +38,18 @@
 	$: hasStructuredLines = supportsLineLayout && lineRows.length > 0;
 	$: isJournalLineLayout = normalizedEntityType === 'r2r_journal' || normalizedEntityType === 'journal';
 	$: isInvoiceLayout = normalizedEntityType === 'o2c_invoice' || normalizedEntityType === 'invoice' || normalizedEntityType === 'ar-invoice';
-	$: headerEntries = Object.entries(attributes).filter(([key]) => {
+	$: rawHeaderEntries = Object.entries(attributes).filter(([key]) => {
 		if (key.startsWith('__')) return false;
 		if (key === 'total_amount' || key === 'totalAmount') return false;
 		if (isInvoiceLayout && ['order_amount', 'orderAmount', 'tax_amount', 'taxAmount', 'total_payable', 'totalPayable', 'amount_due', 'amountDue'].includes(key)) return false;
 		if (!hasStructuredLines) return true;
 		return !lineFieldKeys.has(key);
 	});
+	$: headerEntries = dedupeHeaderEntries(rawHeaderEntries);
 	$: lineTotals = lineRows.map((line) => asNumber(line.line_total ?? line.lineTotal)).filter((value): value is number => value !== null);
 	$: computedLineTotal = lineTotals.length > 0 ? lineTotals.reduce((sum, value) => sum + value, 0) : null;
+	$: lineTaxTotals = lineRows.map((line) => asNumber(line.tax_amount ?? line.taxAmount)).filter((value): value is number => value !== null);
+	$: computedTaxTotal = lineTaxTotals.length > 0 ? lineTaxTotals.reduce((sum, value) => sum + value, 0) : 0;
 	$: totalDebit =
 		lineRows
 			.map((line) => asNumber(line.debit_amount ?? line.debitAmount))
@@ -61,6 +64,14 @@
 		asNumber(attributes.total_amount) ??
 		asNumber(attributes.totalAmount) ??
 		computedLineTotal;
+	$: displayedTotal =
+		!isJournalLineLayout && computedLineTotal !== null
+			? totalAmount === null
+				? computedLineTotal + computedTaxTotal
+				: Math.abs(totalAmount - computedLineTotal) < 0.000001 && computedTaxTotal > 0
+					? totalAmount + computedTaxTotal
+					: totalAmount
+			: totalAmount;
 	$: orderAmount = asNumber(attributes.order_amount ?? attributes.orderAmount);
 	$: taxAmount = asNumber(attributes.tax_amount ?? attributes.taxAmount);
 	$: totalPayable = asNumber(attributes.total_payable ?? attributes.totalPayable ?? attributes.amount_due ?? attributes.amountDue);
@@ -106,6 +117,37 @@
 		}
 
 		return String(value);
+	}
+
+	function canonicalHeaderKey(key: string): string {
+		return key.replace(/_/g, '').toLowerCase();
+	}
+
+	function scoreHeaderEntry(key: string, value: unknown): number {
+		const hasSnakeCase = key.includes('_') ? 2 : 0;
+		const hasValue = value !== null && value !== undefined && String(value).trim() !== '' ? 1 : 0;
+		return hasSnakeCase + hasValue;
+	}
+
+	function dedupeHeaderEntries(entries: Array<[string, unknown]>): Array<[string, unknown]> {
+		const byCanonical = new Map<string, [string, unknown]>();
+
+		for (const entry of entries) {
+			const [key, value] = entry;
+			const canonical = canonicalHeaderKey(key);
+			const existing = byCanonical.get(canonical);
+
+			if (!existing) {
+				byCanonical.set(canonical, entry);
+				continue;
+			}
+
+			if (scoreHeaderEntry(key, value) > scoreHeaderEntry(existing[0], existing[1])) {
+				byCanonical.set(canonical, entry);
+			}
+		}
+
+		return Array.from(byCanonical.values());
 	}
 </script>
 
@@ -221,7 +263,7 @@
 				{:else}
 					<div class="flex items-center justify-between">
 						<span class="text-xs uppercase tracking-[0.16em] dark:text-white/65 text-slate-600">Total</span>
-						<span class="text-base font-semibold">{formatCurrency(totalAmount ?? '')}</span>
+						<span class="text-base font-semibold">{formatCurrency(displayedTotal ?? '')}</span>
 					</div>
 				{/if}
 			</div>

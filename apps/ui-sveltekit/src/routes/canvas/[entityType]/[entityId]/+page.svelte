@@ -371,9 +371,29 @@
 			merged.legalEntityId = fallback.legalEntityId;
 		}
 
-		// Deduplicate: if snake_case legal_entity_id is present, drop the camelCase duplicate
-		if (merged.legal_entity_id !== null && merged.legal_entity_id !== undefined && merged.legal_entity_id !== '') {
-			delete merged.legalEntityId;
+		const aliasPairs: Array<[string, string]> = [
+			['legal_entity_id', 'legalEntityId'],
+			['customer_id', 'customerId'],
+			['currency_code', 'currencyCode'],
+			['project_id', 'projectId'],
+			['quote_id', 'quoteId']
+		];
+
+		for (const [snakeKey, camelKey] of aliasPairs) {
+			const snakeValue = merged[snakeKey];
+			const camelValue = merged[camelKey];
+			const hasSnakeValue = snakeValue !== null && snakeValue !== undefined && snakeValue !== '';
+			const hasCamelValue = camelValue !== null && camelValue !== undefined && camelValue !== '';
+
+			if (hasSnakeValue) {
+				delete merged[camelKey];
+				continue;
+			}
+
+			if (hasCamelValue) {
+				merged[snakeKey] = camelValue;
+				delete merged[camelKey];
+			}
 		}
 
 		return merged;
