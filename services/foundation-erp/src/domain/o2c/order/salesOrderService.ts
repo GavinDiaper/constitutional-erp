@@ -70,6 +70,7 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
         state: string;
         currency_code: string;
         total_amount: number;
+        project_id: string | null;
         legal_entity_id: string | null;
         version: number;
       }
@@ -89,8 +90,10 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
     ensureLegalEntityExists(effectiveLegalEntityId);
   }
 
-  if (projectId) {
-    ensureProjectExists(projectId);
+  const effectiveProjectId = projectId ?? quote.project_id ?? null;
+
+  if (effectiveProjectId) {
+    ensureProjectExists(effectiveProjectId);
   }
 
   const quoteLines = db.prepare("SELECT * FROM o2c_quote_line WHERE quote_id = ?").all(quoteId) as Array<{
@@ -115,7 +118,7 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
       orderId,
       quoteId,
       quote.customer_id,
-      projectId ?? null,
+      effectiveProjectId,
       wbsId ?? null,
       effectiveLegalEntityId,
       quote.currency_code,
@@ -175,9 +178,43 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
       payload: {
         quoteId,
         customerId: quote.customer_id,
-        projectId: projectId ?? null,
+        projectId: effectiveProjectId,
         wbsId: wbsId ?? null,
         legalEntityId: effectiveLegalEntityId
+      }
+    });
+  });
+
+  return getOrderById(orderId);
+}
+
+export function assignOrderProject(orderId: string, projectId: string, wbsId?: string | null, actor?: EventActor) {
+  const order = getOrderById(orderId);
+
+  if (["Invoiced", "Paid", "Closed", "Cancelled"].includes(order.state)) {
+    throw new HttpError(409, "invalid_transition", `Cannot change project for order in ${order.state} state`);
+  }
+
+  ensureProjectExists(projectId);
+
+  const nextVersion = order.version + 1;
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare("UPDATE o2c_sales_order SET project_id = ?, wbs_id = ?, version = ?, updated_at = ? WHERE order_id = ?")
+      .run(projectId, wbsId ?? null, nextVersion, timestamp, orderId);
+
+    appendEvent({
+      entityId: orderId,
+      entityType: "SalesOrder",
+      eventType: "order.project_assigned",
+      version: nextVersion,
+      actor,
+      payload: {
+        fromProjectId: order.project_id ?? null,
+        fromWbsId: order.wbs_id ?? null,
+        toProjectId: projectId,
+        toWbsId: wbsId ?? null
       }
     });
   });

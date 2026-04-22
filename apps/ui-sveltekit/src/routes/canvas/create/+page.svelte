@@ -207,6 +207,7 @@
 		customerName: '',
 		customerEmail: '',
 		legalEntityId: '',
+		projectId: '',
 		currencyCode: 'USD',
 		lineSku: '',
 		lineQuantity: 1,
@@ -605,6 +606,15 @@
 						<option value="">Select legal entity</option>
 						{#each filteredLegalEntities as entity (entity.legal_entity_id)}
 							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
+						{/each}
+					</select>
+					{#if projects.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search projects" bind:value={projectSearchQuery} />
+					{/if}
+					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={quoteForm.projectId}>
+						<option value="">No project link</option>
+						{#each filteredProjects as project (project.project_id)}
+							<option value={project.project_id}>{projectLabel(project)}</option>
 						{/each}
 					</select>
 					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Currency (USD)" bind:value={quoteForm.currencyCode} />

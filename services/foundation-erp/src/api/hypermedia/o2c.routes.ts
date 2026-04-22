@@ -25,6 +25,7 @@ import {
   createOrderFromQuote,
   getOrderById,
   listOrders,
+  assignOrderProject,
   confirmOrder,
   allocateOrder,
   shipOrder,
@@ -68,7 +69,8 @@ const createCustomerSchema = z.object({
 const createQuoteSchema = z.object({
   customerId: z.string().min(1),
   currencyCode: z.string().min(3).max(3),
-  legalEntityId: z.string().min(1)
+  legalEntityId: z.string().min(1),
+  projectId: z.string().min(1).optional()
 });
 
 const addQuoteLineSchema = z.object({
@@ -83,6 +85,11 @@ const addQuoteLineSchema = z.object({
 const convertQuoteSchema = z.object({
   legalEntityId: z.string().min(1).optional(),
   projectId: z.string().min(1).optional(),
+  wbsId: z.string().min(1).optional()
+});
+
+const assignOrderProjectSchema = z.object({
+  projectId: z.string().min(1),
   wbsId: z.string().min(1).optional()
 });
 
@@ -193,6 +200,12 @@ function orderLinks(orderId: string, state: string) {
       mcpFunction: "o2c_cancel_order",
       governance: { riskLevel: "High", requiredTier: 3 }
     };
+    links["assign-project"] = {
+      href: `/api/v1/o2c/orders/${orderId}/assign-project`,
+      method: "POST",
+      mcpFunction: "o2c_assign_order_project",
+      governance: { riskLevel: "Low", requiredTier: 1 }
+    };
   }
 
   if (state === "Confirmed") {
@@ -208,6 +221,12 @@ function orderLinks(orderId: string, state: string) {
       mcpFunction: "o2c_cancel_order",
       governance: { riskLevel: "High", requiredTier: 3 }
     };
+    links["assign-project"] = {
+      href: `/api/v1/o2c/orders/${orderId}/assign-project`,
+      method: "POST",
+      mcpFunction: "o2c_assign_order_project",
+      governance: { riskLevel: "Low", requiredTier: 1 }
+    };
   }
 
   if (state === "Allocated") {
@@ -222,6 +241,12 @@ function orderLinks(orderId: string, state: string) {
       method: "POST",
       mcpFunction: "o2c_cancel_order",
       governance: { riskLevel: "High", requiredTier: 3 }
+    };
+    links["assign-project"] = {
+      href: `/api/v1/o2c/orders/${orderId}/assign-project`,
+      method: "POST",
+      mcpFunction: "o2c_assign_order_project",
+      governance: { riskLevel: "Low", requiredTier: 1 }
     };
   }
 
@@ -480,6 +505,11 @@ o2cRouter.post("/orders/:orderId/close", (req, res) => {
 
 o2cRouter.post("/orders/:orderId/cancel", (req, res) => {
   const order = cancelOrder(req.params.orderId, req.actor);
+  res.json(entityWithLinks(order as any, orderLinks(req.params.orderId, (order as any).state)));
+});
+
+o2cRouter.post("/orders/:orderId/assign-project", validateBody(assignOrderProjectSchema), (req, res) => {
+  const order = assignOrderProject(req.params.orderId, req.body.projectId, req.body.wbsId, req.actor);
   res.json(entityWithLinks(order as any, orderLinks(req.params.orderId, (order as any).state)));
 });
 

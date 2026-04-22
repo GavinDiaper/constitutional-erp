@@ -17,6 +17,7 @@ import {
 } from "../../domain/o2c/quote/quoteService";
 import {
   createOrderFromQuote,
+  assignOrderProject,
   confirmOrder,
   allocateOrder,
   shipOrder,
@@ -195,7 +196,12 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = activateCustomer(input.customerId, actor);
         break;
       case "o2c_create_quote":
-        result = createQuote({ customerId: input.customerId, currencyCode: input.currencyCode, legalEntityId: input.legalEntityId });
+        result = createQuote({
+          customerId: input.customerId,
+          currencyCode: input.currencyCode,
+          legalEntityId: input.legalEntityId,
+          projectId: input.projectId
+        });
         break;
       case "o2c_add_quote_line":
         result = addQuoteLine({
@@ -221,7 +227,10 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         result = expireQuote(input.quoteId, actor);
         break;
       case "o2c_convert_quote_to_order":
-        result = createOrderFromQuote(input.quoteId, input.legalEntityId);
+        result = createOrderFromQuote(input.quoteId, input.legalEntityId, input.projectId, input.wbsId);
+        break;
+      case "o2c_assign_order_project":
+        result = assignOrderProject(input.orderId, input.projectId, input.wbsId, actor);
         break;
       case "o2c_confirm_order":
         result = confirmOrder(input.orderId, actor);

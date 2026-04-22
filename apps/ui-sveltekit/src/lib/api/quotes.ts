@@ -5,6 +5,7 @@ export interface O2CQuote {
 	quote_id: string;
 	state: string;
 	customer_id?: string;
+	project_id?: string;
 	total_amount?: number;
 	currency_code?: string;
 	_links?: Record<string, { href?: string; method?: string }>;

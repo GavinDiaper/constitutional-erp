@@ -19,6 +19,7 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "o2c_reject_quote", domain: "o2c", entity: "Quote", action: "reject", description: "Reject a Draft or Sent quote", riskLevel: "Low", governanceTag: "O2C.Quote.Reject" },
   { name: "o2c_expire_quote", domain: "o2c", entity: "Quote", action: "expire", description: "Mark a Sent quote as Expired", riskLevel: "Low", governanceTag: "O2C.Quote.Expire" },
   { name: "o2c_convert_quote_to_order", domain: "o2c", entity: "Quote", action: "convertToOrder", description: "Convert an Accepted quote to a sales order", riskLevel: "Medium", governanceTag: "O2C.Quote.Convert" },
+  { name: "o2c_assign_order_project", domain: "o2c", entity: "Order", action: "assignProject", description: "Assign or update project on a sales order", riskLevel: "Low", governanceTag: "O2C.Order.AssignProject" },
   { name: "o2c_confirm_order", domain: "o2c", entity: "Order", action: "confirm", description: "Confirm a Draft sales order", riskLevel: "Medium", governanceTag: "O2C.Order.Confirm" },
   { name: "o2c_allocate_order", domain: "o2c", entity: "Order", action: "allocate", description: "Allocate stock for a Confirmed order", riskLevel: "Medium", governanceTag: "O2C.Order.Allocate" },
   { name: "o2c_ship_order", domain: "o2c", entity: "Order", action: "ship", description: "Mark an Allocated order as Shipped", riskLevel: "Low", governanceTag: "O2C.Order.Ship" },

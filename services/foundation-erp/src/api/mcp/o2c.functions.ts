@@ -10,6 +10,7 @@ export const o2cFunctions: McpFunctionDef[] = [
   { name: "o2c_reject_quote", domain: "o2c", description: "Reject a quote" },
   { name: "o2c_expire_quote", domain: "o2c", description: "Expire a sent quote" },
   { name: "o2c_convert_quote_to_order", domain: "o2c", description: "Convert a quote to order" },
+  { name: "o2c_assign_order_project", domain: "o2c", description: "Assign or update project on a sales order" },
   { name: "o2c_confirm_order", domain: "o2c", description: "Confirm a sales order" },
   { name: "o2c_allocate_order", domain: "o2c", description: "Allocate stock for order" },
   { name: "o2c_ship_order", domain: "o2c", description: "Ship an order" },

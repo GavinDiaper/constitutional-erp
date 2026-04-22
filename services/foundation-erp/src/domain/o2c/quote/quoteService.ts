@@ -21,6 +21,7 @@ interface QuoteInput {
   customerId: string;
   currencyCode: string;
   legalEntityId: string;
+  projectId?: string;
 }
 
 interface QuoteLineInput {
@@ -89,6 +90,16 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function ensureProjectExists(projectId: string): void {
+  const row = db.prepare("SELECT project_id FROM proj_project WHERE project_id = ?").get(projectId) as
+    | { project_id: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Project not found");
+  }
+}
+
 function getQuote(quoteId: string) {
   const row = db.prepare("SELECT * FROM o2c_quote WHERE quote_id = ?").get(quoteId) as
     | {
@@ -97,6 +108,7 @@ function getQuote(quoteId: string) {
         state: QuoteState;
         currency_code: string;
         total_amount: number;
+        project_id: string | null;
         legal_entity_id: string | null;
         version: number;
       }
@@ -122,13 +134,17 @@ export function createQuote(input: QuoteInput) {
   const effectiveLegalEntityId = input.legalEntityId;
   ensureLegalEntityExists(effectiveLegalEntityId);
 
+  if (input.projectId) {
+    ensureProjectExists(input.projectId);
+  }
+
   transaction(() => {
     ensureCustomerExists(input.customerId);
 
     db.prepare(
-      `INSERT INTO o2c_quote(quote_id, customer_id, legal_entity_id, state, currency_code, total_amount, version, created_at, updated_at)
-       VALUES (?, ?, ?, 'Draft', ?, 0, 1, ?, ?)`
-    ).run(quoteId, input.customerId, effectiveLegalEntityId, input.currencyCode, timestamp, timestamp);
+      `INSERT INTO o2c_quote(quote_id, customer_id, legal_entity_id, project_id, state, currency_code, total_amount, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'Draft', ?, 0, 1, ?, ?)`
+     ).run(quoteId, input.customerId, effectiveLegalEntityId, input.projectId ?? null, input.currencyCode, timestamp, timestamp);
 
     appendEvent({
       entityId: quoteId,
@@ -138,7 +154,8 @@ export function createQuote(input: QuoteInput) {
       payload: {
         customerId: input.customerId,
         currencyCode: input.currencyCode,
-        legalEntityId: input.legalEntityId ?? null
+        legalEntityId: input.legalEntityId ?? null,
+        projectId: input.projectId ?? null
       }
     });
   });

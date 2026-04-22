@@ -128,7 +128,27 @@ const FUNCTION_DEFS = [
   { id: "p2p_execute_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "execute_ap_payment", operationType: "transition", description: "Execute AP payment", riskLevel: "High", governanceTag: "P2P.ApPayment.Execute" },
   { id: "p2p_reconcile_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "reconcile_ap_payment", operationType: "transition", description: "Reconcile AP payment", riskLevel: "Low", governanceTag: "P2P.ApPayment.Reconcile" },
 
-  { id: "o2c_create_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "create_quote", operationType: "create", description: "Create a sales quote", riskLevel: "Low", governanceTag: "O2C.Quote.Create" },
+  {
+    id: "o2c_create_quote",
+    entity: "Quote",
+    domain: "o2c",
+    aggregateType: "quote",
+    action: "create_quote",
+    operationType: "create",
+    description: "Create a sales quote",
+    riskLevel: "Low",
+    governanceTag: "O2C.Quote.Create",
+    inputSchema: {
+      type: "object",
+      required: ["customerId", "currencyCode", "legalEntityId"],
+      properties: {
+        customerId: { type: "string", description: "Customer identifier" },
+        currencyCode: { type: "string", description: "3-letter currency code (for example USD)" },
+        legalEntityId: { type: "string", description: "Owning legal entity" },
+        projectId: { type: "string", description: "Optional project to associate with the quote", "x-lookup": "query/proj_project" }
+      }
+    }
+  },
   {
     id: "o2c_add_quote_line",
     entity: "Quote",
@@ -158,7 +178,45 @@ const FUNCTION_DEFS = [
   },
   { id: "o2c_send_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "send", operationType: "transition", description: "Send quote", riskLevel: "Low", governanceTag: "O2C.Quote.Send" },
   { id: "o2c_accept_quote", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "accept", operationType: "transition", description: "Accept quote", riskLevel: "Low", governanceTag: "O2C.Quote.Accept" },
-  { id: "o2c_convert_quote_to_order", entity: "Quote", domain: "o2c", aggregateType: "quote", action: "convert-to-order", operationType: "transition", description: "Convert quote to order", riskLevel: "Medium", governanceTag: "O2C.Quote.Convert" },
+  {
+    id: "o2c_convert_quote_to_order",
+    entity: "Quote",
+    domain: "o2c",
+    aggregateType: "quote",
+    action: "convert-to-order",
+    operationType: "transition",
+    description: "Convert quote to order",
+    riskLevel: "Medium",
+    governanceTag: "O2C.Quote.Convert",
+    inputSchema: {
+      type: "object",
+      required: [],
+      properties: {
+        legalEntityId: { type: "string", description: "Optional legal entity override" },
+        projectId: { type: "string", description: "Optional project override for the resulting sales order", "x-lookup": "query/proj_project" },
+        wbsId: { type: "string", description: "Optional WBS identifier for the resulting sales order" }
+      }
+    }
+  },
+  {
+    id: "o2c_assign_order_project",
+    entity: "SalesOrder",
+    domain: "o2c",
+    aggregateType: "sales-order",
+    action: "assign-project",
+    operationType: "update",
+    description: "Assign or update project on a sales order",
+    riskLevel: "Low",
+    governanceTag: "O2C.Order.AssignProject",
+    inputSchema: {
+      type: "object",
+      required: ["projectId"],
+      properties: {
+        projectId: { type: "string", description: "Project identifier", "x-lookup": "query/proj_project" },
+        wbsId: { type: "string", description: "Optional WBS identifier" }
+      }
+    }
+  },
   { id: "o2c_confirm_order", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "confirm", operationType: "transition", description: "Confirm order", riskLevel: "Medium", governanceTag: "O2C.Order.Confirm" },
   { id: "o2c_allocate_stock", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "allocate", operationType: "transition", description: "Allocate stock", riskLevel: "Medium", governanceTag: "O2C.Order.Allocate" },
   { id: "o2c_ship_order", entity: "SalesOrder", domain: "o2c", aggregateType: "sales-order", action: "ship", operationType: "transition", description: "Ship order", riskLevel: "Medium", governanceTag: "O2C.Order.Ship" },

@@ -146,7 +146,8 @@ async function createQuote(headers: Headers, payload: BootstrapPayload): Promise
 		await proxyHubRequest('/o2c/quotes', headers, 'POST', {
 			customerId,
 			currencyCode,
-			legalEntityId
+			legalEntityId,
+			projectId: asOptionalString(payload.projectId)
 		})
 	) as Record<string, unknown>;
 
