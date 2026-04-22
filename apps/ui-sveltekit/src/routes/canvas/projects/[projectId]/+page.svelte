@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 	import {
 		projectStore,
@@ -25,6 +26,32 @@
 	} from '$lib/api/projects';
 	import type { Project, ProjectProcurementPreview } from '$lib/types/projects';
 
+	interface BomOption {
+		bom_id: string;
+		sku_id?: string;
+		revision?: string;
+		status?: string;
+		organization_id?: string;
+		description?: string;
+		bom_name?: string;
+		name?: string;
+	}
+
+	interface SkuOption {
+		sku_id: string;
+		sku_code?: string;
+		description?: string;
+		name?: string;
+	}
+
+	interface ResourceOption {
+		employee_id: string;
+		display_name?: string;
+		full_name?: string;
+		first_name?: string;
+		last_name?: string;
+	}
+
 	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'linked' = 'overview';
 	let loading = false;
 	let errorMessage = '';
@@ -42,6 +69,14 @@
 	let newSkuId = '';
 	let newFGQuantity = '1';
 	let newUnitCost = '';
+	let bomOptions: BomOption[] = [];
+	let skuOptions: SkuOption[] = [];
+	let resourceOptions: ResourceOption[] = [];
+	let bomSearchQuery = '';
+	let resourceSearchQuery = '';
+	let skuSearchQuery = '';
+	let referenceOptionsLoadedFor = '';
+	const SELECT_SEARCH_THRESHOLD = 12;
 
 	let showTransitionMenu = false;
 	let selectedTransition: 'activate' | 'hold' | 'resume' | 'complete' | 'cancel' | null = null;
@@ -90,6 +125,76 @@
 			currency: currencyCode,
 			maximumFractionDigits: 2
 		}).format(amount);
+	}
+
+	function getResourceDisplayName(resource: ResourceOption): string {
+		if (resource.display_name) return resource.display_name;
+		if (resource.full_name) return resource.full_name;
+		const first = resource.first_name ?? '';
+		const last = resource.last_name ?? '';
+		const composed = `${first} ${last}`.trim();
+		return composed || resource.employee_id;
+	}
+
+	function normalizeSearch(value: string): string {
+		return value.trim().toLowerCase();
+	}
+
+	function getSkuDisplayText(sku: SkuOption): string {
+		const primary = sku.sku_code ?? sku.description ?? sku.name ?? sku.sku_id;
+		return primary === sku.sku_id ? sku.sku_id : `${primary} (${sku.sku_id})`;
+	}
+
+	function getResourceOptionText(resource: ResourceOption): string {
+		const name = getResourceDisplayName(resource);
+		return name === resource.employee_id ? resource.employee_id : `${name} (${resource.employee_id})`;
+	}
+
+	function getBomDisplayText(bom: BomOption): string {
+		const bomName = bom.bom_name ?? bom.description ?? bom.name;
+		const skuText = bom.sku_id
+			? getSkuDisplayText(skuOptions.find((sku) => sku.sku_id === bom.sku_id) ?? { sku_id: bom.sku_id })
+			: '';
+		const revisionText = bom.revision ? ` Rev ${bom.revision}` : '';
+		const label = bomName ? `${bomName} (${bom.bom_id})` : bom.bom_id;
+		return skuText ? `${label} - ${skuText}${revisionText}` : `${label}${revisionText}`;
+	}
+
+	async function loadReferenceOptions(): Promise<void> {
+		const actor = $actorStore;
+		const organizationId = $projectStore.currentProject?.organizationId;
+		if (!organizationId || referenceOptionsLoadedFor === organizationId) {
+			return;
+		}
+
+		const [bomResponse, skuResponse, employeeResponse] = await Promise.all([
+			queryTable<BomOption>('inv_bom_header', actor, 500, 0),
+			queryTable<SkuOption>('inv_sku', actor, 500, 0),
+			queryTable<ResourceOption>('h2r_employee', actor, 500, 0)
+		]);
+
+		skuOptions = (skuResponse.data ?? []).sort((a, b) => getSkuDisplayText(a).localeCompare(getSkuDisplayText(b)));
+		resourceOptions = (employeeResponse.data ?? []).sort((a, b) =>
+			getResourceOptionText(a).localeCompare(getResourceOptionText(b))
+		);
+		bomOptions = (bomResponse.data ?? [])
+			.filter((bom) => !bom.organization_id || bom.organization_id === organizationId)
+			.sort((a, b) => getBomDisplayText(a).localeCompare(getBomDisplayText(b)));
+		referenceOptionsLoadedFor = organizationId;
+
+		if (!newBomId && bomOptions.length > 0) {
+			newBomId = bomOptions[0].bom_id;
+		}
+		if (!newSkuId && skuOptions.length > 0) {
+			newSkuId = skuOptions[0].sku_id;
+		}
+		if (!newResourceId && resourceOptions.length > 0) {
+			newResourceId = resourceOptions[0].employee_id;
+		}
+
+		bomSearchQuery = '';
+		resourceSearchQuery = '';
+		skuSearchQuery = '';
 	}
 
 	async function handleTransition(project: Project | null) {
@@ -288,13 +393,30 @@
 
 	onMount(() => {
 		if (projectId) {
-			void loadProject(projectId);
+			void (async () => {
+				await loadProject(projectId);
+				await loadReferenceOptions();
+			})();
 		}
 
 		return () => {
 			clearProjectStore();
 		};
 	});
+
+	$: if ($projectStore.currentProject?.organizationId && referenceOptionsLoadedFor !== $projectStore.currentProject.organizationId) {
+		void loadReferenceOptions();
+	}
+
+	$: filteredBomOptions = bomOptions.filter((bom) =>
+		getBomDisplayText(bom).toLowerCase().includes(normalizeSearch(bomSearchQuery))
+	);
+	$: filteredResourceOptions = resourceOptions.filter((resource) =>
+		getResourceOptionText(resource).toLowerCase().includes(normalizeSearch(resourceSearchQuery))
+	);
+	$: filteredSkuOptions = skuOptions.filter((sku) =>
+		getSkuDisplayText(sku).toLowerCase().includes(normalizeSearch(skuSearchQuery))
+	);
 </script>
 
 <div class="container mx-auto px-4 py-8 text-slate-900 dark:text-white">
@@ -513,7 +635,22 @@
 					<div class="grid grid-cols-3 gap-4">
 						<div>
 							<label for="bomId" class="block text-sm font-medium mb-1">BOM ID</label>
-							<input id="bomId" type="text" bind:value={newBomId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white" placeholder="bom-001" />
+							{#if bomOptions.length > SELECT_SEARCH_THRESHOLD}
+								<input
+									type="text"
+									bind:value={bomSearchQuery}
+									class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 mb-2 text-slate-900 dark:text-white"
+									placeholder="Search BOMs"
+								/>
+							{/if}
+							<select id="bomId" bind:value={newBomId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white">
+								<option value="" disabled selected={newBomId === ''}>Select BOM</option>
+								{#each filteredBomOptions as bom}
+									<option value={bom.bom_id}>
+										{getBomDisplayText(bom)}
+									</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<label for="bomQty" class="block text-sm font-medium mb-1">Quantity Planned</label>
@@ -574,7 +711,20 @@
 					<div class="grid grid-cols-5 gap-4">
 						<div>
 							<label for="resourceId" class="block text-sm font-medium mb-1">Resource ID</label>
-							<input id="resourceId" type="text" bind:value={newResourceId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white" placeholder="emp-001" />
+							{#if resourceOptions.length > SELECT_SEARCH_THRESHOLD}
+								<input
+									type="text"
+									bind:value={resourceSearchQuery}
+									class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 mb-2 text-slate-900 dark:text-white"
+									placeholder="Search resources"
+								/>
+							{/if}
+							<select id="resourceId" bind:value={newResourceId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white">
+								<option value="" disabled selected={newResourceId === ''}>Select Resource</option>
+								{#each filteredResourceOptions as resource}
+									<option value={resource.employee_id}>{getResourceOptionText(resource)}</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<label for="hours" class="block text-sm font-medium mb-1">Hours</label>
@@ -641,7 +791,20 @@
 					<div class="grid grid-cols-4 gap-4">
 						<div>
 							<label for="skuId" class="block text-sm font-medium mb-1">SKU ID</label>
-							<input id="skuId" type="text" bind:value={newSkuId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white" placeholder="sku-001" />
+							{#if skuOptions.length > SELECT_SEARCH_THRESHOLD}
+								<input
+									type="text"
+									bind:value={skuSearchQuery}
+									class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 mb-2 text-slate-900 dark:text-white"
+									placeholder="Search SKUs"
+								/>
+							{/if}
+							<select id="skuId" bind:value={newSkuId} class="w-full rounded border border-slate-300 dark:border-white/25 bg-[var(--input-bg)] px-3 py-2 text-slate-900 dark:text-white">
+								<option value="" disabled selected={newSkuId === ''}>Select SKU</option>
+								{#each filteredSkuOptions as sku}
+									<option value={sku.sku_id}>{getSkuDisplayText(sku)}</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<label for="fgQty" class="block text-sm font-medium mb-1">Quantity</label>

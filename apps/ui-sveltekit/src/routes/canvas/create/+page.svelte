@@ -122,6 +122,20 @@
 	let legalEntities: LegalEntityRow[] = [];
 	let ledgers: LedgerRow[] = [];
 	let projects: ProjectRow[] = [];
+	const SELECT_SEARCH_THRESHOLD = 12;
+
+	let customerSearchQuery = '';
+	let legalEntitySearchQuery = '';
+	let invoiceSearchQuery = '';
+	let supplierSearchQuery = '';
+	let requisitionSearchQuery = '';
+	let projectSearchQuery = '';
+	let purchaseOrderSearchQuery = '';
+	let receiptSearchQuery = '';
+	let supplierInvoiceSearchQuery = '';
+	let ledgerSearchQuery = '';
+	let fiscalPeriodSearchQuery = '';
+	let accountSearchQuery = '';
 
 	$: filteredLedgers = journalForm.legalEntityId
 		? ledgers.filter((ledger) => ledger.legal_entity_id === journalForm.legalEntityId)
@@ -132,6 +146,54 @@
 		: accounts;
 
 	$: openFiscalPeriods = fiscalPeriods.filter((period) => (period.state ?? '').toLowerCase() === 'open');
+
+	$: filteredCustomers = customers.filter((customer) =>
+		customerLabel(customer).toLowerCase().includes(customerSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredLegalEntities = legalEntities.filter((entity) =>
+		legalEntityLabel(entity).toLowerCase().includes(legalEntitySearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredInvoices = invoices.filter((invoice) =>
+		invoiceLabel(invoice).toLowerCase().includes(invoiceSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredSuppliers = suppliers.filter((supplier) =>
+		supplierLabel(supplier).toLowerCase().includes(supplierSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredRequisitions = approvedRequisitions.filter((requisition) =>
+		requisitionLabel(requisition).toLowerCase().includes(requisitionSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredProjects = projects.filter((project) =>
+		projectLabel(project).toLowerCase().includes(projectSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredPurchaseOrders = purchaseOrders.filter((po) =>
+		purchaseOrderLabel(po).toLowerCase().includes(purchaseOrderSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredGoodsReceipts = goodsReceipts.filter((receipt) =>
+		receiptLabel(receipt).toLowerCase().includes(receiptSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredSupplierInvoices = supplierInvoices.filter((invoice) =>
+		supplierInvoiceLabel(invoice).toLowerCase().includes(supplierInvoiceSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredLedgersBySearch = filteredLedgers.filter((ledger) =>
+		ledgerLabel(ledger).toLowerCase().includes(ledgerSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredOpenFiscalPeriods = openFiscalPeriods.filter((period) =>
+		fiscalPeriodLabel(period).toLowerCase().includes(fiscalPeriodSearchQuery.trim().toLowerCase())
+	);
+
+	$: filteredAccountsBySearch = filteredAccounts.filter((account) =>
+		accountLabel(account).toLowerCase().includes(accountSearchQuery.trim().toLowerCase())
+	);
 
 	let customerForm = {
 		customerName: '',
@@ -262,19 +324,25 @@
 				queryTable<ProjectRow>('proj_project', $actorStore)
 			]);
 
-			customers = customerResult.data ?? [];
-			suppliers = supplierResult.data ?? [];
-			approvedRequisitions = (requisitionResult.data ?? []).filter((item) => (item.state ?? '').toLowerCase() === 'approved');
-			purchaseOrders = poResult.data ?? [];
-			goodsReceipts = receiptResult.data ?? [];
-			supplierInvoices = supplierInvoiceResult.data ?? [];
+			customers = (customerResult.data ?? []).sort((a, b) => customerLabel(a).localeCompare(customerLabel(b)));
+			suppliers = (supplierResult.data ?? []).sort((a, b) => supplierLabel(a).localeCompare(supplierLabel(b)));
+			approvedRequisitions = (requisitionResult.data ?? [])
+				.filter((item) => (item.state ?? '').toLowerCase() === 'approved')
+				.sort((a, b) => requisitionLabel(a).localeCompare(requisitionLabel(b)));
+			purchaseOrders = (poResult.data ?? []).sort((a, b) => purchaseOrderLabel(a).localeCompare(purchaseOrderLabel(b)));
+			goodsReceipts = (receiptResult.data ?? []).sort((a, b) => receiptLabel(a).localeCompare(receiptLabel(b)));
+			supplierInvoices = (supplierInvoiceResult.data ?? []).sort((a, b) =>
+				supplierInvoiceLabel(a).localeCompare(supplierInvoiceLabel(b))
+			);
 			orders = orderResult.data ?? [];
-			invoices = invoiceResult.data ?? [];
-			fiscalPeriods = periodResult.data ?? [];
-			accounts = accountResult.data ?? [];
-			legalEntities = legalEntityResult.data ?? [];
-			ledgers = ledgerResult.data ?? [];
-			projects = projectResult.data ?? [];
+			invoices = (invoiceResult.data ?? []).sort((a, b) => invoiceLabel(a).localeCompare(invoiceLabel(b)));
+			fiscalPeriods = (periodResult.data ?? []).sort((a, b) => fiscalPeriodLabel(a).localeCompare(fiscalPeriodLabel(b)));
+			accounts = (accountResult.data ?? []).sort((a, b) => accountLabel(a).localeCompare(accountLabel(b)));
+			legalEntities = (legalEntityResult.data ?? []).sort((a, b) =>
+				legalEntityLabel(a).localeCompare(legalEntityLabel(b))
+			);
+			ledgers = (ledgerResult.data ?? []).sort((a, b) => ledgerLabel(a).localeCompare(ledgerLabel(b)));
+			projects = (projectResult.data ?? []).sort((a, b) => projectLabel(a).localeCompare(projectLabel(b)));
 
 			if (!paymentForm.invoiceId && invoices.length > 0) {
 				paymentForm.invoiceId = invoices[0].invoice_id;
@@ -370,6 +438,16 @@
 		return `${invoice.invoice_id}${state}`;
 	}
 
+	function requisitionLabel(requisition: RequisitionRow): string {
+		const state = requisition.state ? ` / ${requisition.state}` : '';
+		return `${requisition.requisition_id}${state}`;
+	}
+
+	function purchaseOrderLabel(po: PurchaseOrderRow): string {
+		const state = po.state ? ` / ${po.state}` : '';
+		return `${po.po_id}${state}`;
+	}
+
 	function isOpenInvoice(invoice: InvoiceRow): boolean {
 		const state = (invoice.state ?? '').trim().toLowerCase();
 		if (['cancelled', 'paid', 'reconciled', 'writtenoff', 'fullypaid'].includes(state)) {
@@ -393,7 +471,8 @@
 
 	function supplierInvoiceLabel(invoice: SupplierInvoiceRow): string {
 		const state = invoice.state ? ` / ${invoice.state}` : '';
-		return `${invoice.supplier_invoice_id}${state}`;
+		const receipt = invoice.receipt_id ? ` / Receipt ${invoice.receipt_id}` : '';
+		return `${invoice.supplier_invoice_id}${state}${receipt}`;
 	}
 
 	function accountLabel(account: AccountRow): string {
@@ -407,6 +486,12 @@
 
 	function ledgerLabel(ledger: LedgerRow): string {
 		return ledger.name ? `${ledger.name} (${ledger.ledger_id})` : ledger.ledger_id;
+	}
+
+	function fiscalPeriodLabel(period: FiscalPeriodRow): string {
+		const periodNumber = period.period_number !== undefined ? ` / Period ${period.period_number}` : '';
+		const state = period.state ? ` / ${period.state}` : '';
+		return `${period.fiscal_period_id}${periodNumber}${state}`;
 	}
 
 	$: if (journalForm.legalEntityId && !filteredLedgers.some((ledger) => ledger.ledger_id === journalForm.ledgerId)) {
@@ -500,9 +585,12 @@
 				<h3 class="text-lg font-semibold">Create Quote</h3>
 				<p class="muted mt-1 text-xs">Pick an existing customer or enter a new company name.</p>
 				<div class="mt-3 grid gap-2">
+					{#if customers.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search customers" bind:value={customerSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={quoteForm.customerId}>
 						<option value="">Create from new company</option>
-						{#each customers as customer (customer.customer_id)}
+						{#each filteredCustomers as customer (customer.customer_id)}
 							<option value={customer.customer_id}>{customerLabel(customer)}</option>
 						{/each}
 					</select>
@@ -510,9 +598,12 @@
 						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Company name" bind:value={quoteForm.customerName} />
 						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Company email" bind:value={quoteForm.customerEmail} />
 					{/if}
+					{#if legalEntities.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search legal entities" bind:value={legalEntitySearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={quoteForm.legalEntityId}>
 						<option value="">Select legal entity</option>
-						{#each legalEntities as entity (entity.legal_entity_id)}
+						{#each filteredLegalEntities as entity (entity.legal_entity_id)}
 							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
 						{/each}
 					</select>
@@ -538,9 +629,12 @@
 				<h3 class="text-lg font-semibold">Create Payment</h3>
 				<p class="muted mt-1 text-xs">Requires a posted invoice. Create now auto-applies cash to AR and posts accounting entries.</p>
 				<div class="mt-3 grid gap-2">
+					{#if invoices.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search invoices" bind:value={invoiceSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={paymentForm.invoiceId}>
 						<option value="">Select invoice</option>
-						{#each invoices as invoice (invoice.invoice_id)}
+						{#each filteredInvoices as invoice (invoice.invoice_id)}
 							<option value={invoice.invoice_id}>{invoiceLabel(invoice)}</option>
 						{/each}
 					</select>
@@ -585,15 +679,21 @@
 				<div class="mt-3 grid gap-2">
 					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Requester" bind:value={requisitionForm.requester} />
 					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Department" bind:value={requisitionForm.department} />
+					{#if legalEntities.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search legal entities" bind:value={legalEntitySearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={requisitionForm.legalEntityId}>
 						<option value="">Select legal entity</option>
-						{#each legalEntities as entity (entity.legal_entity_id)}
+						{#each filteredLegalEntities as entity (entity.legal_entity_id)}
 							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
 						{/each}
 					</select>
+					{#if projects.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search projects" bind:value={projectSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={requisitionForm.projectId}>
 						<option value="">No project link</option>
-						{#each projects as project (project.project_id)}
+						{#each filteredProjects as project (project.project_id)}
 							<option value={project.project_id}>{projectLabel(project)}</option>
 						{/each}
 					</select>
@@ -611,16 +711,22 @@
 				<h3 class="text-lg font-semibold">Create Purchase Order</h3>
 				<p class="muted mt-1 text-xs">Choose supplier and optional approved requisition, then set amount.</p>
 				<div class="mt-3 grid gap-2">
+					{#if suppliers.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search suppliers" bind:value={supplierSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={purchaseOrderForm.supplierId}>
 						<option value="">Select supplier</option>
-						{#each suppliers as supplier (supplier.supplier_id)}
+						{#each filteredSuppliers as supplier (supplier.supplier_id)}
 							<option value={supplier.supplier_id}>{supplierLabel(supplier)}</option>
 						{/each}
 					</select>
+					{#if approvedRequisitions.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search requisitions" bind:value={requisitionSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={purchaseOrderForm.requisitionId}>
 						<option value="">No requisition link</option>
-						{#each approvedRequisitions as requisition (requisition.requisition_id)}
-							<option value={requisition.requisition_id}>{requisition.requisition_id}</option>
+						{#each filteredRequisitions as requisition (requisition.requisition_id)}
+							<option value={requisition.requisition_id}>{requisitionLabel(requisition)}</option>
 						{/each}
 					</select>
 					<div class="grid grid-cols-2 gap-2">
@@ -641,10 +747,13 @@
 				<h3 class="text-lg font-semibold">Create Goods Receipt</h3>
 				<p class="muted mt-1 text-xs">Requires an existing purchase order.</p>
 				<div class="mt-3 grid gap-2">
+					{#if purchaseOrders.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search purchase orders" bind:value={purchaseOrderSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={goodsReceiptForm.poId}>
 						<option value="">Select purchase order</option>
-						{#each purchaseOrders as po (po.po_id)}
-							<option value={po.po_id}>{po.po_id} {po.state ? `(${po.state})` : ''}</option>
+						{#each filteredPurchaseOrders as po (po.po_id)}
+							<option value={po.po_id}>{purchaseOrderLabel(po)}</option>
 						{/each}
 					</select>
 				</div>
@@ -660,9 +769,12 @@
 				<h3 class="text-lg font-semibold">Create Supplier Invoice</h3>
 				<p class="muted mt-1 text-xs">Requires an existing goods receipt.</p>
 				<div class="mt-3 grid gap-2">
+					{#if goodsReceipts.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search receipts" bind:value={receiptSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={supplierInvoiceForm.receiptId}>
 						<option value="">Select receipt</option>
-						{#each goodsReceipts as receipt (receipt.receipt_id)}
+						{#each filteredGoodsReceipts as receipt (receipt.receipt_id)}
 							<option value={receipt.receipt_id}>{receiptLabel(receipt)}</option>
 						{/each}
 					</select>
@@ -684,9 +796,12 @@
 				<h3 class="text-lg font-semibold">Create AP Payment</h3>
 				<p class="muted mt-1 text-xs">Requires an existing supplier invoice.</p>
 				<div class="mt-3 grid gap-2">
+					{#if supplierInvoices.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search supplier invoices" bind:value={supplierInvoiceSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={apPaymentForm.supplierInvoiceId}>
 						<option value="">Select supplier invoice</option>
-						{#each supplierInvoices as invoice (invoice.supplier_invoice_id)}
+						{#each filteredSupplierInvoices as invoice (invoice.supplier_invoice_id)}
 							<option value={invoice.supplier_invoice_id}>{supplierInvoiceLabel(invoice)}</option>
 						{/each}
 					</select>
@@ -712,34 +827,46 @@
 				<h3 class="text-lg font-semibold">Create Journal</h3>
 				<p class="muted mt-1 text-xs">Select legal entity and ledger first, then provide both sides of the entry.</p>
 				<div class="mt-3 grid gap-2">
+					{#if legalEntities.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search legal entities" bind:value={legalEntitySearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={journalForm.legalEntityId}>
 						<option value="">Select legal entity</option>
-						{#each legalEntities as entity (entity.legal_entity_id)}
+						{#each filteredLegalEntities as entity (entity.legal_entity_id)}
 							<option value={entity.legal_entity_id}>{legalEntityLabel(entity)}</option>
 						{/each}
 					</select>
+					{#if filteredLedgers.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search ledgers" bind:value={ledgerSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={journalForm.ledgerId} disabled={filteredLedgers.length === 0}>
 						<option value="">Select ledger</option>
-						{#each filteredLedgers as ledger (ledger.ledger_id)}
+						{#each filteredLedgersBySearch as ledger (ledger.ledger_id)}
 							<option value={ledger.ledger_id}>{ledgerLabel(ledger)}</option>
 						{/each}
 					</select>
+					{#if openFiscalPeriods.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search fiscal periods" bind:value={fiscalPeriodSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={journalForm.fiscalPeriodId}>
 						<option value="">Select open fiscal period</option>
-						{#each openFiscalPeriods as period (period.fiscal_period_id)}
-							<option value={period.fiscal_period_id}>{period.fiscal_period_id}</option>
+						{#each filteredOpenFiscalPeriods as period (period.fiscal_period_id)}
+							<option value={period.fiscal_period_id}>{fiscalPeriodLabel(period)}</option>
 						{/each}
 					</select>
 					<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Description" bind:value={journalForm.description} />
+					{#if filteredAccounts.length > SELECT_SEARCH_THRESHOLD}
+						<input class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" placeholder="Search accounts" bind:value={accountSearchQuery} />
+					{/if}
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={journalForm.debitAccountId}>
 						<option value="">Select debit account</option>
-						{#each filteredAccounts as account (account.account_id)}
+						{#each filteredAccountsBySearch as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
 					<select class="rounded-md border dark:border-white/25 border-slate-300 bg-[var(--input-bg)] px-3 py-2 text-sm" bind:value={journalForm.creditAccountId}>
 						<option value="">Select credit account</option>
-						{#each filteredAccounts as account (account.account_id)}
+						{#each filteredAccountsBySearch as account (account.account_id)}
 							<option value={account.account_id}>{accountLabel(account)}</option>
 						{/each}
 					</select>
