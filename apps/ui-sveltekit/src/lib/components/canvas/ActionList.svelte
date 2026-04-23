@@ -43,16 +43,26 @@
 		return (rows as Record<string, string>[])
 			.filter((r) => !r.status || !['Suspended', 'Inactive'].includes(r.status))
 			.map((r) => {
+				const derivedIdKey = Object.keys(r).find((key) => key.endsWith('_id'));
 				const value =
 					r.value ??
 					r.taxCodeId ??
 					r.tax_code_id ??
+					r.project_id ??
 					r.supplier_id ??
+					r.order_id ??
+					r.quote_id ??
+					r.legal_entity_id ??
+					r.customer_id ??
+					(derivedIdKey ? r[derivedIdKey] : undefined) ??
 					r.id ??
-					String(r);
+					JSON.stringify(r);
 
 				const label =
 					r.label ??
+					(r.name && r.project_id
+						? `${r.name} (${r.project_id})`
+						: undefined) ??
 					(r.supplier_name
 						? `${r.supplier_name} (${r.supplier_id ?? r.id})`
 						: r.code && r.ratePercent
