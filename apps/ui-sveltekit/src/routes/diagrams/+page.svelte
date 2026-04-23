@@ -19,6 +19,7 @@
 		F_o2c[O2C Domain]
 		F_p2p[P2P Domain]
 		F_inv[Inventory Domain]
+		F_proj[Projects Domain]
 		F_r2r[R2R Domain + Tax]
 		F_h2r[H2R Domain]
 		F_nav[REPL and Navlog]
@@ -33,7 +34,7 @@
 		PGE[Process Graph Engine]
 	end
 
-	class F_core,F_o2c,F_p2p,F_inv,F_r2r,F_h2r,F_nav foundation;
+	class F_core,F_o2c,F_p2p,F_inv,F_proj,F_r2r,F_h2r,F_nav foundation;
 	class AE authority;
 	class GE governance;
 	class EP eventproc;
@@ -45,11 +46,13 @@
 	F_core --> GE
 	F_core --> EP
 	F_core --> F_inv
+	F_core --> F_proj
 	AE --> GE
 	GE --> MG
 	MG --> PGE
 	EP --> NAI
 	GE --> NAI
+	F_proj --> F_inv
 	F_inv --> F_r2r`;
 
 	const grouped = {
@@ -107,6 +110,7 @@
 		F_o2c: 'foundation-o2c',
 		F_p2p: 'foundation-p2p',
 		F_inv: 'foundation-inventory',
+		F_proj: 'foundation-projects-domain',
 		F_r2r: 'foundation-r2r',
 		F_h2r: 'foundation-h2r-navlog',
 		F_nav: 'foundation-h2r-navlog',

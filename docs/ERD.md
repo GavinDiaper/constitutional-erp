@@ -16,7 +16,9 @@ flowchart LR
         F_core[Core and Eventing]
         F_o2c[O2C Domain]
         F_p2p[P2P Domain]
-        F_r2r[R2R Domain]
+        F_inv[Inventory Domain]
+        F_proj[Projects Domain]
+        F_r2r[R2R Domain + Tax]
         F_h2r[H2R Domain]
         F_nav[REPL and Navlog]
     end
@@ -30,7 +32,7 @@ flowchart LR
         PGE[Process Graph Engine]
     end
 
-    class F_core,F_o2c,F_p2p,F_r2r,F_h2r,F_nav foundation;
+    class F_core,F_o2c,F_p2p,F_inv,F_proj,F_r2r,F_h2r,F_nav foundation;
     class AE authority;
     class GE governance;
     class EP eventproc;
@@ -41,11 +43,15 @@ flowchart LR
     F_core --> AE
     F_core --> GE
     F_core --> EP
+    F_core --> F_inv
+    F_core --> F_proj
     AE --> GE
     GE --> MG
     MG --> PGE
     EP --> NAI
     GE --> NAI
+    F_proj --> F_inv
+    F_inv --> F_r2r
 ```
 
 ## 2. FoundationERP - Core and Eventing
