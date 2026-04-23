@@ -23,6 +23,7 @@ const FOLDER_P2P_UAE_VAT = "21 - P2P Flow UAE VAT (VAT5)";
 const FOLDER_P2P_UAE_RC = "22 - P2P Flow UAE Reverse Charge (RC5)";
 const FOLDER_R2R_SEEDING = "31 - R2R Financial Seeding";
 const FOLDER_PROJECTS_FLOW = "41 - Projects Flow";
+const FOLDER_PROJECTS_END_TO_END = "70 - Baked Bread E2E";
 
 async function assertFoundationErpEndpoint(baseUrl, envOverrides) {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
@@ -202,6 +203,8 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       FOLDER_R2R_SEEDING,
       "--folder",
       FOLDER_PROJECTS_FLOW,
+      "--folder",
+      FOLDER_PROJECTS_END_TO_END,
       "--reporters",
       "cli,json,junit",
       "--reporter-json-export",
@@ -220,7 +223,19 @@ assertFoundationErpEndpoint(envOverrides.baseUrl, envOverrides)
       invOrganizationName: prereqs.organizationName,
       projectName: `UEA Project Build ${datasetTag}`,
       cancelProjectName: `UEA Project Cancel ${datasetTag}`,
-      bomRevision: `UEA-${datasetTag}-R1`
+      bomRevision: `UEA-${datasetTag}-R1`,
+      bakedBreadRunId: datasetTag,
+      bakedBreadOrganizationName: `UEA Project Plant ${datasetTag}`,
+      bakedBreadProjectName: `UEA FG Project ${datasetTag}`,
+      bakedBreadSupplierName: `UEA Supplier ${datasetTag}`,
+      bakedBreadCustomerName: `UEA Customer ${datasetTag}`,
+      bakedBreadFlourSkuCode: `SKU-${datasetTag}-FLOUR`,
+      bakedBreadSaltSkuCode: `SKU-${datasetTag}-SALT`,
+      bakedBreadYeastSkuCode: `SKU-${datasetTag}-YEAST`,
+      bakedBreadFreshBreadSkuCode: `SKU-${datasetTag}-FG2`,
+      bakedBreadBomRevision: `UEA-BB-${datasetTag}`,
+      bakedBreadLoafQty: "4",
+      bakedBreadLoafUnitPrice: "10"
     };
 
     Object.entries(envOverrides).forEach(([key, value]) => {
