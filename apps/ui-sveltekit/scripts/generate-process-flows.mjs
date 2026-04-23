@@ -3,9 +3,9 @@ import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 
 const FLOW_FOLDER_PATTERN = /^\s*\d+\s*-\s*(.+)$/;
-const DOMAIN_PATTERN = /\b(O2C|P2P|R2R|H2R)\b/i;
+const DOMAIN_PATTERN = /\b(O2C|P2P|R2R|H2R|INV|PROJ|INVENTORY|PROJECTS)\b/i;
 const VARIABLE_PATTERN = /{{\s*([^}]+?)\s*}}/g;
-const CAPTURE_PATTERN = /pm\.environment\.set\(\s*['"]([^'"]+)['"]/g;
+const CAPTURE_PATTERN = /pm\.(?:environment|collectionVariables|variables|globals)\.set\(\s*['"]([^'"]+)['"]/g;
 const TRANSITION_OBJECT_PATTERN = /domain:\s*"([A-Z0-9]+)"[\s\S]*?aggregateType:\s*"([^"]+)"[\s\S]*?action:\s*"([^"]+)"/g;
 
 function ensureArray(value) {
@@ -26,7 +26,15 @@ function normalizeDomain(raw) {
 		return null;
 	}
 
-	return match[1].toUpperCase();
+	const normalized = match[1].toUpperCase();
+	if (normalized === 'INVENTORY') {
+		return 'INV';
+	}
+	if (normalized === 'PROJECTS') {
+		return 'PROJ';
+	}
+
+	return normalized;
 }
 
 function deriveVariant(folderName) {
@@ -74,6 +82,63 @@ function extractCaptures(events) {
 	return Array.from(captures).sort((left, right) => left.localeCompare(right));
 }
 
+function collectKnownVariablesFromCollection(collection) {
+	const known = new Set();
+
+	for (const entry of ensureArray(collection?.variable)) {
+		const key = String(entry?.key ?? '').trim();
+		if (key) {
+			known.add(key);
+		}
+	}
+
+	const stack = [...ensureArray(collection?.item)];
+	while (stack.length > 0) {
+		const item = stack.pop();
+		if (!item) {
+			continue;
+		}
+
+		for (const event of ensureArray(item?.event)) {
+			for (const line of ensureArray(event?.script?.exec)) {
+				for (const match of String(line).matchAll(CAPTURE_PATTERN)) {
+					const variableName = String(match[1] ?? '').trim();
+					if (variableName) {
+						known.add(variableName);
+					}
+				}
+			}
+		}
+
+		for (const nested of ensureArray(item?.item)) {
+			stack.push(nested);
+		}
+	}
+
+	return Array.from(known).sort((left, right) => left.localeCompare(right));
+}
+
+function isLikelySeedVariable(variableName) {
+	const value = String(variableName ?? '').trim();
+	if (!value) {
+		return false;
+	}
+
+	if (/^(uae|rc)[A-Z0-9]/.test(value)) {
+		return true;
+	}
+
+	const explicitSeedNames = new Set([
+		'invSkuCode',
+		'invOrganizationName',
+		'projectName',
+		'cancelProjectName',
+		'bomRevision'
+	]);
+
+	return explicitSeedNames.has(value);
+}
+
 function getRawBody(request) {
 	if (request?.body?.mode !== 'raw') {
 		return '';
@@ -112,8 +177,19 @@ function normalizePathFromRawUrl(rawUrl) {
 	}
 
 	const withoutQuery = rawUrl.split('?')[0] ?? rawUrl;
-	const baseUrlTokenRemoved = withoutQuery.replace(/^{{\s*baseUrl\s*}}/i, '');
-	return baseUrlTokenRemoved || '/';
+	const apiPathIndex = withoutQuery.search(/\/api\/v\d+\//i);
+	if (apiPathIndex >= 0) {
+		return withoutQuery.slice(apiPathIndex);
+	}
+
+	const baseUrlTokenRemoved = withoutQuery
+		.replace(/^https?:\/\/\{\{\s*baseUrl\s*\}\}/i, '')
+		.replace(/^\{\{\s*baseUrl\s*\}\}/i, '');
+	if (!baseUrlTokenRemoved) {
+		return '/';
+	}
+
+	return baseUrlTokenRemoved.startsWith('/') ? baseUrlTokenRemoved : `/${baseUrlTokenRemoved}`;
 }
 
 function deriveAction(requestPath, httpMethod) {
@@ -135,8 +211,24 @@ function deriveAction(requestPath, httpMethod) {
 
 function deriveEntityType(requestPath) {
 	const segments = requestPath.split('/').filter(Boolean);
-	const domainIndex = segments.findIndex((segment) => segment.toLowerCase() === 'o2c' || segment.toLowerCase() === 'p2p' || segment.toLowerCase() === 'r2r' || segment.toLowerCase() === 'h2r');
-	const entitySegment = domainIndex >= 0 ? segments[domainIndex + 1] : segments[segments.length - 1] ?? 'entity';
+	const domainIndex = segments.findIndex(
+		(segment) =>
+			segment.toLowerCase() === 'o2c' ||
+			segment.toLowerCase() === 'p2p' ||
+			segment.toLowerCase() === 'r2r' ||
+			segment.toLowerCase() === 'h2r' ||
+			segment.toLowerCase() === 'inv'
+	);
+
+	let entitySegment = domainIndex >= 0 ? segments[domainIndex + 1] : null;
+	if (!entitySegment && segments[0] === 'api' && segments[1] === 'v1' && segments[2]) {
+		entitySegment = segments[2];
+	}
+
+	if (!entitySegment) {
+		entitySegment = segments[segments.length - 1] ?? 'entity';
+	}
+
 	return String(entitySegment ?? 'entity').toLowerCase();
 }
 
@@ -167,6 +259,8 @@ function buildTransitionSetFromRegistry(cwd, warnings) {
 	const registryPath = resolve(
 		cwd,
 		'..',
+		'..',
+		'services',
 		'process-graph',
 		'src',
 		'domain',
@@ -196,6 +290,8 @@ function buildTransitionSetFromRegistry(cwd, warnings) {
 		const transitionFile = resolve(
 			cwd,
 			'..',
+			'..',
+			'services',
 			'process-graph',
 			'src',
 			'domain',
@@ -281,6 +377,23 @@ function deriveActionCandidates(domain, action) {
 		candidates.add('reconcilepayment');
 	}
 
+	if (normalized === 'apply') {
+		candidates.add('applypayment');
+	}
+
+	if (domain === 'P2P' && normalized === 'approve') {
+		candidates.add('approvepayment');
+	}
+
+	if (domain === 'P2P' && normalized === 'receive') {
+		candidates.add('receivegoods');
+		candidates.add('executepayment');
+	}
+
+	if (domain === 'P2P' && normalized === 'accept') {
+		candidates.add('acceptgoods');
+	}
+
 	if (domain === 'H2R' && normalized === 'leave') {
 		candidates.add('goonleave');
 	}
@@ -295,6 +408,10 @@ function deriveActionCandidates(domain, action) {
 function shouldCheckNodeForDrift(node) {
 	const method = String(node.httpMethod ?? '').toUpperCase();
 	if (!['POST', 'PUT', 'PATCH'].includes(method)) {
+		return false;
+	}
+
+	if (/\/lines$/i.test(String(node.requestPath ?? ''))) {
 		return false;
 	}
 
@@ -317,6 +434,12 @@ function shouldCheckNodeForDrift(node) {
 
 function appendDriftWarnings(flows, transitionSet, warnings) {
 	for (const flow of flows) {
+		const domainToken = `${normalizeKeyToken(flow.domain)}|`;
+		const hasDomainTransitions = Array.from(transitionSet).some((key) => key.startsWith(domainToken));
+		if (!hasDomainTransitions) {
+			continue;
+		}
+
 		for (const node of ensureArray(flow.nodes)) {
 			if (!shouldCheckNodeForDrift(node)) {
 				continue;
@@ -418,7 +541,12 @@ function buildFlow(folderItem, warnings, knownVariables) {
 			if (dependency.startsWith('$')) {
 				continue;
 			}
-			if (!captures.has(dependency) && !knownVariableSet.has(dependency) && !systemVariables.has(dependency)) {
+			if (
+				!captures.has(dependency) &&
+				!knownVariableSet.has(dependency) &&
+				!systemVariables.has(dependency) &&
+				!isLikelySeedVariable(dependency)
+			) {
 				warnings.push(`Flow '${folderName}' step '${node.requestName}' depends on unresolved variable '{{${dependency}}}'.`);
 			}
 		}
@@ -468,13 +596,17 @@ function main() {
 
 	const collection = JSON.parse(readFileSync(inputCollectionPath, 'utf8'));
 	let knownVariables = [];
+	const knownVariablesFromCollection = collectKnownVariablesFromCollection(collection);
 	try {
 		const environment = JSON.parse(readFileSync(inputEnvironmentPath, 'utf8'));
-		knownVariables = ensureArray(environment?.values)
+		const environmentVariables = ensureArray(environment?.values)
 			.map((entry) => String(entry?.key ?? '').trim())
 			.filter(Boolean);
+		knownVariables = Array.from(new Set([...environmentVariables, ...knownVariablesFromCollection])).sort((left, right) =>
+			left.localeCompare(right)
+		);
 	} catch {
-		// Ignore missing environment file and rely on captured variables + system variables.
+		knownVariables = knownVariablesFromCollection;
 	}
 	const warnings = [];
 	const flows = [];

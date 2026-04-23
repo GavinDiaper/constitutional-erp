@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-04-06T15:07:43.259Z",
-  "sourceCollectionPath": "D:\\Projects\\ConstitutionalERP\\FoundationERP\\ConstitutionalERP-FoundationERP\\postman\\FoundationERP.postman_collection.json",
+  "generatedAt": "2026-04-23T05:52:05.032Z",
+  "sourceCollectionPath": "d:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\services\\foundation-erp\\postman\\FoundationERP.postman_collection.json",
   "flows": [
     {
       "id": "h2r-base",
@@ -202,6 +202,157 @@
         {
           "sourceId": "h2r-base-09-return",
           "targetId": "h2r-base-10-terminate",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "inv-base",
+      "name": "INV End-to-End Flow",
+      "domain": "INV",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "40 - Inventory Flow",
+      "nodes": [
+        {
+          "id": "inv-base-01-skus",
+          "sequence": 1,
+          "requestName": "Create Inventory SKU",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/inv/skus",
+          "action": "skus",
+          "entityType": "skus",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invSkuCode"
+          ],
+          "capturesVariables": [
+            "invSkuId"
+          ]
+        },
+        {
+          "id": "inv-base-02-organizations",
+          "sequence": 2,
+          "requestName": "Create Inventory Organization",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/inv/organizations",
+          "action": "organizations",
+          "entityType": "organizations",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationName"
+          ],
+          "capturesVariables": [
+            "invOrganizationId"
+          ]
+        },
+        {
+          "id": "inv-base-03-movements",
+          "sequence": 3,
+          "requestName": "Post Inventory Receipt Movement",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/inv/movements",
+          "action": "movements",
+          "entityType": "movements",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "invSkuId"
+          ],
+          "capturesVariables": [
+            "invMovementId"
+          ]
+        },
+        {
+          "id": "inv-base-04-on-hand",
+          "sequence": 4,
+          "requestName": "List Inventory On Hand",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/inv/on-hand",
+          "action": "on-hand",
+          "entityType": "on-hand",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "invSkuId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "inv-base-05-movements",
+          "sequence": 5,
+          "requestName": "List Inventory Movements",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/inv/movements",
+          "action": "movements",
+          "entityType": "movements",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "inv-base-06-movements",
+          "sequence": 6,
+          "requestName": "Post Inventory Issue Movement",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/inv/movements",
+          "action": "movements",
+          "entityType": "movements",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "invSkuId"
+          ],
+          "capturesVariables": [
+            "invIssueMovementId"
+          ]
+        },
+        {
+          "id": "inv-base-07-on-hand",
+          "sequence": 7,
+          "requestName": "List Inventory On Hand After Issue",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/inv/on-hand",
+          "action": "on-hand",
+          "entityType": "on-hand",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "invSkuId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "inv-base-01-skus",
+          "targetId": "inv-base-02-organizations",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "inv-base-02-organizations",
+          "targetId": "inv-base-03-movements",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "inv-base-03-movements",
+          "targetId": "inv-base-04-on-hand",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "inv-base-04-on-hand",
+          "targetId": "inv-base-05-movements",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "inv-base-05-movements",
+          "targetId": "inv-base-06-movements",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "inv-base-06-movements",
+          "targetId": "inv-base-07-on-hand",
           "condition": "Previous step completed"
         }
       ]
@@ -684,7 +835,7 @@
           "httpMethod": "GET",
           "requestPath": "/api/v1/query/r2r_ledger_entry",
           "action": "r2r_ledger_entry",
-          "entityType": "r2r_ledger_entry",
+          "entityType": "query",
           "dependsOnVariables": [
             "baseUrl"
           ],
@@ -831,7 +982,7 @@
           "httpMethod": "GET",
           "requestPath": "/api/v1/query/r2r_ledger_entry",
           "action": "r2r_ledger_entry",
-          "entityType": "r2r_ledger_entry",
+          "entityType": "query",
           "dependsOnVariables": [
             "baseUrl"
           ],
@@ -1139,7 +1290,7 @@
           "httpMethod": "GET",
           "requestPath": "/api/v1/query/r2r_ledger_entry",
           "action": "r2r_ledger_entry",
-          "entityType": "r2r_ledger_entry",
+          "entityType": "query",
           "dependsOnVariables": [
             "baseUrl"
           ],
@@ -1495,7 +1646,7 @@
           "httpMethod": "GET",
           "requestPath": "/api/v1/query/r2r_ledger_entry",
           "action": "r2r_ledger_entry",
-          "entityType": "r2r_ledger_entry",
+          "entityType": "query",
           "dependsOnVariables": [
             "baseUrl"
           ],
@@ -1504,7 +1655,7 @@
         {
           "id": "p2p-rc5-18-ap-payments",
           "sequence": 18,
-          "requestName": "Create RC AP Payment",
+          "requestName": "Create RC AP Payment (base amount only)",
           "httpMethod": "POST",
           "requestPath": "/api/v1/p2p/ap-payments",
           "action": "ap-payments",
@@ -1899,7 +2050,7 @@
           "httpMethod": "GET",
           "requestPath": "/api/v1/query/r2r_ledger_entry",
           "action": "r2r_ledger_entry",
-          "entityType": "r2r_ledger_entry",
+          "entityType": "query",
           "dependsOnVariables": [
             "baseUrl"
           ],
@@ -2061,6 +2212,354 @@
         {
           "sourceId": "p2p-vat5-20-apply",
           "targetId": "p2p-vat5-21-reconcile",
+          "condition": "Previous step completed"
+        }
+      ]
+    },
+    {
+      "id": "proj-base",
+      "name": "PROJ End-to-End Flow",
+      "domain": "PROJ",
+      "variantKey": "base",
+      "variantLabel": "Base",
+      "sourceFolderName": "41 - Projects Flow",
+      "nodes": [
+        {
+          "id": "proj-base-01-projects",
+          "sequence": 1,
+          "requestName": "Create Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects",
+          "action": "projects",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "projectName"
+          ],
+          "capturesVariables": [
+            "projectId"
+          ]
+        },
+        {
+          "id": "proj-base-02-projects",
+          "sequence": 2,
+          "requestName": "List Projects",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/projects",
+          "action": "projects",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-03-get-projects",
+          "sequence": 3,
+          "requestName": "Get Project By ID",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/projects/{{projectId}}",
+          "action": "get-projects",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-04-activate",
+          "sequence": 4,
+          "requestName": "Activate Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/activate",
+          "action": "activate",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-05-hold",
+          "sequence": 5,
+          "requestName": "Hold Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/hold",
+          "action": "hold",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-06-resume",
+          "sequence": 6,
+          "requestName": "Resume Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/resume",
+          "action": "resume",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-07-bom",
+          "sequence": 7,
+          "requestName": "Create Project BOM",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/bom",
+          "action": "bom",
+          "entityType": "bom",
+          "dependsOnVariables": [
+            "baseUrl",
+            "bomRevision",
+            "invOrganizationId",
+            "invSkuId"
+          ],
+          "capturesVariables": [
+            "bomId"
+          ]
+        },
+        {
+          "id": "proj-base-08-activate",
+          "sequence": 8,
+          "requestName": "Activate Project BOM",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/bom/{{bomId}}/activate",
+          "action": "activate",
+          "entityType": "bom",
+          "dependsOnVariables": [
+            "baseUrl",
+            "bomId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-09-bom-assignments",
+          "sequence": 9,
+          "requestName": "Assign BOM To Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/bom-assignments",
+          "action": "bom-assignments",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "bomId",
+            "projectId"
+          ],
+          "capturesVariables": [
+            "projectAssignmentId"
+          ]
+        },
+        {
+          "id": "proj-base-10-bom-assignments",
+          "sequence": 10,
+          "requestName": "List Project BOM Assignments",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/projects/{{projectId}}/bom-assignments",
+          "action": "bom-assignments",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-11-labor-entries",
+          "sequence": 11,
+          "requestName": "Post Project Labor Entry",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/labor-entries",
+          "action": "labor-entries",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": [
+            "projectLaborEntryId"
+          ]
+        },
+        {
+          "id": "proj-base-12-wip",
+          "sequence": 12,
+          "requestName": "Get Project WIP Summary",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/projects/{{projectId}}/wip",
+          "action": "wip",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-13-finished-items",
+          "sequence": 13,
+          "requestName": "Create Project Finished Item",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/finished-items",
+          "action": "finished-items",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "invOrganizationId",
+            "invSkuId",
+            "projectId"
+          ],
+          "capturesVariables": [
+            "projectFinishedItemId"
+          ]
+        },
+        {
+          "id": "proj-base-14-finished-items",
+          "sequence": 14,
+          "requestName": "List Project Finished Items",
+          "httpMethod": "GET",
+          "requestPath": "/api/v1/projects/{{projectId}}/finished-items",
+          "action": "finished-items",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-15-complete",
+          "sequence": 15,
+          "requestName": "Complete Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{projectId}}/complete",
+          "action": "complete",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "projectId"
+          ],
+          "capturesVariables": []
+        },
+        {
+          "id": "proj-base-16-projects",
+          "sequence": 16,
+          "requestName": "Create Project To Cancel",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects",
+          "action": "projects",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "cancelProjectName",
+            "invOrganizationId"
+          ],
+          "capturesVariables": [
+            "cancelledProjectId"
+          ]
+        },
+        {
+          "id": "proj-base-17-cancel",
+          "sequence": 17,
+          "requestName": "Cancel Project",
+          "httpMethod": "POST",
+          "requestPath": "/api/v1/projects/{{cancelledProjectId}}/cancel",
+          "action": "cancel",
+          "entityType": "projects",
+          "dependsOnVariables": [
+            "baseUrl",
+            "cancelledProjectId"
+          ],
+          "capturesVariables": []
+        }
+      ],
+      "edges": [
+        {
+          "sourceId": "proj-base-01-projects",
+          "targetId": "proj-base-02-projects",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-02-projects",
+          "targetId": "proj-base-03-get-projects",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-03-get-projects",
+          "targetId": "proj-base-04-activate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-04-activate",
+          "targetId": "proj-base-05-hold",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-05-hold",
+          "targetId": "proj-base-06-resume",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-06-resume",
+          "targetId": "proj-base-07-bom",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-07-bom",
+          "targetId": "proj-base-08-activate",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-08-activate",
+          "targetId": "proj-base-09-bom-assignments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-09-bom-assignments",
+          "targetId": "proj-base-10-bom-assignments",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-10-bom-assignments",
+          "targetId": "proj-base-11-labor-entries",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-11-labor-entries",
+          "targetId": "proj-base-12-wip",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-12-wip",
+          "targetId": "proj-base-13-finished-items",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-13-finished-items",
+          "targetId": "proj-base-14-finished-items",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-14-finished-items",
+          "targetId": "proj-base-15-complete",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-15-complete",
+          "targetId": "proj-base-16-projects",
+          "condition": "Previous step completed"
+        },
+        {
+          "sourceId": "proj-base-16-projects",
+          "targetId": "proj-base-17-cancel",
           "condition": "Previous step completed"
         }
       ]
@@ -2461,7 +2960,9 @@
             "baseUrl",
             "fiscalPeriodId"
           ],
-          "capturesVariables": []
+          "capturesVariables": [
+            "trialBalanceRowsCount"
+          ]
         },
         {
           "id": "r2r-base-27-close",
@@ -2652,86 +3153,11 @@
   ],
   "warnings": [
     "Drift-check: H2R 'Activate Assignment' (POST /api/v1/h2r/assignments/{{assignmentId}}/activate) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: O2C 'Add Quote Line' (POST /api/v1/o2c/quotes/{{quoteId}}/lines) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: O2C 'Add UAE Quote Line' (POST /api/v1/o2c/quotes/{{uaeQuoteId}}/lines) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Accept Goods' (POST /api/v1/p2p/goods-receipts/{{receiptId}}/accept) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Accept RC Goods' (POST /api/v1/p2p/goods-receipts/{{rcReceiptId}}/accept) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Accept UAE Goods' (POST /api/v1/p2p/goods-receipts/{{uaeReceiptId}}/accept) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Add RC Requisition Line' (POST /api/v1/p2p/requisitions/{{rcReqId}}/lines) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Add Requisition Line' (POST /api/v1/p2p/requisitions/{{requisitionId}}/lines) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Add UAE Requisition Line' (POST /api/v1/p2p/requisitions/{{uaeReqId}}/lines) does not map to a canonical transition in process-graph registry.",
     "Drift-check: P2P 'Apply AP Payment' (POST /api/v1/p2p/ap-payments/{{apPaymentId}}/apply) does not map to a canonical transition in process-graph registry.",
     "Drift-check: P2P 'Apply RC AP Payment' (POST /api/v1/p2p/ap-payments/{{rcApPaymentId}}/apply) does not map to a canonical transition in process-graph registry.",
     "Drift-check: P2P 'Apply UAE AP Payment' (POST /api/v1/p2p/ap-payments/{{uaeApPaymentId}}/apply) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Approve PO' (POST /api/v1/p2p/purchase-orders/{{poId}}/approve) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Approve RC PO' (POST /api/v1/p2p/purchase-orders/{{rcPoId}}/approve) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Approve UAE PO' (POST /api/v1/p2p/purchase-orders/{{uaePoId}}/approve) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive AP Payment' (POST /api/v1/p2p/ap-payments/{{apPaymentId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive Goods' (POST /api/v1/p2p/goods-receipts/{{receiptId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive RC AP Payment' (POST /api/v1/p2p/ap-payments/{{rcApPaymentId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive RC Goods' (POST /api/v1/p2p/goods-receipts/{{rcReceiptId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive UAE AP Payment' (POST /api/v1/p2p/ap-payments/{{uaeApPaymentId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Receive UAE Goods' (POST /api/v1/p2p/goods-receipts/{{uaeReceiptId}}/receive) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Send PO' (POST /api/v1/p2p/purchase-orders/{{poId}}/send) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Send RC PO' (POST /api/v1/p2p/purchase-orders/{{rcPoId}}/send) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: P2P 'Send UAE PO' (POST /api/v1/p2p/purchase-orders/{{uaePoId}}/send) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: R2R 'Add Journal Credit Line' (POST /api/v1/r2r/journals/{{journalId}}/lines) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: R2R 'Add Journal Debit Line' (POST /api/v1/r2r/journals/{{journalId}}/lines) does not map to a canonical transition in process-graph registry.",
     "Drift-check: R2R 'Deactivate SLA Posting Profile' (POST /api/v1/r2r/sla/posting-profiles/{{postingProfileId}}/deactivate) does not map to a canonical transition in process-graph registry.",
     "Drift-check: R2R 'Lock Fiscal Period' (POST /api/v1/r2r/fiscal-periods/{{fiscalPeriodId}}/lock) does not map to a canonical transition in process-graph registry.",
-    "Drift-check: R2R 'Set Child Account Segments' (PUT /api/v1/r2r/accounts/{{childAccountId}}/segments) does not map to a canonical transition in process-graph registry.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Accept UAE Quote' depends on unresolved variable '{{uaeQuoteId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Add UAE Quote Line' depends on unresolved variable '{{uaeQuoteId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Allocate UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Apply UAE Payment' depends on unresolved variable '{{uaePaymentId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Confirm UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Convert UAE Quote To Order' depends on unresolved variable '{{uaeQuoteId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Create UAE Quote' depends on unresolved variable '{{uaeCustomerId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Generate UAE Invoice With VAT5' depends on unresolved variable '{{uaeOrderId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Get UAE Invoice Tax Lines (After Generate)' depends on unresolved variable '{{uaeInvoiceId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Post UAE Invoice' depends on unresolved variable '{{uaeInvoiceId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Reconcile UAE Payment' depends on unresolved variable '{{uaePaymentId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Register UAE Payment' depends on unresolved variable '{{uaeInvoiceId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Send UAE Quote' depends on unresolved variable '{{uaeQuoteId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Ship UAE Order' depends on unresolved variable '{{uaeOrderId}}'.",
-    "Flow '11 - O2C Flow UAE VAT (VAT5)' step 'Verify UAE Tax Lines Posted' depends on unresolved variable '{{uaeInvoiceId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Accept UAE Goods' depends on unresolved variable '{{uaeReceiptId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Add UAE Requisition Line' depends on unresolved variable '{{uaeReqId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Apply UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Approve UAE PO' depends on unresolved variable '{{uaePoId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Approve UAE Requisition' depends on unresolved variable '{{uaeReqId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Convert UAE Requisition To PO' depends on unresolved variable '{{uaeReqId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Convert UAE Requisition To PO' depends on unresolved variable '{{uaeSupplierId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE AP Payment' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE Goods Receipt' depends on unresolved variable '{{uaePoId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Create UAE Supplier Invoice With VAT5' depends on unresolved variable '{{uaeReceiptId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Get UAE AP Tax Lines (Pending)' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Post UAE Supplier Invoice' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Receive UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Receive UAE Goods' depends on unresolved variable '{{uaeReceiptId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Reconcile UAE AP Payment' depends on unresolved variable '{{uaeApPaymentId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Send UAE PO' depends on unresolved variable '{{uaePoId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Submit UAE Requisition' depends on unresolved variable '{{uaeReqId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Validate UAE Supplier Invoice' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
-    "Flow '21 - P2P Flow UAE VAT (VAT5)' step 'Verify UAE AP Tax Lines Posted' depends on unresolved variable '{{uaeSupplierInvoiceId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Accept RC Goods' depends on unresolved variable '{{rcReceiptId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Add RC Requisition Line' depends on unresolved variable '{{rcReqId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Apply RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Approve RC PO' depends on unresolved variable '{{rcPoId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Approve RC Requisition' depends on unresolved variable '{{rcReqId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Convert RC Requisition To PO' depends on unresolved variable '{{rcReqId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Convert RC Requisition To PO' depends on unresolved variable '{{rcSupplierId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC AP Payment' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC Goods Receipt' depends on unresolved variable '{{rcPoId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Create RC Supplier Invoice With RC5' depends on unresolved variable '{{rcReceiptId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Get RC Tax Lines (Pending - Reverse Charge)' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Post RC Supplier Invoice' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Receive RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Receive RC Goods' depends on unresolved variable '{{rcReceiptId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Reconcile RC AP Payment' depends on unresolved variable '{{rcApPaymentId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Send RC PO' depends on unresolved variable '{{rcPoId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Submit RC Requisition' depends on unresolved variable '{{rcReqId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Validate RC Supplier Invoice' depends on unresolved variable '{{rcSupplierInvoiceId}}'.",
-    "Flow '22 - P2P Flow UAE Reverse Charge (RC5)' step 'Verify RC Tax Lines Posted' depends on unresolved variable '{{rcSupplierInvoiceId}}'."
+    "Drift-check: R2R 'Set Child Account Segments' (PUT /api/v1/r2r/accounts/{{childAccountId}}/segments) does not map to a canonical transition in process-graph registry."
   ]
 }
