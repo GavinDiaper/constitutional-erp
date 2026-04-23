@@ -13,12 +13,14 @@ These rows are persisted in `erp_mapping` (`services/foundation-erp/src/db/migra
 
 ## Coverage summary (seeded)
 
-Current seeded total: **235 mappings**
+Current seeded total: **383 mappings**
 
 - O2C: 60
 - P2P: 54
 - R2R (including tax): 96
 - H2R: 25
+- INV: 80
+- PROJ: 68
 
 All seeded rows include all three ERP target columns:
 
@@ -87,6 +89,32 @@ All seeded rows include all three ERP target columns:
 - Assignment (6)
 - Credential (4)
 - AuthorityRule (4)
+
+### INV
+
+- SKU (8)
+- InventoryOrganization (5)
+- OnHand (6)
+- InventoryMovement (9)
+- Reservation (8)
+- Bin (5)
+- BinBalance (5)
+- BinTransaction (8)
+- CycleCount (6)
+- CycleCountLine (6)
+- Lot (8)
+- Serial (6)
+
+### PROJ
+
+- Project (12)
+- ProjectWIP (8)
+- BOMHeader (8)
+- BOMComponent (9)
+- CostElement (8)
+- ProjectBOMAssignment (6)
+- ProjectLaborEntry (9)
+- ProjectFinishedItem (8)
 
 ## Validation queries
 
