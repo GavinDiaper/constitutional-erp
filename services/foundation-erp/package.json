@@ -14,7 +14,8 @@
     "test": "npm run test:integration",
     "test:integration": "node scripts/run-integration-tests.js",
     "test:postman": "node scripts/run-postman.js",
-    "test:postman:projects-r2r-reporting": "node scripts/run-postman-projects-r2r-reporting.js"
+    "test:postman:projects-r2r-reporting": "node scripts/run-postman-projects-r2r-reporting.js",
+    "seed:postman:uea-starter": "node scripts/run-postman-uea-starter.js"
   },
   "engines": {
     "node": ">=20"

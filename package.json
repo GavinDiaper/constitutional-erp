@@ -22,7 +22,8 @@
     "docker:resetdb": "powershell -ExecutionPolicy Bypass -File ./infra/scripts/reset-docker-service-databases.ps1",
     "postman:build": "node postman/build-unified-postman.js",
     "postman:test": "node postman/newman/run-newman.js all",
-    "postman:test:projects-r2r-reporting": "node postman/newman/run-newman.js foundation-projects-r2r-reporting"
+    "postman:test:projects-r2r-reporting": "node postman/newman/run-newman.js foundation-projects-r2r-reporting",
+    "postman:seed:uea-starter": "node postman/newman/run-newman.js foundation-uea-starter"
   },
   "devDependencies": {
     "turbo": "^2.1.1"

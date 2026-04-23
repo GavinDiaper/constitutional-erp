@@ -16,6 +16,11 @@ const targets = {
     cwd: path.join(root, "services", "foundation-erp"),
     npmScript: "test:postman:projects-r2r-reporting"
   },
+  "foundation-uea-starter": {
+    label: "FoundationERP UEA Starter Dataset",
+    cwd: path.join(root, "services", "foundation-erp"),
+    npmScript: "seed:postman:uea-starter"
+  },
   authority: {
     label: "Authority Engine",
     cwd: path.join(root, "services", "authority-engine"),
@@ -82,6 +87,7 @@ function printHelp() {
   console.log("Targets:");
   console.log("  foundation     Run FoundationERP postman suite");
   console.log("  foundation-projects-r2r-reporting Run focused FoundationERP projects + R2R reporting suite");
+  console.log("  foundation-uea-starter Run FoundationERP UEA starter dataset seeding suite");
   console.log("  authority      Run Authority Engine postman suite");
   console.log("  governance     Run Governance Engine postman suite");
   console.log("  mesh           Run Mesh Gateway postman suite");
