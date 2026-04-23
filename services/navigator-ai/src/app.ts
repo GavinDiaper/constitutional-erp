@@ -1,5 +1,6 @@
 import express from "express";
 import helmet from "helmet";
+import { createCaiplRouter } from "./api/caipl.routes";
 import { createNavigatorRouter } from "./api/navigator.routes";
 import { queryRouter } from "./api/query.routes";
 import { AuthorityClient } from "./clients/authorityClient";
@@ -11,6 +12,7 @@ import { getStartupError, getStartupStatus } from "./domain/runtimeState";
 import { createLlmClient } from "./llm/providerFactory";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { readinessGate } from "./middleware/readinessGate";
+import { CaiplService } from "./services/caiplService";
 import { NavigatorService } from "./services/navigatorService";
 import { toProblem } from "./utils/errors";
 
@@ -29,6 +31,7 @@ export const navigatorDependencies = {
 export function createApp() {
   const app = express();
   const service = new NavigatorService(integrationHubClient, authorityClient, governanceClient, cepClient, llmClient);
+  const caiplService = new CaiplService();
 
   app.use(helmet());
   app.use(express.json());
@@ -49,6 +52,7 @@ export function createApp() {
 
   app.use("/api/v1", apiKeyAuth(config.apiKey));
   app.use("/api/v1", queryRouter);
+  app.use("/api/v1", readinessGate(), createCaiplRouter(caiplService));
   app.use("/api/v1", readinessGate(), createNavigatorRouter(service));
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
