@@ -52,7 +52,7 @@
 		last_name?: string;
 	}
 
-	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'linked' = 'overview';
+	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'financials' | 'linked' = 'overview';
 	let loading = false;
 	let errorMessage = '';
 	let successMessage = '';
@@ -125,6 +125,10 @@
 			currency: currencyCode,
 			maximumFractionDigits: 2
 		}).format(amount);
+	}
+
+	function asPercent(value: number): string {
+		return `${value.toFixed(2)}%`;
 	}
 
 	function getResourceDisplayName(resource: ResourceOption): string {
@@ -417,6 +421,26 @@
 	$: filteredSkuOptions = skuOptions.filter((sku) =>
 		getSkuDisplayText(sku).toLowerCase().includes(normalizeSearch(skuSearchQuery))
 	);
+	$: kpiCurrencyCode =
+		$projectStore.salesOrders.find((order) => Boolean(order.currencyCode))?.currencyCode ??
+		$projectStore.purchaseOrders.find((order) => Boolean(order.currencyCode))?.currencyCode ??
+		'USD';
+	$: linkedRevenueAmount = $projectStore.salesOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+	$: linkedPurchaseAmount = $projectStore.purchaseOrders.reduce((sum, po) => sum + Number(po.totalAmount || 0), 0);
+	$: finishedGoodsCostAmount = $projectStore.finishedItems.reduce((sum, item) => sum + Number(item.totalWipCost || 0), 0);
+	$: fallbackCostAmount =
+		$projectStore.currentProject?.closedFGCost ??
+		$projectStore.currentProject?.closedExpenseCost ??
+		$projectStore.currentProject?.wipTotalBalance ??
+		$projectStore.currentProject?.actualCostAmount ??
+		0;
+	$: costBasisAmount = finishedGoodsCostAmount > 0 ? finishedGoodsCostAmount : fallbackCostAmount;
+	$: revenueBasisAmount =
+		$projectStore.currentProject?.revenueAmount && $projectStore.currentProject.revenueAmount > 0
+			? $projectStore.currentProject.revenueAmount
+			: linkedRevenueAmount;
+	$: grossProfitAmount = revenueBasisAmount - costBasisAmount;
+	$: grossMarginPercent = revenueBasisAmount > 0 ? (grossProfitAmount / revenueBasisAmount) * 100 : 0;
 </script>
 
 <div class="container mx-auto px-4 py-8 text-slate-900 dark:text-white">
@@ -551,7 +575,7 @@
 		<!-- Tabs -->
 		<div class="border-b border-slate-300 dark:border-white/15 mb-6">
 			<div class="flex gap-4">
-				{#each (['overview', 'boms', 'labor', 'finished', 'linked'] as const) as tab}
+				{#each (['overview', 'boms', 'labor', 'finished', 'financials', 'linked'] as const) as tab}
 					<button
 						on:click={() => (activeTab = tab)}
 						class={`px-4 py-2 border-b-2 font-medium text-sm ${
@@ -568,7 +592,9 @@
 									? 'Labor Entries'
 									: tab === 'finished'
 										? 'Finished Items'
-										: 'Demand & Supply'}
+										: tab === 'financials'
+											? 'Financial KPIs'
+											: 'Demand & Supply'}
 					</button>
 				{/each}
 			</div>
@@ -856,6 +882,57 @@
 						No finished items yet. Create one above to get started.
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		{#if activeTab === 'financials'}
+			<div class="space-y-6">
+				<div class="bg-slate-50 border border-slate-300 dark:bg-white/5 dark:border-white/15 rounded-lg p-6">
+					<h2 class="text-lg font-semibold mb-2">Project Financial KPIs</h2>
+					<p class="text-sm text-slate-600 dark:text-white/70">
+						KPIs are computed from linked project transactions (sales orders, finished goods costs, and project balances).
+					</p>
+					<div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+						<div class="rounded border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/25 dark:border-emerald-700 p-4">
+							<div class="text-xs text-slate-500 dark:text-white/60 mb-1">Revenue Basis</div>
+							<div class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{asCurrency(revenueBasisAmount, kpiCurrencyCode)}</div>
+						</div>
+						<div class="rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/25 dark:border-amber-700 p-4">
+							<div class="text-xs text-slate-500 dark:text-white/60 mb-1">Cost Basis</div>
+							<div class="text-2xl font-bold text-amber-700 dark:text-amber-300">{asCurrency(costBasisAmount, kpiCurrencyCode)}</div>
+						</div>
+						<div class="rounded border border-sky-200 bg-sky-50 dark:bg-sky-950/25 dark:border-sky-700 p-4">
+							<div class="text-xs text-slate-500 dark:text-white/60 mb-1">Gross Profit</div>
+							<div class={`text-2xl font-bold ${grossProfitAmount >= 0 ? 'text-sky-700 dark:text-sky-300' : 'text-rose-700 dark:text-rose-300'}`}>
+								{asCurrency(grossProfitAmount, kpiCurrencyCode)}
+							</div>
+						</div>
+						<div class="rounded border border-violet-200 bg-violet-50 dark:bg-violet-950/25 dark:border-violet-700 p-4">
+							<div class="text-xs text-slate-500 dark:text-white/60 mb-1">Gross Margin</div>
+							<div class={`text-2xl font-bold ${grossMarginPercent >= 0 ? 'text-violet-700 dark:text-violet-300' : 'text-rose-700 dark:text-rose-300'}`}>
+								{asPercent(grossMarginPercent)}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="grid gap-6 xl:grid-cols-3">
+					<div class="rounded border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 p-4">
+						<h3 class="text-sm font-semibold mb-2">Linked Sales Orders Value</h3>
+						<p class="text-2xl font-bold">{asCurrency(linkedRevenueAmount, kpiCurrencyCode)}</p>
+						<p class="mt-1 text-xs text-slate-500 dark:text-white/60">Based on {$projectStore.salesOrders.length} linked orders.</p>
+					</div>
+					<div class="rounded border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 p-4">
+						<h3 class="text-sm font-semibold mb-2">Linked Purchase Orders Value</h3>
+						<p class="text-2xl font-bold">{asCurrency(linkedPurchaseAmount, kpiCurrencyCode)}</p>
+						<p class="mt-1 text-xs text-slate-500 dark:text-white/60">Based on {$projectStore.purchaseOrders.length} linked purchase orders.</p>
+					</div>
+					<div class="rounded border border-slate-300 dark:border-white/15 bg-white dark:bg-white/5 p-4">
+						<h3 class="text-sm font-semibold mb-2">Finished Goods Cost Captured</h3>
+						<p class="text-2xl font-bold">{asCurrency(finishedGoodsCostAmount, kpiCurrencyCode)}</p>
+						<p class="mt-1 text-xs text-slate-500 dark:text-white/60">Based on {$projectStore.finishedItems.length} finished item postings.</p>
+					</div>
+				</div>
 			</div>
 		{/if}
 
