@@ -1,9 +1,11 @@
 ﻿<script lang="ts">
+	import { env as publicEnv } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
 	import { base, resolve } from '$app/paths';
 	const frontPageBackgroundUrl = `${base}/images/BusinessIdea.jpg`;
 	const linaUrl = `${base}/images/Lina1.png`;
 	const linaSpinnerUrl = `${base}/images/Linaspinner.gif`;
+	const caiplEnabled = (publicEnv.PUBLIC_CAILP_ENABLED ?? '').toLowerCase() === 'true';
 	import EntityOverview from '$lib/components/canvas/EntityOverview.svelte';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import JsonFieldValue from '$lib/components/canvas/JsonFieldValue.svelte';
@@ -1701,6 +1703,14 @@
 	{/if}
 
 	<div class="mt-8 border-t dark:border-white/10 border-slate-200 pt-4">
+		{#if caiplEnabled}
+			<a
+				class="mr-4 text-xs dark:text-white/60 text-slate-500 dark:hover:text-white text-slate-900"
+				href={resolve('/ai/workspace')}
+			>
+				Open CAILP Workspace &rarr;
+			</a>
+		{/if}
 		<a
 			class="text-xs dark:text-white/60 text-slate-500 dark:hover:text-white text-slate-900"
 			href={resolve('/navigator/sessions')}

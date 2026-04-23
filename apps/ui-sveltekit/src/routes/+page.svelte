@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import { env as publicEnv } from '$env/dynamic/public';
 	import { base, resolve } from '$app/paths';
 	import MermaidDiagram from '$lib/components/shared/MermaidDiagram.svelte';
 	import { diagramCatalog } from '$lib/diagrams/catalog';
@@ -7,6 +8,7 @@
 	const frontPageBackgroundUrl = `${base}/images/BusinessIdea1.png`;
 	const frontPageBackgroundVideoUrl = `${base}/images/Linaworks.webm`;
 	const gMarkUrl = `${base}/images/Lina1.png`;
+	const caiplEnabled = (publicEnv.PUBLIC_CAILP_ENABLED ?? '').toLowerCase() === 'true';
 	const featuredDiagramBoxes = diagramCatalog.filter((item) => item.system !== 'Cross-System');
 	const architectureFutureDefinition = `%%{init: {'themeVariables': {'fontSize': '44px'}, 'themeCSS': '.nodeLabel, .edgeLabel, .cluster-label { font-weight: 700; line-height: 1.2; } .node .label { padding-top: 18px; padding-bottom: 10px; }'}}%%
 flowchart TB
@@ -172,6 +174,11 @@ class D1,D2,D3,D4 fabric;`;
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/navigator')}>
 					Open Lina **AI Driven UX**
 				</a>
+				{#if caiplEnabled}
+					<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/ai/workspace')}>
+						Open CAILP Workspace
+					</a>
+				{/if}
 				<a class="rounded-md border border-slate-700/40 dark:bg-white/75 bg-white/90 px-4 py-2 font-semibold text-slate-900 dark:hover:bg-white bg-slate-900" href={resolve('/canvas')}>
 					Open Canvas
 				</a>

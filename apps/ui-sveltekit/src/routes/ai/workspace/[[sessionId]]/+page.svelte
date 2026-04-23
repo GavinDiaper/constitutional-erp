@@ -8,10 +8,11 @@
 		sendCaiplTurn,
 		type CaiplDecisionPoint,
 		type CaiplInteractionTurn,
-		type CaiplPlanGraph,
+		type CaiplPlanGraph as CaiplPlanGraphModel,
 		type CaiplSession,
 		type SessionSnapshotResponse
 	} from '$lib/api/caipl';
+	import CaiplPlanGraph from '$lib/components/ai/CaiplPlanGraph.svelte';
 	import { actorStore } from '$lib/stores/actorStore';
 
 	interface PageData {
@@ -23,7 +24,7 @@
 	let session: CaiplSession | null = null;
 	let turns: CaiplInteractionTurn[] = [];
 	let decisions: CaiplDecisionPoint[] = [];
-	let planGraph: CaiplPlanGraph = { nodes: [], edges: [] };
+	let planGraph: CaiplPlanGraphModel = { nodes: [], edges: [] };
 	let loading = false;
 	let errorMessage = '';
 	let turnText = '';
@@ -195,18 +196,9 @@
 
 		<section class="glass-panel p-4">
 			<h2 class="text-lg font-semibold">Plan Graph</h2>
-			<ul class="mt-3 space-y-2 text-sm">
-				{#if planGraph.nodes.length === 0}
-					<li class="ui-muted">No graph nodes yet.</li>
-				{:else}
-					{#each planGraph.nodes as node (node.id)}
-						<li class="item-card rounded-md p-2">
-							<p class="font-semibold">{node.label}</p>
-							<p class="ui-muted text-xs">{node.type} | {node.status}</p>
-						</li>
-					{/each}
-				{/if}
-			</ul>
+			<div class="mt-3">
+				<CaiplPlanGraph nodes={planGraph.nodes} edges={planGraph.edges} />
+			</div>
 		</section>
 
 		<section class="glass-panel p-4">
