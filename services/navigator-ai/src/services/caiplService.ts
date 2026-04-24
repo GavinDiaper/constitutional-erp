@@ -181,6 +181,79 @@ function extractPurchaseOrderProposal(messageText: string): PurchaseOrderProposa
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
 
+  private summarizeDecisionOption(option: CaiplDecisionPoint["options"][number] | undefined): string {
+    if (!option) {
+      return "manual action";
+    }
+
+    const payload = option.actionPayload;
+    const operation = typeof payload["operation"] === "string" ? payload["operation"] : "execute_manual";
+    if (operation !== "execute_purchase_order") {
+      return operation;
+    }
+
+    const supplierId = typeof payload["supplierId"] === "string" ? payload["supplierId"] : "unknown supplier";
+    const sku = typeof payload["sku"] === "string" ? payload["sku"] : "unknown sku";
+    const quantity = typeof payload["quantity"] === "number" ? payload["quantity"] : "?";
+    const unitPrice = typeof payload["unitPrice"] === "number" ? payload["unitPrice"] : "?";
+    const currencyCode = typeof payload["currencyCode"] === "string" ? payload["currencyCode"] : "AED";
+    return `PO ${supplierId} ${sku} qty ${quantity} @ ${unitPrice} ${currencyCode}`;
+  }
+
+  private async generatePostDecisionResponse(input: {
+    record: CaiplSessionRecord;
+    decisionId: string;
+    action: ResolveDecisionInput["action"];
+    newStatus: CaiplDecisionStatus;
+    decisionSummary: string;
+    executionReceipt: ExecutionReceiptSummary | null;
+    executionError: string | null;
+  }): Promise<string> {
+    const recentTurns = input.record.turns
+      .slice(-8)
+      .map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`)
+      .join("\n");
+
+    try {
+      const llmText = await this.llm.chat([
+        {
+          role: "system",
+          content:
+            "You are the CAIPL assistant for Constitutional ERP. The decision has just been resolved. Provide a concise operational follow-up in 3-8 sentences describing exactly what was confirmed and what happened in ERP. Do not ask the user to reconfirm the same decision."
+        },
+        {
+          role: "user",
+          content: [
+            `Goal: ${input.record.session.currentGoal}`,
+            `Decision ID: ${input.decisionId}`,
+            `Decision action: ${input.action}`,
+            `Decision status: ${input.newStatus}`,
+            `Confirmed action details: ${input.decisionSummary}`,
+            `Execution receipt: ${JSON.stringify(input.executionReceipt)}`,
+            `Execution error: ${input.executionError ?? "none"}`,
+            "Recent conversation:",
+            recentTurns || "none"
+          ].join("\n")
+        }
+      ]);
+
+      const text = llmText.trim();
+      return text.length > 0
+        ? text
+        : `Decision ${input.decisionId} resolved as ${input.newStatus}. Action: ${input.decisionSummary}.`;
+    } catch {
+      if (input.executionReceipt) {
+        return `Confirmed and executed: ${input.decisionSummary}. ERP receipt ${input.executionReceipt.entityId} is ${input.executionReceipt.status}.`;
+      }
+
+      if (input.executionError) {
+        return `Decision confirmed but ERP execution failed: ${input.executionError}. Action attempted: ${input.decisionSummary}.`;
+      }
+
+      return `Decision ${input.decisionId} resolved as ${input.newStatus}. Action: ${input.decisionSummary}.`;
+    }
+  }
+
   private async executePurchaseOrderProposal(
     proposal: PurchaseOrderProposal,
     actorId: string
@@ -813,12 +886,14 @@ export class CaiplService {
         return typeof candidate === "string" && candidate === decision.id;
       })?.id ?? record.planGraph.nodes[0]?.id ?? "unlinked";
 
+    const selectedOption =
+      (input.optionId ? decision.options.find((option) => option.id === input.optionId) : undefined) ??
+      decision.options[0];
+    const decisionSummary = this.summarizeDecisionOption(selectedOption);
+
     let executionReceipt: ExecutionReceiptSummary | null = null;
     let executionError: string | null = null;
     if (input.action === "confirm") {
-      const selectedOption =
-        (input.optionId ? decision.options.find((option) => option.id === input.optionId) : undefined) ??
-        decision.options[0];
       const payload = selectedOption?.actionPayload ?? {};
       if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
         const proposal = payload as unknown as PurchaseOrderProposal;
@@ -868,10 +943,30 @@ export class CaiplService {
       actor: "system",
       messageText:
         executionReceipt
-          ? `Decision ${decision.id} updated to ${newStatus}. ERP execution receipt: ${executionReceipt.entityId} (${executionReceipt.status}).`
+          ? `Decision ${decision.id} updated to ${newStatus}. Confirmed: ${decisionSummary}. ERP execution receipt: ${executionReceipt.entityId} (${executionReceipt.status}).`
           : executionError
-            ? `Decision ${decision.id} updated to ${newStatus}. ERP execution failed: ${executionError}`
-            : `Decision ${decision.id} updated to ${newStatus}.`,
+            ? `Decision ${decision.id} updated to ${newStatus}. Confirmed: ${decisionSummary}. ERP execution failed: ${executionError}`
+            : `Decision ${decision.id} updated to ${newStatus}. Confirmed: ${decisionSummary}.`,
+      linkedNodes: [],
+      linkedArtefacts: [],
+      createdAt: now
+    };
+
+    const aiFollowupText = await this.generatePostDecisionResponse({
+      record,
+      decisionId: decision.id,
+      action: input.action,
+      newStatus,
+      decisionSummary,
+      executionReceipt,
+      executionError
+    });
+
+    const aiFollowupTurn: CaiplInteractionTurn = {
+      id: randomUUID(),
+      sessionId: record.session.id,
+      actor: "ai",
+      messageText: aiFollowupText,
       linkedNodes: [],
       linkedArtefacts: [],
       createdAt: now
@@ -885,6 +980,18 @@ export class CaiplService {
     const graphDelta: CaiplGraphDelta = emptyGraphDelta();
     if (decisionNode) {
       decisionNode.status = decisionNodeStatus;
+      decisionNode.label =
+        input.action === "confirm"
+          ? `Confirmed: ${decisionSummary}`
+          : `${input.action[0].toUpperCase()}${input.action.slice(1)}: ${decisionSummary}`;
+      decisionNode.metadata = {
+        ...decisionNode.metadata,
+        lastResolvedAction: input.action,
+        lastResolvedStatus: newStatus,
+        lastResolvedSummary: decisionSummary,
+        lastReceiptEntityId: executionReceipt?.entityId ?? null,
+        lastExecutionError: executionError
+      };
       graphDelta.updatedNodes = [decisionNode];
     }
 
@@ -909,6 +1016,20 @@ export class CaiplService {
         decisionTurn.createdAt
       );
 
+      db.prepare(
+        `INSERT INTO caipl_turn(
+          id, session_id, actor, message_text, linked_nodes_json, linked_artefacts_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        aiFollowupTurn.id,
+        aiFollowupTurn.sessionId,
+        aiFollowupTurn.actor,
+        aiFollowupTurn.messageText,
+        JSON.stringify(aiFollowupTurn.linkedNodes),
+        JSON.stringify(aiFollowupTurn.linkedArtefacts),
+        aiFollowupTurn.createdAt
+      );
+
       db.prepare(`UPDATE caipl_session SET updated_at = ?, version = ? WHERE id = ?`).run(
         now,
         nextSessionVersion,
@@ -918,9 +1039,16 @@ export class CaiplService {
       if (decisionNode) {
         db.prepare(
           `UPDATE caipl_plan_node
-           SET status = ?, updated_at = ?
+           SET label = ?, metadata_json = ?, status = ?, updated_at = ?
            WHERE id = ? AND session_id = ?`
-        ).run(decisionNodeStatus, now, decisionNode.id, record.session.id);
+        ).run(
+          decisionNode.label,
+          JSON.stringify(decisionNode.metadata),
+          decisionNodeStatus,
+          now,
+          decisionNode.id,
+          record.session.id
+        );
       }
 
       const serializedNotebookContent = serializeArtefactContent(notebookArtefact.content);
@@ -967,7 +1095,7 @@ export class CaiplService {
 
     record.session.updatedAt = now;
     record.session.version = nextSessionVersion;
-    record.turns.push(decisionTurn);
+    record.turns.push(decisionTurn, aiFollowupTurn);
     record.notebook.push(notebookArtefact);
     if (executionReceiptArtefact) {
       record.notebook.push(executionReceiptArtefact);
@@ -981,7 +1109,7 @@ export class CaiplService {
         updated: [],
         removed: []
       },
-      newTurns: [decisionTurn],
+      newTurns: [decisionTurn, aiFollowupTurn],
       session: record.session
     };
   }
