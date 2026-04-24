@@ -48,6 +48,14 @@ interface CaiplSessionRecord {
   notebook: CaiplArtefact[];
 }
 
+interface ExecutionReceiptSummary {
+  operation: string;
+  entityType: string;
+  entityId: string;
+  status: string;
+  createdAt: string;
+}
+
 type VersionMismatchResult = {
   conflict: CaiplVersionMismatch;
 };
@@ -124,6 +132,55 @@ function serializeArtefactContent(content: Record<string, unknown> | string): {
 
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
+
+  private summarizeExecutionReceipts(record: CaiplSessionRecord): ExecutionReceiptSummary[] {
+    const receipts: ExecutionReceiptSummary[] = [];
+
+    for (const artefact of record.notebook) {
+      if (!artefact.content || typeof artefact.content !== "object" || Array.isArray(artefact.content)) {
+        continue;
+      }
+
+      const content = artefact.content as Record<string, unknown>;
+      if (content["type"] !== "erp_execution_receipt") {
+        continue;
+      }
+
+      const operation = typeof content["operation"] === "string" ? content["operation"] : "unknown";
+      const entityType = typeof content["entityType"] === "string" ? content["entityType"] : "unknown";
+      const entityId = typeof content["entityId"] === "string" ? content["entityId"] : "unknown";
+      const status = typeof content["status"] === "string" ? content["status"] : "unknown";
+      const createdAt = typeof content["createdAt"] === "string" ? content["createdAt"] : "unknown";
+
+      receipts.push({
+        operation,
+        entityType,
+        entityId,
+        status,
+        createdAt
+      });
+    }
+
+    return receipts.slice(-5);
+  }
+
+  private enforceExecutionGrounding(response: string, hasExecutionReceipt: boolean): string {
+    if (hasExecutionReceipt) {
+      return response;
+    }
+
+    const claimsExecution = /\b(created|issued|approved|sent|executed|posted|updated|cancelled|closed)\b/i.test(response);
+    const mentionsTransaction = /\b(po\b|purchase order|requisition|invoice|goods receipt|payment)\b/i.test(response);
+    if (!claimsExecution || !mentionsTransaction) {
+      return response;
+    }
+
+    return [
+      "No ERP transaction has been executed yet in this CAIPL session.",
+      "I can propose the exact action and wait for explicit execution confirmation.",
+      response
+    ].join(" ");
+  }
 
   createSession(input: CreateSessionInput): CaiplCreateSessionResponse {
     const now = new Date().toISOString();
@@ -816,13 +873,15 @@ export class CaiplService {
   ): Promise<{ response: string; reasoning: string; decisionDescription?: string }> {
     const recentTurns = record.turns.slice(-8).map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`).join("\n");
     const pendingDecision = record.decisions.find((item) => item.status === "pending") ?? record.decisions[0];
+    const executionReceipts = this.summarizeExecutionReceipts(record);
+    const hasExecutionReceipt = executionReceipts.length > 0;
 
     try {
       const llmText = await this.llm.chat([
         {
           role: "system",
           content:
-            "You are the CAIPL assistant for Constitutional ERP. Provide practical operator guidance, keep responses concise, and ground everything in provided session context. Output JSON only with keys response, reasoningSummary, decisionDescription."
+            "You are the CAIPL assistant for Constitutional ERP. Provide practical operator guidance, keep responses concise, and ground everything in provided session context. Never claim an ERP write operation was completed unless an explicit execution receipt is provided in the context. If no execution receipt exists, clearly state that actions are proposed only and awaiting execution. Output JSON only with keys response, reasoningSummary, decisionDescription."
         },
         {
           role: "user",
@@ -831,6 +890,7 @@ export class CaiplService {
             pendingDecision
               ? `Active decision: ${pendingDecision.type} [${pendingDecision.status}]`
               : "Active decision: none",
+            `Execution receipts: ${JSON.stringify(executionReceipts)}`,
             "Conversation so far:",
             recentTurns || "none",
             `Latest user message: ${userMessage}`,
@@ -844,6 +904,7 @@ export class CaiplService {
         parsed && typeof parsed["response"] === "string" && parsed["response"].trim().length > 0
           ? String(parsed["response"]).trim()
           : llmText.trim();
+      const groundedResponse = this.enforceExecutionGrounding(response, hasExecutionReceipt);
 
       const reasoning =
         parsed && typeof parsed["reasoningSummary"] === "string"
@@ -856,7 +917,7 @@ export class CaiplService {
           : undefined;
 
       return {
-        response,
+        response: groundedResponse,
         reasoning,
         decisionDescription
       };
