@@ -159,6 +159,18 @@ function getServiceEnvMap(servicePath) {
   return {};
 }
 
+function getRootEnvMap() {
+  const envPath = path.join(repoRoot, ".env");
+  const fallbackPath = path.join(repoRoot, ".env.example");
+  if (fs.existsSync(envPath)) {
+    return parseEnvFile(envPath);
+  }
+  if (fs.existsSync(fallbackPath)) {
+    return parseEnvFile(fallbackPath);
+  }
+  return {};
+}
+
 function getPackageScripts(servicePath) {
   const packagePath = path.join(servicePath, "package.json");
   if (!fs.existsSync(packagePath)) {
@@ -171,9 +183,17 @@ function getPackageScripts(servicePath) {
 
 function resolveService(template) {
   const servicePath = path.join(repoRoot, template.relativePath);
-  const envMap = { ...orchestrationEnvDefaults, ...getServiceEnvMap(servicePath) };
+  const rootEnvMap = getRootEnvMap();
+  const serviceEnvMap = getServiceEnvMap(servicePath);
+  const envMap = {
+    ...orchestrationEnvDefaults,
+    ...rootEnvMap,
+    ...serviceEnvMap
+  };
   const packageScripts = getPackageScripts(servicePath);
-  const configuredPort = envMap.PORT && /^\d+$/.test(envMap.PORT) ? Number.parseInt(envMap.PORT, 10) : template.defaultPort;
+  const configuredPort = serviceEnvMap.PORT && /^\d+$/.test(serviceEnvMap.PORT)
+    ? Number.parseInt(serviceEnvMap.PORT, 10)
+    : template.defaultPort;
   const shouldUseRenderPort = Boolean(publicServiceName) && publicServiceName === template.name && process.env.PORT;
   const port = shouldUseRenderPort ? Number.parseInt(process.env.PORT, 10) : configuredPort;
   const selectedCommand = productionMode && packageScripts.start
