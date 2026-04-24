@@ -1703,6 +1703,11 @@
 	{/if}
 
 	<div class="mt-8 border-t dark:border-white/10 border-slate-200 pt-4">
+		{#if !caiplEnabled}
+			<p class="mb-3 rounded-md border border-amber-500/45 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+				CAILP Workspace is disabled in this environment. Set PUBLIC_CAILP_ENABLED=true to show the menu link and route.
+			</p>
+		{/if}
 		{#if caiplEnabled}
 			<a
 				class="mr-4 text-xs dark:text-white/60 text-slate-500 dark:hover:text-white text-slate-900"

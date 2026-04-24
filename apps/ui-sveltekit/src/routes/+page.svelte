@@ -186,6 +186,12 @@ class D1,D2,D3,D4 fabric;`;
 					Open Documentation Explorer
 				</a>
 			</div>
+
+			{#if !caiplEnabled}
+				<p class="mt-4 rounded-md border border-amber-500/45 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+					CAILP Workspace is currently disabled. Set PUBLIC_CAILP_ENABLED=true to enable the menu entry and route.
+				</p>
+			{/if}
 		</div>
 
 		<aside class="rounded-xl border border-slate-600/20 dark:bg-white/70 bg-white/90 p-5 backdrop-blur-sm">

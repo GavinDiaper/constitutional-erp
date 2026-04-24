@@ -6,6 +6,9 @@
 		getCaiplSession,
 		resolveCaiplDecision,
 		sendCaiplTurn,
+		type CaiplArtefact,
+		type CaiplGraphDelta,
+		type CaiplNotebookDelta,
 		type CaiplDecisionPoint,
 		type CaiplInteractionTurn,
 		type CaiplPlanGraph as CaiplPlanGraphModel,
@@ -25,10 +28,14 @@
 	let turns: CaiplInteractionTurn[] = [];
 	let decisions: CaiplDecisionPoint[] = [];
 	let planGraph: CaiplPlanGraphModel = { nodes: [], edges: [] };
+	let notebook: CaiplArtefact[] = [];
 	let loading = false;
 	let errorMessage = '';
 	let turnText = '';
 	let goalText = 'Plan and execute a constitutional ERP workflow';
+	let selectedDecisionId = '';
+	let controlNote = '';
+	let showEventLog = false;
 
 	$: routeSessionId = data.sessionId;
 
@@ -54,7 +61,66 @@
 		turns = snapshot.turns;
 		decisions = snapshot.decisions;
 		planGraph = snapshot.planGraph;
+		notebook = snapshot.notebook;
+		if (!selectedDecisionId && decisions.length > 0) {
+			selectedDecisionId = decisions[0].id;
+		}
 	}
+
+	function applyGraphDelta(delta: CaiplGraphDelta): void {
+		if (delta.removedNodes.length > 0) {
+			planGraph = {
+				...planGraph,
+				nodes: planGraph.nodes.filter((node) => !delta.removedNodes.includes(node.id))
+			};
+		}
+
+		if (delta.updatedNodes.length > 0) {
+			const map = new Map(delta.updatedNodes.map((node) => [node.id, node]));
+			planGraph = {
+				...planGraph,
+				nodes: planGraph.nodes.map((node) => map.get(node.id) ?? node)
+			};
+		}
+
+		if (delta.addedNodes.length > 0) {
+			planGraph = {
+				...planGraph,
+				nodes: [...planGraph.nodes, ...delta.addedNodes]
+			};
+		}
+
+		if (delta.removedEdges.length > 0) {
+			planGraph = {
+				...planGraph,
+				edges: planGraph.edges.filter((edge) => !delta.removedEdges.includes(edge.edgeId))
+			};
+		}
+
+		if (delta.addedEdges.length > 0) {
+			planGraph = {
+				...planGraph,
+				edges: [...planGraph.edges, ...delta.addedEdges]
+			};
+		}
+	}
+
+	function applyNotebookDelta(delta: CaiplNotebookDelta): void {
+		if (delta.removed.length > 0) {
+			notebook = notebook.filter((item) => !delta.removed.includes(item.id));
+		}
+
+		if (delta.updated.length > 0) {
+			const map = new Map(delta.updated.map((item) => [item.id, item]));
+			notebook = notebook.map((item) => map.get(item.id) ?? item);
+		}
+
+		if (delta.added.length > 0) {
+			notebook = [...notebook, ...delta.added];
+		}
+	}
+
+	$: selectedDecision = decisions.find((item) => item.id === selectedDecisionId) ?? decisions[0] ?? null;
 
 	async function handleCreateSession(): Promise<void> {
 		loading = true;
@@ -91,6 +157,8 @@
 			});
 			turns = [...turns, ...response.newTurns];
 			decisions = response.decisionPoints;
+			applyGraphDelta(response.graphDelta);
+			applyNotebookDelta(response.notebookDelta);
 			session = response.session;
 			turnText = '';
 		} catch (error) {
@@ -102,7 +170,8 @@
 
 	async function handleResolveDecision(
 		decision: CaiplDecisionPoint,
-		action: 'confirm' | 'reject' | 'amend' | 'retry' | 'escalate'
+		action: 'confirm' | 'reject' | 'amend' | 'retry' | 'escalate',
+		note?: string
 	): Promise<void> {
 		if (!session) {
 			return;
@@ -115,14 +184,18 @@
 				action,
 				actorId: $actorStore.actorId,
 				sessionVersion: session.version,
-				decisionVersion: decision.version
+				decisionVersion: decision.version,
+				note
 			});
 
 			decisions = decisions.map((entry) =>
 				entry.id === response.updatedDecision.id ? response.updatedDecision : entry
 			);
 			turns = [...turns, ...response.newTurns];
+			applyGraphDelta(response.graphDelta);
+			applyNotebookDelta(response.notebookDelta);
 			session = response.session;
+			controlNote = '';
 		} catch (error) {
 			await handleVersionMismatch(error);
 		} finally {
@@ -138,6 +211,14 @@
 		}
 
 		errorMessage = error instanceof Error ? error.message : 'Request failed';
+	}
+
+	function formatArtefactContent(content: Record<string, unknown> | string): string {
+		if (typeof content === 'string') {
+			return content;
+		}
+
+		return JSON.stringify(content, null, 2);
 	}
 </script>
 
@@ -167,6 +248,35 @@
 				{errorMessage}
 			</p>
 		{/if}
+
+		<div class="mt-4 section-card p-3">
+			<p class="text-sm font-semibold">Constitutional Controls</p>
+			{#if selectedDecision}
+				<p class="ui-muted mt-1 text-xs">
+					Selected decision: {selectedDecision.id} ({selectedDecision.status})
+				</p>
+				<div class="mt-2 flex flex-wrap gap-2">
+					<select class="input-base text-xs" bind:value={selectedDecisionId}>
+						{#each decisions as item (item.id)}
+							<option value={item.id}>{item.type} [{item.status}]</option>
+						{/each}
+					</select>
+					<input
+						class="input-base min-w-[220px] flex-1 text-xs"
+						bind:value={controlNote}
+						placeholder="Optional amendment/rejection note"
+					/>
+					<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(selectedDecision, 'confirm', controlNote)} disabled={loading}>Confirm</button>
+					<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(selectedDecision, 'reject', controlNote)} disabled={loading}>Reject</button>
+					<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(selectedDecision, 'amend', controlNote)} disabled={loading}>Amend</button>
+					<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => (showEventLog = !showEventLog)}>
+						{showEventLog ? 'Hide Log' : 'View Log'}
+					</button>
+				</div>
+			{:else}
+				<p class="ui-muted mt-1 text-xs">No active decision selected.</p>
+			{/if}
+		</div>
 	</header>
 
 	<div class="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
@@ -248,5 +358,40 @@
 				{/if}
 			</div>
 		</section>
+	</div>
+
+	<div class="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+		<section class="glass-panel p-4">
+			<h2 class="text-lg font-semibold">Notebook</h2>
+			<div class="mt-3 max-h-[260px] space-y-2 overflow-auto">
+				{#if notebook.length === 0}
+					<p class="ui-muted text-sm">No artefacts yet.</p>
+				{:else}
+					{#each notebook as artefact (artefact.id)}
+						<article class="item-card rounded-md p-2 text-xs">
+							<p class="font-semibold uppercase tracking-wide">{artefact.type}</p>
+							<p class="ui-muted mt-1">Linked node: {artefact.linkedNodeId}</p>
+							<pre class="mt-2 overflow-auto whitespace-pre-wrap text-[11px]">{formatArtefactContent(artefact.content)}</pre>
+						</article>
+					{/each}
+				{/if}
+			</div>
+		</section>
+
+		{#if showEventLog}
+			<section class="glass-panel p-4">
+				<h2 class="text-lg font-semibold">Event Log</h2>
+				<div class="mt-3 max-h-[260px] space-y-2 overflow-auto text-xs">
+					{#each turns.filter((turn) => turn.actor === 'system') as eventTurn (eventTurn.id)}
+						<article class="item-card rounded-md p-2">
+							<p class="font-semibold">{eventTurn.messageText}</p>
+							<p class="ui-muted mt-1">{new Date(eventTurn.createdAt).toLocaleString()}</p>
+						</article>
+					{:else}
+						<p class="ui-muted">No system log events yet.</p>
+					{/each}
+				</div>
+			</section>
+		{/if}
 	</div>
 </section>

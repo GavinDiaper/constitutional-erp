@@ -86,6 +86,41 @@ function decisionStatusForAction(action: ResolveDecisionInput["action"]): CaiplD
   }
 }
 
+function nodeStatusForDecisionStatus(status: CaiplDecisionStatus): "pending" | "active" | "completed" | "blocked" | "failed" {
+  switch (status) {
+    case "executed":
+    case "resolved":
+      return "completed";
+    case "failed":
+    case "escalated":
+      return "failed";
+    case "pending":
+      return "pending";
+    case "confirmed":
+    case "executing":
+      return "active";
+    default:
+      return "blocked";
+  }
+}
+
+function serializeArtefactContent(content: Record<string, unknown> | string): {
+  contentJson: string | null;
+  contentText: string | null;
+} {
+  if (typeof content === "string") {
+    return {
+      contentJson: null,
+      contentText: content
+    };
+  }
+
+  return {
+    contentJson: JSON.stringify(content),
+    contentText: null
+  };
+}
+
 export class CaiplService {
   createSession(input: CreateSessionInput): CaiplCreateSessionResponse {
     const now = new Date().toISOString();
@@ -153,6 +188,13 @@ export class CaiplService {
           }
         }
       ]
+    };
+
+    const initialArtefact: CaiplArtefact = {
+      id: randomUUID(),
+      type: "note",
+      content: `Session started for goal: ${input.currentGoal}`,
+      linkedNodeId: rootNodeId
     };
 
     const turn: CaiplInteractionTurn = {
@@ -243,6 +285,22 @@ export class CaiplService {
           now
         );
       }
+
+      const serializedInitialContent = serializeArtefactContent(initialArtefact.content);
+      db.prepare(
+        `INSERT INTO caipl_notebook_artefact(
+          id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        initialArtefact.id,
+        session.id,
+        initialArtefact.type,
+        serializedInitialContent.contentJson,
+        serializedInitialContent.contentText,
+        initialArtefact.linkedNodeId,
+        now,
+        now
+      );
     });
 
     write();
@@ -251,7 +309,7 @@ export class CaiplService {
       session,
       initialTurns: [turn],
       planGraph,
-      notebookSnapshot: [],
+      notebookSnapshot: [initialArtefact],
       decisions: [decision]
     };
   }
@@ -300,6 +358,13 @@ export class CaiplService {
       linkedArtefacts: [],
       createdAt: now
     };
+    const linkedNodeId = record.planGraph.nodes[0]?.id ?? "unlinked";
+    const notebookArtefact: CaiplArtefact = {
+      id: randomUUID(),
+      type: "note",
+      content: `User message captured: ${input.messageText}`,
+      linkedNodeId
+    };
 
     const nextVersion = record.session.version + 1;
     const write = db.transaction(() => {
@@ -336,11 +401,28 @@ export class CaiplService {
         nextVersion,
         sessionId
       );
+
+      const serializedNotebookContent = serializeArtefactContent(notebookArtefact.content);
+      db.prepare(
+        `INSERT INTO caipl_notebook_artefact(
+          id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        notebookArtefact.id,
+        sessionId,
+        notebookArtefact.type,
+        serializedNotebookContent.contentJson,
+        serializedNotebookContent.contentText,
+        notebookArtefact.linkedNodeId,
+        now,
+        now
+      );
     });
 
     write();
 
     record.turns.push(userTurn, aiTurn);
+    record.notebook.push(notebookArtefact);
     record.session.updatedAt = now;
     record.session.version = nextVersion;
 
@@ -348,7 +430,11 @@ export class CaiplService {
       newTurns: [userTurn, aiTurn],
       decisionPoints: record.decisions,
       graphDelta: emptyGraphDelta(),
-      notebookDelta: emptyNotebookDelta(),
+      notebookDelta: {
+        added: [notebookArtefact],
+        updated: [],
+        removed: []
+      },
       session: record.session
     };
   }
@@ -388,16 +474,45 @@ export class CaiplService {
     const nextSessionVersion = record.session.version + 1;
     const resolvedBy = newStatus === "resolved" ? input.actorId : null;
     const resolvedAt = newStatus === "resolved" ? now : null;
+    const linkedNodeId =
+      record.planGraph.nodes.find((node) => {
+        const candidate = node.metadata["decisionId"];
+        return typeof candidate === "string" && candidate === decision.id;
+      })?.id ?? record.planGraph.nodes[0]?.id ?? "unlinked";
+
+    const notebookArtefact: CaiplArtefact = {
+      id: randomUUID(),
+      type: "note",
+      content: {
+        decisionId: decision.id,
+        action: input.action,
+        status: newStatus,
+        note: input.note ?? null,
+        optionId: input.optionId ?? null
+      },
+      linkedNodeId
+    };
 
     const decisionTurn: CaiplInteractionTurn = {
       id: randomUUID(),
       sessionId: record.session.id,
       actor: "system",
-      messageText: `Decision ${decision.id} updated to ${decision.status}.`,
+      messageText: `Decision ${decision.id} updated to ${newStatus}.`,
       linkedNodes: [],
       linkedArtefacts: [],
       createdAt: now
     };
+
+    const decisionNode = record.planGraph.nodes.find((node) => {
+      const value = node.metadata["decisionId"];
+      return typeof value === "string" && value === decision.id;
+    });
+    const decisionNodeStatus = nodeStatusForDecisionStatus(newStatus);
+    const graphDelta: CaiplGraphDelta = emptyGraphDelta();
+    if (decisionNode) {
+      decisionNode.status = decisionNodeStatus;
+      graphDelta.updatedNodes = [decisionNode];
+    }
 
     const write = db.transaction(() => {
       db.prepare(
@@ -425,6 +540,30 @@ export class CaiplService {
         nextSessionVersion,
         record.session.id
       );
+
+      if (decisionNode) {
+        db.prepare(
+          `UPDATE caipl_plan_node
+           SET status = ?, updated_at = ?
+           WHERE id = ? AND session_id = ?`
+        ).run(decisionNodeStatus, now, decisionNode.id, record.session.id);
+      }
+
+      const serializedNotebookContent = serializeArtefactContent(notebookArtefact.content);
+      db.prepare(
+        `INSERT INTO caipl_notebook_artefact(
+          id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        notebookArtefact.id,
+        record.session.id,
+        notebookArtefact.type,
+        serializedNotebookContent.contentJson,
+        serializedNotebookContent.contentText,
+        notebookArtefact.linkedNodeId,
+        now,
+        now
+      );
     });
 
     write();
@@ -437,11 +576,16 @@ export class CaiplService {
     record.session.updatedAt = now;
     record.session.version = nextSessionVersion;
     record.turns.push(decisionTurn);
+    record.notebook.push(notebookArtefact);
 
     return {
       updatedDecision: decision,
-      graphDelta: emptyGraphDelta(),
-      notebookDelta: emptyNotebookDelta(),
+      graphDelta,
+      notebookDelta: {
+        added: [notebookArtefact],
+        updated: [],
+        removed: []
+      },
       newTurns: [decisionTurn],
       session: record.session
     };
