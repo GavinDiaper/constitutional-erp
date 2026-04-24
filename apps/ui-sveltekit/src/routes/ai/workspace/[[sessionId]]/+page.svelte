@@ -36,6 +36,7 @@
 	let selectedDecisionId = '';
 	let controlNote = '';
 	let showEventLog = false;
+	let selectedGraphNodeId: string | null = null;
 
 	$: routeSessionId = data.sessionId;
 
@@ -64,6 +65,9 @@
 		notebook = snapshot.notebook;
 		if (!selectedDecisionId && decisions.length > 0) {
 			selectedDecisionId = decisions[0].id;
+		}
+		if (!selectedGraphNodeId && planGraph.nodes.length > 0) {
+			selectedGraphNodeId = planGraph.nodes[0].id;
 		}
 	}
 
@@ -121,6 +125,10 @@
 	}
 
 	$: selectedDecision = decisions.find((item) => item.id === selectedDecisionId) ?? decisions[0] ?? null;
+	$: selectedGraphNode =
+		(selectedGraphNodeId ? planGraph.nodes.find((node) => node.id === selectedGraphNodeId) : null) ??
+		planGraph.nodes[0] ??
+		null;
 
 	async function handleCreateSession(): Promise<void> {
 		loading = true;
@@ -220,6 +228,10 @@
 
 		return JSON.stringify(content, null, 2);
 	}
+
+	function handleGraphSelect(event: CustomEvent<{ nodeId: string }>): void {
+		selectedGraphNodeId = event.detail.nodeId;
+	}
 </script>
 
 <section class="page-shell space-y-4">
@@ -248,6 +260,20 @@
 				{errorMessage}
 			</p>
 		{/if}
+
+		<div class="mt-4 section-card p-3">
+			<p class="text-sm font-semibold">How To Use This Page</p>
+			<ol class="mt-2 list-decimal space-y-1 pl-5 text-xs ui-muted">
+				<li>Create a session by entering a business goal and pressing <strong>Create Session</strong>.</li>
+				<li>Start your conversation in the left panel by describing what outcome you want.</li>
+				<li>When decisions appear, use <strong>Confirm</strong>, <strong>Reject</strong>, or <strong>Amend</strong>.</li>
+				<li>Click nodes in the graph to inspect step details and current status.</li>
+				<li>Read generated notes and updates in the Notebook panel.</li>
+			</ol>
+			<p class="mt-2 text-xs ui-muted">
+				Starter prompts: "Plan a purchase approval workflow", "Prepare month-end close tasks", "Create a project procurement sequence".
+			</p>
+		</div>
 
 		<div class="mt-4 section-card p-3">
 			<p class="text-sm font-semibold">Constitutional Controls</p>
@@ -307,8 +333,22 @@
 		<section class="glass-panel p-4">
 			<h2 class="text-lg font-semibold">Plan Graph</h2>
 			<div class="mt-3">
-				<CaiplPlanGraph nodes={planGraph.nodes} edges={planGraph.edges} />
+				<CaiplPlanGraph
+					nodes={planGraph.nodes}
+					edges={planGraph.edges}
+					selectedNodeId={selectedGraphNodeId}
+					on:select={handleGraphSelect}
+				/>
 			</div>
+			{#if selectedGraphNode}
+				<div class="mt-3 rounded-md border dark:border-white/20 border-slate-300 p-2 text-xs">
+					<p class="font-semibold">Selected Node: {selectedGraphNode.label}</p>
+					<p class="ui-muted mt-1">Type: {selectedGraphNode.type} | Status: {selectedGraphNode.status}</p>
+					<pre class="mt-2 overflow-auto whitespace-pre-wrap text-[11px]">{JSON.stringify(selectedGraphNode.metadata, null, 2)}</pre>
+				</div>
+			{:else}
+				<p class="mt-3 ui-muted text-xs">Nodes become selectable once a session has graph data.</p>
+			{/if}
 		</section>
 
 		<section class="glass-panel p-4">

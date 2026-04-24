@@ -26,7 +26,8 @@ const statusColor: Record<CaiplPlanNode['status'], string> = {
 export function renderCaiplGraph(
 	svgEl: SVGSVGElement,
 	nodes: CaiplPlanNode[],
-	edges: CaiplPlanEdge[]
+	edges: CaiplPlanEdge[],
+	options?: { onNodeSelect?: (nodeId: string) => void; selectedNodeId?: string | null }
 ): void {
 	const width = svgEl.clientWidth || 620;
 	const height = 360;
@@ -78,8 +79,14 @@ export function renderCaiplGraph(
 		.append('circle')
 		.attr('r', 18)
 		.attr('fill', (d) => statusColor[d.status])
-		.attr('stroke', '#e2e8f0')
-		.attr('stroke-width', 1.2);
+		.attr('stroke', (d) => (options?.selectedNodeId === d.id ? '#f59e0b' : '#e2e8f0'))
+		.attr('stroke-width', (d) => (options?.selectedNodeId === d.id ? 2.8 : 1.2));
+
+	node
+		.style('cursor', 'pointer')
+		.on('click', (_, d) => {
+			options?.onNodeSelect?.(d.id);
+		});
 
 	node
 		.append('text')
