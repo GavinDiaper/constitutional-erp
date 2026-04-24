@@ -15,6 +15,8 @@ export interface CaiplSession {
   createdAt: string;
   updatedAt: string;
   currentGoal: string;
+  roleContext?: string;
+  mode?: "create" | "select" | "investigate" | "fix" | "advance";
   currentStepId: string | null;
   status: "active" | "archived";
   version: number;

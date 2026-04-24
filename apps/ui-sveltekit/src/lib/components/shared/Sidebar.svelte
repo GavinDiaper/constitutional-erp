@@ -3,6 +3,7 @@ import { resolve } from '$app/paths';
 import { env as publicEnv } from '$env/dynamic/public';
 
 const caiplEnabled = (publicEnv.PUBLIC_CAILP_ENABLED ?? '').toLowerCase() === 'true';
+const linaEnabled = (publicEnv.PUBLIC_LINA_ENABLED ?? '').toLowerCase() === 'true';
 </script>
 
 <nav class="glass-panel h-full p-4">
@@ -28,6 +29,9 @@ Create Entity
 <li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/navigator')}>Navigator AI</a></li>
 {#if caiplEnabled}
 <li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/ai/workspace')}>CAILP Workspace</a></li>
+{/if}
+{#if linaEnabled}
+<li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/lina/workspace')}>Lina Workspace</a></li>
 {/if}
 <li>
 <a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin')}>Admin</a>

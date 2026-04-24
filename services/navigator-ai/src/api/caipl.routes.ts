@@ -4,13 +4,33 @@ import { CaiplService } from "../services/caiplService";
 
 const createSessionSchema = z.object({
   userId: z.string().min(1),
-  currentGoal: z.string().trim().min(1).max(4000)
+  currentGoal: z.string().trim().min(1).max(4000),
+  roleContext: z.string().trim().min(1).max(120).optional(),
+  mode: z
+    .union([
+      z.literal("create"),
+      z.literal("select"),
+      z.literal("investigate"),
+      z.literal("fix"),
+      z.literal("advance")
+    ])
+    .optional()
 });
 
 const turnSchema = z.object({
   actor: z.union([z.literal("user"), z.literal("ai"), z.literal("system")]),
   messageText: z.string().trim().min(1).max(4000),
-  sessionVersion: z.number().int().nonnegative()
+  sessionVersion: z.number().int().nonnegative(),
+  roleContext: z.string().trim().min(1).max(120).optional(),
+  mode: z
+    .union([
+      z.literal("create"),
+      z.literal("select"),
+      z.literal("investigate"),
+      z.literal("fix"),
+      z.literal("advance")
+    ])
+    .optional()
 });
 
 const decisionResolveSchema = z.object({

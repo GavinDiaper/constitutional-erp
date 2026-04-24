@@ -22,15 +22,21 @@ import { HttpError } from "../utils/errors";
 
 const config = loadConfig();
 
+type LinaMode = "create" | "select" | "investigate" | "fix" | "advance";
+
 interface CreateSessionInput {
   userId: string;
   currentGoal: string;
+  roleContext?: string;
+  mode?: LinaMode;
 }
 
 interface SubmitTurnInput {
   actor: "user" | "ai" | "system";
   messageText: string;
   sessionVersion: number;
+  roleContext?: string;
+  mode?: LinaMode;
 }
 
 interface ResolveDecisionInput {
@@ -72,6 +78,11 @@ interface PurchaseOrderProposal {
 type VersionMismatchResult = {
   conflict: CaiplVersionMismatch;
 };
+
+interface LinaInteractionContext {
+  roleContext?: string;
+  mode?: LinaMode;
+}
 
 function emptyGraphDelta(): CaiplGraphDelta {
   return {
@@ -379,6 +390,8 @@ export class CaiplService {
       createdAt: now,
       updatedAt: now,
       currentGoal: input.currentGoal,
+      roleContext: input.roleContext,
+      mode: input.mode,
       currentStepId: null,
       status: "active",
       version: 1
@@ -391,7 +404,7 @@ export class CaiplService {
           id: rootNodeId,
           type: "process_step",
           label: "Define execution intent",
-          metadata: { goal: input.currentGoal },
+          metadata: { goal: input.currentGoal, roleContext: input.roleContext, mode: input.mode },
           status: "active"
         }
       ],
@@ -401,7 +414,7 @@ export class CaiplService {
     const initialArtefact: CaiplArtefact = {
       id: randomUUID(),
       type: "note",
-      content: `Session started for goal: ${input.currentGoal}`,
+      content: `Session started for goal: ${input.currentGoal}${input.roleContext ? ` | role=${input.roleContext}` : ""}${input.mode ? ` | mode=${input.mode}` : ""}`,
       linkedNodeId: rootNodeId
     };
 
@@ -540,7 +553,12 @@ export class CaiplService {
       createdAt: now
     };
 
-    const assistant = await this.generateAssistantResponse(record, input.messageText);
+    const interactionContext = this.resolveInteractionContext(record, {
+      roleContext: input.roleContext,
+      mode: input.mode
+    });
+
+    const assistant = await this.generateAssistantResponse(record, input.messageText, interactionContext);
 
     const aiTurn: CaiplInteractionTurn = {
       id: randomUUID(),
@@ -558,6 +576,8 @@ export class CaiplService {
       content: {
         type: "llm_turn_reasoning",
         prompt: input.messageText,
+        roleContext: interactionContext.roleContext,
+        mode: interactionContext.mode,
         response: assistant.response,
         reasoningSummary: assistant.reasoning,
         provider: this.llm.provider,
@@ -1151,6 +1171,15 @@ export class CaiplService {
       linked_node_id: string;
     }>;
 
+    const mappedNodes = nodes.map((node) => ({
+      id: node.id,
+      type: node.node_type,
+      label: node.label,
+      metadata: this.parseJsonObject(node.metadata_json),
+      status: node.status
+    }));
+    const contextFromRoot = this.extractContextFromNodeMetadata(mappedNodes[0]?.metadata);
+
     return {
       session: {
         id: sessionRow.id,
@@ -1158,6 +1187,8 @@ export class CaiplService {
         createdAt: sessionRow.created_at,
         updatedAt: sessionRow.updated_at,
         currentGoal: sessionRow.current_goal,
+        roleContext: contextFromRoot.roleContext,
+        mode: contextFromRoot.mode,
         currentStepId: sessionRow.current_step_id,
         status: sessionRow.status,
         version: sessionRow.version
@@ -1182,13 +1213,7 @@ export class CaiplService {
         version: row.version
       })),
       planGraph: {
-        nodes: nodes.map((node) => ({
-          id: node.id,
-          type: node.node_type,
-          label: node.label,
-          metadata: this.parseJsonObject(node.metadata_json),
-          status: node.status
-        })),
+        nodes: mappedNodes,
         edges: edges.map((edge) => ({
           edgeId: edge.edge_id,
           from: edge.from_node,
@@ -1249,9 +1274,41 @@ export class CaiplService {
     return undefined;
   }
 
+  private extractContextFromNodeMetadata(metadata?: Record<string, unknown>): LinaInteractionContext {
+    if (!metadata) {
+      return {};
+    }
+
+    const roleContext = typeof metadata["roleContext"] === "string" ? metadata["roleContext"] : undefined;
+    const modeCandidate = metadata["mode"];
+    const mode =
+      modeCandidate === "create" ||
+      modeCandidate === "select" ||
+      modeCandidate === "investigate" ||
+      modeCandidate === "fix" ||
+      modeCandidate === "advance"
+        ? modeCandidate
+        : undefined;
+
+    return { roleContext, mode };
+  }
+
+  private resolveInteractionContext(
+    record: CaiplSessionRecord,
+    override?: LinaInteractionContext
+  ): LinaInteractionContext {
+    const fromRootNode = this.extractContextFromNodeMetadata(record.planGraph.nodes[0]?.metadata);
+
+    return {
+      roleContext: override?.roleContext ?? record.session.roleContext ?? fromRootNode.roleContext,
+      mode: override?.mode ?? record.session.mode ?? fromRootNode.mode
+    };
+  }
+
   private async generateAssistantResponse(
     record: CaiplSessionRecord,
-    userMessage: string
+    userMessage: string,
+    interactionContext: LinaInteractionContext
   ): Promise<{ response: string; reasoning: string; decisionDescription?: string }> {
     const recentTurns = record.turns.slice(-8).map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`).join("\n");
     const pendingDecision = record.decisions.find((item) => item.status === "pending");
@@ -1269,6 +1326,8 @@ export class CaiplService {
           role: "user",
           content: [
             `Goal: ${record.session.currentGoal}`,
+            `Role context: ${interactionContext.roleContext ?? "unspecified"}`,
+            `Mode context: ${interactionContext.mode ?? "unspecified"}`,
             pendingDecision
               ? `Active decision: ${pendingDecision.type} [${pendingDecision.status}]`
               : "Active decision: none",

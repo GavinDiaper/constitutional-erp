@@ -6,6 +6,8 @@ export interface CaiplSession {
 	createdAt: string;
 	updatedAt: string;
 	currentGoal: string;
+	roleContext?: string;
+	mode?: 'create' | 'select' | 'investigate' | 'fix' | 'advance';
 	currentStepId: string | null;
 	status: 'active' | 'archived';
 	version: number;
@@ -190,7 +192,12 @@ function tryParseJson(value: string): unknown | null {
 
 export async function createCaiplSession(
 	actor: ActorContext,
-	payload: { userId: string; currentGoal: string }
+	payload: {
+		userId: string;
+		currentGoal: string;
+		roleContext?: string;
+		mode?: 'create' | 'select' | 'investigate' | 'fix' | 'advance';
+	}
 ): Promise<CreateSessionResponse> {
 	const response = await fetch('/api/caipl/session', {
 		method: 'POST',
@@ -219,7 +226,13 @@ export async function getCaiplSession(
 export async function sendCaiplTurn(
 	actor: ActorContext,
 	sessionId: string,
-	payload: { actor: 'user' | 'ai' | 'system'; messageText: string; sessionVersion: number }
+	payload: {
+		actor: 'user' | 'ai' | 'system';
+		messageText: string;
+		sessionVersion: number;
+		roleContext?: string;
+		mode?: 'create' | 'select' | 'investigate' | 'fix' | 'advance';
+	}
 ): Promise<TurnResponse> {
 	const response = await fetch(`/api/caipl/session/${encodeURIComponent(sessionId)}/turn`, {
 		method: 'POST',
