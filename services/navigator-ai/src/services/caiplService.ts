@@ -553,6 +553,14 @@ export class CaiplService {
       };
     }
 
+    if (decision.status !== "pending") {
+      throw new HttpError(
+        409,
+        "caipl_decision_not_pending",
+        `Decision '${decisionId}' is already ${decision.status} and cannot be resolved again.`
+      );
+    }
+
     const now = new Date().toISOString();
     const newStatus = decisionStatusForAction(input.action);
     const nextDecisionVersion = decision.version + 1;
@@ -872,7 +880,7 @@ export class CaiplService {
     userMessage: string
   ): Promise<{ response: string; reasoning: string; decisionDescription?: string }> {
     const recentTurns = record.turns.slice(-8).map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`).join("\n");
-    const pendingDecision = record.decisions.find((item) => item.status === "pending") ?? record.decisions[0];
+    const pendingDecision = record.decisions.find((item) => item.status === "pending");
     const executionReceipts = this.summarizeExecutionReceipts(record);
     const hasExecutionReceipt = executionReceipts.length > 0;
 
