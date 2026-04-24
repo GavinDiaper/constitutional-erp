@@ -84,6 +84,78 @@ interface LinaInteractionContext {
   mode?: LinaMode;
 }
 
+function purchaseOrderInputSchema() {
+  return {
+    fields: [
+      { id: "requiredDeliveryDate", label: "Required Delivery Date", type: "date", required: true },
+      { id: "glAccount", label: "GL Account", type: "string", required: true },
+      { id: "costCenter", label: "Cost Center", type: "string", required: true },
+      { id: "paymentTerms", label: "Payment Terms", type: "string", required: true },
+      { id: "vendorTaxId", label: "Vendor Tax ID", type: "string", required: false }
+    ]
+  } as const;
+}
+
+function buildPurchaseOrderDecisionOptions(
+  poProposal: PurchaseOrderProposal,
+  description: string
+): CaiplDecisionPoint["options"] {
+  return [
+    {
+      id: "confirm-next-step",
+      label: "Create Purchase Order",
+      description,
+      actionPayload: {
+        operation: "execute_purchase_order",
+        supplierId: poProposal.supplierId,
+        sku: poProposal.sku,
+        itemDescription: poProposal.itemDescription,
+        quantity: poProposal.quantity,
+        unitPrice: poProposal.unitPrice,
+        currencyCode: poProposal.currencyCode,
+        deliveryAddress: poProposal.deliveryAddress
+      },
+      inputSchema: purchaseOrderInputSchema()
+    },
+    {
+      id: "find-gl-account",
+      label: "Find GL Account",
+      description: "Find a suitable GL account and cost center before creating the PO.",
+      actionPayload: { operation: "find_gl_account" },
+      inputSchema: {
+        fields: [
+          { id: "expensePurpose", label: "Expense Purpose", type: "string", required: true },
+          { id: "projectOrDept", label: "Project or Department", type: "string", required: false }
+        ]
+      }
+    },
+    {
+      id: "start-requisition",
+      label: "Start Requisition Workflow",
+      description: "Create or validate requisition and budget approval before PO creation.",
+      actionPayload: { operation: "start_requisition_workflow" },
+      inputSchema: {
+        fields: [
+          { id: "requestReason", label: "Request Reason", type: "string", required: true },
+          { id: "neededByDate", label: "Needed By Date", type: "date", required: true }
+        ]
+      }
+    },
+    {
+      id: "suggest-delivery-dates",
+      label: "Suggest Delivery Date Options",
+      description: "Generate feasible delivery date options to choose from.",
+      actionPayload: { operation: "propose_delivery_dates" },
+      inputSchema: {
+        fields: [
+          { id: "earliestDate", label: "Earliest Date", type: "date", required: false },
+          { id: "latestDate", label: "Latest Date", type: "date", required: false }
+        ]
+      }
+    }
+  ];
+}
+
 function emptyGraphDelta(): CaiplGraphDelta {
   return {
     addedNodes: [],
@@ -199,8 +271,20 @@ export class CaiplService {
 
     const payload = option.actionPayload;
     const operation = typeof payload["operation"] === "string" ? payload["operation"] : "execute_manual";
+    if (operation === "find_gl_account") {
+      return "find GL account and cost center";
+    }
+
+    if (operation === "start_requisition_workflow") {
+      return "start requisition workflow";
+    }
+
+    if (operation === "propose_delivery_dates") {
+      return "suggest delivery date options";
+    }
+
     if (operation !== "execute_purchase_order") {
-      return operation;
+      return "manual follow-up action";
     }
 
     const supplierId = typeof payload["supplierId"] === "string" ? payload["supplierId"] : "unknown supplier";
@@ -373,11 +457,11 @@ export class CaiplService {
       return response;
     }
 
-    return [
-      "No ERP transaction has been executed yet in this CAIPL session.",
-      "I can propose the exact action and wait for explicit execution confirmation.",
-      response
-    ].join(" ");
+    if (/\bnot executed yet\b|\bproposed only\b/i.test(response)) {
+      return response;
+    }
+
+    return `Proposed only (not executed yet): ${response}`;
   }
 
   createSession(input: CreateSessionInput): CaiplCreateSessionResponse {
@@ -592,22 +676,23 @@ export class CaiplService {
     let createdDecisionNode: CaiplPlanGraph["nodes"][number] | null = null;
     let createdDecisionEdge: CaiplPlanEdge | null = null;
 
-    const optionActionPayload = poProposal
-      ? {
-          operation: "execute_purchase_order",
-          supplierId: poProposal.supplierId,
-          sku: poProposal.sku,
-          itemDescription: poProposal.itemDescription,
-          quantity: poProposal.quantity,
-          unitPrice: poProposal.unitPrice,
-          currencyCode: poProposal.currencyCode,
-          deliveryAddress: poProposal.deliveryAddress
-        }
-      : { operation: "execute_manual" };
-
     if (!activeDecision) {
       const decisionId = randomUUID();
       const decisionNodeId = randomUUID();
+      const options = poProposal
+        ? buildPurchaseOrderDecisionOptions(
+            poProposal,
+            assistant.decisionDescription ?? "Proceed with purchase order preparation."
+          )
+        : [
+            {
+              id: "confirm-next-step",
+              label: "Confirm",
+              description: assistant.decisionDescription ?? "Proceed with proposed execution.",
+              actionPayload: { operation: "execute_manual" },
+              inputSchema: { fields: [] }
+            }
+          ];
       createdDecision = {
         id: decisionId,
         sessionId,
@@ -616,15 +701,7 @@ export class CaiplService {
         resolvedBy: null,
         resolvedAt: null,
         version: 1,
-        options: [
-          {
-            id: "confirm-next-step",
-            label: "Confirm",
-            description: assistant.decisionDescription ?? "Proceed with proposed execution.",
-            actionPayload: optionActionPayload,
-            inputSchema: { fields: [] }
-          }
-        ]
+        options
       };
 
       createdDecisionNode = {
@@ -645,11 +722,28 @@ export class CaiplService {
     }
 
     if (activeDecision && activeDecision.options.length > 0 && assistant.decisionDescription) {
-      activeDecision.options[0] = {
-        ...activeDecision.options[0],
-        description: assistant.decisionDescription,
-        actionPayload: optionActionPayload
-      };
+      const existingExecuteOption = activeDecision.options.find(
+        (option) => option.actionPayload["operation"] === "execute_purchase_order"
+      );
+
+      if (poProposal && existingExecuteOption) {
+        existingExecuteOption.description = assistant.decisionDescription;
+        existingExecuteOption.actionPayload = {
+          operation: "execute_purchase_order",
+          supplierId: poProposal.supplierId,
+          sku: poProposal.sku,
+          itemDescription: poProposal.itemDescription,
+          quantity: poProposal.quantity,
+          unitPrice: poProposal.unitPrice,
+          currencyCode: poProposal.currencyCode,
+          deliveryAddress: poProposal.deliveryAddress
+        };
+      } else {
+        activeDecision.options[0] = {
+          ...activeDecision.options[0],
+          description: assistant.decisionDescription
+        };
+      }
     }
 
     const nextVersion = record.session.version + 1;
@@ -853,12 +947,16 @@ export class CaiplService {
     const selectedOption =
       (input.optionId ? decision.options.find((option) => option.id === input.optionId) : undefined) ??
       decision.options[0];
+    const selectedOperation =
+      selectedOption && typeof selectedOption.actionPayload["operation"] === "string"
+        ? selectedOption.actionPayload["operation"]
+        : "execute_manual";
     const decisionSummary = this.summarizeDecisionOption(selectedOption);
 
     let executionReceipt: ExecutionReceiptSummary | null = null;
     let executionError: string | null = null;
     if (input.action === "confirm") {
-      const payload = selectedOption?.actionPayload ?? {};
+      const payload = { ...(selectedOption?.actionPayload ?? {}), ...(input.formInput ?? {}) };
       if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
         const proposal = payload as unknown as PurchaseOrderProposal;
         try {
@@ -867,7 +965,13 @@ export class CaiplService {
           newStatus = "failed";
           executionError = error instanceof Error ? error.message : "Unknown execution error";
         }
+      } else {
+        newStatus = "resolved";
       }
+    }
+
+    if (input.action === "confirm" && selectedOperation !== "execute_purchase_order" && !executionError) {
+      newStatus = "resolved";
     }
 
     if (newStatus === "resolved" || newStatus === "executed" || newStatus === "failed") {
@@ -1320,7 +1424,7 @@ export class CaiplService {
         {
           role: "system",
           content:
-            "You are the CAIPL assistant for Constitutional ERP. Provide practical operator guidance, keep responses concise, and ground everything in provided session context. Never claim an ERP write operation was completed unless an explicit execution receipt is provided in the context. If no execution receipt exists, clearly state that actions are proposed only and awaiting execution. Output JSON only with keys response, reasoningSummary, decisionDescription."
+            "You are the CAIPL assistant for Constitutional ERP. Be concise and proactive. Prefer guided prompts and next-step options over long operator instruction lists. When key data is missing, ask 1-3 targeted questions and suggest the best next workflow action (for example: find GL account, start requisition workflow, or propose delivery date options). Never claim an ERP write operation completed unless an execution receipt exists. Output JSON only with keys response, reasoningSummary, decisionDescription."
         },
         {
           role: "user",
