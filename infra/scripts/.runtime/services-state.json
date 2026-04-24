@@ -1,92 +1,81 @@
 {
-  "services": [
-    {
-      "name": "authority-engine",
-      "pid": 111452,
-      "startedAt": "2026-04-24T07:18:12.327Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\authority-engine.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\authority-engine.err.log",
-      "port": 4001
-    },
-    {
-      "name": "event-processor",
-      "pid": 130516,
-      "startedAt": "2026-04-24T07:18:28.509Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\event-processor.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\event-processor.err.log",
-      "port": 4004
-    },
-    {
-      "name": "foundation-erp",
-      "pid": 87788,
-      "startedAt": "2026-04-24T07:18:06.233Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.err.log",
-      "port": 3000
-    },
-    {
-      "name": "governance-engine",
-      "pid": 122784,
-      "startedAt": "2026-04-24T07:18:18.409Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\governance-engine.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\governance-engine.err.log",
-      "port": 4002
-    },
-    {
-      "name": "integration-hub",
-      "pid": 120000,
-      "startedAt": "2026-04-24T07:18:39.624Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\integration-hub.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\integration-hub.err.log",
-      "port": 4017
-    },
-    {
-      "name": "mesh-gateway",
-      "pid": 131084,
-      "startedAt": "2026-04-24T07:18:23.457Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\mesh-gateway.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\mesh-gateway.err.log",
-      "port": 4003
-    },
-    {
-      "name": "navigator-ai",
-      "pid": 114168,
-      "startedAt": "2026-04-24T07:19:41.262Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\navigator-ai.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\navigator-ai.err.log",
-      "port": 4016
-    },
-    {
-      "name": "process-graph",
-      "pid": 120244,
-      "startedAt": "2026-04-24T07:18:33.559Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\process-graph.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\process-graph.err.log",
-      "port": 4005
-    },
-    {
-      "name": "ui-sveltekit",
-      "pid": 104460,
-      "startedAt": "2026-04-24T07:19:35.210Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\ui-sveltekit.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\ui-sveltekit.err.log",
-      "port": 4173
-    },
-    {
-      "name": "user-identity",
-      "pid": 105480,
-      "startedAt": "2026-04-24T07:18:44.681Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity.err.log",
-      "port": 4008
-    },
-    {
-      "name": "user-identity-app",
-      "pid": 121500,
-      "startedAt": "2026-04-24T07:19:23.057Z",
-      "stdout": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity-app.out.log",
-      "stderr": "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity-app.err.log",
-      "port": 4174
-    }
-  ]
+    "services":  [
+                     {
+                         "name":  "authority-engine",
+                         "pid":  74032,
+                         "startedAt":  "2026-04-24T13:25:31.3873194+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\authority-engine.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\authority-engine.err.log"
+                     },
+                     {
+                         "name":  "user-identity-app",
+                         "pid":  132372,
+                         "startedAt":  "2026-04-24T13:25:59.9158791+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity-app.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity-app.err.log"
+                     },
+                     {
+                         "name":  "foundation-erp",
+                         "pid":  113032,
+                         "startedAt":  "2026-04-24T13:25:27.6065527+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\foundation-erp.err.log"
+                     },
+                     {
+                         "name":  "process-graph",
+                         "pid":  109468,
+                         "startedAt":  "2026-04-24T13:25:46.0130723+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\process-graph.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\process-graph.err.log"
+                     },
+                     {
+                         "name":  "navigator-ai",
+                         "pid":  126592,
+                         "startedAt":  "2026-04-24T13:26:11.8872416+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\navigator-ai.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\navigator-ai.err.log"
+                     },
+                     {
+                         "name":  "user-identity",
+                         "pid":  122960,
+                         "startedAt":  "2026-04-24T13:25:53.3311002+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\user-identity.err.log"
+                     },
+                     {
+                         "name":  "integration-hub",
+                         "pid":  119848,
+                         "startedAt":  "2026-04-24T13:25:49.6504875+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\integration-hub.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\integration-hub.err.log"
+                     },
+                     {
+                         "name":  "event-processor",
+                         "pid":  115392,
+                         "startedAt":  "2026-04-24T13:25:42.3401714+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\event-processor.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\event-processor.err.log"
+                     },
+                     {
+                         "name":  "governance-engine",
+                         "pid":  117100,
+                         "startedAt":  "2026-04-24T13:25:35.0363477+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\governance-engine.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\governance-engine.err.log"
+                     },
+                     {
+                         "name":  "mesh-gateway",
+                         "pid":  132396,
+                         "startedAt":  "2026-04-24T13:25:38.6877328+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\mesh-gateway.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\mesh-gateway.err.log"
+                     },
+                     {
+                         "name":  "ui-sveltekit",
+                         "pid":  106560,
+                         "startedAt":  "2026-04-24T13:26:06.5688296+04:00",
+                         "stdout":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\ui-sveltekit.out.log",
+                         "stderr":  "D:\\Projects\\cerp\\constitutional-erp\\constitutional-erp\\infra\\scripts\\logs\\ui-sveltekit.err.log"
+                     }
+                 ]
 }

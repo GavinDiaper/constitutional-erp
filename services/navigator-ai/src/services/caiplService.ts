@@ -385,15 +385,6 @@ export class CaiplService {
     };
 
     const rootNodeId = randomUUID();
-    const decisionNodeId = randomUUID();
-    const decisionId = randomUUID();
-    const edge: CaiplPlanEdge = {
-      edgeId: randomUUID(),
-      from: rootNodeId,
-      to: decisionNodeId,
-      type: "leads_to"
-    };
-
     const planGraph: CaiplPlanGraph = {
       nodes: [
         {
@@ -402,39 +393,9 @@ export class CaiplService {
           label: "Define execution intent",
           metadata: { goal: input.currentGoal },
           status: "active"
-        },
-        {
-          id: decisionNodeId,
-          type: "decision",
-          label: "Confirm next action",
-          metadata: { decisionId },
-          status: "pending"
         }
       ],
-      edges: [edge]
-    };
-
-    const decision: CaiplDecisionPoint = {
-      id: decisionId,
-      sessionId,
-      type: "action_confirmation",
-      status: "pending",
-      resolvedBy: null,
-      resolvedAt: null,
-      version: 1,
-      options: [
-        {
-          id: "confirm-next-step",
-          label: "Confirm",
-          description: "Proceed with proposed execution.",
-          actionPayload: {
-            operation: "execute"
-          },
-          inputSchema: {
-            fields: []
-          }
-        }
-      ]
+      edges: []
     };
 
     const initialArtefact: CaiplArtefact = {
@@ -449,7 +410,7 @@ export class CaiplService {
       sessionId,
       actor: "ai",
       messageText: "Session created. I am ready to plan the next step.",
-      linkedNodes: [rootNodeId, decisionNodeId],
+      linkedNodes: [rootNodeId],
       linkedArtefacts: [],
       createdAt: now
     };
@@ -482,23 +443,6 @@ export class CaiplService {
         JSON.stringify(turn.linkedNodes),
         JSON.stringify(turn.linkedArtefacts),
         turn.createdAt
-      );
-
-      db.prepare(
-        `INSERT INTO caipl_decision(
-          id, session_id, decision_type, status, resolved_by, resolved_at, version, options_json, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        decision.id,
-        decision.sessionId,
-        decision.type,
-        decision.status,
-        decision.resolvedBy,
-        decision.resolvedAt,
-        decision.version,
-        JSON.stringify(decision.options),
-        now,
-        now
       );
 
       for (const node of planGraph.nodes) {
@@ -557,7 +501,7 @@ export class CaiplService {
       initialTurns: [turn],
       planGraph,
       notebookSnapshot: [initialArtefact],
-      decisions: [decision]
+      decisions: []
     };
   }
 
