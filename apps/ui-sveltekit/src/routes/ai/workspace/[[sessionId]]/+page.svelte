@@ -63,11 +63,21 @@
 		decisions = snapshot.decisions;
 		planGraph = snapshot.planGraph;
 		notebook = snapshot.notebook;
-		if (!selectedDecisionId && decisions.length > 0) {
-			selectedDecisionId = decisions[0].id;
-		}
+		syncSelectedDecision();
 		if (!selectedGraphNodeId && planGraph.nodes.length > 0) {
 			selectedGraphNodeId = planGraph.nodes[0].id;
+		}
+	}
+
+	function syncSelectedDecision(): void {
+		const pending = decisions.filter((item) => item.status === 'pending');
+		if (pending.length === 0) {
+			selectedDecisionId = '';
+			return;
+		}
+
+		if (!pending.some((item) => item.id === selectedDecisionId)) {
+			selectedDecisionId = pending[0].id;
 		}
 	}
 
@@ -124,7 +134,9 @@
 		}
 	}
 
-	$: selectedDecision = decisions.find((item) => item.id === selectedDecisionId) ?? decisions[0] ?? null;
+	$: pendingDecisions = decisions.filter((item) => item.status === 'pending');
+	$: resolvedDecisions = decisions.filter((item) => item.status !== 'pending');
+	$: selectedDecision = pendingDecisions.find((item) => item.id === selectedDecisionId) ?? pendingDecisions[0] ?? null;
 	$: selectedGraphNode =
 		(selectedGraphNodeId ? planGraph.nodes.find((node) => node.id === selectedGraphNodeId) : null) ??
 		planGraph.nodes[0] ??
@@ -165,6 +177,7 @@
 			});
 			turns = [...turns, ...response.newTurns];
 			decisions = response.decisionPoints;
+			syncSelectedDecision();
 			applyGraphDelta(response.graphDelta);
 			applyNotebookDelta(response.notebookDelta);
 			session = response.session;
@@ -199,6 +212,7 @@
 			decisions = decisions.map((entry) =>
 				entry.id === response.updatedDecision.id ? response.updatedDecision : entry
 			);
+			syncSelectedDecision();
 			turns = [...turns, ...response.newTurns];
 			applyGraphDelta(response.graphDelta);
 			applyNotebookDelta(response.notebookDelta);
@@ -283,7 +297,7 @@
 				</p>
 				<div class="mt-2 flex flex-wrap gap-2">
 					<select class="input-base text-xs" bind:value={selectedDecisionId}>
-						{#each decisions as item (item.id)}
+						{#each pendingDecisions as item (item.id)}
 							<option value={item.id}>{item.type} [{item.status}]</option>
 						{/each}
 					</select>
@@ -300,7 +314,7 @@
 					</button>
 				</div>
 			{:else}
-				<p class="ui-muted mt-1 text-xs">No active decision selected.</p>
+				<p class="ui-muted mt-1 text-xs">No pending decisions.</p>
 			{/if}
 		</div>
 	</header>
@@ -357,7 +371,10 @@
 				{#if decisions.length === 0}
 					<p class="ui-muted">No decision points.</p>
 				{:else}
-					{#each decisions as decision (decision.id)}
+					{#if pendingDecisions.length > 0}
+						<p class="ui-muted text-xs">Pending decisions require action.</p>
+					{/if}
+					{#each pendingDecisions as decision (decision.id)}
 						<article class="item-card rounded-md p-3">
 							<p class="font-semibold">{decision.type}</p>
 							<p class="ui-muted mt-1 text-xs">
@@ -395,6 +412,17 @@
 							</div>
 						</article>
 					{/each}
+					{#if resolvedDecisions.length > 0}
+						<p class="ui-muted mt-2 text-xs">Resolved decision history.</p>
+						{#each resolvedDecisions as decision (decision.id)}
+							<article class="item-card rounded-md p-3 opacity-80">
+								<p class="font-semibold">{decision.type}</p>
+								<p class="ui-muted mt-1 text-xs">
+									Status: {decision.status} | Version: {decision.version}
+								</p>
+							</article>
+						{/each}
+					{/if}
 				{/if}
 			</div>
 		</section>
