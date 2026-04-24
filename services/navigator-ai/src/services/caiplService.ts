@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../db/connection";
+import { loadConfig } from "../config/env";
 import { LlmClient } from "../llm/types";
 import {
   CaiplArtefact,
@@ -18,6 +19,8 @@ import {
   CaiplVersionMismatch
 } from "../contracts/caiplTypes";
 import { HttpError } from "../utils/errors";
+
+const config = loadConfig();
 
 interface CreateSessionInput {
   userId: string;
@@ -54,6 +57,16 @@ interface ExecutionReceiptSummary {
   entityId: string;
   status: string;
   createdAt: string;
+}
+
+interface PurchaseOrderProposal {
+  supplierId: string;
+  sku: string;
+  itemDescription: string;
+  quantity: number;
+  unitPrice: number;
+  currencyCode: string;
+  deliveryAddress: string;
 }
 
 type VersionMismatchResult = {
@@ -130,8 +143,109 @@ function serializeArtefactContent(content: Record<string, unknown> | string): {
   };
 }
 
+function normalizedBaseUrl(value: string): string {
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+function extractPurchaseOrderProposal(messageText: string): PurchaseOrderProposal | null {
+  const supplierIdMatch = messageText.match(/\bSUP-[A-Za-z0-9-]+\b/);
+  const skuMatch = messageText.match(/\bSKU-[A-Za-z0-9_-]+\b/);
+  const quantityMatch = messageText.match(/quantity\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  const unitPriceMatch = messageText.match(/unit\s*price\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i);
+
+  if (!supplierIdMatch || !skuMatch || !quantityMatch || !unitPriceMatch) {
+    return null;
+  }
+
+  const itemMatch = messageText.match(/item\s*[:=\-]?\s*([^\n\r]+)/i);
+  const addressMatch = messageText.match(/delivery\s*address\s*[:=\-]?\s*([^\n\r]+)/i);
+  const currencyMatch = messageText.match(/\b(AED|USD|EUR|GBP|SAR|QAR)\b/i);
+
+  const quantity = Number(quantityMatch[1]);
+  const unitPrice = Number(unitPriceMatch[1]);
+  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+    return null;
+  }
+
+  return {
+    supplierId: supplierIdMatch[0],
+    sku: skuMatch[0],
+    itemDescription: itemMatch?.[1]?.trim() || skuMatch[0],
+    quantity,
+    unitPrice,
+    currencyCode: (currencyMatch?.[1] ?? "AED").toUpperCase(),
+    deliveryAddress: addressMatch?.[1]?.trim() || "TBD"
+  };
+}
+
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
+
+  private async executePurchaseOrderProposal(
+    proposal: PurchaseOrderProposal,
+    actorId: string
+  ): Promise<ExecutionReceiptSummary> {
+    const baseUrl = normalizedBaseUrl(config.foundationErpUrl);
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      "x-api-key": config.foundationErpApiKey,
+      "x-actor-id": actorId,
+      "x-actor-type": actorId === "principal.system" ? "system" : "user",
+      "x-actor-tier": actorId === "principal.system" ? "5" : "2"
+    };
+    headers[config.foundationErpIngressIdHeader] = config.foundationErpIngressId;
+
+    const createResponse = await fetch(`${baseUrl}/api/v1/p2p/purchase-orders`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        supplierId: proposal.supplierId,
+        currencyCode: proposal.currencyCode,
+        deliveryAddress: proposal.deliveryAddress,
+        legalEntityId: "LE-SEED-AE"
+      })
+    });
+    if (!createResponse.ok) {
+      throw new Error(`PO create failed (${createResponse.status})`);
+    }
+
+    const createdPo = (await createResponse.json()) as Record<string, unknown>;
+    const poId = typeof createdPo["po_id"] === "string" ? createdPo["po_id"] : undefined;
+    if (!poId) {
+      throw new Error("PO create response did not include po_id");
+    }
+
+    const lineResponse = await fetch(`${baseUrl}/api/v1/p2p/purchase-orders/${encodeURIComponent(poId)}/lines`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        description: `${proposal.itemDescription} (${proposal.sku})`,
+        quantity: proposal.quantity,
+        unitPrice: proposal.unitPrice
+      })
+    });
+    if (!lineResponse.ok) {
+      throw new Error(`PO line create failed (${lineResponse.status})`);
+    }
+
+    const poResponse = await fetch(`${baseUrl}/api/v1/p2p/purchase-orders/${encodeURIComponent(poId)}`, {
+      method: "GET",
+      headers
+    });
+    if (!poResponse.ok) {
+      throw new Error(`PO fetch failed (${poResponse.status})`);
+    }
+    const poSnapshot = (await poResponse.json()) as Record<string, unknown>;
+    const state = typeof poSnapshot["state"] === "string" ? poSnapshot["state"] : "Draft";
+
+    return {
+      operation: "create_purchase_order",
+      entityType: "purchase_order",
+      entityId: poId,
+      status: state,
+      createdAt: new Date().toISOString()
+    };
+  }
 
   private summarizeExecutionReceipts(record: CaiplSessionRecord): ExecutionReceiptSummary[] {
     const receipts: ExecutionReceiptSummary[] = [];
@@ -435,11 +549,69 @@ export class CaiplService {
       linkedNodeId
     };
 
-    const activeDecision = record.decisions.find((item) => item.status === "pending") ?? record.decisions[0];
+    const poProposal = extractPurchaseOrderProposal(input.messageText);
+    const activeDecision = record.decisions.find((item) => item.status === "pending");
+    let createdDecision: CaiplDecisionPoint | null = null;
+    let createdDecisionNode: CaiplPlanGraph["nodes"][number] | null = null;
+    let createdDecisionEdge: CaiplPlanEdge | null = null;
+
+    const optionActionPayload = poProposal
+      ? {
+          operation: "execute_purchase_order",
+          supplierId: poProposal.supplierId,
+          sku: poProposal.sku,
+          itemDescription: poProposal.itemDescription,
+          quantity: poProposal.quantity,
+          unitPrice: poProposal.unitPrice,
+          currencyCode: poProposal.currencyCode,
+          deliveryAddress: poProposal.deliveryAddress
+        }
+      : { operation: "execute_manual" };
+
+    if (!activeDecision) {
+      const decisionId = randomUUID();
+      const decisionNodeId = randomUUID();
+      createdDecision = {
+        id: decisionId,
+        sessionId,
+        type: "action_confirmation",
+        status: "pending",
+        resolvedBy: null,
+        resolvedAt: null,
+        version: 1,
+        options: [
+          {
+            id: "confirm-next-step",
+            label: "Confirm",
+            description: assistant.decisionDescription ?? "Proceed with proposed execution.",
+            actionPayload: optionActionPayload,
+            inputSchema: { fields: [] }
+          }
+        ]
+      };
+
+      createdDecisionNode = {
+        id: decisionNodeId,
+        type: "decision",
+        label: "Confirm next action",
+        metadata: { decisionId },
+        status: "pending"
+      };
+
+      const fromNode = record.planGraph.nodes[record.planGraph.nodes.length - 1]?.id ?? linkedNodeId;
+      createdDecisionEdge = {
+        edgeId: randomUUID(),
+        from: fromNode,
+        to: decisionNodeId,
+        type: "leads_to"
+      };
+    }
+
     if (activeDecision && activeDecision.options.length > 0 && assistant.decisionDescription) {
       activeDecision.options[0] = {
         ...activeDecision.options[0],
-        description: assistant.decisionDescription
+        description: assistant.decisionDescription,
+        actionPayload: optionActionPayload
       };
     }
 
@@ -487,6 +659,57 @@ export class CaiplService {
         ).run(JSON.stringify(activeDecision.options), now, activeDecision.id, sessionId);
       }
 
+      if (createdDecision) {
+        db.prepare(
+          `INSERT INTO caipl_decision(
+            id, session_id, decision_type, status, resolved_by, resolved_at, version, options_json, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          createdDecision.id,
+          createdDecision.sessionId,
+          createdDecision.type,
+          createdDecision.status,
+          createdDecision.resolvedBy,
+          createdDecision.resolvedAt,
+          createdDecision.version,
+          JSON.stringify(createdDecision.options),
+          now,
+          now
+        );
+      }
+
+      if (createdDecisionNode) {
+        db.prepare(
+          `INSERT INTO caipl_plan_node(
+            id, session_id, node_type, label, metadata_json, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          createdDecisionNode.id,
+          sessionId,
+          createdDecisionNode.type,
+          createdDecisionNode.label,
+          JSON.stringify(createdDecisionNode.metadata),
+          createdDecisionNode.status,
+          now,
+          now
+        );
+      }
+
+      if (createdDecisionEdge) {
+        db.prepare(
+          `INSERT INTO caipl_plan_edge(
+            edge_id, session_id, from_node, to_node, edge_type, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?)`
+        ).run(
+          createdDecisionEdge.edgeId,
+          sessionId,
+          createdDecisionEdge.from,
+          createdDecisionEdge.to,
+          createdDecisionEdge.type,
+          now
+        );
+      }
+
       const serializedNotebookContent = serializeArtefactContent(notebookArtefact.content);
       db.prepare(
         `INSERT INTO caipl_notebook_artefact(
@@ -508,13 +731,30 @@ export class CaiplService {
 
     record.turns.push(userTurn, aiTurn);
     record.notebook.push(notebookArtefact);
+    if (createdDecision) {
+      record.decisions.push(createdDecision);
+    }
+    if (createdDecisionNode) {
+      record.planGraph.nodes.push(createdDecisionNode);
+    }
+    if (createdDecisionEdge) {
+      record.planGraph.edges.push(createdDecisionEdge);
+    }
     record.session.updatedAt = now;
     record.session.version = nextVersion;
+
+    const graphDelta: CaiplGraphDelta = {
+      addedNodes: createdDecisionNode ? [createdDecisionNode] : [],
+      updatedNodes: [],
+      removedNodes: [],
+      addedEdges: createdDecisionEdge ? [createdDecisionEdge] : [],
+      removedEdges: []
+    };
 
     return {
       newTurns: [userTurn, aiTurn],
       decisionPoints: record.decisions,
-      graphDelta: emptyGraphDelta(),
+      graphDelta,
       notebookDelta: {
         added: [notebookArtefact],
         updated: [],
@@ -524,7 +764,7 @@ export class CaiplService {
     };
   }
 
-  resolveDecision(decisionId: string, input: ResolveDecisionInput): CaiplDecisionResolveResponse | VersionMismatchResult {
+  async resolveDecision(decisionId: string, input: ResolveDecisionInput): Promise<CaiplDecisionResolveResponse | VersionMismatchResult> {
     const match = this.findDecision(decisionId);
     if (!match) {
       throw new HttpError(404, "caipl_decision_not_found", `Decision '${decisionId}' was not found`);
@@ -562,16 +802,39 @@ export class CaiplService {
     }
 
     const now = new Date().toISOString();
-    const newStatus = decisionStatusForAction(input.action);
+    let newStatus = decisionStatusForAction(input.action);
     const nextDecisionVersion = decision.version + 1;
     const nextSessionVersion = record.session.version + 1;
-    const resolvedBy = newStatus === "resolved" ? input.actorId : null;
-    const resolvedAt = newStatus === "resolved" ? now : null;
+    let resolvedBy: string | null = null;
+    let resolvedAt: string | null = null;
     const linkedNodeId =
       record.planGraph.nodes.find((node) => {
         const candidate = node.metadata["decisionId"];
         return typeof candidate === "string" && candidate === decision.id;
       })?.id ?? record.planGraph.nodes[0]?.id ?? "unlinked";
+
+    let executionReceipt: ExecutionReceiptSummary | null = null;
+    let executionError: string | null = null;
+    if (input.action === "confirm") {
+      const selectedOption =
+        (input.optionId ? decision.options.find((option) => option.id === input.optionId) : undefined) ??
+        decision.options[0];
+      const payload = selectedOption?.actionPayload ?? {};
+      if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
+        const proposal = payload as unknown as PurchaseOrderProposal;
+        try {
+          executionReceipt = await this.executePurchaseOrderProposal(proposal, input.actorId);
+        } catch (error) {
+          newStatus = "failed";
+          executionError = error instanceof Error ? error.message : "Unknown execution error";
+        }
+      }
+    }
+
+    if (newStatus === "resolved" || newStatus === "executed" || newStatus === "failed") {
+      resolvedBy = input.actorId;
+      resolvedAt = now;
+    }
 
     const notebookArtefact: CaiplArtefact = {
       id: randomUUID(),
@@ -581,16 +844,34 @@ export class CaiplService {
         action: input.action,
         status: newStatus,
         note: input.note ?? null,
-        optionId: input.optionId ?? null
+        optionId: input.optionId ?? null,
+        executionError: executionError ?? null
       },
       linkedNodeId
     };
+
+    const executionReceiptArtefact: CaiplArtefact | null = executionReceipt
+      ? {
+          id: randomUUID(),
+          type: "note",
+          content: {
+            type: "erp_execution_receipt",
+            ...executionReceipt
+          },
+          linkedNodeId
+        }
+      : null;
 
     const decisionTurn: CaiplInteractionTurn = {
       id: randomUUID(),
       sessionId: record.session.id,
       actor: "system",
-      messageText: `Decision ${decision.id} updated to ${newStatus}.`,
+      messageText:
+        executionReceipt
+          ? `Decision ${decision.id} updated to ${newStatus}. ERP execution receipt: ${executionReceipt.entityId} (${executionReceipt.status}).`
+          : executionError
+            ? `Decision ${decision.id} updated to ${newStatus}. ERP execution failed: ${executionError}`
+            : `Decision ${decision.id} updated to ${newStatus}.`,
       linkedNodes: [],
       linkedArtefacts: [],
       createdAt: now
@@ -657,6 +938,24 @@ export class CaiplService {
         now,
         now
       );
+
+      if (executionReceiptArtefact) {
+        const serializedExecutionReceiptContent = serializeArtefactContent(executionReceiptArtefact.content);
+        db.prepare(
+          `INSERT INTO caipl_notebook_artefact(
+            id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          executionReceiptArtefact.id,
+          record.session.id,
+          executionReceiptArtefact.type,
+          serializedExecutionReceiptContent.contentJson,
+          serializedExecutionReceiptContent.contentText,
+          executionReceiptArtefact.linkedNodeId,
+          now,
+          now
+        );
+      }
     });
 
     write();
@@ -670,12 +969,15 @@ export class CaiplService {
     record.session.version = nextSessionVersion;
     record.turns.push(decisionTurn);
     record.notebook.push(notebookArtefact);
+    if (executionReceiptArtefact) {
+      record.notebook.push(executionReceiptArtefact);
+    }
 
     return {
       updatedDecision: decision,
       graphDelta,
       notebookDelta: {
-        added: [notebookArtefact],
+        added: executionReceiptArtefact ? [notebookArtefact, executionReceiptArtefact] : [notebookArtefact],
         updated: [],
         removed: []
       },

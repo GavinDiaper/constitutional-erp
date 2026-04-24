@@ -85,11 +85,11 @@ export function createCaiplRouter(service: CaiplService) {
     }
   });
 
-  router.post("/caipl/decision/:id/resolve", (req, res, next) => {
+  router.post("/caipl/decision/:id/resolve", async (req, res, next) => {
     try {
       const decisionId = z.string().uuid().parse(req.params.id);
       const body = decisionResolveSchema.parse(req.body ?? {});
-      const result = service.resolveDecision(decisionId, body);
+      const result = await service.resolveDecision(decisionId, body);
 
       if ("conflict" in result) {
         res.status(409).json(versionMismatchResponse(result.conflict));

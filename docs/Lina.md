@@ -354,7 +354,97 @@ Joystick works across all.
 
 ---
 Don't forget to add the Lina UX layer to the startup scripts, Main Menu and documentation!
-# **End of Document**
+
+Clarifications
+
+# **1. “Joystick” = Directional, Predictive, Option‑First Navigation**
+In Lina, “joystick” means:
+
+- The user moves **up/down/left/right** through predicted options  
+- The UI presents **choices**, not blank fields  
+- The user **selects**, not types  
+- The AI **pre-fills**, not the user  
+- The flow feels like **navigating a game menu**, not filling a form  
+
+This is a **UX pattern**, not a hardware requirement.
+
+It’s the opposite of:
+- keyboard-heavy ERP  
+- form-first UX  
+- search-first UX  
+
+It’s the embodiment of:
+- **predictive surfaces**  
+- **guided flow**  
+- **minimal typing**  
+- **role-based options**  
+
+---
+
+# **2. Why the metaphor works (and why devs will get it)**
+
+Developers understand:
+- directional navigation  
+- option lists  
+- focus states  
+- predictive ranking  
+- modal interfaces  
+
+So when you say “joystick”, they should hear:
+
+> “Primary navigation is directional selection of AI‑predicted options, not freeform typing.”
+
+This is:
+- easy to implement  
+- easy to test  
+- easy to extend  
+- easy to reason about  
+
+And it fits perfectly with the CAIPL/Lina Engine decision‑point model.
+
+---
+
+### **Lina UX Input Model**
+Lina uses a **“joystick” metaphor for navigation**, meaning:
+
+- The primary interaction is **selecting from AI‑predicted options**, not typing.  
+- Users navigate options using **directional focus** (arrow keys, mouse, touch).  
+- Typing is only required when **no prediction is possible** or when **explicit data entry is needed**.  
+- Every surface (actions, entities, decisions, forms) is designed to be **option-first** and **directionally navigable**.  
+- This is a **UX metaphor**, not a hardware requirement — standard mouse, keyboard, and touch interactions remain fully supported.
+
+---
+
+# **4. Why this fits Lina Engine perfectly**
+
+The Lina Engine already outputs:
+- decision options  
+- predicted next steps  
+- forms with fields  
+- graph nodes  
+- notebook entries  
+
+All of these are **selectable objects**.
+
+The joystick metaphor simply says:
+> “Selection is the primary mode of interaction.”
+
+This is exactly how the Lina Engine is designed to work.
+
+---
+
+# **5. Why this is the right UX for an AI‑native ERP**
+
+Because:
+
+- AI predicts → user selects  
+- AI plans → user confirms  
+- AI fills → user edits  
+- AI suggests → user chooses  
+
+Typing becomes the **exception**, not the default.
+
+This is the future of enterprise UX.
 
 ---
 
