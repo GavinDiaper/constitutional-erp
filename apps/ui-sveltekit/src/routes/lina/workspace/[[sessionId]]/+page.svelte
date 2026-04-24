@@ -6,7 +6,10 @@
 		getCaiplSession,
 		resolveCaiplDecision,
 		sendCaiplTurn,
+		type CaiplDecisionOption,
 		type CaiplArtefact,
+		type CaiplGraphDelta,
+		type CaiplNotebookDelta,
 		type CaiplDecisionPoint,
 		type CaiplInteractionTurn,
 		type CaiplPlanGraph,
@@ -14,9 +17,14 @@
 	} from '$lib/api/caipl';
 	import CaiplPlanGraphView from '$lib/components/ai/CaiplPlanGraph.svelte';
 	import ActionSurface from '$lib/components/lina/ActionSurface.svelte';
+	import DecisionSurface from '$lib/components/lina/DecisionSurface.svelte';
+	import DeveloperConsole from '$lib/components/lina/DeveloperConsole.svelte';
+	import FormSurface from '$lib/components/lina/FormSurface.svelte';
 	import ModeWheel from '$lib/components/lina/ModeWheel.svelte';
+	import NotebookPanel from '$lib/components/lina/NotebookPanel.svelte';
 	import RoleSelector from '$lib/components/lina/RoleSelector.svelte';
 	import { actorStore } from '$lib/stores/actorStore';
+	import { addLinaConsoleEntry } from '$lib/stores/linaDevConsole';
 	import {
 		selectedLinaActionId,
 		selectedLinaMode,
@@ -39,6 +47,9 @@
 	let selectedGraphNodeId: string | null = null;
 	let selectedModeId: LinaMode = LINA_MODE_OPTIONS[0].id;
 	let selectedRoleId = LINA_ROLE_OPTIONS[0].id;
+	let selectedDecisionId: string | null = null;
+	let selectedOptionId: string | null = null;
+	let showDeveloperConsole = false;
 
 	let sessionVersion = 0;
 	let turns: CaiplInteractionTurn[] = [];
@@ -56,6 +67,9 @@
 	}
 
 	$: pendingDecisions = decisions.filter((item) => item.status === 'pending');
+	$: selectedDecision = pendingDecisions.find((item) => item.id === selectedDecisionId) ?? pendingDecisions[0] ?? null;
+	$: selectedOption =
+		selectedDecision?.options.find((item) => item.id === selectedOptionId) ?? selectedDecision?.options[0] ?? null;
 	$: {
 		const decisionActionOptions = pendingDecisions.flatMap((decision) =>
 			decision.options.map((option) => ({
@@ -82,8 +96,10 @@
 		try {
 			const snapshot = await getCaiplSession($actorStore, id);
 			applySnapshot(snapshot);
+			addLinaConsoleEntry('info', 'session', 'Hydrated Lina session snapshot', { sessionId: id });
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to load Lina session';
+			addLinaConsoleEntry('error', 'session', 'Failed to hydrate Lina session', { error: errorMessage });
 		} finally {
 			loading = false;
 		}
@@ -97,6 +113,59 @@
 		notebook = snapshot.notebook;
 		planGraph = snapshot.planGraph;
 		selectedGraphNodeId = planGraph.nodes[0]?.id ?? null;
+	}
+
+	function applyGraphDelta(delta: CaiplGraphDelta): void {
+		if (delta.removedNodes.length > 0) {
+			planGraph = {
+				...planGraph,
+				nodes: planGraph.nodes.filter((node) => !delta.removedNodes.includes(node.id))
+			};
+		}
+
+		if (delta.updatedNodes.length > 0) {
+			const map = new Map(delta.updatedNodes.map((node) => [node.id, node]));
+			planGraph = {
+				...planGraph,
+				nodes: planGraph.nodes.map((node) => map.get(node.id) ?? node)
+			};
+		}
+
+		if (delta.addedNodes.length > 0) {
+			planGraph = {
+				...planGraph,
+				nodes: [...planGraph.nodes, ...delta.addedNodes]
+			};
+		}
+
+		if (delta.removedEdges.length > 0) {
+			planGraph = {
+				...planGraph,
+				edges: planGraph.edges.filter((edge) => !delta.removedEdges.includes(edge.edgeId))
+			};
+		}
+
+		if (delta.addedEdges.length > 0) {
+			planGraph = {
+				...planGraph,
+				edges: [...planGraph.edges, ...delta.addedEdges]
+			};
+		}
+	}
+
+	function applyNotebookDelta(delta: CaiplNotebookDelta): void {
+		if (delta.removed.length > 0) {
+			notebook = notebook.filter((item) => !delta.removed.includes(item.id));
+		}
+
+		if (delta.updated.length > 0) {
+			const map = new Map(delta.updated.map((item) => [item.id, item]));
+			notebook = notebook.map((item) => map.get(item.id) ?? item);
+		}
+
+		if (delta.added.length > 0) {
+			notebook = [...notebook, ...delta.added];
+		}
 	}
 
 	function fallbackActionsForMode(mode: LinaMode): LinaActionOption[] {
@@ -138,6 +207,11 @@
 				roleContext: selectedRoleId,
 				mode: selectedModeId
 			});
+			addLinaConsoleEntry('info', 'session', 'Created Lina session', {
+				roleContext: selectedRoleId,
+				mode: selectedModeId,
+				sessionId: result.session.id
+			});
 			applySnapshot({
 				session: result.session,
 				turns: result.initialTurns,
@@ -148,6 +222,7 @@
 			await goto(`/lina/workspace/${result.session.id}`);
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Unable to create Lina session';
+			addLinaConsoleEntry('error', 'session', 'Failed to create Lina session', { error: errorMessage });
 		} finally {
 			loading = false;
 		}
@@ -181,17 +256,17 @@
 			turns = [...turns, ...response.newTurns];
 			decisions = response.decisionPoints;
 			sessionVersion = response.session.version;
-			if (response.graphDelta.addedNodes.length > 0) {
-				planGraph = {
-					...planGraph,
-					nodes: [...planGraph.nodes, ...response.graphDelta.addedNodes],
-					edges: [...planGraph.edges, ...response.graphDelta.addedEdges]
-				};
-			}
-			notebook = [...notebook, ...response.notebookDelta.added];
+			applyGraphDelta(response.graphDelta);
+			applyNotebookDelta(response.notebookDelta);
+			addLinaConsoleEntry('info', 'turn', 'Submitted Lina turn', {
+				sessionId,
+				graphAdded: response.graphDelta.addedNodes.length,
+				notebookAdded: response.notebookDelta.added.length
+			});
 			turnText = '';
 		} catch (error) {
 			await handleVersionMismatch(error);
+			addLinaConsoleEntry('error', 'turn', 'Failed to submit Lina turn', { error: errorMessage });
 		} finally {
 			loading = false;
 		}
@@ -199,7 +274,9 @@
 
 	async function handleResolveDecision(
 		decision: CaiplDecisionPoint,
-		action: 'confirm' | 'reject' | 'amend'
+		action: 'confirm' | 'reject' | 'amend',
+		optionId?: string,
+		formInput?: Record<string, unknown>
 	): Promise<void> {
 		if (!sessionId) {
 			return;
@@ -212,19 +289,40 @@
 				action,
 				actorId: $actorStore.actorId,
 				sessionVersion,
-				decisionVersion: decision.version
+				decisionVersion: decision.version,
+				optionId,
+				formInput
 			});
 			decisions = decisions.map((entry) =>
 				entry.id === response.updatedDecision.id ? response.updatedDecision : entry
 			);
 			turns = [...turns, ...response.newTurns];
-			notebook = [...notebook, ...response.notebookDelta.added];
+			applyGraphDelta(response.graphDelta);
+			applyNotebookDelta(response.notebookDelta);
 			sessionVersion = response.session.version;
+			addLinaConsoleEntry('info', 'decision', 'Resolved decision', {
+				decisionId: decision.id,
+				action,
+				optionId,
+				hasFormInput: Boolean(formInput)
+			});
 		} catch (error) {
 			await handleVersionMismatch(error);
+			addLinaConsoleEntry('error', 'decision', 'Failed to resolve decision', {
+				decisionId: decision.id,
+				error: errorMessage
+			});
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function handleFormSubmit(event: CustomEvent<{ optionId: string; formInput: Record<string, unknown> }>): Promise<void> {
+		if (!selectedDecision) {
+			return;
+		}
+
+		await handleResolveDecision(selectedDecision, 'confirm', event.detail.optionId, event.detail.formInput);
 	}
 
 	async function handleVersionMismatch(error: unknown): Promise<void> {
@@ -237,12 +335,22 @@
 		errorMessage = error instanceof Error ? error.message : 'Request failed';
 	}
 
-	function formatNotebookContent(content: Record<string, unknown> | string): string {
-		if (typeof content === 'string') {
-			return content;
+	function handleDecisionResolve(event: CustomEvent<{ decisionId: string; action: 'confirm' | 'reject' | 'amend' }>): void {
+		const decision = pendingDecisions.find((item) => item.id === event.detail.decisionId);
+		if (!decision) {
+			return;
 		}
 
-		return JSON.stringify(content, null, 2);
+		void handleResolveDecision(decision, event.detail.action, selectedOptionId ?? undefined);
+	}
+
+	function handleSelectDecision(event: CustomEvent<{ decisionId: string }>): void {
+		selectedDecisionId = event.detail.decisionId;
+	}
+
+	function handleSelectOption(event: CustomEvent<{ decisionId: string; optionId: string }>): void {
+		selectedDecisionId = event.detail.decisionId;
+		selectedOptionId = event.detail.optionId;
 	}
 </script>
 
@@ -261,6 +369,9 @@
 			<button class="ui-soft-button px-4 py-2 text-sm" on:click={handleCreateSession} disabled={loading}>
 				{loading ? 'Working...' : 'Create Session'}
 			</button>
+			<button class="btn-ghost rounded-md px-3 py-2 text-sm" type="button" on:click={() => (showDeveloperConsole = !showDeveloperConsole)}>
+				{showDeveloperConsole ? 'Hide Console' : 'Show Console'}
+			</button>
 		</div>
 
 		{#if sessionId}
@@ -269,6 +380,8 @@
 		{#if errorMessage}
 			<p class="mt-3 rounded-md border border-red-500/45 bg-red-500/10 p-2 text-sm text-red-200">{errorMessage}</p>
 		{/if}
+
+		<DeveloperConsole visible={showDeveloperConsole} />
 	</header>
 
 	<div class="grid gap-4 xl:grid-cols-[1.1fr_1fr_1fr]">
@@ -310,37 +423,23 @@
 			</div>
 		</section>
 
-		<section class="glass-panel p-4">
-			<h2 class="text-lg font-semibold">Decisions + Notebook</h2>
-			<div class="mt-3 space-y-2">
-				{#if pendingDecisions.length === 0}
-					<p class="text-sm ui-muted">No pending decisions.</p>
-				{:else}
-					{#each pendingDecisions as decision (decision.id)}
-						<article class="item-card rounded-md p-3">
-							<p class="text-sm font-semibold">{decision.type}</p>
-							<p class="mt-1 text-xs ui-muted">Status: {decision.status}</p>
-							<div class="mt-2 flex gap-2">
-								<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(decision, 'confirm')} disabled={loading}>Confirm</button>
-								<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(decision, 'reject')} disabled={loading}>Reject</button>
-								<button class="ui-soft-button px-2 py-1 text-xs" on:click={() => handleResolveDecision(decision, 'amend')} disabled={loading}>Amend</button>
-							</div>
-						</article>
-					{/each}
-				{/if}
-			</div>
-			<div class="mt-3 max-h-[280px] space-y-2 overflow-auto">
-				{#if notebook.length === 0}
-					<p class="text-sm ui-muted">Notebook is empty.</p>
-				{:else}
-					{#each notebook as item (item.id)}
-						<article class="section-card p-2 text-xs">
-							<p class="font-semibold uppercase tracking-wide">{item.type}</p>
-							<pre class="mt-1 overflow-auto whitespace-pre-wrap break-words ui-muted">{formatNotebookContent(item.content)}</pre>
-						</article>
-					{/each}
-				{/if}
-			</div>
-		</section>
+		<div class="space-y-4">
+			<DecisionSurface
+				decisions={pendingDecisions}
+				loading={loading}
+				selectedDecisionId={selectedDecisionId}
+				selectedOptionId={selectedOptionId}
+				on:selectDecision={handleSelectDecision}
+				on:selectOption={handleSelectOption}
+				on:resolve={handleDecisionResolve}
+			/>
+
+			<FormSurface option={selectedOption as CaiplDecisionOption | null} loading={loading} on:submit={handleFormSubmit} />
+
+			<NotebookPanel
+				notebook={notebook}
+				on:inspectNode={(event) => (selectedGraphNodeId = event.detail.nodeId)}
+			/>
+		</div>
 	</div>
 </section>
