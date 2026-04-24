@@ -1,5 +1,9 @@
 import * as d3 from 'd3';
 import type { CaiplPlanEdge, CaiplPlanNode } from '$lib/api/caipl';
+import { renderLinaExploreView } from '$lib/d3/linaExploreViewRenderer';
+import { renderLinaPlanView } from '$lib/d3/linaPlanViewRenderer';
+import { renderLinaStatusView } from '$lib/d3/linaStatusViewRenderer';
+import type { LinaGraphMode } from '$lib/stores/linaGraphMode';
 
 interface SimulationNode extends d3.SimulationNodeDatum {
 	id: string;
@@ -27,8 +31,27 @@ export function renderCaiplGraph(
 	svgEl: SVGSVGElement,
 	nodes: CaiplPlanNode[],
 	edges: CaiplPlanEdge[],
-	options?: { onNodeSelect?: (nodeId: string) => void; selectedNodeId?: string | null }
+	options?: {
+		onNodeSelect?: (nodeId: string) => void;
+		selectedNodeId?: string | null;
+		graphMode?: LinaGraphMode;
+	}
 ): void {
+	if (options?.graphMode === 'explore') {
+		renderLinaExploreView(svgEl, nodes, edges, options);
+		return;
+	}
+
+	if (options?.graphMode === 'status') {
+		renderLinaStatusView(svgEl, nodes, edges, options);
+		return;
+	}
+
+	if (options?.graphMode === 'plan') {
+		renderLinaPlanView(svgEl, nodes, edges, options);
+		return;
+	}
+
 	const width = svgEl.clientWidth || 620;
 	const height = 360;
 

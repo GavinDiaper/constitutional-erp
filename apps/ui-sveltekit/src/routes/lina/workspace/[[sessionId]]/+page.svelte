@@ -20,10 +20,13 @@
 	import DecisionSurface from '$lib/components/lina/DecisionSurface.svelte';
 	import DeveloperConsole from '$lib/components/lina/DeveloperConsole.svelte';
 	import FormSurface from '$lib/components/lina/FormSurface.svelte';
+	import GraphModeSelector from '$lib/components/lina/GraphModeSelector.svelte';
 	import ModeWheel from '$lib/components/lina/ModeWheel.svelte';
 	import NotebookPanel from '$lib/components/lina/NotebookPanel.svelte';
 	import RoleSelector from '$lib/components/lina/RoleSelector.svelte';
 	import { actorStore } from '$lib/stores/actorStore';
+	import type { LinaGraphMode } from '$lib/stores/linaGraphMode';
+	import { mapLinaModeToGraphMode } from '$lib/stores/linaGraphMode';
 	import { addLinaConsoleEntry } from '$lib/stores/linaDevConsole';
 	import {
 		selectedLinaActionId,
@@ -50,6 +53,8 @@
 	let selectedDecisionId: string | null = null;
 	let selectedOptionId: string | null = null;
 	let showDeveloperConsole = false;
+	let graphModeOverride: LinaGraphMode | null = null;
+	let mobilePanel: 'actions' | 'graph' | 'insights' = 'actions';
 
 	let sessionVersion = 0;
 	let turns: CaiplInteractionTurn[] = [];
@@ -70,6 +75,8 @@
 	$: selectedDecision = pendingDecisions.find((item) => item.id === selectedDecisionId) ?? pendingDecisions[0] ?? null;
 	$: selectedOption =
 		selectedDecision?.options.find((item) => item.id === selectedOptionId) ?? selectedDecision?.options[0] ?? null;
+	$: derivedGraphMode = mapLinaModeToGraphMode(selectedModeId);
+	$: graphMode = graphModeOverride ?? derivedGraphMode;
 	$: {
 		const decisionActionOptions = pendingDecisions.flatMap((decision) =>
 			decision.options.map((option) => ({
@@ -382,24 +389,58 @@
 		{/if}
 
 		<DeveloperConsole visible={showDeveloperConsole} />
+
+		<div class="mt-4 flex gap-2 md:hidden">
+			<button
+				type="button"
+				class="btn-ghost flex-1 rounded px-3 py-2 text-xs"
+				class:btn-ghost-active={mobilePanel === 'actions'}
+				on:click={() => (mobilePanel = 'actions')}
+			>
+				Actions
+			</button>
+			<button
+				type="button"
+				class="btn-ghost flex-1 rounded px-3 py-2 text-xs"
+				class:btn-ghost-active={mobilePanel === 'graph'}
+				on:click={() => (mobilePanel = 'graph')}
+			>
+				Graph
+			</button>
+			<button
+				type="button"
+				class="btn-ghost flex-1 rounded px-3 py-2 text-xs"
+				class:btn-ghost-active={mobilePanel === 'insights'}
+				on:click={() => (mobilePanel = 'insights')}
+			>
+				Insights
+			</button>
+		</div>
 	</header>
 
 	<div class="grid gap-4 xl:grid-cols-[1.1fr_1fr_1fr]">
-		<ActionSurface
-			actions={actionOptions}
-			selectedActionId={currentActionId}
-			loading={loading}
-			on:select={(event) => (currentActionId = event.detail.actionId)}
-			on:execute={(event) => void handleExecuteAction(event.detail.actionId)}
-		/>
+		<div class="md:block" class:hidden={mobilePanel !== 'actions'}>
+			<ActionSurface
+				actions={actionOptions}
+				selectedActionId={currentActionId}
+				loading={loading}
+				on:select={(event) => (currentActionId = event.detail.actionId)}
+				on:execute={(event) => void handleExecuteAction(event.detail.actionId)}
+			/>
+		</div>
 
-		<section class="glass-panel p-4">
+		<section class="glass-panel p-4 md:block" class:hidden={mobilePanel !== 'graph'}>
 			<h2 class="text-lg font-semibold">Plan View</h2>
+			<GraphModeSelector
+				graphMode={graphMode}
+				on:select={(event) => (graphModeOverride = event.detail.graphMode)}
+			/>
 			<div class="mt-3">
 				<CaiplPlanGraphView
 					nodes={planGraph.nodes}
 					edges={planGraph.edges}
 					selectedNodeId={selectedGraphNodeId}
+					graphMode={graphMode}
 					on:select={(event) => (selectedGraphNodeId = event.detail.nodeId)}
 				/>
 			</div>
@@ -423,7 +464,7 @@
 			</div>
 		</section>
 
-		<div class="space-y-4">
+		<div class="space-y-4 md:block" class:hidden={mobilePanel !== 'insights'}>
 			<DecisionSurface
 				decisions={pendingDecisions}
 				loading={loading}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { LinaActionOption } from '$lib/types/lina';
+	import { cycleIndex, toDirectionalKey } from '$lib/utils/directionalNavigation';
 
 	export let actions: LinaActionOption[] = [];
 	export let selectedActionId: string | null = null;
@@ -18,15 +19,36 @@
 	function execute(actionId: string): void {
 		dispatch('execute', { actionId });
 	}
+
+	function handleKeydown(event: KeyboardEvent): void {
+		const key = toDirectionalKey(event.key);
+		if (key === 'none' || actions.length === 0) {
+			return;
+		}
+
+		event.preventDefault();
+		const currentIndex = actions.findIndex((action) => action.id === selectedActionId);
+
+		if (key === 'activate' && currentIndex >= 0) {
+			execute(actions[currentIndex].id);
+			return;
+		}
+
+		if (key === 'next' || key === 'previous') {
+			const nextIndex = cycleIndex(currentIndex, actions.length, key);
+			pick(actions[nextIndex].id);
+		}
+	}
 </script>
 
 <section class="glass-panel p-4">
-	<div class="flex items-center justify-between gap-2">
-		<h2 class="text-lg font-semibold">Action Surface</h2>
-		<span class="text-xs ui-muted">Option-first</span>
-	</div>
+	<div tabindex="0" role="listbox" aria-label="Lina action surface" on:keydown={handleKeydown}>
+		<div class="flex items-center justify-between gap-2">
+			<h2 class="text-lg font-semibold">Action Surface</h2>
+			<span class="text-xs ui-muted">Option-first</span>
+		</div>
 
-	<div class="mt-3 space-y-2">
+		<div class="mt-3 space-y-2">
 		{#if actions.length === 0}
 			<p class="text-sm ui-muted">No predicted actions yet. Start a session or send a turn.</p>
 		{:else}
@@ -53,5 +75,6 @@
 				</article>
 			{/each}
 		{/if}
+		</div>
 	</div>
 </section>
