@@ -31,7 +31,7 @@ export const navigatorDependencies = {
 export function createApp() {
   const app = express();
   const service = new NavigatorService(integrationHubClient, authorityClient, governanceClient, cepClient, llmClient);
-  const caiplService = new CaiplService();
+  const caiplService = new CaiplService(llmClient);
 
   app.use(helmet());
   app.use(express.json());

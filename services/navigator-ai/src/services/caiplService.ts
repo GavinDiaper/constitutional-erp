@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../db/connection";
+import { LlmClient } from "../llm/types";
 import {
   CaiplArtefact,
   CaiplCreateSessionResponse,
@@ -122,6 +123,8 @@ function serializeArtefactContent(content: Record<string, unknown> | string): {
 }
 
 export class CaiplService {
+  constructor(private readonly llm: LlmClient) {}
+
   createSession(input: CreateSessionInput): CaiplCreateSessionResponse {
     const now = new Date().toISOString();
     const sessionId = randomUUID();
@@ -325,7 +328,7 @@ export class CaiplService {
     };
   }
 
-  submitTurn(sessionId: string, input: SubmitTurnInput): CaiplTurnResponse | VersionMismatchResult {
+  async submitTurn(sessionId: string, input: SubmitTurnInput): Promise<CaiplTurnResponse | VersionMismatchResult> {
     const record = this.requireSession(sessionId);
 
     if (input.sessionVersion !== record.session.version) {
@@ -349,11 +352,13 @@ export class CaiplService {
       createdAt: now
     };
 
+    const assistant = await this.generateAssistantResponse(record, input.messageText);
+
     const aiTurn: CaiplInteractionTurn = {
       id: randomUUID(),
       sessionId,
       actor: "ai",
-      messageText: "Acknowledged. Decision state and artefacts will update after resolution.",
+      messageText: assistant.response,
       linkedNodes: [],
       linkedArtefacts: [],
       createdAt: now
@@ -362,9 +367,24 @@ export class CaiplService {
     const notebookArtefact: CaiplArtefact = {
       id: randomUUID(),
       type: "note",
-      content: `User message captured: ${input.messageText}`,
+      content: {
+        type: "llm_turn_reasoning",
+        prompt: input.messageText,
+        response: assistant.response,
+        reasoningSummary: assistant.reasoning,
+        provider: this.llm.provider,
+        model: this.llm.model
+      },
       linkedNodeId
     };
+
+    const activeDecision = record.decisions.find((item) => item.status === "pending") ?? record.decisions[0];
+    if (activeDecision && activeDecision.options.length > 0 && assistant.decisionDescription) {
+      activeDecision.options[0] = {
+        ...activeDecision.options[0],
+        description: assistant.decisionDescription
+      };
+    }
 
     const nextVersion = record.session.version + 1;
     const write = db.transaction(() => {
@@ -401,6 +421,14 @@ export class CaiplService {
         nextVersion,
         sessionId
       );
+
+      if (activeDecision) {
+        db.prepare(
+          `UPDATE caipl_decision
+           SET options_json = ?, updated_at = ?
+           WHERE id = ? AND session_id = ?`
+        ).run(JSON.stringify(activeDecision.options), now, activeDecision.id, sessionId);
+      }
 
       const serializedNotebookContent = serializeArtefactContent(notebookArtefact.content);
       db.prepare(
@@ -760,6 +788,85 @@ export class CaiplService {
         : {};
     } catch {
       return {};
+    }
+  }
+
+  private parseJsonObjectFromText(value: string): Record<string, unknown> | undefined {
+    const start = value.indexOf("{");
+    const end = value.lastIndexOf("}");
+    if (start < 0 || end <= start) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(value.slice(start, end + 1)) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  private async generateAssistantResponse(
+    record: CaiplSessionRecord,
+    userMessage: string
+  ): Promise<{ response: string; reasoning: string; decisionDescription?: string }> {
+    const recentTurns = record.turns.slice(-8).map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`).join("\n");
+    const pendingDecision = record.decisions.find((item) => item.status === "pending") ?? record.decisions[0];
+
+    try {
+      const llmText = await this.llm.chat([
+        {
+          role: "system",
+          content:
+            "You are the CAIPL assistant for Constitutional ERP. Provide practical operator guidance, keep responses concise, and ground everything in provided session context. Output JSON only with keys response, reasoningSummary, decisionDescription."
+        },
+        {
+          role: "user",
+          content: [
+            `Goal: ${record.session.currentGoal}`,
+            pendingDecision
+              ? `Active decision: ${pendingDecision.type} [${pendingDecision.status}]`
+              : "Active decision: none",
+            "Conversation so far:",
+            recentTurns || "none",
+            `Latest user message: ${userMessage}`,
+            "Return JSON with keys: response (string), reasoningSummary (string), decisionDescription (string)."
+          ].join("\n")
+        }
+      ]);
+
+      const parsed = this.parseJsonObjectFromText(llmText);
+      const response =
+        parsed && typeof parsed["response"] === "string" && parsed["response"].trim().length > 0
+          ? String(parsed["response"]).trim()
+          : llmText.trim();
+
+      const reasoning =
+        parsed && typeof parsed["reasoningSummary"] === "string"
+          ? String(parsed["reasoningSummary"]).trim()
+          : "Reasoning summary unavailable; raw assistant response used.";
+
+      const decisionDescription =
+        parsed && typeof parsed["decisionDescription"] === "string"
+          ? String(parsed["decisionDescription"]).trim()
+          : undefined;
+
+      return {
+        response,
+        reasoning,
+        decisionDescription
+      };
+    } catch (error) {
+      const fallbackReason = error instanceof Error ? error.message : "Unknown LLM error";
+      return {
+        response:
+          "I could not complete the model reasoning step right now. Please retry your request or refine your goal statement.",
+        reasoning: `LLM call failed: ${fallbackReason}`
+      };
     }
   }
 }

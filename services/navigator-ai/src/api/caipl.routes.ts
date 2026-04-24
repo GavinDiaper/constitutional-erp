@@ -68,11 +68,11 @@ export function createCaiplRouter(service: CaiplService) {
     }
   });
 
-  router.post("/caipl/session/:id/turn", (req, res, next) => {
+  router.post("/caipl/session/:id/turn", async (req, res, next) => {
     try {
       const sessionId = z.string().uuid().parse(req.params.id);
       const body = turnSchema.parse(req.body ?? {});
-      const result = service.submitTurn(sessionId, body);
+      const result = await service.submitTurn(sessionId, body);
 
       if ("conflict" in result) {
         res.status(409).json(versionMismatchResponse(result.conflict));
