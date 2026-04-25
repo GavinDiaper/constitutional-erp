@@ -750,6 +750,28 @@ function buildCollectionDecisionOption(operation: CollectionOperationDefinition,
   };
 }
 
+function buildExecuteCollectionOption(
+  operation: CollectionOperationDefinition,
+  collectionState: CaiplCollectionState,
+  values: Record<string, unknown>
+): CaiplDecisionPoint["options"][number] {
+  return {
+    id: `execute-${operation.operation}`,
+    label: `Execute ${operation.label}`,
+    description: `All required fields are complete. Confirm to execute ${operation.label}.`,
+    actionPayload: {
+      operation: "execute_collection_operation",
+      targetOperation: operation.operation,
+      domain: operation.domain,
+      values
+    },
+    inputSchema: {
+      fields: []
+    },
+    collectionState
+  };
+}
+
 function buildCollectionAssistantResponse(
   operation: CollectionOperationDefinition,
   collectionState: CaiplCollectionState
@@ -1545,7 +1567,7 @@ export class CaiplService {
     const selectedOption =
       (input.optionId ? decision.options.find((option) => option.id === input.optionId) : undefined) ??
       decision.options[0];
-    const selectedOperation =
+    let selectedOperation =
       selectedOption && typeof selectedOption.actionPayload["operation"] === "string"
         ? selectedOption.actionPayload["operation"]
         : "execute_manual";
@@ -1554,6 +1576,7 @@ export class CaiplService {
     let executionReceipt: ExecutionReceiptSummary | null = null;
     let executionError: string | null = null;
     let resolvedCollectionState: CaiplCollectionState | null = null;
+    let keepPendingForExecution = false;
     if (input.action === "confirm") {
       const payload = { ...(selectedOption?.actionPayload ?? {}), ...(input.formInput ?? {}) };
       if (payload && typeof payload === "object" && payload["operation"] === "collect_fields") {
@@ -1590,8 +1613,12 @@ export class CaiplService {
             newStatus = "pending";
             decisionSummary = `collect ${resolvedCollectionState.missingFields.length} remaining required field(s) for ${operationDef.label}`;
           } else {
-            newStatus = "resolved";
-            decisionSummary = `field collection completed for ${operationDef.label}`;
+            const executeOption = buildExecuteCollectionOption(operationDef, resolvedCollectionState, mergedValues);
+            decision.options = [executeOption];
+            selectedOperation = "execute_collection_operation";
+            keepPendingForExecution = true;
+            newStatus = "pending";
+            decisionSummary = `field collection completed for ${operationDef.label}; ready for execution`;
           }
         } else {
           newStatus = "resolved";
@@ -1609,7 +1636,13 @@ export class CaiplService {
       }
     }
 
-    if (input.action === "confirm" && selectedOperation !== "execute_purchase_order" && !executionError) {
+    if (
+      input.action === "confirm" &&
+      selectedOperation !== "execute_purchase_order" &&
+      selectedOperation !== "execute_collection_operation" &&
+      !executionError &&
+      !keepPendingForExecution
+    ) {
       newStatus = "resolved";
     }
 
