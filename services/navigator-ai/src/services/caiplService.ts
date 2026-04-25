@@ -750,6 +750,26 @@ function buildCollectionDecisionOption(operation: CollectionOperationDefinition,
   };
 }
 
+function buildCollectionAssistantResponse(
+  operation: CollectionOperationDefinition,
+  collectionState: CaiplCollectionState
+): string {
+  const missingSlots = collectionState.slots.filter((slot) => slot.required && slot.status === "missing");
+  const autoFilledSlots = collectionState.slots.filter((slot) => slot.status === "auto_filled");
+
+  if (missingSlots.length === 0) {
+    return `I prepared ${operation.label} using the aligned canvas defaults and collected required inputs. Confirm to proceed.`;
+  }
+
+  const missingLabels = missingSlots.map((slot) => slot.label).join(", ");
+  const autofillText =
+    autoFilledSlots.length > 0
+      ? ` Auto-filled defaults: ${autoFilledSlots.map((slot) => slot.label).join(", ")}.`
+      : "";
+
+  return `I aligned this to the ${operation.label} manual create form and need: ${missingLabels}.${autofillText}`;
+}
+
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
 
@@ -1132,7 +1152,7 @@ export class CaiplService {
     });
     const inferredCollectionOperation = inferCollectionOperation(input.messageText, interactionContext);
 
-    const assistant = await this.generateAssistantResponse(record, input.messageText, interactionContext);
+    let assistant = await this.generateAssistantResponse(record, input.messageText, interactionContext);
 
     let collectionState: CaiplCollectionState | undefined;
     let collectionValues: Record<string, unknown> | undefined;
@@ -1151,6 +1171,16 @@ export class CaiplService {
         )
       );
       collectionState = buildCollectionState(inferredCollectionOperation, collectionValues, autoFilledFieldIds);
+      assistant = {
+        ...assistant,
+        response: buildCollectionAssistantResponse(inferredCollectionOperation, collectionState),
+        collectionHints: {
+          requiredFields: collectionState.requiredFields,
+          resolvedFields: collectionState.resolvedFields,
+          missingFields: collectionState.missingFields,
+          recommendedNextOperation: inferredCollectionOperation.operation
+        }
+      };
     }
 
     const aiTurn: CaiplInteractionTurn = {
@@ -1257,7 +1287,7 @@ export class CaiplService {
       };
     }
 
-    if (activeDecision && activeDecision.options.length > 0 && assistant.decisionDescription) {
+    if (activeDecision && activeDecision.options.length > 0) {
       const existingExecuteOption = activeDecision.options.find(
         (option) => option.actionPayload["operation"] === "execute_purchase_order"
       );
@@ -1283,10 +1313,12 @@ export class CaiplService {
         existingCollectionOption.inputSchema = refreshedOption.inputSchema;
         existingCollectionOption.actionPayload = refreshedOption.actionPayload;
         existingCollectionOption.collectionState = refreshedOption.collectionState;
+      } else if (collectionState && inferredCollectionOperation && !existingCollectionOption) {
+        activeDecision.options = [buildCollectionDecisionOption(inferredCollectionOperation, collectionState)];
       } else {
         activeDecision.options[0] = {
           ...activeDecision.options[0],
-          description: assistant.decisionDescription
+          description: assistant.decisionDescription ?? activeDecision.options[0].description
         };
       }
     }
