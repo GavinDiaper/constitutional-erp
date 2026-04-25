@@ -189,6 +189,27 @@ export function createProject(
     throw new HttpError(404, "not_found", "Organization not found");
   }
 
+  const projectManager = db
+    .prepare("SELECT employee_id FROM h2r_employee WHERE employee_id = ?")
+    .get(input.projectManagerId) as { employee_id: string } | undefined;
+  if (!projectManager) {
+    throw new HttpError(404, "not_found", "Project manager not found");
+  }
+
+  const wipAccount = db
+    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ?")
+    .get(input.defaultWIPAccountId) as { account_id: string } | undefined;
+  if (!wipAccount) {
+    throw new HttpError(404, "not_found", "Default WIP account not found");
+  }
+
+  const closeAccount = db
+    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ?")
+    .get(input.defaultCloseAccountId) as { account_id: string } | undefined;
+  if (!closeAccount) {
+    throw new HttpError(404, "not_found", "Default close account not found");
+  }
+
   try {
     transaction(() => {
       // Insert project row

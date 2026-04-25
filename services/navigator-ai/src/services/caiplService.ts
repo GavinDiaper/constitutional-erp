@@ -284,7 +284,7 @@ export class CaiplService {
     }
 
     if (operation !== "execute_purchase_order") {
-      return "manual follow-up action";
+      return "guided data collection follow-up";
     }
 
     const supplierId = typeof payload["supplierId"] === "string" ? payload["supplierId"] : "unknown supplier";
@@ -664,6 +664,10 @@ export class CaiplService {
         mode: interactionContext.mode,
         response: assistant.response,
         reasoningSummary: assistant.reasoning,
+        requiredFields: assistant.collectionHints?.requiredFields,
+        resolvedFields: assistant.collectionHints?.resolvedFields,
+        missingFields: assistant.collectionHints?.missingFields,
+        recommendedNextOperation: assistant.collectionHints?.recommendedNextOperation,
         provider: this.llm.provider,
         model: this.llm.model
       },
@@ -1378,6 +1382,15 @@ export class CaiplService {
     return undefined;
   }
 
+  private parseStringArrayFromUnknown(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const parsed = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+    return parsed.length > 0 ? parsed : undefined;
+  }
+
   private extractContextFromNodeMetadata(metadata?: Record<string, unknown>): LinaInteractionContext {
     if (!metadata) {
       return {};
@@ -1413,7 +1426,17 @@ export class CaiplService {
     record: CaiplSessionRecord,
     userMessage: string,
     interactionContext: LinaInteractionContext
-  ): Promise<{ response: string; reasoning: string; decisionDescription?: string }> {
+  ): Promise<{
+    response: string;
+    reasoning: string;
+    decisionDescription?: string;
+    collectionHints?: {
+      requiredFields?: string[];
+      resolvedFields?: string[];
+      missingFields?: string[];
+      recommendedNextOperation?: string;
+    };
+  }> {
     const recentTurns = record.turns.slice(-8).map((turn) => `${turn.actor.toUpperCase()}: ${turn.messageText}`).join("\n");
     const pendingDecision = record.decisions.find((item) => item.status === "pending");
     const executionReceipts = this.summarizeExecutionReceipts(record);
@@ -1424,7 +1447,7 @@ export class CaiplService {
         {
           role: "system",
           content:
-            "You are the CAIPL assistant for Constitutional ERP. Be concise and proactive. Prefer guided prompts and next-step options over long operator instruction lists. When key data is missing, ask 1-3 targeted questions and suggest the best next workflow action (for example: find GL account, start requisition workflow, or propose delivery date options). Never claim an ERP write operation completed unless an execution receipt exists. Output JSON only with keys response, reasoningSummary, decisionDescription."
+            "You are the CAIPL assistant for Constitutional ERP. Be concise and proactive. Treat O2C, P2P, R2R, H2R, INV, and PROJ as domain processes with cross-domain data dependencies. Prefer lookup and selection from system-held values before asking users for manual entry. Ask only for unresolved fields, and never ask users to choose arbitrary question buckets. When key data is missing, ask 1-3 targeted questions that unblock the next executable step. Never claim an ERP write operation completed unless an execution receipt exists. Output JSON only with keys response, reasoningSummary, decisionDescription, requiredFields, resolvedFields, missingFields, recommendedNextOperation."
         },
         {
           role: "user",
@@ -1439,7 +1462,7 @@ export class CaiplService {
             "Conversation so far:",
             recentTurns || "none",
             `Latest user message: ${userMessage}`,
-            "Return JSON with keys: response (string), reasoningSummary (string), decisionDescription (string)."
+            "Return JSON with keys: response (string), reasoningSummary (string), decisionDescription (string), requiredFields (string[]), resolvedFields (string[]), missingFields (string[]), recommendedNextOperation (string)."
           ].join("\n")
         }
       ]);
@@ -1461,10 +1484,23 @@ export class CaiplService {
           ? String(parsed["decisionDescription"]).trim()
           : undefined;
 
+      const collectionHints = parsed
+        ? {
+            requiredFields: this.parseStringArrayFromUnknown(parsed["requiredFields"]),
+            resolvedFields: this.parseStringArrayFromUnknown(parsed["resolvedFields"]),
+            missingFields: this.parseStringArrayFromUnknown(parsed["missingFields"]),
+            recommendedNextOperation:
+              typeof parsed["recommendedNextOperation"] === "string"
+                ? String(parsed["recommendedNextOperation"]).trim()
+                : undefined
+          }
+        : undefined;
+
       return {
         response: groundedResponse,
         reasoning,
-        decisionDescription
+        decisionDescription,
+        collectionHints
       };
     } catch (error) {
       const fallbackReason = error instanceof Error ? error.message : "Unknown LLM error";

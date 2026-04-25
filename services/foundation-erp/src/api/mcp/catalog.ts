@@ -4,6 +4,11 @@ export interface McpFunctionDef {
   description: string;
   entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
   action?: string; // e.g., "create", "activate", "approve"
+  inputSchema?: {
+    type: "object";
+    required?: string[];
+    properties?: Record<string, { type?: string; enum?: string[]; description?: string; "x-lookup"?: string }>;
+  };
   riskLevel?: "Low" | "Medium" | "High";
   governanceTag?: string; // e.g., "O2C.Customer.Create" or "P2P.PO.Approve"
 }
@@ -12,7 +17,25 @@ export const mcpCatalog: McpFunctionDef[] = [
   // ── O2C ──────────────────────────────────────────────────────────────────
   { name: "o2c_create_customer", domain: "o2c", entity: "Customer", action: "create", description: "Create a customer in Draft state", riskLevel: "Low", governanceTag: "O2C.Customer.Create" },
   { name: "o2c_activate_customer", domain: "o2c", entity: "Customer", action: "activate", description: "Activate a Draft customer", riskLevel: "Low", governanceTag: "O2C.Customer.Activate" },
-  { name: "o2c_create_quote", domain: "o2c", entity: "Quote", action: "create", description: "Create a sales quote in Draft state", riskLevel: "Low", governanceTag: "O2C.Quote.Create" },
+  {
+    name: "o2c_create_quote",
+    domain: "o2c",
+    entity: "Quote",
+    action: "create",
+    description: "Create a sales quote in Draft state",
+    riskLevel: "Low",
+    governanceTag: "O2C.Quote.Create",
+    inputSchema: {
+      type: "object",
+      required: ["customerId", "currencyCode", "legalEntityId"],
+      properties: {
+        customerId: { type: "string", description: "Customer identifier" },
+        currencyCode: { type: "string", description: "3-letter currency code" },
+        legalEntityId: { type: "string", description: "Owning legal entity" },
+        projectId: { type: "string", description: "Optional project linkage", "x-lookup": "query/proj_project" }
+      }
+    }
+  },
   { name: "o2c_add_quote_line", domain: "o2c", entity: "Quote", action: "addLine", description: "Add a line item to a quote", riskLevel: "Low", governanceTag: "O2C.Quote.AddLine" },
   { name: "o2c_send_quote", domain: "o2c", entity: "Quote", action: "send", description: "Send a Draft quote to the customer", riskLevel: "Low", governanceTag: "O2C.Quote.Send" },
   { name: "o2c_accept_quote", domain: "o2c", entity: "Quote", action: "accept", description: "Accept a Sent quote", riskLevel: "Low", governanceTag: "O2C.Quote.Accept" },
@@ -38,7 +61,26 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "o2c_cancel_ar_payment", domain: "o2c", entity: "ARPayment", action: "cancel", description: "Cancel an AR payment", riskLevel: "High", governanceTag: "O2C.ARPayment.Cancel" },
 
   // ── P2P ──────────────────────────────────────────────────────────────────
-  { name: "p2p_create_requisition", domain: "p2p", entity: "Requisition", action: "create", description: "Create a purchase requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
+  {
+    name: "p2p_create_requisition",
+    domain: "p2p",
+    entity: "Requisition",
+    action: "create",
+    description: "Create a purchase requisition in Draft state",
+    riskLevel: "Low",
+    governanceTag: "P2P.Requisition.Create",
+    inputSchema: {
+      type: "object",
+      required: ["requester", "department", "currencyCode", "neededByDate", "legalEntityId"],
+      properties: {
+        requester: { type: "string", description: "Requester identifier" },
+        department: { type: "string", description: "Requesting department" },
+        currencyCode: { type: "string", description: "3-letter currency code" },
+        neededByDate: { type: "string", description: "Requested delivery date (YYYY-MM-DD)" },
+        legalEntityId: { type: "string", description: "Owning legal entity" }
+      }
+    }
+  },
   { name: "p2p_submit_requisition", domain: "p2p", entity: "Requisition", action: "submit", description: "Submit a Draft requisition for approval", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
   { name: "p2p_approve_requisition", domain: "p2p", entity: "Requisition", action: "approve", description: "Approve a Submitted requisition", riskLevel: "Medium", governanceTag: "P2P.Requisition.Approve" },
   { name: "p2p_reject_requisition", domain: "p2p", entity: "Requisition", action: "reject", description: "Reject a Submitted requisition", riskLevel: "Low", governanceTag: "P2P.Requisition.Reject" },
@@ -136,7 +178,64 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "bom_activate_bom", domain: "bom", entity: "BOMHeader", action: "activate", description: "Activate a Draft BOM", riskLevel: "Medium", governanceTag: "BOM.Header.Activate" },
 
   // ── PROJ ─────────────────────────────────────────────────────────────────
-  { name: "proj_create_project", domain: "proj", entity: "Project", action: "create", description: "Create a project in Draft status", riskLevel: "Low", governanceTag: "PROJ.Project.Create" },
+  {
+    name: "proj_create_project",
+    domain: "proj",
+    entity: "Project",
+    action: "create",
+    description: "Create a project in Draft status",
+    riskLevel: "Low",
+    governanceTag: "PROJ.Project.Create",
+    inputSchema: {
+      type: "object",
+      required: [
+        "name",
+        "projectType",
+        "budgetAmount",
+        "defaultWIPAccountId",
+        "defaultCloseAccountId",
+        "projectManagerId",
+        "organizationId",
+        "startDate"
+      ],
+      properties: {
+        projectId: { type: "string", description: "Optional project id; if omitted the system generates one" },
+        name: { type: "string", description: "Project name" },
+        description: { type: "string", description: "One-line project description" },
+        projectType: {
+          type: "string",
+          enum: ["Internal", "Capital", "Billable", "Service"],
+          description: "Project classification"
+        },
+        customerId: { type: "string", description: "Optional customer reference" },
+        contractId: { type: "string", description: "Optional contract reference" },
+        wbsId: { type: "string", description: "Optional work breakdown structure reference" },
+        budgetAmount: { type: "number", description: "Total budget amount for the project" },
+        defaultWIPAccountId: {
+          type: "string",
+          description: "Default WIP GL account",
+          "x-lookup": "query/r2r_account"
+        },
+        defaultCloseAccountId: {
+          type: "string",
+          description: "Default close GL account",
+          "x-lookup": "query/r2r_account"
+        },
+        startDate: { type: "string", description: "Project start date (YYYY-MM-DD)" },
+        endDate: { type: "string", description: "Optional project end date (YYYY-MM-DD)" },
+        projectManagerId: {
+          type: "string",
+          description: "Project manager employee id",
+          "x-lookup": "query/h2r_employee"
+        },
+        organizationId: {
+          type: "string",
+          description: "Owning inventory organization",
+          "x-lookup": "query/inv_organization"
+        }
+      }
+    }
+  },
   { name: "proj_list_projects", domain: "proj", entity: "Project", action: "list", description: "List all projects", riskLevel: "Low", governanceTag: "PROJ.Project.List" },
   { name: "proj_get_project", domain: "proj", entity: "Project", action: "get", description: "Get a project by ID", riskLevel: "Low", governanceTag: "PROJ.Project.Get" },
   { name: "proj_activate_project", domain: "proj", entity: "Project", action: "activate", description: "Activate a Draft project", riskLevel: "Medium", governanceTag: "PROJ.Project.Activate" },

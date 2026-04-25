@@ -37,7 +37,28 @@ function matchesAction(
 }
 
 const FUNCTION_DEFS = [
-  { id: "p2p_create_requisition", entity: "Requisition", domain: "p2p", aggregateType: "requisition", action: "create_requisition", operationType: "create", description: "Create requisition in Draft state", riskLevel: "Low", governanceTag: "P2P.Requisition.Create" },
+  {
+    id: "p2p_create_requisition",
+    entity: "Requisition",
+    domain: "p2p",
+    aggregateType: "requisition",
+    action: "create_requisition",
+    operationType: "create",
+    description: "Create requisition in Draft state",
+    riskLevel: "Low",
+    governanceTag: "P2P.Requisition.Create",
+    inputSchema: {
+      type: "object",
+      required: ["requester", "department", "currencyCode", "neededByDate", "legalEntityId"],
+      properties: {
+        requester: { type: "string", description: "Requester identifier" },
+        department: { type: "string", description: "Requesting department" },
+        currencyCode: { type: "string", description: "3-letter currency code" },
+        neededByDate: { type: "string", description: "Requested delivery date (YYYY-MM-DD)" },
+        legalEntityId: { type: "string", description: "Owning legal entity" }
+      }
+    }
+  },
   {
     id: "p2p_add_requisition_line",
     entity: "Requisition",
@@ -435,7 +456,66 @@ const FUNCTION_DEFS = [
   { id: "inv_consume_serial", entity: "InventorySerial", domain: "inv", aggregateType: "serial", action: "consume_serial", operationType: "transition", description: "Consume inventory serial", riskLevel: "Medium", governanceTag: "INV.Serial.Consume" },
 
   // ── PROJ ─────────────────────────────────────────────────────────────────
-  { id: "proj_create_project", entity: "Project", domain: "proj", aggregateType: "project", action: "create_project", operationType: "create", description: "Create project in Draft status", riskLevel: "Low", governanceTag: "PROJ.Project.Create" },
+  {
+    id: "proj_create_project",
+    entity: "Project",
+    domain: "proj",
+    aggregateType: "project",
+    action: "create_project",
+    operationType: "create",
+    description: "Create project in Draft status",
+    riskLevel: "Low",
+    governanceTag: "PROJ.Project.Create",
+    inputSchema: {
+      type: "object",
+      required: [
+        "name",
+        "projectType",
+        "budgetAmount",
+        "defaultWIPAccountId",
+        "defaultCloseAccountId",
+        "projectManagerId",
+        "organizationId",
+        "startDate"
+      ],
+      properties: {
+        projectId: { type: "string", description: "Optional project id; if omitted the system generates one" },
+        name: { type: "string", description: "Project name" },
+        description: { type: "string", description: "One-line project description" },
+        projectType: {
+          type: "string",
+          enum: ["Internal", "Capital", "Billable", "Service"],
+          description: "Project classification"
+        },
+        customerId: { type: "string", description: "Optional customer reference" },
+        contractId: { type: "string", description: "Optional contract reference" },
+        wbsId: { type: "string", description: "Optional work breakdown structure reference" },
+        budgetAmount: { type: "number", description: "Total budget amount for the project" },
+        defaultWIPAccountId: {
+          type: "string",
+          description: "Default WIP GL account",
+          "x-lookup": "query/r2r_account"
+        },
+        defaultCloseAccountId: {
+          type: "string",
+          description: "Default close GL account",
+          "x-lookup": "query/r2r_account"
+        },
+        startDate: { type: "string", description: "Project start date (YYYY-MM-DD)" },
+        endDate: { type: "string", description: "Optional project end date (YYYY-MM-DD)" },
+        projectManagerId: {
+          type: "string",
+          description: "Project manager employee id",
+          "x-lookup": "query/h2r_employee"
+        },
+        organizationId: {
+          type: "string",
+          description: "Owning inventory organization",
+          "x-lookup": "query/inv_organization"
+        }
+      }
+    }
+  },
   { id: "proj_list_projects", entity: "Project", domain: "proj", aggregateType: "project", action: "list_projects", operationType: "query", description: "List projects", riskLevel: "Low", governanceTag: "PROJ.Project.List" },
   { id: "proj_get_project", entity: "Project", domain: "proj", aggregateType: "project", action: "get_project", operationType: "query", description: "Get project by ID", riskLevel: "Low", governanceTag: "PROJ.Project.Get" },
   { id: "proj_activate_project", entity: "Project", domain: "proj", aggregateType: "project", action: "activate", operationType: "transition", description: "Activate Draft project", riskLevel: "Medium", governanceTag: "PROJ.Project.Activate" },
