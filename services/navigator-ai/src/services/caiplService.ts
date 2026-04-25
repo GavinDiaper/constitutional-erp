@@ -4,6 +4,8 @@ import { loadConfig } from "../config/env";
 import { LlmClient } from "../llm/types";
 import {
   CaiplArtefact,
+  CaiplCollectionState,
+  CaiplCollectionSlot,
   CaiplCreateSessionResponse,
   CaiplDecisionPoint,
   CaiplDecisionResolveResponse,
@@ -83,6 +85,72 @@ interface LinaInteractionContext {
   roleContext?: string;
   mode?: LinaMode;
 }
+
+type CollectionDomain = "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "proj";
+
+interface CollectionFieldDefinition {
+  id: string;
+  label: string;
+  type: "string" | "number" | "date" | "enum" | "entityRef";
+  required: boolean;
+  options?: string[];
+}
+
+interface CollectionOperationDefinition {
+  operation: string;
+  domain: CollectionDomain;
+  label: string;
+  fields: CollectionFieldDefinition[];
+}
+
+const COLLECTION_OPERATIONS: Record<string, CollectionOperationDefinition> = {
+  proj_create_project: {
+    operation: "proj_create_project",
+    domain: "proj",
+    label: "Project Creation",
+    fields: [
+      { id: "name", label: "Project Name", type: "string", required: true },
+      { id: "description", label: "Description", type: "string", required: false },
+      {
+        id: "projectType",
+        label: "Project Type",
+        type: "enum",
+        required: true,
+        options: ["Internal", "Capital", "Billable", "Service"]
+      },
+      { id: "budgetAmount", label: "Budget Amount", type: "number", required: true },
+      { id: "defaultWIPAccountId", label: "Default WIP Account", type: "string", required: true },
+      { id: "defaultCloseAccountId", label: "Default Close Account", type: "string", required: true },
+      { id: "projectManagerId", label: "Project Manager ID", type: "string", required: true },
+      { id: "organizationId", label: "Organization ID", type: "string", required: true },
+      { id: "startDate", label: "Start Date", type: "date", required: true },
+      { id: "endDate", label: "End Date", type: "date", required: false }
+    ]
+  },
+  p2p_create_requisition: {
+    operation: "p2p_create_requisition",
+    domain: "p2p",
+    label: "Requisition Creation",
+    fields: [
+      { id: "requester", label: "Requester", type: "string", required: true },
+      { id: "department", label: "Department", type: "string", required: true },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "neededByDate", label: "Needed By Date", type: "date", required: true },
+      { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true }
+    ]
+  },
+  o2c_create_quote: {
+    operation: "o2c_create_quote",
+    domain: "o2c",
+    label: "Quote Creation",
+    fields: [
+      { id: "customerId", label: "Customer ID", type: "string", required: true },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true },
+      { id: "projectId", label: "Project ID", type: "string", required: false }
+    ]
+  }
+};
 
 function purchaseOrderInputSchema() {
   return {
@@ -258,6 +326,149 @@ function extractPurchaseOrderProposal(messageText: string): PurchaseOrderProposa
     unitPrice,
     currencyCode: (currencyMatch?.[1] ?? "AED").toUpperCase(),
     deliveryAddress: addressMatch?.[1]?.trim() || "TBD"
+  };
+}
+
+function inferCollectionOperation(messageText: string, context: LinaInteractionContext): CollectionOperationDefinition | undefined {
+  const text = messageText.toLowerCase();
+
+  if (context.mode === "create" && /project\b/.test(text)) {
+    return COLLECTION_OPERATIONS["proj_create_project"];
+  }
+
+  if (/requisition\b|purchase\s+request/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_requisition"];
+  }
+
+  if (/quote\b|sales\s+quote/.test(text)) {
+    return COLLECTION_OPERATIONS["o2c_create_quote"];
+  }
+
+  return undefined;
+}
+
+function readFirstMatch(pattern: RegExp, text: string): string | undefined {
+  const match = text.match(pattern);
+  return match?.[1]?.trim();
+}
+
+function extractFieldValue(fieldId: string, text: string): unknown {
+  switch (fieldId) {
+    case "name":
+      return readFirstMatch(/project\s+name\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "description":
+      return readFirstMatch(/description\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "projectType": {
+      const value = readFirstMatch(/project\s*type\s*[:=\-]?\s*(internal|capital|billable|service)/i, text);
+      return value ? value[0].toUpperCase() + value.slice(1).toLowerCase() : undefined;
+    }
+    case "budgetAmount": {
+      const value = readFirstMatch(/budget\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i, text);
+      return value ? Number(value) : undefined;
+    }
+    case "defaultWIPAccountId":
+      return readFirstMatch(/wip\s+account\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "defaultCloseAccountId":
+      return readFirstMatch(/close\s+account\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "projectManagerId":
+      return readFirstMatch(/project\s+manager\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9@._-]+)/i, text);
+    case "organizationId":
+      return readFirstMatch(/organization\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "startDate":
+      return readFirstMatch(/start\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "endDate":
+      return readFirstMatch(/end\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "requester":
+      return readFirstMatch(/requester\s*[:=\-]?\s*([^\n\r,]+)/i, text);
+    case "department":
+      return readFirstMatch(/department\s*[:=\-]?\s*([^\n\r,]+)/i, text);
+    case "currencyCode": {
+      const code = readFirstMatch(/\b(AED|USD|EUR|GBP|SAR|QAR)\b/i, text);
+      return code?.toUpperCase();
+    }
+    case "neededByDate":
+      return readFirstMatch(/needed\s+by\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "legalEntityId":
+      return readFirstMatch(/legal\s+entity\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "customerId":
+      return readFirstMatch(/customer\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "projectId":
+      return readFirstMatch(/project\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    default:
+      return undefined;
+  }
+}
+
+function hasValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  return true;
+}
+
+function buildCollectionState(
+  operation: CollectionOperationDefinition,
+  mergedValues: Record<string, unknown>
+): CaiplCollectionState {
+  const slots: CaiplCollectionSlot[] = operation.fields.map((field) => {
+    const value = mergedValues[field.id];
+    const known = hasValue(value);
+    return {
+      fieldId: field.id,
+      label: field.label,
+      type: field.type,
+      required: field.required,
+      status: known ? "known" : "missing",
+      value,
+      source: known ? "user" : undefined
+    };
+  });
+
+  const requiredFields = slots.filter((slot) => slot.required).map((slot) => slot.fieldId);
+  const resolvedFields = slots.filter((slot) => slot.status !== "missing").map((slot) => slot.fieldId);
+  const missingFields = slots.filter((slot) => slot.required && slot.status === "missing").map((slot) => slot.fieldId);
+
+  return {
+    domain: operation.domain,
+    operation: operation.operation,
+    requiredFields,
+    resolvedFields,
+    missingFields,
+    slots
+  };
+}
+
+function buildCollectionDecisionOption(operation: CollectionOperationDefinition, collectionState: CaiplCollectionState): CaiplDecisionPoint["options"][number] {
+  const missingSlots = collectionState.slots.filter((slot) => slot.required && slot.status === "missing");
+
+  return {
+    id: `collect-${operation.operation}`,
+    label: `Continue ${operation.label}`,
+    description:
+      missingSlots.length > 0
+        ? `Resolved ${collectionState.resolvedFields.length}/${collectionState.requiredFields.length} required fields. Provide the remaining required inputs.`
+        : `All required fields are collected for ${operation.label}. Confirm to proceed to draft preparation.`,
+    actionPayload: {
+      operation: "collect_fields",
+      targetOperation: operation.operation,
+      domain: operation.domain
+    },
+    inputSchema: {
+      fields: missingSlots.map((slot) => ({
+        id: slot.fieldId,
+        label: slot.label,
+        type: slot.type,
+        required: true,
+        options:
+          slot.type === "enum"
+            ? operation.fields.find((field) => field.id === slot.fieldId)?.options
+            : undefined
+      }))
+    },
+    collectionState
   };
 }
 
@@ -641,8 +852,21 @@ export class CaiplService {
       roleContext: input.roleContext,
       mode: input.mode
     });
+    const inferredCollectionOperation = inferCollectionOperation(input.messageText, interactionContext);
 
     const assistant = await this.generateAssistantResponse(record, input.messageText, interactionContext);
+
+    let collectionState: CaiplCollectionState | undefined;
+    let collectionValues: Record<string, unknown> | undefined;
+    if (inferredCollectionOperation) {
+      const previousValues = this.readLatestCollectionValues(record, inferredCollectionOperation.operation);
+      const extractedValues = this.extractCollectionValuesFromMessage(inferredCollectionOperation, input.messageText);
+      collectionValues = {
+        ...previousValues,
+        ...extractedValues
+      };
+      collectionState = buildCollectionState(inferredCollectionOperation, collectionValues);
+    }
 
     const aiTurn: CaiplInteractionTurn = {
       id: randomUUID(),
@@ -673,6 +897,24 @@ export class CaiplService {
       },
       linkedNodeId
     };
+    const collectionStateArtefact: CaiplArtefact | null =
+      collectionState && collectionValues
+        ? {
+            id: randomUUID(),
+            type: "note",
+            content: {
+              type: "field_collection_state",
+              domain: collectionState.domain,
+              operation: collectionState.operation,
+              requiredFields: collectionState.requiredFields,
+              resolvedFields: collectionState.resolvedFields,
+              missingFields: collectionState.missingFields,
+              slots: collectionState.slots,
+              values: collectionValues
+            },
+            linkedNodeId
+          }
+        : null;
 
     const poProposal = extractPurchaseOrderProposal(input.messageText);
     const activeDecision = record.decisions.find((item) => item.status === "pending");
@@ -688,6 +930,8 @@ export class CaiplService {
             poProposal,
             assistant.decisionDescription ?? "Proceed with purchase order preparation."
           )
+        : collectionState && inferredCollectionOperation
+          ? [buildCollectionDecisionOption(inferredCollectionOperation, collectionState)]
         : [
             {
               id: "confirm-next-step",
@@ -711,7 +955,10 @@ export class CaiplService {
       createdDecisionNode = {
         id: decisionNodeId,
         type: "decision",
-        label: "Confirm next action",
+        label:
+          collectionState && inferredCollectionOperation
+            ? `Collect inputs: ${inferredCollectionOperation.label}`
+            : "Confirm next action",
         metadata: { decisionId },
         status: "pending"
       };
@@ -729,6 +976,9 @@ export class CaiplService {
       const existingExecuteOption = activeDecision.options.find(
         (option) => option.actionPayload["operation"] === "execute_purchase_order"
       );
+      const existingCollectionOption = activeDecision.options.find(
+        (option) => option.actionPayload["operation"] === "collect_fields"
+      );
 
       if (poProposal && existingExecuteOption) {
         existingExecuteOption.description = assistant.decisionDescription;
@@ -742,6 +992,12 @@ export class CaiplService {
           currencyCode: poProposal.currencyCode,
           deliveryAddress: poProposal.deliveryAddress
         };
+      } else if (collectionState && inferredCollectionOperation && existingCollectionOption) {
+        const refreshedOption = buildCollectionDecisionOption(inferredCollectionOperation, collectionState);
+        existingCollectionOption.description = refreshedOption.description;
+        existingCollectionOption.inputSchema = refreshedOption.inputSchema;
+        existingCollectionOption.actionPayload = refreshedOption.actionPayload;
+        existingCollectionOption.collectionState = refreshedOption.collectionState;
       } else {
         activeDecision.options[0] = {
           ...activeDecision.options[0],
@@ -860,12 +1116,33 @@ export class CaiplService {
         now,
         now
       );
+
+      if (collectionStateArtefact) {
+        const serializedCollectionContent = serializeArtefactContent(collectionStateArtefact.content);
+        db.prepare(
+          `INSERT INTO caipl_notebook_artefact(
+            id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          collectionStateArtefact.id,
+          sessionId,
+          collectionStateArtefact.type,
+          serializedCollectionContent.contentJson,
+          serializedCollectionContent.contentText,
+          collectionStateArtefact.linkedNodeId,
+          now,
+          now
+        );
+      }
     });
 
     write();
 
     record.turns.push(userTurn, aiTurn);
     record.notebook.push(notebookArtefact);
+    if (collectionStateArtefact) {
+      record.notebook.push(collectionStateArtefact);
+    }
     if (createdDecision) {
       record.decisions.push(createdDecision);
     }
@@ -891,7 +1168,7 @@ export class CaiplService {
       decisionPoints: record.decisions,
       graphDelta,
       notebookDelta: {
-        added: [notebookArtefact],
+        added: collectionStateArtefact ? [notebookArtefact, collectionStateArtefact] : [notebookArtefact],
         updated: [],
         removed: []
       },
@@ -955,13 +1232,46 @@ export class CaiplService {
       selectedOption && typeof selectedOption.actionPayload["operation"] === "string"
         ? selectedOption.actionPayload["operation"]
         : "execute_manual";
-    const decisionSummary = this.summarizeDecisionOption(selectedOption);
+    let decisionSummary = this.summarizeDecisionOption(selectedOption);
 
     let executionReceipt: ExecutionReceiptSummary | null = null;
     let executionError: string | null = null;
+    let resolvedCollectionState: CaiplCollectionState | null = null;
     if (input.action === "confirm") {
       const payload = { ...(selectedOption?.actionPayload ?? {}), ...(input.formInput ?? {}) };
-      if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
+      if (payload && typeof payload === "object" && payload["operation"] === "collect_fields") {
+        const targetOperation =
+          typeof payload["targetOperation"] === "string" ? payload["targetOperation"] : undefined;
+        const operationDef = targetOperation ? COLLECTION_OPERATIONS[targetOperation] : undefined;
+        if (operationDef) {
+          const previousValues = this.readLatestCollectionValues(record, operationDef.operation);
+          const mergedValues = {
+            ...previousValues,
+            ...(input.formInput ?? {})
+          };
+          const nextCollectionOption = buildCollectionDecisionOption(
+            operationDef,
+            buildCollectionState(operationDef, mergedValues)
+          );
+          resolvedCollectionState = nextCollectionOption.collectionState ?? null;
+          if (selectedOption) {
+            selectedOption.description = nextCollectionOption.description;
+            selectedOption.inputSchema = nextCollectionOption.inputSchema;
+            selectedOption.actionPayload = nextCollectionOption.actionPayload;
+            selectedOption.collectionState = nextCollectionOption.collectionState;
+          }
+
+          if (resolvedCollectionState && resolvedCollectionState.missingFields.length > 0) {
+            newStatus = "pending";
+            decisionSummary = `collect ${resolvedCollectionState.missingFields.length} remaining required field(s) for ${operationDef.label}`;
+          } else {
+            newStatus = "resolved";
+            decisionSummary = `field collection completed for ${operationDef.label}`;
+          }
+        } else {
+          newStatus = "resolved";
+        }
+      } else if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
         const proposal = payload as unknown as PurchaseOrderProposal;
         try {
           executionReceipt = await this.executePurchaseOrderProposal(proposal, input.actorId);
@@ -996,6 +1306,29 @@ export class CaiplService {
       },
       linkedNodeId
     };
+
+    const collectionStateArtefact: CaiplArtefact | null =
+      resolvedCollectionState && input.action === "confirm"
+        ? {
+            id: randomUUID(),
+            type: "note",
+            content: {
+              type: "field_collection_state",
+              domain: resolvedCollectionState.domain,
+              operation: resolvedCollectionState.operation,
+              requiredFields: resolvedCollectionState.requiredFields,
+              resolvedFields: resolvedCollectionState.resolvedFields,
+              missingFields: resolvedCollectionState.missingFields,
+              slots: resolvedCollectionState.slots,
+              values: Object.fromEntries(
+                resolvedCollectionState.slots
+                  .filter((slot) => slot.status !== "missing")
+                  .map((slot) => [slot.fieldId, slot.value])
+              )
+            },
+            linkedNodeId
+          }
+        : null;
 
     const executionReceiptArtefact: CaiplArtefact | null = executionReceipt
       ? {
@@ -1070,9 +1403,9 @@ export class CaiplService {
     const write = db.transaction(() => {
       db.prepare(
         `UPDATE caipl_decision
-         SET status = ?, resolved_by = ?, resolved_at = ?, version = ?, updated_at = ?
+         SET status = ?, resolved_by = ?, resolved_at = ?, version = ?, options_json = ?, updated_at = ?
          WHERE id = ?`
-      ).run(newStatus, resolvedBy, resolvedAt, nextDecisionVersion, now, decision.id);
+      ).run(newStatus, resolvedBy, resolvedAt, nextDecisionVersion, JSON.stringify(decision.options), now, decision.id);
 
       db.prepare(
         `INSERT INTO caipl_turn(
@@ -1139,6 +1472,24 @@ export class CaiplService {
         now
       );
 
+      if (collectionStateArtefact) {
+        const serializedCollectionContent = serializeArtefactContent(collectionStateArtefact.content);
+        db.prepare(
+          `INSERT INTO caipl_notebook_artefact(
+            id, session_id, artefact_type, content_json, content_text, linked_node_id, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          collectionStateArtefact.id,
+          record.session.id,
+          collectionStateArtefact.type,
+          serializedCollectionContent.contentJson,
+          serializedCollectionContent.contentText,
+          collectionStateArtefact.linkedNodeId,
+          now,
+          now
+        );
+      }
+
       if (executionReceiptArtefact) {
         const serializedExecutionReceiptContent = serializeArtefactContent(executionReceiptArtefact.content);
         db.prepare(
@@ -1169,6 +1520,9 @@ export class CaiplService {
     record.session.version = nextSessionVersion;
     record.turns.push(decisionTurn, aiFollowupTurn);
     record.notebook.push(notebookArtefact);
+    if (collectionStateArtefact) {
+      record.notebook.push(collectionStateArtefact);
+    }
     if (executionReceiptArtefact) {
       record.notebook.push(executionReceiptArtefact);
     }
@@ -1177,7 +1531,13 @@ export class CaiplService {
       updatedDecision: decision,
       graphDelta,
       notebookDelta: {
-        added: executionReceiptArtefact ? [notebookArtefact, executionReceiptArtefact] : [notebookArtefact],
+        added: executionReceiptArtefact
+          ? collectionStateArtefact
+            ? [notebookArtefact, collectionStateArtefact, executionReceiptArtefact]
+            : [notebookArtefact, executionReceiptArtefact]
+          : collectionStateArtefact
+            ? [notebookArtefact, collectionStateArtefact]
+            : [notebookArtefact],
         updated: [],
         removed: []
       },
@@ -1389,6 +1749,43 @@ export class CaiplService {
 
     const parsed = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
     return parsed.length > 0 ? parsed : undefined;
+  }
+
+  private readLatestCollectionValues(record: CaiplSessionRecord, targetOperation: string): Record<string, unknown> {
+    const notes = [...record.notebook].reverse();
+    for (const artefact of notes) {
+      if (!artefact.content || typeof artefact.content !== "object" || Array.isArray(artefact.content)) {
+        continue;
+      }
+
+      const content = artefact.content as Record<string, unknown>;
+      if (content["type"] !== "field_collection_state") {
+        continue;
+      }
+
+      if (content["operation"] !== targetOperation) {
+        continue;
+      }
+
+      const values = content["values"];
+      if (values && typeof values === "object" && !Array.isArray(values)) {
+        return values as Record<string, unknown>;
+      }
+    }
+
+    return {};
+  }
+
+  private extractCollectionValuesFromMessage(operation: CollectionOperationDefinition, messageText: string): Record<string, unknown> {
+    const values: Record<string, unknown> = {};
+    for (const field of operation.fields) {
+      const extracted = extractFieldValue(field.id, messageText);
+      if (hasValue(extracted)) {
+        values[field.id] = extracted;
+      }
+    }
+
+    return values;
   }
 
   private extractContextFromNodeMetadata(metadata?: Record<string, unknown>): LinaInteractionContext {

@@ -41,6 +41,7 @@
 
 					<div class="mt-2 flex flex-wrap gap-2">
 						{#each decision.options as option (option.id)}
+							{@const collectionState = option.collectionState}
 							<button
 								type="button"
 								class="btn-ghost rounded px-2 py-1 text-xs"
@@ -48,6 +49,9 @@
 								on:click={() => selectOption(decision.id, option.id)}
 							>
 								{option.label}
+								{#if collectionState}
+									<span class="ml-1 ui-muted">({collectionState.resolvedFields.length}/{collectionState.requiredFields.length})</span>
+								{/if}
 							</button>
 						{/each}
 					</div>

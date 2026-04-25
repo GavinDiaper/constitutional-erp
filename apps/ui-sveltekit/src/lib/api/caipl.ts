@@ -45,12 +45,34 @@ export interface CaiplInputSchema {
 	fields: CaiplInputSchemaField[];
 }
 
+export type CaiplSlotStatus = 'known' | 'auto_filled' | 'missing';
+
+export interface CaiplCollectionSlot {
+	fieldId: string;
+	label: string;
+	type: CaiplInputSchemaField['type'];
+	required: boolean;
+	status: CaiplSlotStatus;
+	value?: unknown;
+	source?: 'user' | 'lookup' | 'system';
+}
+
+export interface CaiplCollectionState {
+	domain: 'o2c' | 'p2p' | 'r2r' | 'h2r' | 'inv' | 'proj';
+	operation: string;
+	requiredFields: string[];
+	resolvedFields: string[];
+	missingFields: string[];
+	slots: CaiplCollectionSlot[];
+}
+
 export interface CaiplDecisionOption {
 	id: string;
 	label: string;
 	description: string;
 	actionPayload: Record<string, unknown>;
 	inputSchema: CaiplInputSchema;
+	collectionState?: CaiplCollectionState;
 }
 
 export interface CaiplDecisionPoint {
