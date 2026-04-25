@@ -20,6 +20,11 @@ export interface LinaActionOption {
 
 export const LINA_ROLE_OPTIONS: LinaRoleOption[] = [
 	{
+		id: 'o2c_operator',
+		label: 'O2C Operator',
+		description: 'Handle customers, quotes, orders, invoices, and AR collections.'
+	},
+	{
 		id: 'project_manager',
 		label: 'Project Manager',
 		description: 'Drive delivery, approvals, and milestone planning.'

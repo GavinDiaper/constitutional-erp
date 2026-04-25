@@ -86,7 +86,10 @@
 			}))
 		);
 
-		actionOptions = decisionActionOptions.length > 0 ? decisionActionOptions : fallbackActionsForMode(selectedModeId);
+		actionOptions =
+			decisionActionOptions.length > 0
+				? decisionActionOptions
+				: fallbackActionsForModeAndRole(selectedModeId, selectedRoleId);
 		setLinaActions(actionOptions);
 		if (!currentActionId || !actionOptions.some((item) => item.id === currentActionId)) {
 			currentActionId = actionOptions[0]?.id ?? null;
@@ -175,29 +178,95 @@
 		}
 	}
 
-	function fallbackActionsForMode(mode: LinaMode): LinaActionOption[] {
+	function fallbackActionsForModeAndRole(mode: LinaMode, roleId: string): LinaActionOption[] {
+		const roleCreateActions: Record<string, LinaActionOption[]> = {
+			o2c_operator: [
+				{ id: 'create_customer', label: 'Create Customer', description: 'Create a customer profile for O2C.' },
+				{ id: 'create_quote', label: 'Create Quote', description: 'Prepare a sales quote with customer context.' },
+				{ id: 'register_ar_payment', label: 'Register AR Payment', description: 'Record incoming customer payment.' }
+			],
+			buyer: [
+				{ id: 'create_requisition', label: 'Create Requisition', description: 'Start procurement request flow.' },
+				{ id: 'create_purchase_order', label: 'Create Purchase Order', description: 'Draft a PO for supplier fulfillment.' },
+				{ id: 'create_supplier', label: 'Create Supplier', description: 'Onboard a new supplier for P2P.' }
+			],
+			accountant: [
+				{ id: 'create_journal', label: 'Create Journal', description: 'Draft a manual journal entry.' },
+				{ id: 'start_period_close', label: 'Start Period Close', description: 'Begin period close checks and reconciliations.' },
+				{ id: 'review_trial_balance', label: 'Review Trial Balance', description: 'Inspect current trial balance state.' }
+			],
+			warehouse: [
+				{ id: 'create_goods_receipt', label: 'Create Goods Receipt', description: 'Record received goods against PO.' },
+				{ id: 'post_inventory_movement', label: 'Post Inventory Movement', description: 'Register inventory issue/receipt movement.' },
+				{ id: 'create_cycle_count', label: 'Create Cycle Count', description: 'Start stock-count verification workflow.' }
+			],
+			hr: [
+				{ id: 'create_employee', label: 'Create Employee', description: 'Create a new employee profile.' },
+				{ id: 'create_assignment', label: 'Create Assignment', description: 'Assign employee to position/workflow.' },
+				{ id: 'issue_credential', label: 'Issue Credential', description: 'Issue access credential to employee.' }
+			],
+			project_manager: [
+				{ id: 'create_project', label: 'Create Project', description: 'Start a new project context.' },
+				{ id: 'assign_project_bom', label: 'Assign Project BOM', description: 'Attach BOM to project plan.' },
+				{ id: 'post_project_labor', label: 'Post Project Labor', description: 'Capture labor cost into project WIP.' }
+			],
+			admin: [
+				{ id: 'create_legal_entity', label: 'Create Legal Entity', description: 'Define legal entity for operations.' },
+				{ id: 'create_inventory_org', label: 'Create Inventory Organization', description: 'Create organization/warehouse scope.' },
+				{ id: 'create_authority_rule', label: 'Create Authority Rule', description: 'Define governance and approval policy.' }
+			]
+		};
+
+		const roleSelectActions: Record<string, LinaActionOption[]> = {
+			o2c_operator: [
+				{ id: 'select_quote', label: 'Select Quote', description: 'Focus a quote for conversion or update.' },
+				{ id: 'select_sales_order', label: 'Select Sales Order', description: 'Inspect order status and next action.' }
+			],
+			buyer: [
+				{ id: 'select_requisition', label: 'Select Requisition', description: 'Open requisition for review.' },
+				{ id: 'select_purchase_order', label: 'Select Purchase Order', description: 'Inspect PO progression.' }
+			],
+			accountant: [
+				{ id: 'select_journal', label: 'Select Journal', description: 'Inspect journal and posting readiness.' },
+				{ id: 'select_fiscal_period', label: 'Select Fiscal Period', description: 'Inspect close status by period.' }
+			],
+			warehouse: [
+				{ id: 'select_inventory_item', label: 'Select Inventory Item', description: 'Inspect stock and movement history.' },
+				{ id: 'select_goods_receipt', label: 'Select Goods Receipt', description: 'Inspect receipt exceptions and acceptance.' }
+			],
+			hr: [
+				{ id: 'select_employee', label: 'Select Employee', description: 'Inspect employee status and assignments.' },
+				{ id: 'select_assignment', label: 'Select Assignment', description: 'Inspect current assignment lifecycle.' }
+			],
+			project_manager: [
+				{ id: 'select_project', label: 'Select Project', description: 'Focus an existing project.' },
+				{ id: 'select_project_wip', label: 'Select Project WIP', description: 'Inspect project WIP balances.' }
+			],
+			admin: [
+				{ id: 'select_policy', label: 'Select Policy', description: 'Inspect governance policy nodes.' },
+				{ id: 'select_system_entity', label: 'Select System Entity', description: 'Inspect configuration entities.' }
+			]
+		};
+
 		switch (mode) {
 			case 'create':
-				return [
-					{ id: 'create_project', label: 'Create Project', description: 'Start a new project context.' },
-					{ id: 'create_purchase_order', label: 'Create Purchase Order', description: 'Draft a PO proposal.' }
-				];
+				return roleCreateActions[roleId] ?? roleCreateActions.project_manager;
 			case 'select':
-				return [
-					{ id: 'select_project', label: 'Select Project', description: 'Focus an existing project.' },
-					{ id: 'select_inventory_item', label: 'Select Inventory Item', description: 'Inspect stock item state.' }
-				];
+				return roleSelectActions[roleId] ?? roleSelectActions.project_manager;
 			case 'investigate':
 				return [
-					{ id: 'investigate_blocker', label: 'Investigate Blocker', description: 'Trace dependencies and causes.' }
+					{ id: 'investigate_blocker', label: 'Investigate Blocker', description: 'Trace dependencies and causes.' },
+					{ id: 'investigate_data_gap', label: 'Investigate Data Gap', description: 'Identify missing or inconsistent slot values.' }
 				];
 			case 'fix':
 				return [
-					{ id: 'fix_exception', label: 'Fix Exception', description: 'Resolve pending or failed decision.' }
+					{ id: 'fix_exception', label: 'Fix Exception', description: 'Resolve pending or failed decision.' },
+					{ id: 'fix_field_mapping', label: 'Fix Field Mapping', description: 'Correct mapping/default mismatch before execution.' }
 				];
 			case 'advance':
 				return [
-					{ id: 'advance_workflow', label: 'Advance Workflow', description: 'Move to next actionable step.' }
+					{ id: 'advance_workflow', label: 'Advance Workflow', description: 'Move to next actionable step.' },
+					{ id: 'advance_with_lookup', label: 'Advance With Lookup', description: 'Advance using lookup-complete data set.' }
 				];
 			default:
 				return [];
