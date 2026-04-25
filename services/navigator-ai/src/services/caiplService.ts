@@ -88,6 +88,7 @@ interface CollectionLookupEnrichment {
   values: Record<string, unknown>;
   autoFilledFieldIds: Set<string>;
   fieldOptions: CollectionFieldOptions;
+  promptSuggestions: Partial<Record<string, string[]>>;
 }
 
 type VersionMismatchResult = {
@@ -799,7 +800,8 @@ function buildExecuteCollectionOption(
 
 function buildCollectionAssistantResponse(
   operation: CollectionOperationDefinition,
-  collectionState: CaiplCollectionState
+  collectionState: CaiplCollectionState,
+  promptSuggestions: Partial<Record<string, string[]>> = {}
 ): string {
   const missingSlots = collectionState.slots.filter((slot) => slot.required && slot.status === "missing");
   const autoFilledSlots = collectionState.slots.filter((slot) => slot.status === "auto_filled");
@@ -813,8 +815,20 @@ function buildCollectionAssistantResponse(
     autoFilledSlots.length > 0
       ? ` Auto-filled defaults: ${autoFilledSlots.map((slot) => slot.label).join(", ")}.`
       : "";
+  const suggestionTexts = missingSlots
+    .map((slot) => {
+      const suggestions = promptSuggestions[slot.fieldId];
+      if (!suggestions || suggestions.length === 0) {
+        return null;
+      }
 
-  return `I aligned this to the ${operation.label} manual create form and need: ${missingLabels}.${autofillText}`;
+      return `${slot.label}: ${suggestions.join("; ")}`;
+    })
+    .filter((item): item is string => typeof item === "string");
+  const suggestionText =
+    suggestionTexts.length > 0 ? ` Suggested values: ${suggestionTexts.join(" | ")}.` : "";
+
+  return `I aligned this to the ${operation.label} manual create form and need: ${missingLabels}.${autofillText}${suggestionText}`;
 }
 
 function extractRecord(value: unknown): Record<string, unknown> | null {
@@ -962,7 +976,8 @@ export class CaiplService {
       return {
         values,
         autoFilledFieldIds: new Set(),
-        fieldOptions: {}
+        fieldOptions: {},
+        promptSuggestions: {}
       };
     }
 
@@ -971,7 +986,8 @@ export class CaiplService {
       return {
         values,
         autoFilledFieldIds: new Set(),
-        fieldOptions: {}
+        fieldOptions: {},
+        promptSuggestions: {}
       };
     }
 
@@ -987,6 +1003,11 @@ export class CaiplService {
       autoFilledFieldIds,
       fieldOptions: {
         organizationId: organizations.map((item) => item.id)
+      },
+      promptSuggestions: {
+        organizationId: organizations.slice(0, 5).map((item) =>
+          item.name && item.name.trim().length > 0 ? `${item.id} (${item.name})` : item.id
+        )
       }
     };
   }
@@ -1441,6 +1462,7 @@ export class CaiplService {
     let collectionState: CaiplCollectionState | undefined;
     let collectionValues: Record<string, unknown> | undefined;
     let collectionFieldOptions: CollectionFieldOptions = {};
+    let collectionPromptSuggestions: Partial<Record<string, string[]>> = {};
     let lookupAutoFilledFieldIds = new Set<string>();
     if (inferredCollectionOperation) {
       const defaults = defaultCollectionValues(inferredCollectionOperation, record.session.userId);
@@ -1458,6 +1480,7 @@ export class CaiplService {
       );
       collectionValues = lookupEnrichment.values;
       collectionFieldOptions = lookupEnrichment.fieldOptions;
+      collectionPromptSuggestions = lookupEnrichment.promptSuggestions;
       lookupAutoFilledFieldIds = lookupEnrichment.autoFilledFieldIds;
       const autoFilledFieldIds = new Set(
         Object.keys(defaults).filter(
@@ -1475,7 +1498,11 @@ export class CaiplService {
       );
       assistant = {
         ...assistant,
-        response: buildCollectionAssistantResponse(inferredCollectionOperation, collectionState),
+        response: buildCollectionAssistantResponse(
+          inferredCollectionOperation,
+          collectionState,
+          collectionPromptSuggestions
+        ),
         collectionHints: {
           requiredFields: collectionState.requiredFields,
           resolvedFields: collectionState.resolvedFields,
