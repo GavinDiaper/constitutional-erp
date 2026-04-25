@@ -77,6 +77,19 @@ interface PurchaseOrderProposal {
   deliveryAddress: string;
 }
 
+interface OrganizationLookupItem {
+  id: string;
+  name?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface CollectionLookupEnrichment {
+  values: Record<string, unknown>;
+  autoFilledFieldIds: Set<string>;
+  fieldOptions: CollectionFieldOptions;
+}
+
 type VersionMismatchResult = {
   conflict: CaiplVersionMismatch;
 };
@@ -102,6 +115,8 @@ interface CollectionOperationDefinition {
   label: string;
   fields: CollectionFieldDefinition[];
 }
+
+type CollectionFieldOptions = Partial<Record<string, Array<string | number>>>;
 
 const COLLECTION_OPERATIONS: Record<string, CollectionOperationDefinition> = {
   o2c_create_customer: {
@@ -260,7 +275,6 @@ function defaultCollectionValues(operation: CollectionOperationDefinition, userI
       budgetAmount: 10000,
       startDate: today,
       projectManagerId: userId || "principal.system",
-      organizationId: "Projects Default Organization",
       defaultWIPAccountId: "ACCT-WIP-001",
       defaultCloseAccountId: "ACCT-CLOSE-001"
     };
@@ -333,7 +347,8 @@ function defaultCollectionValues(operation: CollectionOperationDefinition, userI
 function buildCollectionState(
   operation: CollectionOperationDefinition,
   mergedValues: Record<string, unknown>,
-  autoFilledFieldIds: Set<string>
+  autoFilledFieldIds: Set<string>,
+  lookupAutoFilledFieldIds: Set<string> = new Set()
 ): CaiplCollectionState {
   const slots: CaiplCollectionSlot[] = operation.fields.map((field) => {
     const value = mergedValues[field.id];
@@ -346,7 +361,13 @@ function buildCollectionState(
       required: field.required,
       status: known ? (autoFilled ? "auto_filled" : "known") : "missing",
       value,
-      source: known ? (autoFilled ? "system" : "user") : undefined
+      source: known
+        ? autoFilled
+          ? lookupAutoFilledFieldIds.has(field.id)
+            ? "lookup"
+            : "system"
+          : "user"
+        : undefined
     };
   });
 
@@ -719,7 +740,11 @@ function hasValue(value: unknown): boolean {
 }
 
 
-function buildCollectionDecisionOption(operation: CollectionOperationDefinition, collectionState: CaiplCollectionState): CaiplDecisionPoint["options"][number] {
+function buildCollectionDecisionOption(
+  operation: CollectionOperationDefinition,
+  collectionState: CaiplCollectionState,
+  fieldOptions: CollectionFieldOptions = {}
+): CaiplDecisionPoint["options"][number] {
   const missingSlots = collectionState.slots.filter((slot) => slot.required && slot.status === "missing");
 
   return {
@@ -743,7 +768,7 @@ function buildCollectionDecisionOption(operation: CollectionOperationDefinition,
         options:
           slot.type === "enum"
             ? operation.fields.find((field) => field.id === slot.fieldId)?.options
-            : undefined
+            : fieldOptions[slot.fieldId]
       }))
     },
     collectionState
@@ -873,6 +898,98 @@ function toExecutionStatus(result: unknown): string {
 
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
+
+  private async listOrganizationLookups(actorId: string): Promise<OrganizationLookupItem[]> {
+    const baseUrl = normalizedBaseUrl(config.foundationErpUrl);
+    const headers: Record<string, string> = {
+      "x-api-key": config.foundationErpApiKey,
+      "x-actor-id": actorId,
+      "x-actor-type": actorId === "principal.system" ? "system" : "user",
+      "x-actor-tier": actorId === "principal.system" ? "5" : "2"
+    };
+    headers[config.foundationErpIngressIdHeader] = config.foundationErpIngressId;
+
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/query/inv_organization?limit=100&offset=0`, {
+        method: "GET",
+        headers
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const payload = (await response.json()) as { data?: Array<Record<string, unknown>> };
+      const rows = Array.isArray(payload.data) ? payload.data : [];
+      const organizations: OrganizationLookupItem[] = [];
+
+      for (const row of rows) {
+        const idCandidate = row["organization_id"] ?? row["organizationId"];
+        if (typeof idCandidate !== "string" || idCandidate.trim().length === 0) {
+          continue;
+        }
+
+        organizations.push({
+          id: idCandidate.trim(),
+          name: typeof row["name"] === "string" ? row["name"] : undefined,
+          createdAt: typeof row["created_at"] === "string" ? row["created_at"] : undefined,
+          updatedAt: typeof row["updated_at"] === "string" ? row["updated_at"] : undefined
+        });
+      }
+
+      organizations.sort((left, right) => {
+        const leftEpoch = Date.parse(left.updatedAt ?? left.createdAt ?? "");
+        const rightEpoch = Date.parse(right.updatedAt ?? right.createdAt ?? "");
+        if (Number.isFinite(leftEpoch) && Number.isFinite(rightEpoch)) {
+          return rightEpoch - leftEpoch;
+        }
+
+        return left.id.localeCompare(right.id);
+      });
+
+      return organizations;
+    } catch {
+      return [];
+    }
+  }
+
+  private async enrichCollectionValuesFromLookups(
+    operation: CollectionOperationDefinition,
+    values: Record<string, unknown>,
+    actorId: string
+  ): Promise<CollectionLookupEnrichment> {
+    if (operation.operation !== "proj_create_project") {
+      return {
+        values,
+        autoFilledFieldIds: new Set(),
+        fieldOptions: {}
+      };
+    }
+
+    const organizations = await this.listOrganizationLookups(actorId);
+    if (organizations.length === 0) {
+      return {
+        values,
+        autoFilledFieldIds: new Set(),
+        fieldOptions: {}
+      };
+    }
+
+    const nextValues = { ...values };
+    const autoFilledFieldIds = new Set<string>();
+    if (!hasValue(nextValues["organizationId"])) {
+      nextValues["organizationId"] = organizations[0].id;
+      autoFilledFieldIds.add("organizationId");
+    }
+
+    return {
+      values: nextValues,
+      autoFilledFieldIds,
+      fieldOptions: {
+        organizationId: organizations.map((item) => item.id)
+      }
+    };
+  }
 
   private summarizeDecisionOption(option: CaiplDecisionPoint["options"][number] | undefined): string {
     if (!option) {
@@ -1056,7 +1173,23 @@ export class CaiplService {
     });
 
     if (!response.ok) {
-      throw new Error(`${targetOperation} execution failed (${response.status})`);
+      let detail = "";
+      try {
+        const errorPayload = (await response.json()) as Record<string, unknown>;
+        const candidate =
+          errorPayload["detail"] ??
+          errorPayload["message"] ??
+          errorPayload["title"] ??
+          errorPayload["error"];
+
+        if (typeof candidate === "string" && candidate.trim().length > 0) {
+          detail = `: ${candidate.trim()}`;
+        }
+      } catch {
+        // Ignore parse failures and emit the status-only error message.
+      }
+
+      throw new Error(`${targetOperation} execution failed (${response.status})${detail}`);
     }
 
     const payload = (await response.json()) as Record<string, unknown>;
@@ -1307,21 +1440,39 @@ export class CaiplService {
 
     let collectionState: CaiplCollectionState | undefined;
     let collectionValues: Record<string, unknown> | undefined;
+    let collectionFieldOptions: CollectionFieldOptions = {};
+    let lookupAutoFilledFieldIds = new Set<string>();
     if (inferredCollectionOperation) {
       const defaults = defaultCollectionValues(inferredCollectionOperation, record.session.userId);
       const previousValues = this.readLatestCollectionValues(record, inferredCollectionOperation.operation);
       const extractedValues = this.extractCollectionValuesFromMessage(inferredCollectionOperation, input.messageText);
-      collectionValues = {
+      const mergedValues = {
         ...defaults,
         ...previousValues,
         ...extractedValues
       };
+      const lookupEnrichment = await this.enrichCollectionValuesFromLookups(
+        inferredCollectionOperation,
+        mergedValues,
+        record.session.userId
+      );
+      collectionValues = lookupEnrichment.values;
+      collectionFieldOptions = lookupEnrichment.fieldOptions;
+      lookupAutoFilledFieldIds = lookupEnrichment.autoFilledFieldIds;
       const autoFilledFieldIds = new Set(
         Object.keys(defaults).filter(
           (fieldId) => !hasValue(previousValues[fieldId]) && !hasValue(extractedValues[fieldId])
         )
       );
-      collectionState = buildCollectionState(inferredCollectionOperation, collectionValues, autoFilledFieldIds);
+      for (const fieldId of lookupAutoFilledFieldIds) {
+        autoFilledFieldIds.add(fieldId);
+      }
+      collectionState = buildCollectionState(
+        inferredCollectionOperation,
+        collectionValues,
+        autoFilledFieldIds,
+        lookupAutoFilledFieldIds
+      );
       assistant = {
         ...assistant,
         response: buildCollectionAssistantResponse(inferredCollectionOperation, collectionState),
@@ -1397,7 +1548,7 @@ export class CaiplService {
             assistant.decisionDescription ?? "Proceed with purchase order preparation."
           )
         : collectionState && inferredCollectionOperation
-          ? [buildCollectionDecisionOption(inferredCollectionOperation, collectionState)]
+          ? [buildCollectionDecisionOption(inferredCollectionOperation, collectionState, collectionFieldOptions)]
         : [
             {
               id: "confirm-next-step",
@@ -1459,13 +1610,19 @@ export class CaiplService {
           deliveryAddress: poProposal.deliveryAddress
         };
       } else if (collectionState && inferredCollectionOperation && existingCollectionOption) {
-        const refreshedOption = buildCollectionDecisionOption(inferredCollectionOperation, collectionState);
+        const refreshedOption = buildCollectionDecisionOption(
+          inferredCollectionOperation,
+          collectionState,
+          collectionFieldOptions
+        );
         existingCollectionOption.description = refreshedOption.description;
         existingCollectionOption.inputSchema = refreshedOption.inputSchema;
         existingCollectionOption.actionPayload = refreshedOption.actionPayload;
         existingCollectionOption.collectionState = refreshedOption.collectionState;
       } else if (collectionState && inferredCollectionOperation && !existingCollectionOption) {
-        activeDecision.options = [buildCollectionDecisionOption(inferredCollectionOperation, collectionState)];
+        activeDecision.options = [
+          buildCollectionDecisionOption(inferredCollectionOperation, collectionState, collectionFieldOptions)
+        ];
       } else {
         activeDecision.options[0] = {
           ...activeDecision.options[0],
@@ -1721,14 +1878,30 @@ export class CaiplService {
             ...previousValues,
             ...formValues
           };
+          const lookupEnrichment = await this.enrichCollectionValuesFromLookups(
+            operationDef,
+            mergedValues,
+            input.actorId
+          );
+          const enrichedValues = lookupEnrichment.values;
           const autoFilledFieldIds = new Set(
             Object.keys(defaults).filter(
               (fieldId) => !hasValue(previousValues[fieldId]) && !hasValue(formValues[fieldId])
             )
           );
+          for (const fieldId of lookupEnrichment.autoFilledFieldIds) {
+            autoFilledFieldIds.add(fieldId);
+          }
+          const nextCollectionState = buildCollectionState(
+            operationDef,
+            enrichedValues,
+            autoFilledFieldIds,
+            lookupEnrichment.autoFilledFieldIds
+          );
           const nextCollectionOption = buildCollectionDecisionOption(
             operationDef,
-            buildCollectionState(operationDef, mergedValues, autoFilledFieldIds)
+            nextCollectionState,
+            lookupEnrichment.fieldOptions
           );
           resolvedCollectionState = nextCollectionOption.collectionState ?? null;
           if (selectedOption) {
@@ -1742,7 +1915,7 @@ export class CaiplService {
             newStatus = "pending";
             decisionSummary = `collect ${resolvedCollectionState.missingFields.length} remaining required field(s) for ${operationDef.label}`;
           } else {
-            const executeOption = buildExecuteCollectionOption(operationDef, resolvedCollectionState, mergedValues);
+            const executeOption = buildExecuteCollectionOption(operationDef, resolvedCollectionState, enrichedValues);
             decision.options = [executeOption];
             selectedOperation = "execute_collection_operation";
             keepPendingForExecution = true;

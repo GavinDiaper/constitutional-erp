@@ -33,6 +33,21 @@ const STARTER_ACCOUNTS: Array<{ accountCode: string; accountName: string; accoun
   { accountCode: "SYS-510-EXP-OPEX", accountName: "Operating Expense", accountType: "Expense" }
 ];
 
+const LEGACY_PROJECT_ACCOUNTS: Array<{ accountId: string; accountCode: string; accountName: string; accountType: AccountType }> = [
+  {
+    accountId: "ACCT-WIP-001",
+    accountCode: "ACCT-WIP-001",
+    accountName: "Project WIP Clearing",
+    accountType: "Asset"
+  },
+  {
+    accountId: "ACCT-CLOSE-001",
+    accountCode: "ACCT-CLOSE-001",
+    accountName: "Project Close Expense",
+    accountType: "Expense"
+  }
+];
+
 const DEFAULT_SEEDED_LEDGER_ID = "LGR-SEED-US";
 
 function now(): string {
@@ -276,6 +291,11 @@ export function seedStarterAccounts() {
 
     for (const account of STARTER_ACCOUNTS) {
       insert.run(newId("ACC-"), account.accountCode, account.accountName, account.accountType, ledgerId, timestamp, timestamp);
+    }
+
+    // Keep legacy IDs available for existing automation and sample payloads.
+    for (const account of LEGACY_PROJECT_ACCOUNTS) {
+      insert.run(account.accountId, account.accountCode, account.accountName, account.accountType, ledgerId, timestamp, timestamp);
     }
   });
 }
