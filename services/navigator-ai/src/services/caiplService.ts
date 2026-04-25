@@ -104,27 +104,71 @@ interface CollectionOperationDefinition {
 }
 
 const COLLECTION_OPERATIONS: Record<string, CollectionOperationDefinition> = {
+  o2c_create_customer: {
+    operation: "o2c_create_customer",
+    domain: "o2c",
+    label: "Customer Creation",
+    fields: [
+      { id: "customerName", label: "Customer Name", type: "string", required: true },
+      { id: "email", label: "Email", type: "string", required: false },
+      { id: "billingAddress", label: "Billing Address", type: "string", required: false },
+      { id: "shippingAddress", label: "Shipping Address", type: "string", required: false }
+    ]
+  },
+  o2c_create_quote: {
+    operation: "o2c_create_quote",
+    domain: "o2c",
+    label: "Quote Creation",
+    fields: [
+      { id: "customerId", label: "Customer ID", type: "string", required: false },
+      { id: "customerName", label: "Customer Name", type: "string", required: false },
+      { id: "customerEmail", label: "Customer Email", type: "string", required: false },
+      { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true },
+      { id: "projectId", label: "Project ID", type: "string", required: false },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "lineSku", label: "Line SKU", type: "string", required: false },
+      { id: "lineQuantity", label: "Line Quantity", type: "number", required: false },
+      { id: "lineUnitPrice", label: "Line Unit Price", type: "number", required: false },
+      { id: "lineTaxTreatment", label: "Line Tax Treatment", type: "string", required: false }
+    ]
+  },
+  o2c_register_payment: {
+    operation: "o2c_register_payment",
+    domain: "o2c",
+    label: "AR Payment Registration",
+    fields: [
+      { id: "invoiceId", label: "Invoice ID", type: "string", required: true },
+      { id: "amount", label: "Amount", type: "number", required: true },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "method", label: "Method", type: "string", required: true },
+      { id: "paymentDate", label: "Payment Date", type: "date", required: false }
+    ]
+  },
+  p2p_create_supplier: {
+    operation: "p2p_create_supplier",
+    domain: "p2p",
+    label: "Supplier Creation",
+    fields: [
+      { id: "supplierName", label: "Supplier Name", type: "string", required: true },
+      { id: "email", label: "Email", type: "string", required: false },
+      { id: "paymentTerms", label: "Payment Terms", type: "string", required: false },
+      { id: "taxId", label: "Tax ID", type: "string", required: false },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true }
+    ]
+  },
   proj_create_project: {
     operation: "proj_create_project",
     domain: "proj",
     label: "Project Creation",
     fields: [
       { id: "name", label: "Project Name", type: "string", required: true },
+      { id: "projectType", label: "Project Type", type: "enum", required: true, options: ["Internal", "Capital", "Billable", "Service"] },
       { id: "description", label: "Description", type: "string", required: false },
-      {
-        id: "projectType",
-        label: "Project Type",
-        type: "enum",
-        required: true,
-        options: ["Internal", "Capital", "Billable", "Service"]
-      },
       { id: "budgetAmount", label: "Budget Amount", type: "number", required: true },
-      { id: "defaultWIPAccountId", label: "Default WIP Account", type: "string", required: true },
-      { id: "defaultCloseAccountId", label: "Default Close Account", type: "string", required: true },
-      { id: "projectManagerId", label: "Project Manager ID", type: "string", required: true },
-      { id: "organizationId", label: "Organization ID", type: "string", required: true },
       { id: "startDate", label: "Start Date", type: "date", required: true },
-      { id: "endDate", label: "End Date", type: "date", required: false }
+      { id: "endDate", label: "End Date", type: "date", required: false },
+      { id: "projectManagerId", label: "Project Manager ID", type: "string", required: true },
+      { id: "organizationId", label: "Organization ID", type: "string", required: true }
     ]
   },
   p2p_create_requisition: {
@@ -136,34 +180,189 @@ const COLLECTION_OPERATIONS: Record<string, CollectionOperationDefinition> = {
       { id: "department", label: "Department", type: "string", required: true },
       { id: "currencyCode", label: "Currency Code", type: "string", required: true },
       { id: "neededByDate", label: "Needed By Date", type: "date", required: true },
-      { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true }
-    ]
-  },
-  o2c_create_quote: {
-    operation: "o2c_create_quote",
-    domain: "o2c",
-    label: "Quote Creation",
-    fields: [
-      { id: "customerId", label: "Customer ID", type: "string", required: true },
-      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
       { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true },
       { id: "projectId", label: "Project ID", type: "string", required: false }
+    ]
+  },
+  p2p_create_po: {
+    operation: "p2p_create_po",
+    domain: "p2p",
+    label: "Purchase Order Creation",
+    fields: [
+      { id: "supplierId", label: "Supplier ID", type: "string", required: true },
+      { id: "requisitionId", label: "Requisition ID", type: "string", required: false },
+      { id: "totalAmount", label: "Total Amount", type: "number", required: true },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "deliveryAddress", label: "Delivery Address", type: "string", required: false }
+    ]
+  },
+  p2p_create_goods_receipt: {
+    operation: "p2p_create_goods_receipt",
+    domain: "p2p",
+    label: "Goods Receipt Creation",
+    fields: [{ id: "poId", label: "PO ID", type: "string", required: true }]
+  },
+  p2p_create_supplier_invoice: {
+    operation: "p2p_create_supplier_invoice",
+    domain: "p2p",
+    label: "Supplier Invoice Creation",
+    fields: [
+      { id: "receiptId", label: "Receipt ID", type: "string", required: true },
+      { id: "invoiceDate", label: "Invoice Date", type: "date", required: false },
+      { id: "dueDate", label: "Due Date", type: "date", required: false },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true }
+    ]
+  },
+  p2p_create_ap_payment: {
+    operation: "p2p_create_ap_payment",
+    domain: "p2p",
+    label: "AP Payment Creation",
+    fields: [
+      { id: "supplierInvoiceId", label: "Supplier Invoice ID", type: "string", required: true },
+      { id: "amount", label: "Amount", type: "number", required: true },
+      { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+      { id: "method", label: "Method", type: "string", required: true }
+    ]
+  },
+  r2r_create_manual_journal: {
+    operation: "r2r_create_manual_journal",
+    domain: "r2r",
+    label: "Manual Journal Creation",
+    fields: [
+      { id: "legalEntityId", label: "Legal Entity ID", type: "string", required: true },
+      { id: "ledgerId", label: "Ledger ID", type: "string", required: true },
+      { id: "fiscalPeriodId", label: "Fiscal Period ID", type: "string", required: true },
+      { id: "description", label: "Description", type: "string", required: false },
+      { id: "debitAccountId", label: "Debit Account ID", type: "string", required: true },
+      { id: "creditAccountId", label: "Credit Account ID", type: "string", required: true },
+      { id: "amount", label: "Amount", type: "number", required: true },
+      { id: "memo", label: "Memo", type: "string", required: false }
+    ]
+  },
+  h2r_create_employee: {
+    operation: "h2r_create_employee",
+    domain: "h2r",
+    label: "Employee Creation",
+    fields: [
+      { id: "name", label: "Employee Name", type: "string", required: true },
+      { id: "email", label: "Employee Email", type: "string", required: true },
+      { id: "autoActivate", label: "Auto Activate", type: "enum", required: false, options: ["true", "false"] }
     ]
   }
 };
 
-function purchaseOrderInputSchema() {
-  return {
-    fields: [
-      { id: "requiredDeliveryDate", label: "Required Delivery Date", type: "date", required: true },
-      { id: "glAccount", label: "GL Account", type: "string", required: true },
-      { id: "costCenter", label: "Cost Center", type: "string", required: true },
-      { id: "paymentTerms", label: "Payment Terms", type: "string", required: true },
-      { id: "vendorTaxId", label: "Vendor Tax ID", type: "string", required: false }
-    ]
-  } as const;
+function defaultCollectionValues(operation: CollectionOperationDefinition, userId: string): Record<string, unknown> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (operation.operation === "proj_create_project") {
+    return {
+      projectType: "Internal",
+      budgetAmount: 10000,
+      startDate: today,
+      projectManagerId: userId || "principal.system",
+      organizationId: "Projects Default Organization",
+      defaultWIPAccountId: "ACCT-WIP-001",
+      defaultCloseAccountId: "ACCT-CLOSE-001"
+    };
+  }
+
+  if (operation.operation === "o2c_create_quote") {
+    return {
+      currencyCode: "USD",
+      lineQuantity: 1,
+      lineUnitPrice: 0
+    };
+  }
+
+  if (operation.operation === "o2c_register_payment") {
+    return {
+      currencyCode: "USD",
+      method: "bank-transfer"
+    };
+  }
+
+  if (operation.operation === "p2p_create_supplier") {
+    return {
+      paymentTerms: "NET30",
+      currencyCode: "USD"
+    };
+  }
+
+  if (operation.operation === "p2p_create_requisition") {
+    return {
+      currencyCode: "USD"
+    };
+  }
+
+  if (operation.operation === "p2p_create_po") {
+    return {
+      currencyCode: "USD",
+      totalAmount: 0
+    };
+  }
+
+  if (operation.operation === "p2p_create_supplier_invoice") {
+    return {
+      currencyCode: "USD"
+    };
+  }
+
+  if (operation.operation === "p2p_create_ap_payment") {
+    return {
+      currencyCode: "USD",
+      method: "bank-transfer",
+      amount: 0
+    };
+  }
+
+  if (operation.operation === "r2r_create_manual_journal") {
+    return {
+      amount: 0
+    };
+  }
+
+  if (operation.operation === "h2r_create_employee") {
+    return {
+      autoActivate: "true"
+    };
+  }
+
+  return {};
 }
 
+function buildCollectionState(
+  operation: CollectionOperationDefinition,
+  mergedValues: Record<string, unknown>,
+  autoFilledFieldIds: Set<string>
+): CaiplCollectionState {
+  const slots: CaiplCollectionSlot[] = operation.fields.map((field) => {
+    const value = mergedValues[field.id];
+    const known = hasValue(value);
+    const autoFilled = known && autoFilledFieldIds.has(field.id);
+    return {
+      fieldId: field.id,
+      label: field.label,
+      type: field.type,
+      required: field.required,
+      status: known ? (autoFilled ? "auto_filled" : "known") : "missing",
+      value,
+      source: known ? (autoFilled ? "system" : "user") : undefined
+    };
+  });
+
+  const requiredFields = slots.filter((slot) => slot.required).map((slot) => slot.fieldId);
+  const resolvedFields = slots.filter((slot) => slot.status !== "missing").map((slot) => slot.fieldId);
+  const missingFields = slots.filter((slot) => slot.required && slot.status === "missing").map((slot) => slot.fieldId);
+
+  return {
+    domain: operation.domain,
+    operation: operation.operation,
+    requiredFields,
+    resolvedFields,
+    missingFields,
+    slots
+  };
+}
 function buildPurchaseOrderDecisionOptions(
   poProposal: PurchaseOrderProposal,
   description: string
@@ -336,12 +535,48 @@ function inferCollectionOperation(messageText: string, context: LinaInteractionC
     return COLLECTION_OPERATIONS["proj_create_project"];
   }
 
-  if (/requisition\b|purchase\s+request/.test(text)) {
-    return COLLECTION_OPERATIONS["p2p_create_requisition"];
+  if (/customer\b/.test(text)) {
+    return COLLECTION_OPERATIONS["o2c_create_customer"];
   }
 
   if (/quote\b|sales\s+quote/.test(text)) {
     return COLLECTION_OPERATIONS["o2c_create_quote"];
+  }
+
+  if (/payment\b.*\bar\b|\bar\b.*payment|register\s+payment/.test(text)) {
+    return COLLECTION_OPERATIONS["o2c_register_payment"];
+  }
+
+  if (/supplier\b/.test(text) && !/invoice/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_supplier"];
+  }
+
+  if (/requisition\b|purchase\s+request/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_requisition"];
+  }
+
+  if (/purchase\s+order\b|\bpo\b/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_po"];
+  }
+
+  if (/goods\s+receipt/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_goods_receipt"];
+  }
+
+  if (/supplier\s+invoice/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_supplier_invoice"];
+  }
+
+  if (/ap\s+payment|accounts\s+payable\s+payment/.test(text)) {
+    return COLLECTION_OPERATIONS["p2p_create_ap_payment"];
+  }
+
+  if (/journal\b/.test(text)) {
+    return COLLECTION_OPERATIONS["r2r_create_manual_journal"];
+  }
+
+  if (/employee\b/.test(text)) {
+    return COLLECTION_OPERATIONS["h2r_create_employee"];
   }
 
   return undefined;
@@ -358,6 +593,17 @@ function extractFieldValue(fieldId: string, text: string): unknown {
       return readFirstMatch(/project\s+name\s*[:=\-]?\s*([^\n\r]+)/i, text);
     case "description":
       return readFirstMatch(/description\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "customerName":
+      return readFirstMatch(/customer\s+name\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "customerEmail":
+    case "email":
+      return readFirstMatch(/email\s*[:=\-]?\s*([^\s\n\r]+)/i, text);
+    case "billingAddress":
+      return readFirstMatch(/billing\s+address\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "shippingAddress":
+      return readFirstMatch(/shipping\s+address\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "customerId":
+      return readFirstMatch(/customer\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
     case "projectType": {
       const value = readFirstMatch(/project\s*type\s*[:=\-]?\s*(internal|capital|billable|service)/i, text);
       return value ? value[0].toUpperCase() + value.slice(1).toLowerCase() : undefined;
@@ -382,6 +628,14 @@ function extractFieldValue(fieldId: string, text: string): unknown {
       return readFirstMatch(/requester\s*[:=\-]?\s*([^\n\r,]+)/i, text);
     case "department":
       return readFirstMatch(/department\s*[:=\-]?\s*([^\n\r,]+)/i, text);
+    case "supplierName":
+      return readFirstMatch(/supplier\s+name\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "supplierId":
+      return readFirstMatch(/supplier\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "paymentTerms":
+      return readFirstMatch(/payment\s+terms\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "taxId":
+      return readFirstMatch(/tax\s*id\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
     case "currencyCode": {
       const code = readFirstMatch(/\b(AED|USD|EUR|GBP|SAR|QAR)\b/i, text);
       return code?.toUpperCase();
@@ -390,10 +644,65 @@ function extractFieldValue(fieldId: string, text: string): unknown {
       return readFirstMatch(/needed\s+by\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
     case "legalEntityId":
       return readFirstMatch(/legal\s+entity\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
-    case "customerId":
-      return readFirstMatch(/customer\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
     case "projectId":
       return readFirstMatch(/project\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "lineSku":
+      return readFirstMatch(/sku\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "lineQuantity": {
+      const value = readFirstMatch(/(?:line\s+)?quantity\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i, text);
+      return value ? Number(value) : undefined;
+    }
+    case "lineUnitPrice": {
+      const value = readFirstMatch(/(?:line\s+)?unit\s*price\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i, text);
+      return value ? Number(value) : undefined;
+    }
+    case "lineTaxTreatment":
+      return readFirstMatch(/tax\s+treatment\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "invoiceId":
+      return readFirstMatch(/invoice\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "amount": {
+      const value = readFirstMatch(/amount\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i, text);
+      return value ? Number(value) : undefined;
+    }
+    case "method":
+      return readFirstMatch(/method\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "paymentDate":
+      return readFirstMatch(/payment\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "requisitionId":
+      return readFirstMatch(/requisition\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "totalAmount": {
+      const value = readFirstMatch(/total\s+amount\s*[:=\-]?\s*([0-9]+(?:\.[0-9]+)?)/i, text);
+      return value ? Number(value) : undefined;
+    }
+    case "deliveryAddress":
+      return readFirstMatch(/delivery\s+address\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "poId":
+      return readFirstMatch(/(?:purchase\s+order|po)\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "receiptId":
+      return readFirstMatch(/receipt\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "invoiceDate":
+      return readFirstMatch(/invoice\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "dueDate":
+      return readFirstMatch(/due\s+date\s*[:=\-]?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i, text);
+    case "supplierInvoiceId":
+      return readFirstMatch(/supplier\s+invoice\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "ledgerId":
+      return readFirstMatch(/ledger\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "fiscalPeriodId":
+      return readFirstMatch(/fiscal\s+period\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "debitAccountId":
+      return readFirstMatch(/debit\s+account\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "creditAccountId":
+      return readFirstMatch(/credit\s+account\s*(?:id)?\s*[:=\-]?\s*([A-Za-z0-9_-]+)/i, text);
+    case "memo":
+      return readFirstMatch(/memo\s*[:=\-]?\s*([^\n\r]+)/i, text);
+    case "autoActivate": {
+      const value = readFirstMatch(/auto\s*activate\s*[:=\-]?\s*(true|false|yes|no)/i, text);
+      if (!value) {
+        return undefined;
+      }
+      return ["true", "yes"].includes(value.toLowerCase()) ? "true" : "false";
+    }
     default:
       return undefined;
   }
@@ -409,37 +718,6 @@ function hasValue(value: unknown): boolean {
   return true;
 }
 
-function buildCollectionState(
-  operation: CollectionOperationDefinition,
-  mergedValues: Record<string, unknown>
-): CaiplCollectionState {
-  const slots: CaiplCollectionSlot[] = operation.fields.map((field) => {
-    const value = mergedValues[field.id];
-    const known = hasValue(value);
-    return {
-      fieldId: field.id,
-      label: field.label,
-      type: field.type,
-      required: field.required,
-      status: known ? "known" : "missing",
-      value,
-      source: known ? "user" : undefined
-    };
-  });
-
-  const requiredFields = slots.filter((slot) => slot.required).map((slot) => slot.fieldId);
-  const resolvedFields = slots.filter((slot) => slot.status !== "missing").map((slot) => slot.fieldId);
-  const missingFields = slots.filter((slot) => slot.required && slot.status === "missing").map((slot) => slot.fieldId);
-
-  return {
-    domain: operation.domain,
-    operation: operation.operation,
-    requiredFields,
-    resolvedFields,
-    missingFields,
-    slots
-  };
-}
 
 function buildCollectionDecisionOption(operation: CollectionOperationDefinition, collectionState: CaiplCollectionState): CaiplDecisionPoint["options"][number] {
   const missingSlots = collectionState.slots.filter((slot) => slot.required && slot.status === "missing");
@@ -859,13 +1137,20 @@ export class CaiplService {
     let collectionState: CaiplCollectionState | undefined;
     let collectionValues: Record<string, unknown> | undefined;
     if (inferredCollectionOperation) {
+      const defaults = defaultCollectionValues(inferredCollectionOperation, record.session.userId);
       const previousValues = this.readLatestCollectionValues(record, inferredCollectionOperation.operation);
       const extractedValues = this.extractCollectionValuesFromMessage(inferredCollectionOperation, input.messageText);
       collectionValues = {
+        ...defaults,
         ...previousValues,
         ...extractedValues
       };
-      collectionState = buildCollectionState(inferredCollectionOperation, collectionValues);
+      const autoFilledFieldIds = new Set(
+        Object.keys(defaults).filter(
+          (fieldId) => !hasValue(previousValues[fieldId]) && !hasValue(extractedValues[fieldId])
+        )
+      );
+      collectionState = buildCollectionState(inferredCollectionOperation, collectionValues, autoFilledFieldIds);
     }
 
     const aiTurn: CaiplInteractionTurn = {
@@ -1244,14 +1529,22 @@ export class CaiplService {
           typeof payload["targetOperation"] === "string" ? payload["targetOperation"] : undefined;
         const operationDef = targetOperation ? COLLECTION_OPERATIONS[targetOperation] : undefined;
         if (operationDef) {
+          const defaults = defaultCollectionValues(operationDef, record.session.userId);
           const previousValues = this.readLatestCollectionValues(record, operationDef.operation);
+          const formValues = input.formInput ?? {};
           const mergedValues = {
+            ...defaults,
             ...previousValues,
-            ...(input.formInput ?? {})
+            ...formValues
           };
+          const autoFilledFieldIds = new Set(
+            Object.keys(defaults).filter(
+              (fieldId) => !hasValue(previousValues[fieldId]) && !hasValue(formValues[fieldId])
+            )
+          );
           const nextCollectionOption = buildCollectionDecisionOption(
             operationDef,
-            buildCollectionState(operationDef, mergedValues)
+            buildCollectionState(operationDef, mergedValues, autoFilledFieldIds)
           );
           resolvedCollectionState = nextCollectionOption.collectionState ?? null;
           if (selectedOption) {

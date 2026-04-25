@@ -63,7 +63,14 @@
 					{@const slot = option.collectionState?.slots.find((item) => item.fieldId === field.id)}
 					{@const currentValue = slot?.value}
 					<label class="block text-xs">
-						<span class="mb-1 block ui-muted">{field.label}</span>
+						<span class="mb-1 block ui-muted">
+							{field.label}
+							{#if slot?.status === 'auto_filled'}
+								<span class="ml-1 text-emerald-300">(auto-filled)</span>
+							{:else if slot?.status === 'known'}
+								<span class="ml-1 text-sky-300">(provided)</span>
+							{/if}
+						</span>
 						{#if field.type === 'enum' && field.options}
 							<select
 								class="input-base w-full"
