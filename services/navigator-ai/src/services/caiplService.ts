@@ -792,6 +792,85 @@ function buildCollectionAssistantResponse(
   return `I aligned this to the ${operation.label} manual create form and need: ${missingLabels}.${autofillText}`;
 }
 
+function extractRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function toExecutionEntityType(operation: string): string {
+  if (operation.includes("customer")) return "customer";
+  if (operation.includes("quote")) return "quote";
+  if (operation.includes("requisition")) return "requisition";
+  if (operation.includes("po") || operation.includes("purchase_order")) return "purchase_order";
+  if (operation.includes("goods_receipt")) return "goods_receipt";
+  if (operation.includes("supplier_invoice")) return "supplier_invoice";
+  if (operation.includes("ap_payment")) return "ap_payment";
+  if (operation.includes("journal")) return "journal";
+  if (operation.includes("employee")) return "employee";
+  if (operation.includes("project")) return "project";
+  return "entity";
+}
+
+function toExecutionEntityId(result: unknown): string | null {
+  const record = extractRecord(result);
+  if (!record) {
+    return null;
+  }
+
+  const idKeys = [
+    "customerId",
+    "customer_id",
+    "quoteId",
+    "quote_id",
+    "requisitionId",
+    "requisition_id",
+    "poId",
+    "po_id",
+    "receiptId",
+    "receipt_id",
+    "supplierInvoiceId",
+    "supplier_invoice_id",
+    "paymentId",
+    "payment_id",
+    "journalId",
+    "journal_id",
+    "employeeId",
+    "employee_id",
+    "projectId",
+    "project_id",
+    "id"
+  ];
+
+  for (const key of idKeys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function toExecutionStatus(result: unknown): string {
+  const record = extractRecord(result);
+  if (!record) {
+    return "completed";
+  }
+
+  const statusKeys = ["state", "status", "workflowState"];
+  for (const key of statusKeys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return "completed";
+}
+
 export class CaiplService {
   constructor(private readonly llm: LlmClient) {}
 
@@ -812,6 +891,12 @@ export class CaiplService {
 
     if (operation === "propose_delivery_dates") {
       return "suggest delivery date options";
+    }
+
+    if (operation === "execute_collection_operation") {
+      const targetOperation =
+        typeof payload["targetOperation"] === "string" ? payload["targetOperation"] : "workflow execution";
+      return `execute ${targetOperation}`;
     }
 
     if (operation !== "execute_purchase_order") {
@@ -942,6 +1027,50 @@ export class CaiplService {
       entityType: "purchase_order",
       entityId: poId,
       status: state,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  private async executeCollectionOperation(
+    targetOperation: string,
+    values: Record<string, unknown>,
+    actorId: string
+  ): Promise<ExecutionReceiptSummary> {
+    const baseUrl = normalizedBaseUrl(config.foundationErpUrl);
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      "x-api-key": config.foundationErpApiKey,
+      "x-actor-id": actorId,
+      "x-actor-type": actorId === "principal.system" ? "system" : "user",
+      "x-actor-tier": actorId === "principal.system" ? "5" : "2"
+    };
+    headers[config.foundationErpIngressIdHeader] = config.foundationErpIngressId;
+
+    const response = await fetch(`${baseUrl}/api/v1/mcp/invoke`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        functionName: targetOperation,
+        input: values
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`${targetOperation} execution failed (${response.status})`);
+    }
+
+    const payload = (await response.json()) as Record<string, unknown>;
+    const result = payload["result"];
+    const entityId = toExecutionEntityId(result);
+    if (!entityId) {
+      throw new Error(`${targetOperation} did not return an execution entity id`);
+    }
+
+    return {
+      operation: targetOperation,
+      entityType: toExecutionEntityType(targetOperation),
+      entityId,
+      status: toExecutionStatus(result),
       createdAt: new Date().toISOString()
     };
   }
@@ -1623,10 +1752,32 @@ export class CaiplService {
         } else {
           newStatus = "resolved";
         }
+      } else if (payload && typeof payload === "object" && payload["operation"] === "execute_collection_operation") {
+        const targetOperation =
+          typeof payload["targetOperation"] === "string" ? payload["targetOperation"] : undefined;
+        const valuesCandidate = payload["values"];
+        const values =
+          valuesCandidate && typeof valuesCandidate === "object" && !Array.isArray(valuesCandidate)
+            ? (valuesCandidate as Record<string, unknown>)
+            : {};
+
+        if (!targetOperation) {
+          newStatus = "failed";
+          executionError = "Missing target operation for collection execution";
+        } else {
+          try {
+            executionReceipt = await this.executeCollectionOperation(targetOperation, values, input.actorId);
+            newStatus = "executed";
+          } catch (error) {
+            newStatus = "failed";
+            executionError = error instanceof Error ? error.message : "Unknown collection execution error";
+          }
+        }
       } else if (payload && typeof payload === "object" && payload["operation"] === "execute_purchase_order") {
         const proposal = payload as unknown as PurchaseOrderProposal;
         try {
           executionReceipt = await this.executePurchaseOrderProposal(proposal, input.actorId);
+          newStatus = "executed";
         } catch (error) {
           newStatus = "failed";
           executionError = error instanceof Error ? error.message : "Unknown execution error";
