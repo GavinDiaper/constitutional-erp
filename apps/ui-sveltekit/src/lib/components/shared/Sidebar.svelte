@@ -109,6 +109,7 @@ function groupToggleLabel(group: MenuGroupKey, label: string): string {
 	<ul class="space-y-1 pb-2">
 		<li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin')}>Admin Home</a></li>
 		<li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/erp-mappings')}>ERP Mappings</a></li>
+			<li><a class="block rounded px-3 py-2 dark:hover:bg-white/10 hover:bg-slate-500/10" href={resolve('/admin/erp-mappings-v0')}>ERP Mapping V0</a></li>
 	</ul>
 	{/if}
 </li>
