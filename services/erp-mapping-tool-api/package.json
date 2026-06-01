@@ -9,6 +9,7 @@
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
     "migrate": "tsx src/db/migrate.ts",
+    "sync:foundation": "node scripts/sync-from-foundation.js",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
