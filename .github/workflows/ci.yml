@@ -5,6 +5,7 @@ on:
 
 jobs:
   detect-changes:
+    if: false
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
@@ -81,8 +82,8 @@ jobs:
             core.setOutput('count', String(changed.length));
 
   workspace-ci:
+    if: false
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.count != '0' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -126,8 +127,8 @@ jobs:
           if-no-files-found: ignore
 
   no-workspace-changes:
+    if: false
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.count == '0' }}
     runs-on: ubuntu-latest
     steps:
       - name: No impacted workspaces

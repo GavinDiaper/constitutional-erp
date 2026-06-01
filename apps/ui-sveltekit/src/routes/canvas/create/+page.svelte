@@ -403,7 +403,9 @@
 			const response = await fetch(resolve(`/api/hub/bootstrap/${operation}`), {
 				method: 'POST',
 				headers: {
-					'content-type': 'application/json'
+					'content-type': 'application/json',
+					'x-actor-id': $actorStore.actorId,
+					'x-actor-tier': String($actorStore.authorityTier)
 				},
 				body: JSON.stringify(payload)
 			});
