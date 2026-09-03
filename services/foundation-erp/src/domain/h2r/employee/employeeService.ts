@@ -32,6 +32,51 @@ export function listEmployees() {
   return db.prepare("SELECT * FROM h2r_employee ORDER BY created_at DESC LIMIT 200").all();
 }
 
+export function getEmployeeSkillById(skillId: string) {
+  const row = db.prepare("SELECT * FROM h2r_employee_skill WHERE skill_id = ?").get(skillId) as
+    | { skill_id: string; employee_id: string; skill_name: string; proficiency: string | null; created_at: string; updated_at: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Employee skill not found");
+  }
+
+  return row;
+}
+
+export function getEmployeeAvailabilityById(availabilityId: string) {
+  const row = db.prepare("SELECT * FROM h2r_employee_availability WHERE availability_id = ?").get(availabilityId) as
+    | { availability_id: string; employee_id: string; work_date: string; available_hours: number; created_at: string; updated_at: string }
+    | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "Employee availability not found");
+  }
+
+  return row;
+}
+
+export function employeeHasSkill(employeeId: string, skillName: string): boolean {
+  const normalizedSkill = skillName.trim();
+  if (!normalizedSkill) {
+    return false;
+  }
+
+  const row = db
+    .prepare("SELECT 1 FROM h2r_employee_skill WHERE employee_id = ? AND LOWER(skill_name) = LOWER(?) LIMIT 1")
+    .get(employeeId, normalizedSkill) as { 1: number } | undefined;
+
+  return Boolean(row);
+}
+
+export function getEmployeeAvailability(employeeId: string, workDate: string) {
+  return db
+    .prepare("SELECT * FROM h2r_employee_availability WHERE employee_id = ? AND work_date = ?")
+    .get(employeeId, workDate) as
+    | { availability_id: string; employee_id: string; work_date: string; available_hours: number; created_at: string; updated_at: string }
+    | undefined;
+}
+
 type CreateEmployeeInput = {
   name: string;
   email: string;
@@ -96,6 +141,81 @@ export function createEmployee(input: CreateEmployeeInput, actor?: EventActor) {
   }
 
   return getEmployeeById(employeeId);
+}
+
+export function addEmployeeSkill(
+  employeeId: string,
+  input: { skillName: string; proficiency?: string },
+  actor?: EventActor
+) {
+  ensureEmployeeExists(employeeId);
+
+  const skillName = input.skillName?.trim();
+  if (!skillName) {
+    throw new HttpError(400, "invalid_request", "skillName is required");
+  }
+
+  const skillId = newId("SKILL-");
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO h2r_employee_skill(skill_id, employee_id, skill_name, proficiency, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(skillId, employeeId, skillName, input.proficiency ?? null, timestamp, timestamp);
+
+    appendEvent({
+      entityId: employeeId,
+      entityType: "Employee",
+      eventType: "employee.skill_added",
+      version: 1,
+      actor,
+      payload: { skillId, employeeId, skillName, proficiency: input.proficiency ?? null }
+    });
+  });
+
+  return getEmployeeSkillById(skillId);
+}
+
+export function setEmployeeAvailability(
+  employeeId: string,
+  input: { workDate: string; availableHours: number },
+  actor?: EventActor
+) {
+  ensureEmployeeExists(employeeId);
+
+  const workDate = String(input.workDate ?? "").trim();
+  if (!workDate) {
+    throw new HttpError(400, "invalid_request", "workDate is required");
+  }
+
+  const availableHours = Number(input.availableHours);
+  if (!Number.isFinite(availableHours) || availableHours < 0) {
+    throw new HttpError(400, "invalid_request", "availableHours must be a non-negative number");
+  }
+
+  const availabilityId = newId("AVAIL-");
+  const timestamp = now();
+
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO h2r_employee_availability(availability_id, employee_id, work_date, available_hours, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(employee_id, work_date)
+       DO UPDATE SET available_hours = excluded.available_hours, updated_at = excluded.updated_at`
+    ).run(availabilityId, employeeId, workDate, availableHours, timestamp, timestamp);
+
+    appendEvent({
+      entityId: employeeId,
+      entityType: "Employee",
+      eventType: "employee.availability_updated",
+      version: 1,
+      actor,
+      payload: { availabilityId, employeeId, workDate, availableHours }
+    });
+  });
+
+  return getEmployeeAvailabilityById(availabilityId);
 }
 
 export function activateEmployee(employeeId: string, actor?: EventActor) {

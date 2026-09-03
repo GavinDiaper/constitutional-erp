@@ -394,6 +394,7 @@ export interface ProjectProjection {
   projectType: "Internal" | "Capital" | "Billable" | "Service";
   status: "Draft" | "Active" | "OnHold" | "Completed" | "Cancelled";
   budgetAmount: number;
+  baselineBudgetAmount: number;
   actualCostAmount: number;
   revenueAmount?: number;
   defaultWIPAccountId: string;

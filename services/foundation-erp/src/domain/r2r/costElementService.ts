@@ -59,7 +59,7 @@ export function createCostElement(
 
   // Verify GL account exists (optional guard)
   const glAccount = db
-    .prepare("SELECT account_id FROM r2r_chart_of_accounts WHERE account_id = ?")
+    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ?")
     .get(input.glAccountId) as { account_id: string } | undefined;
 
   if (!glAccount) {

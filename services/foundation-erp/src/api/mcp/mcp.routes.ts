@@ -557,6 +557,7 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           description: input.description,
           category: input.category,
           uom: input.uom,
+          skuType: input.skuType,
           valuationMethod: input.valuationMethod,
           standardCost: input.standardCost !== undefined ? Number(input.standardCost) : undefined
         }, actor);

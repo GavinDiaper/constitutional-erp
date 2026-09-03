@@ -43,6 +43,7 @@ const createSkuSchema = z.object({
   description: z.string().min(1),
   category: z.string().optional(),
   uom: z.string().min(1),
+  skuType: z.enum(["physical", "service"]).optional(),
   valuationMethod: z.enum(["standard", "moving_average"]),
   standardCost: z.number().nonnegative().optional()
 });

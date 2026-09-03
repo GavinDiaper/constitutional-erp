@@ -3,19 +3,61 @@
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import test, { before } from "node:test";
 import request from "supertest";
+
+const rootDir = process.cwd();
+const testDbPath = path.join(rootDir, "test-phase-c-integration.db");
+
+function removeIfExists(filePath: string): void {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+function resetTestDb(): void {
+  removeIfExists(testDbPath);
+  removeIfExists(`${testDbPath}-wal`);
+  removeIfExists(`${testDbPath}-shm`);
+
+  const db = new Database(testDbPath);
+  const migrationsDir = path.join(rootDir, "src", "db", "migrations");
+  const migrationFiles = fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort();
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS migration (
+      id TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    );
+  `);
+
+  const now = new Date().toISOString();
+  const insert = db.prepare("INSERT INTO migration(id, applied_at) VALUES (?, ?)");
+
+  for (const fileName of migrationFiles) {
+    const sql = fs.readFileSync(path.join(migrationsDir, fileName), "utf8");
+    db.exec(sql);
+    insert.run(fileName, now);
+  }
+
+  db.close();
+}
 
 process.env.NODE_ENV = "test";
 process.env.API_KEY = "test-api-key";
 process.env.INTERNAL_ALLOWLIST = "127.0.0.1,::1";
 process.env.INGRESS_ID_HEADER = "x-ingress-id";
 process.env.INGRESS_ID_VALUE = "foundation-ingress";
+process.env.DATABASE_PATH = testDbPath;
 
 let app: any;
 
 before(async () => {
+  resetTestDb();
   const appModule = await import("../src/app");
   app = appModule.createApp();
 });

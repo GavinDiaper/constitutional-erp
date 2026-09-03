@@ -72,6 +72,45 @@ CREATE INDEX IF NOT EXISTS idx_proj_wip_project ON proj_wip(project_id);
 CREATE INDEX IF NOT EXISTS idx_proj_wip_status ON proj_wip(status);
 CREATE INDEX IF NOT EXISTS idx_proj_wip_org ON proj_wip(organization_id);
 
+CREATE TABLE IF NOT EXISTS proj_task (
+  task_id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  assigned_to TEXT,
+  estimated_hours REAL NOT NULL DEFAULT 0,
+  actual_hours REAL NOT NULL DEFAULT 0,
+  remaining_hours REAL NOT NULL DEFAULT 0,
+  percent_complete REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'Planned' CHECK (status IN ('Planned', 'InProgress', 'Completed')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES proj_project(project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_proj_task_project ON proj_task(project_id);
+CREATE INDEX IF NOT EXISTS idx_proj_task_status ON proj_task(status);
+
+CREATE TABLE IF NOT EXISTS proj_task_allocation (
+  allocation_id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  resource_type TEXT NOT NULL CHECK (resource_type IN ('employee', 'contractor')),
+  role TEXT,
+  allocated_hours REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'Planned' CHECK (status IN ('Planned', 'Active', 'Completed', 'Cancelled')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (task_id, resource_id, resource_type),
+  FOREIGN KEY (task_id) REFERENCES proj_task(task_id),
+  FOREIGN KEY (project_id) REFERENCES proj_project(project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_proj_task_allocation_task ON proj_task_allocation(task_id);
+CREATE INDEX IF NOT EXISTS idx_proj_task_allocation_project ON proj_task_allocation(project_id);
+CREATE INDEX IF NOT EXISTS idx_proj_task_allocation_resource ON proj_task_allocation(resource_id);
+
 -- ============================================================================
 -- BOM (BILL OF MATERIALS) SCHEMA
 -- ============================================================================
@@ -147,7 +186,7 @@ CREATE TABLE IF NOT EXISTS r2r_cost_element (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (organization_id, cost_element_name),
   FOREIGN KEY (organization_id) REFERENCES inv_organization(organization_id),
-  FOREIGN KEY (gl_account_id) REFERENCES r2r_chart_of_accounts(account_id)
+  FOREIGN KEY (gl_account_id) REFERENCES r2r_account(account_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_r2r_cost_element_org ON r2r_cost_element(organization_id);
@@ -207,7 +246,7 @@ CREATE TABLE IF NOT EXISTS h2r_timesheet (
   version INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (organization_id) REFERENCES inv_organization(organization_id),
-  FOREIGN KEY (employee_id) REFERENCES h2r_employee_master(employee_id)
+  FOREIGN KEY (employee_id) REFERENCES h2r_employee(employee_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_h2r_timesheet_employee ON h2r_timesheet(employee_id);
@@ -220,6 +259,7 @@ CREATE TABLE IF NOT EXISTS h2r_timesheet_line (
   timesheet_id TEXT NOT NULL,
   line_number INTEGER NOT NULL,
   project_id TEXT,
+  task_id TEXT,
   cost_element_id TEXT NOT NULL,
   work_date TEXT NOT NULL,
   hours REAL NOT NULL,
@@ -234,6 +274,7 @@ CREATE TABLE IF NOT EXISTS h2r_timesheet_line (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (timesheet_id) REFERENCES h2r_timesheet(timesheet_id),
   FOREIGN KEY (project_id) REFERENCES proj_project(project_id),
+  FOREIGN KEY (task_id) REFERENCES proj_task(task_id),
   FOREIGN KEY (cost_element_id) REFERENCES r2r_cost_element(cost_element_id)
 );
 

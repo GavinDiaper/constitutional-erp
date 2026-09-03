@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { db } from "../db/connection";
 import {
   createProject,
   activateProject,
@@ -11,8 +12,24 @@ import {
   getProjectWIPSummary,
   assignBomToProject,
   listProjectBomAssignments,
+  createProjectServiceBomRequirement,
+  listProjectServiceBomRequirements,
+  createProjectTask,
+  listProjectTasks,
+  createTaskAllocation,
+  logTaskHours,
   postLaborCost,
   listLaborEntries,
+  getProjectProgressSummary,
+  getProjectFinancialSummary,
+  getProjectProfitabilitySummary,
+  createProjectRisk,
+  upsertProjectStageGate,
+  advanceProjectPhase,
+  createProjectMilestone,
+  approveProjectMilestone,
+  createProjectChangeRequest,
+  approveProjectChangeRequest,
   createProjectFinishedItem,
   listProjectFinishedItems,
   listProjectRequisitions,
@@ -308,6 +325,203 @@ router.get("/:projectId/wip", (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/v1/projects/:projectId/progress
+ * Aggregate task-level completion into a project-level progress summary
+ */
+router.get("/:projectId/progress", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const progress = getProjectProgressSummary(projectId);
+
+    if (!progress) {
+      return res.status(404).json({ success: false, error: "Project not found" });
+    }
+
+    res.json({ success: true, data: progress });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/projects/:projectId/financial-summary
+ * Cost-to-cost project completion and profitability summary for service work
+ */
+router.get("/:projectId/financial-summary", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const summary = getProjectFinancialSummary(projectId);
+
+    if (!summary) {
+      return res.status(404).json({ success: false, error: "Project not found" });
+    }
+
+    res.json({ success: true, data: summary });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/projects/:projectId/profitability
+ * WIP/deferred revenue and profitability view for service projects
+ */
+router.get("/:projectId/profitability", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const summary = getProjectProfitabilitySummary(projectId);
+
+    if (!summary) {
+      return res.status(404).json({ success: false, error: "Project not found" });
+    }
+
+    res.json({ success: true, data: summary });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/risks", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { title, probabilityPercent, impactAmount } = req.body ?? {};
+
+    const risk = createProjectRisk(
+      projectId,
+      {
+        title,
+        probabilityPercent,
+        impactAmount,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: risk });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/change-requests", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { title, description, deltaBudgetAmount } = req.body ?? {};
+
+    const changeRequest = createProjectChangeRequest(
+      projectId,
+      {
+        title,
+        description,
+        deltaBudgetAmount,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: changeRequest });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/change-requests/:changeRequestId/approve", (req: Request, res: Response) => {
+  try {
+    const { projectId, changeRequestId } = req.params;
+    const changeRequest = approveProjectChangeRequest(projectId, changeRequestId, req.actor);
+    res.json({ success: true, data: changeRequest });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/stage-gates", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { phaseName, requiredSignoffs, approvals } = req.body ?? {};
+
+    const existing = db
+      .prepare("SELECT * FROM proj_stage_gate WHERE project_id = ? AND phase_name = ?")
+      .get(projectId, phaseName) as { gate_id: string } | undefined;
+
+    const gate = upsertProjectStageGate(
+      projectId,
+      {
+        phaseName,
+        requiredSignoffs: Array.isArray(requiredSignoffs) ? requiredSignoffs : [],
+        approvals: Array.isArray(approvals) ? approvals : [],
+      },
+      req.actor
+    );
+
+    res.status(existing ? 200 : 201).json({ success: true, data: gate });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/advance-phase", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { phaseName } = req.body ?? {};
+
+    const gate = advanceProjectPhase(projectId, phaseName, req.actor);
+    res.json({ success: true, data: gate });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/milestones", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { name, phaseName, billingAmount } = req.body ?? {};
+
+    const milestone = createProjectMilestone(
+      projectId,
+      {
+        name,
+        phaseName,
+        billingAmount,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: milestone });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/milestones/:milestoneId/approve", (req: Request, res: Response) => {
+  try {
+    const { projectId, milestoneId } = req.params;
+    const milestone = approveProjectMilestone(projectId, milestoneId, req.actor);
+    res.json({ success: true, data: milestone });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/v1/projects/:projectId/bom-assignments
  * Assign a BOM to an Active project
  */
@@ -346,6 +560,43 @@ router.get("/:projectId/bom-assignments", (req: Request, res: Response) => {
   }
 });
 
+router.post("/:projectId/service-bom-requirements", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { wbsId, role, estimatedHours, requiredSkill, requiredCertification, status } = req.body ?? {};
+
+    const requirement = createProjectServiceBomRequirement(
+      projectId,
+      {
+        wbsId,
+        role,
+        estimatedHours,
+        requiredSkill,
+        requiredCertification,
+        status,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: requirement });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:projectId/service-bom-requirements", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const requirements = listProjectServiceBomRequirements(projectId);
+    res.json({ success: true, data: requirements, count: requirements.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 /**
  * POST /api/v1/projects/:projectId/labor-entries
  * Post labour cost to a project
@@ -375,6 +626,100 @@ router.get("/:projectId/labor-entries", (req: Request, res: Response) => {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/projects/:projectId/tasks
+ * Create a project task with estimated and remaining hours
+ */
+router.post("/:projectId/tasks", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { name, description, assignedTo, requiredSkill, estimatedHours, remainingHours, status } = req.body ?? {};
+
+    const task = createProjectTask(
+      projectId,
+      {
+        name,
+        description,
+        assignedTo,
+        requiredSkill,
+        estimatedHours,
+        remainingHours,
+        status,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: task });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:projectId/tasks", (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const tasks = listProjectTasks(projectId);
+    res.json({ success: true, data: tasks, count: tasks.length });
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/tasks/:taskId/allocations", (req: Request, res: Response) => {
+  try {
+    const { projectId, taskId } = req.params;
+    const { resourceId, resourceType, role, allocatedHours, skillRequired, workDate } = req.body ?? {};
+
+    const allocation = createTaskAllocation(
+      projectId,
+      taskId,
+      {
+        resourceId,
+        resourceType,
+        role,
+        allocatedHours,
+        skillRequired,
+        workDate,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: allocation });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/tasks/:taskId/log-hours", (req: Request, res: Response) => {
+  try {
+    const { projectId, taskId } = req.params;
+    const { hours, resourceId, rate, costElementId } = req.body ?? {};
+
+    const result = logTaskHours(
+      projectId,
+      taskId,
+      {
+        hours,
+        resourceId,
+        rate,
+        costElementId,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: result });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 

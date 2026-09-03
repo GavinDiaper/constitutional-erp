@@ -18,15 +18,16 @@ import projectsRouter from "./api/projects";
 import bomRouter from "./api/bom";
 import costElementsRouter from "./api/costElements";
 import internalTradesRouter from "./api/internalTrades";
+import timesheetsRouter from "./api/timesheets";
 import { toProblem } from "./utils/errors";
 import { seedStarterAccounts } from "./domain/r2r/account/accountService";
 import { seedTaxConfiguration } from "./domain/tax/taxSeedService";
 import { seedDefaultLegalEntity } from "./domain/r2r/legalEntity/legalEntityService";
 import { runMigrations } from "./db/migrate";
 
-const config = loadConfig();
-
 export function createApp() {
+  const config = loadConfig();
+
   runMigrations();
   seedStarterAccounts();
   seedTaxConfiguration();
@@ -63,6 +64,7 @@ export function createApp() {
   app.use("/api/v1/bom", bomRouter);
   app.use("/api/v1/cost-elements", costElementsRouter);
   app.use("/api/v1/internal-trades", internalTradesRouter);
+  app.use("/api/v1/timesheets", timesheetsRouter);
   app.use("/api/v1/mcp", mcpRouter);
   app.use("/api/v1/hub", navlogRouter);
   app.use("/api/v1", eventRouter);

@@ -6,6 +6,8 @@ import {
   createEmployee,
   getEmployeeById,
   listEmployees,
+  addEmployeeSkill,
+  setEmployeeAvailability,
   activateEmployee,
   placeEmployeeOnLeave,
   returnEmployeeFromLeave,
@@ -33,6 +35,7 @@ import {
   getAuthorityRuleById,
   listAuthorityRules
 } from "../../domain/h2r/authorityRule/authorityRuleService";
+import { createVendorRate, listVendorRates } from "../../domain/h2r/timesheetService";
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -69,6 +72,27 @@ const createAuthorityRuleSchema = z.object({
   domain: z.enum(["O2C", "P2P", "R2R", "H2R"]),
   threshold: z.number().nonnegative(),
   requiredTier: z.number().int().min(1).max(5)
+});
+
+const createEmployeeSkillSchema = z.object({
+  skillName: z.string().min(1),
+  proficiency: z.string().optional()
+});
+
+const setEmployeeAvailabilitySchema = z.object({
+  workDate: z.string().min(1),
+  availableHours: z.number().nonnegative()
+});
+
+const createVendorRateSchema = z.object({
+  contractorId: z.string().min(1),
+  vendorName: z.string().min(1),
+  role: z.string().min(1),
+  hourlyRate: z.number().nonnegative(),
+  effectiveFrom: z.string().min(1),
+  effectiveUntil: z.string().optional(),
+  currency: z.string().optional(),
+  status: z.enum(["Active", "Inactive"]).optional(),
 });
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
@@ -205,6 +229,16 @@ h2rRouter.post("/employees", validateBody(createEmployeeSchema), (req, res) => {
   res.status(201).json(entityWithLinks(employee as any, employeeLinks((employee as any).employee_id, (employee as any).status)));
 });
 
+h2rRouter.post("/employees/:employeeId/skills", validateBody(createEmployeeSkillSchema), (req, res) => {
+  const skill = addEmployeeSkill(req.params.employeeId, req.body, req.actor);
+  res.status(201).json({ data: skill });
+});
+
+h2rRouter.post("/employees/:employeeId/availability", validateBody(setEmployeeAvailabilitySchema), (req, res) => {
+  const availability = setEmployeeAvailability(req.params.employeeId, req.body, req.actor);
+  res.status(201).json({ data: availability });
+});
+
 h2rRouter.post("/employees/:employeeId/activate", (req, res) => {
   const employee = activateEmployee(req.params.employeeId, req.actor);
   res.json(entityWithLinks(employee as any, employeeLinks(req.params.employeeId, (employee as any).status)));
@@ -336,4 +370,17 @@ h2rRouter.get("/authority-rules/:ruleId", (req, res) => {
 h2rRouter.post("/authority-rules", validateBody(createAuthorityRuleSchema), (req, res) => {
   const rule = createAuthorityRule(req.body, req.actor);
   res.status(201).json(entityWithLinks(rule as any, { self: { href: `/api/v1/h2r/authority-rules/${(rule as any).rule_id}`, method: "GET" } }));
+});
+
+// -- Vendor Rates --
+
+h2rRouter.get("/vendor-rates", (req, res) => {
+  const contractorId = typeof req.query.contractorId === "string" ? req.query.contractorId : undefined;
+  const rates = listVendorRates(contractorId);
+  res.json({ data: rates, count: rates.length });
+});
+
+h2rRouter.post("/vendor-rates", validateBody(createVendorRateSchema), (req, res) => {
+  const rate = createVendorRate(req.body, req.actor);
+  res.status(201).json({ data: rate });
 });

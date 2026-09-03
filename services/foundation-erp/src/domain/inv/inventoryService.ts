@@ -15,6 +15,7 @@ type SkuRow = {
   description: string;
   category: string | null;
   uom: string;
+  sku_type: "physical" | "service";
   valuation_method: ValuationMethod;
   standard_cost: number;
   lifecycle_state: string;
@@ -571,12 +572,18 @@ export function createSku(input: {
   description: string;
   category?: string;
   uom: string;
+  skuType?: "physical" | "service";
   valuationMethod: ValuationMethod;
   standardCost?: number;
 }, actor?: EventActor) {
   const skuId = newId("SKU-");
   const timestamp = now();
+  const skuType = input.skuType ?? "physical";
   const standardCost = roundMoney(input.standardCost ?? 0);
+
+  if (skuType !== "physical" && skuType !== "service") {
+    throw new HttpError(400, "invalid_request", "skuType must be either 'physical' or 'service'");
+  }
 
   if (standardCost < 0) {
     throw new HttpError(400, "invalid_request", "standardCost cannot be negative");
@@ -585,14 +592,15 @@ export function createSku(input: {
   try {
     transaction(() => {
       db.prepare(
-        `INSERT INTO inv_sku(sku_id, sku_code, description, category, uom, valuation_method, standard_cost, lifecycle_state, version, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'Active', 1, ?, ?)`
+        `INSERT INTO inv_sku(sku_id, sku_code, description, category, uom, sku_type, valuation_method, standard_cost, lifecycle_state, version, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', 1, ?, ?)`
       ).run(
         skuId,
         input.skuCode,
         input.description,
         input.category ?? null,
         input.uom,
+        skuType,
         input.valuationMethod,
         standardCost,
         timestamp,
@@ -607,6 +615,7 @@ export function createSku(input: {
         actor,
         payload: {
           skuCode: input.skuCode,
+          skuType,
           valuationMethod: input.valuationMethod,
           standardCost
         }

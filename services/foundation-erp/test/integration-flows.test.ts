@@ -65,6 +65,43 @@ before(async () => {
   app = appModule.createApp();
 });
 
+test("App reads auth config at runtime when env values are updated after import", async () => {
+  const previous = {
+    apiKey: process.env.API_KEY,
+    internalAllowlist: process.env.INTERNAL_ALLOWLIST,
+    ingressIdHeader: process.env.INGRESS_ID_HEADER,
+    ingressIdValue: process.env.INGRESS_ID_VALUE,
+    databasePath: process.env.DATABASE_PATH,
+  };
+
+  try {
+    process.env.API_KEY = "runtime-key";
+    process.env.INTERNAL_ALLOWLIST = "127.0.0.1,::1";
+    process.env.INGRESS_ID_HEADER = "x-ingress-id";
+    process.env.INGRESS_ID_VALUE = "foundation-ingress";
+    process.env.DATABASE_PATH = testDbPath;
+
+    const appModule = await import("../src/app");
+    const runtimeApp = appModule.createApp();
+
+    const response = await request(runtimeApp)
+      .get("/api/v1/query/r2r_ledger_entry?limit=1&offset=0")
+      .set({
+        "x-api-key": "runtime-key",
+        "x-ingress-id": "foundation-ingress",
+      })
+      .expect(200);
+
+    assert.ok(Array.isArray(response.body.data));
+  } finally {
+    process.env.API_KEY = previous.apiKey;
+    process.env.INTERNAL_ALLOWLIST = previous.internalAllowlist;
+    process.env.INGRESS_ID_HEADER = previous.ingressIdHeader;
+    process.env.INGRESS_ID_VALUE = previous.ingressIdValue;
+    process.env.DATABASE_PATH = previous.databasePath;
+  }
+});
+
 test("P2P integration flow transitions through canonical lifecycle", async () => {
   const headers = authHeaders();
 
@@ -1129,6 +1166,1252 @@ test("Projects API persists WBS context", async () => {
   assert.equal(fetched.body.data.wbsId, `WBS-${unique}`);
 });
 
+test("Projects API requires service contracts and WBS for Service projects", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Service Project Org ${unique}` })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Service PM ${unique}`,
+      email: `svc.pm.${unique}@example.com`
+    })
+    .expect(201);
+
+  const invalid = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "Service Project Without Contract",
+      projectType: "Service",
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(400);
+
+  assert.match(invalid.body.error, /contractId.*required|wbsId.*required/i);
+
+  const created = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "Service Project With Contract",
+      projectType: "Service",
+      contractId: `CON-${unique}`,
+      wbsId: `WBS-SVC-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  assert.equal(created.body.success, true);
+  assert.equal(created.body.data.contractId, `CON-${unique}`);
+  assert.equal(created.body.data.wbsId, `WBS-SVC-${unique}`);
+});
+
+test("Sales order lines persist project and WBS mapping for service contract orders", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Service Mapping Org ${unique}` })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Service Mapping PM ${unique}`,
+      email: `svc.mapping.${unique}@example.com`
+    })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Service Project Mapping ${unique}`,
+      projectType: "Service",
+      contractId: `CON-LINE-${unique}`,
+      wbsId: `WBS-LINE-${unique}`,
+      budgetAmount: 12000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: `Service Order Customer ${unique}`, email: `svc.order.${unique}@example.com` })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/customers/${customer.body.customer_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const quote = await request(app)
+    .post("/api/v1/o2c/quotes")
+    .set(headers)
+    .send({
+      customerId: customer.body.customer_id,
+      currencyCode: "USD",
+      legalEntityId: "LE-SEED-US",
+      projectId: project.body.data.projectId
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/lines`)
+    .set(headers)
+    .send({ sku: "SKU-SVC-ORDER-1", quantity: 1, unitPrice: 2500 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/send`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/accept`)
+    .set(headers)
+    .expect(200);
+
+  const order = await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/convert`)
+    .set(headers)
+    .send({ projectId: project.body.data.projectId, wbsId: project.body.data.wbsId })
+    .expect(201);
+
+  const lines = await request(app)
+    .get(`/api/v1/o2c/orders/${order.body.order_id}/lines`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(lines.body.data.length, 1);
+  assert.equal(lines.body.data[0].project_id, project.body.data.projectId);
+  assert.equal(lines.body.data[0].wbs_id, project.body.data.wbsId);
+});
+
+test("Project task tracking decrements remaining hours when labor is posted", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Task Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Task Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-TASK-MGR",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-TASK-${unique}`
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Task ${unique}`,
+      description: "Implementation task",
+      estimatedHours: 16,
+      remainingHours: 16,
+      assignedTo: "EMP-TASK-MGR"
+    })
+    .expect(201);
+
+  assert.equal(task.body.data.remainingHours, 16);
+
+  const labor = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/log-hours`)
+    .set(headers)
+    .send({
+      hours: 6,
+      resourceId: "EMP-TASK-MGR",
+      rate: 75,
+      costElementId: "COST-LABOR-PRIMARY"
+    })
+    .expect(201);
+
+  assert.equal(labor.body.data.task.remainingHours, 10);
+  assert.equal(labor.body.data.task.actualHours, 6);
+  assert.equal(labor.body.data.task.percentComplete, 37.5);
+});
+
+test("Project task resource allocation prevents over-allocating the same employee", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Resource Org ${unique}` })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Resource Employee ${unique}`,
+      email: `resource.${unique}@example.com`,
+      active: true,
+    })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Resource Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-RESOURCE-${unique}`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Planned Task ${unique}`,
+      description: "Resource scheduling task",
+      estimatedHours: 40,
+      remainingHours: 40,
+      assignedTo: employee.body.employee_id,
+    })
+    .expect(201);
+
+  const firstAllocation = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      role: "Engineer",
+      allocatedHours: 24,
+    })
+    .expect(201);
+
+  assert.equal(firstAllocation.body.data.resourceId, employee.body.employee_id);
+  assert.equal(firstAllocation.body.data.allocatedHours, 24);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      role: "Engineer",
+      allocatedHours: 20,
+    })
+    .expect(409);
+});
+
+test("Project financial summary calculates cost-to-cost completion and margin", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Finance Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Finance Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-FIN-${unique}`,
+      wbsId: `WBS-FIN-${unique}`,
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-FIN-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/labor-entries`)
+    .set(headers)
+    .send({
+      resourceId: "EMP-FIN-MGR",
+      hours: 10,
+      rate: 75,
+      costElementId: "COST-LABOR-PRIMARY",
+    })
+    .expect(201);
+
+  const summary = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/financial-summary`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(summary.body.data.actualCostAmount, 750);
+  assert.equal(summary.body.data.percentComplete, 75);
+  assert.equal(summary.body.data.recognizedRevenue, 750);
+  assert.equal(summary.body.data.grossMargin, 0);
+});
+
+test("Project revenue recognition recognizes approved milestone billing before fallback cost-to-cost completion", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Revenue Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Revenue Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-REV-${unique}`,
+      wbsId: `WBS-REV-${unique}`,
+      budgetAmount: 12000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-REV-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const milestone = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
+    .set(headers)
+    .send({
+      name: `Milestone A ${unique}`,
+      phaseName: "Phase 1",
+      billingAmount: 3000,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 1",
+      requiredSignoffs: ["Project Manager", "Finance"],
+      approvals: ["Project Manager", "Finance"],
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  const summary = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/financial-summary`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(summary.body.data.recognizedRevenue, 3000);
+  assert.equal(summary.body.data.grossMargin, 3000);
+});
+
+test("Project profitability ledger tracks deferred WIP against milestone revenue", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Profitability Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Profitability Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-PROF-${unique}`,
+      wbsId: `WBS-PROF-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-PROF-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/labor-entries`)
+    .set(headers)
+    .send({
+      resourceId: "EMP-PROF-MGR",
+      hours: 10,
+      rate: 80,
+      costElementId: "COST-LABOR-PRIMARY",
+    })
+    .expect(201);
+
+  const milestone = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
+    .set(headers)
+    .send({
+      name: `Milestone B ${unique}`,
+      phaseName: "Phase 2",
+      billingAmount: 600,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 2",
+      requiredSignoffs: ["Project Manager"],
+      approvals: ["Project Manager"],
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  const profitability = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/profitability`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(profitability.body.data.actualCostAmount, 800);
+  assert.equal(profitability.body.data.percentComplete, 16);
+  assert.equal(profitability.body.data.recognizedRevenue, 600);
+  assert.equal(profitability.body.data.deferredRevenue, 200);
+  assert.equal(profitability.body.data.grossMargin, -200);
+});
+
+test("Project governance stage-gates require sign-offs and track risk exposure", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Governance Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Governance Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-GOV-${unique}`,
+      wbsId: `WBS-GOV-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-GOV-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const risk = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/risks`)
+    .set(headers)
+    .send({
+      title: `Delivery risk ${unique}`,
+      probabilityPercent: 25,
+      impactAmount: 2000,
+    })
+    .expect(201);
+
+  assert.equal(risk.body.data.financialExposure, 500);
+
+  const gate = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 2",
+      requiredSignoffs: ["Project Manager", "Finance"],
+      approvals: ["Project Manager"],
+    })
+    .expect(201);
+
+  assert.equal(gate.body.data.isReady, false);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/advance-phase`)
+    .set(headers)
+    .send({ phaseName: "Phase 2" })
+    .expect(409);
+
+  const cleared = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 2",
+      requiredSignoffs: ["Project Manager", "Finance"],
+      approvals: ["Project Manager", "Finance"],
+    })
+    .expect(200);
+
+  assert.equal(cleared.body.data.isReady, true);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/advance-phase`)
+    .set(headers)
+    .send({ phaseName: "Phase 2" })
+    .expect(200);
+});
+
+test("Project change control records a revised budget without overwriting the original baseline", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Change Control Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Change Control Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-CC-${unique}`,
+      wbsId: `WBS-CC-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-CC-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  const changeRequest = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/change-requests`)
+    .set(headers)
+    .send({
+      title: `Scope expansion ${unique}`,
+      description: "Add additional implementation work",
+      deltaBudgetAmount: 1200,
+    })
+    .expect(201);
+
+  assert.equal(changeRequest.body.data.originalBudgetAmount, 5000);
+  assert.equal(changeRequest.body.data.deltaBudgetAmount, 1200);
+  assert.equal(changeRequest.body.data.revisedBudgetAmount, 6200);
+
+  const approved = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/change-requests/${changeRequest.body.data.changeRequestId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(approved.body.data.status, "Approved");
+
+  const refreshed = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(refreshed.body.data.budgetAmount, 6200);
+  assert.equal(refreshed.body.data.baselineBudgetAmount, 5000);
+});
+
+test("Project milestone billing requires a ready gate before a phase can be approved for billing", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Milestone Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Milestone Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-MILESTONE-${unique}`,
+      wbsId: `WBS-MILESTONE-${unique}`,
+      budgetAmount: 10000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-MILESTONE-MGR",
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const milestone = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
+    .set(headers)
+    .send({
+      name: `Phase 2 milestone ${unique}`,
+      phaseName: "Phase 2",
+      billingAmount: 2500,
+    })
+    .expect(201);
+
+  assert.equal(milestone.body.data.status, "Planned");
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 2",
+      requiredSignoffs: ["Project Manager", "Finance"],
+      approvals: ["Project Manager"],
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(409);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({
+      phaseName: "Phase 2",
+      requiredSignoffs: ["Project Manager", "Finance"],
+      approvals: ["Project Manager", "Finance"],
+    })
+    .expect(200);
+
+  const approved = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(approved.body.data.status, "Approved");
+  assert.equal(approved.body.data.readyForBilling, true);
+  assert.equal(approved.body.data.billingAmount, 2500);
+});
+
+test("Project progress summarizes task completion against budgeted hours", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Progress Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Progress Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 1000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-TASK-MGR",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-PROGRESS-${unique}`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Progress Task ${unique}`,
+      description: "Progress tracking task",
+      estimatedHours: 16,
+      remainingHours: 16,
+      assignedTo: "EMP-TASK-MGR",
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/log-hours`)
+    .set(headers)
+    .send({
+      hours: 6,
+      resourceId: "EMP-TASK-MGR",
+      rate: 75,
+      costElementId: "COST-LABOR-PRIMARY",
+    })
+    .expect(201);
+
+  const progress = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/progress`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(progress.body.data.percentComplete, 37.5);
+  assert.equal(progress.body.data.actualHours, 6);
+  assert.equal(progress.body.data.estimatedHours, 16);
+});
+
+test("Project task allocation enforces required skills and daily availability", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Resource Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Resource Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-RESOURCE-MANAGER",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-RESOURCE-${unique}`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: `Resource Person ${unique}`, email: `resource.${unique}@example.com` })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/skills`)
+    .set(headers)
+    .send({ skillName: "Project Planning", proficiency: "Advanced" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/availability`)
+    .set(headers)
+    .send({ workDate: "2026-08-12", availableHours: 8 })
+    .expect(201);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Resource Task ${unique}`,
+      estimatedHours: 12,
+      remainingHours: 12,
+      requiredSkill: "Project Planning",
+    })
+    .expect(201);
+
+  const allocation = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      role: "Project Lead",
+      allocatedHours: 6,
+      skillRequired: "Project Planning",
+    })
+    .expect(201);
+
+  assert.equal(allocation.body.data.resourceId, employee.body.employee_id);
+
+  const secondEmployee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: `Unavailable Person ${unique}`, email: `unavailable.${unique}@example.com` })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${secondEmployee.body.employee_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${secondEmployee.body.employee_id}/skills`)
+    .set(headers)
+    .send({ skillName: "Project Planning", proficiency: "Intermediate" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${secondEmployee.body.employee_id}/availability`)
+    .set(headers)
+    .send({ workDate: "2026-08-12", availableHours: 4 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: secondEmployee.body.employee_id,
+      resourceType: "employee",
+      role: "Project Lead",
+      allocatedHours: 5,
+      skillRequired: "Project Planning",
+    })
+    .expect(409);
+});
+
+test("Project task allocation defaults to the latest employee availability date when no workDate is supplied", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Default Date Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Default Date Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 3000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-RESOURCE-MANAGER",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-DEFAULT-DATE-${unique}`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: `Default Date Person ${unique}`, email: `defaultdate.${unique}@example.com` })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/activate`)
+    .set(headers)
+    .expect(200);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/skills`)
+    .set(headers)
+    .send({ skillName: "Project Planning", proficiency: "Advanced" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/availability`)
+    .set(headers)
+    .send({ workDate: "2026-08-10", availableHours: 8 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/availability`)
+    .set(headers)
+    .send({ workDate: "2026-08-14", availableHours: 12 })
+    .expect(201);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Default Date Task ${unique}`,
+      estimatedHours: 12,
+      remainingHours: 12,
+      requiredSkill: "Project Planning",
+    })
+    .expect(201);
+
+  const allocation = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      role: "Project Lead",
+      allocatedHours: 6,
+      skillRequired: "Project Planning",
+    })
+    .expect(201);
+
+  assert.equal(allocation.body.data.resourceId, employee.body.employee_id);
+  assert.equal(allocation.body.data.workDate, "2026-08-14");
+});
+
+test("Timesheet task locking validates assignments and updates remaining project work", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Task Lock Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Task Lock Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: "EMP-TASK-LOCK-MGR",
+      organizationId: organization.body.organization_id,
+      wbsId: `WBS-TASK-LOCK-${unique}`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Task Lock Employee ${unique}`,
+      email: `tasklock.${unique}@example.com`,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/skills`)
+    .set(headers)
+    .send({ skillName: "Project Planning", proficiency: "Advanced" })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/h2r/employees/${employee.body.employee_id}/availability`)
+    .set(headers)
+    .send({ workDate: "2026-01-02", availableHours: 10 })
+    .expect(201);
+
+  const task = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .send({
+      name: `Task Lock Task ${unique}`,
+      estimatedHours: 12,
+      remainingHours: 12,
+      assignedTo: employee.body.employee_id,
+      requiredSkill: "Project Planning",
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/tasks/${task.body.data.taskId}/allocations`)
+    .set(headers)
+    .send({
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      role: "Engineer",
+      allocatedHours: 6,
+      skillRequired: "Project Planning",
+      workDate: "2026-01-02",
+    })
+    .expect(201);
+
+  const timesheet = await request(app)
+    .post("/api/v1/timesheets")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      employeeId: employee.body.employee_id,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-01-07",
+    })
+    .expect(201);
+
+  const line = await request(app)
+    .post(`/api/v1/timesheets/${timesheet.body.data.timesheetId}/lines`)
+    .set(headers)
+    .send({
+      taskId: task.body.data.taskId,
+      projectId: project.body.data.projectId,
+      resourceId: employee.body.employee_id,
+      resourceType: "employee",
+      workDate: "2026-01-02",
+      hours: 4,
+      costElementId: "COST-LABOR-PRIMARY",
+      description: "Task-linked time entry",
+    })
+    .expect(201);
+
+  assert.equal(line.body.data.taskId, task.body.data.taskId);
+  assert.equal(line.body.data.resourceType, "employee");
+
+  const refreshedTask = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .expect(200);
+
+  const updatedTask = refreshedTask.body.data.find((entry: any) => entry.taskId === task.body.data.taskId);
+  assert.ok(updatedTask);
+  assert.equal(updatedTask.actualHours, 4);
+  assert.equal(updatedTask.remainingHours, 8);
+  assert.equal(updatedTask.percentComplete, 33.33);
+});
+
+test("Timesheet API supports contractor vendor-rate entries alongside employee timesheets", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Vendor Rate Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Vendor Rate Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-VENDOR-${unique}`,
+      wbsId: `WBS-VENDOR-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-VENDOR-${unique}`,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/activate`)
+    .set(headers)
+    .expect(200);
+
+  const vendorRate = await request(app)
+    .post("/api/v1/h2r/vendor-rates")
+    .set(headers)
+    .send({
+      contractorId: `CONT-${unique}`,
+      vendorName: `Vendor ${unique}`,
+      role: "Senior Engineer",
+      hourlyRate: 120,
+      effectiveFrom: "2026-01-01",
+      currency: "USD",
+    })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Timesheet Employee ${unique}`,
+      email: `timesheet.${unique}@example.com`
+    })
+    .expect(201);
+
+  const created = await request(app)
+    .post("/api/v1/timesheets")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      employeeId: employee.body.employee_id,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-01-07"
+    })
+    .expect(201);
+
+  const line = await request(app)
+    .post(`/api/v1/timesheets/${created.body.data.timesheetId}/lines`)
+    .set(headers)
+    .send({
+      projectId: project.body.data.projectId,
+      resourceId: vendorRate.body.data.contractorId,
+      resourceType: "contractor",
+      vendorRateId: vendorRate.body.data.vendorRateId,
+      workDate: "2026-01-02",
+      hours: 8,
+      costElementId: "COST-LABOR-PRIMARY",
+      description: "Consulting work",
+    })
+    .expect(201);
+
+  assert.equal(line.body.success, true);
+  assert.equal(line.body.data.resourceType, "contractor");
+  assert.equal(line.body.data.hourlyRate, 120);
+  assert.equal(line.body.data.lineCost, 960);
+  assert.equal(line.body.data.projectId, project.body.data.projectId);
+});
+
+test("Timesheet API supports unified labor workflow for employees", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Timesheet Org ${unique}` })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Timesheet Employee ${unique}`,
+      email: `timesheet.${unique}@example.com`
+    })
+    .expect(201);
+
+  const created = await request(app)
+    .post("/api/v1/timesheets")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      employeeId: employee.body.employee_id,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-01-07"
+    })
+    .expect(201);
+
+  assert.equal(created.body.success, true);
+  assert.equal(created.body.data.employeeId, employee.body.employee_id);
+  assert.equal(created.body.data.status, "Draft");
+
+  const submitted = await request(app)
+    .post(`/api/v1/timesheets/${created.body.data.timesheetId}/submit`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(submitted.body.data.status, "Submitted");
+
+  const approved = await request(app)
+    .post(`/api/v1/timesheets/${created.body.data.timesheetId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(approved.body.data.status, "Approved");
+});
+
+test("Inventory service SKUs can be created as non-stock deliverables", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const sku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-SVC-${unique}`,
+      description: "Service deliverable SKU",
+      uom: "EA",
+      valuationMethod: "standard",
+      standardCost: 0,
+      skuType: "service",
+    })
+    .expect(201);
+
+  assert.equal(sku.body.sku_type, "service");
+  assert.equal(sku.body.description, "Service deliverable SKU");
+});
+
 test("Inventory reservations enforce hard allocation availability and support release", async () => {
   const headers = authHeaders();
   const unique = Date.now();
@@ -1540,6 +2823,63 @@ test("Inventory lot and serial tracking enforces traceability constraints", asyn
 
   assert.equal(consumedLot.body.quantity_on_hand, 0);
   assert.equal(consumedLot.body.status, "Consumed");
+});
+
+test("Service BOM requirements capture role, estimated hours, and required certification for a project phase", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Service BOM Org ${unique}` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Service BOM Project ${unique}`,
+      projectType: "Service",
+      contractId: `CON-SVC-BOM-${unique}`,
+      wbsId: `WBS-SVC-BOM-${unique}`,
+      budgetAmount: 25000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: `EMP-SVC-BOM-${unique}`,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+
+  const requirement = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/service-bom-requirements`)
+    .set(headers)
+    .send({
+      wbsId: `WBS-SVC-BOM-${unique}`,
+      role: "Senior Engineer",
+      estimatedHours: 80,
+      requiredSkill: "Azure",
+      requiredCertification: "Azure Solutions Architect",
+    })
+    .expect(201);
+
+  assert.equal(requirement.body.success, true);
+  assert.equal(requirement.body.data.projectId, project.body.data.projectId);
+  assert.equal(requirement.body.data.role, "Senior Engineer");
+  assert.equal(requirement.body.data.estimatedHours, 80);
+  assert.equal(requirement.body.data.requiredSkill, "Azure");
+  assert.equal(requirement.body.data.requiredCertification, "Azure Solutions Architect");
+
+  const requirements = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/service-bom-requirements`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(requirements.body.success, true);
+  assert.equal(requirements.body.count, 1);
+  assert.equal(requirements.body.data[0].role, "Senior Engineer");
+  assert.equal(requirements.body.data[0].requiredCertification, "Azure Solutions Architect");
 });
 
 test("BOM assignment links an Active project to a project-eligible BOM", async () => {

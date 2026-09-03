@@ -67,6 +67,8 @@ export function listOrderLines(orderId: string) {
          quantity,
          unit_price,
          line_total,
+         project_id,
+         wbs_id,
          tax_code_id,
          tax_applicability,
          tax_rate_percent,
@@ -158,12 +160,14 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
          quantity,
          unit_price,
          line_total,
+         project_id,
+         wbs_id,
          tax_code_id,
          tax_applicability,
          tax_rate_percent,
          tax_amount,
          created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     for (const line of quoteLines) {
@@ -174,6 +178,8 @@ export function createOrderFromQuote(quoteId: string, legalEntityId?: string, pr
         line.quantity,
         line.unit_price,
         line.line_total,
+        effectiveProjectId,
+        wbsId ?? null,
         line.tax_code_id,
         line.tax_applicability,
         line.tax_rate_percent,

@@ -5,6 +5,7 @@ import {
   approveTimesheet,
   getTimesheetById,
   listTimesheets,
+  addTimesheetLine,
 } from "../domain/h2r/timesheetService";
 
 const router = Router();
@@ -131,6 +132,36 @@ router.post("/:timesheetId/approve", (req: Request, res: Response) => {
     const error = err instanceof Error ? err : new Error(String(err));
     const statusCode = error.message.includes("invalid_state") ? 400 : 500;
     res.status(statusCode).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:timesheetId/lines", (req: Request, res: Response) => {
+  try {
+    const { timesheetId } = req.params;
+    const { projectId, taskId, resourceId, resourceType, vendorRateId, workDate, hours, costElementId, description, hourlyRate } = req.body ?? {};
+
+    const line = addTimesheetLine(
+      timesheetId,
+      {
+        projectId,
+        taskId,
+        resourceId,
+        resourceType,
+        vendorRateId,
+        workDate,
+        hours,
+        costElementId,
+        description,
+        hourlyRate,
+      },
+      req.actor
+    );
+
+    res.status(201).json({ success: true, data: line });
+  } catch (err: unknown) {
+    const status = err instanceof Error && "status" in err ? Number((err as any).status) || 500 : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
