@@ -150,3 +150,8 @@ reports/
 
 .turbo/cache
 *.mp4
+infra/scripts/services-state.json
+package-lock.json
+
+.gitignore
+workspace.code-workspace
