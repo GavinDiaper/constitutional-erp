@@ -45,7 +45,9 @@ function ensureLaborCostElement(organizationId: string, costElementId: string, p
 interface TimesheetRow {
   timesheet_id: string;
   organization_id: string;
-  employee_id: string;
+  employee_id: string | null;
+  resource_type: "employee" | "contractor";
+  resource_id: string;
   timesheet_period_start: string;
   timesheet_period_end: string;
   total_hours: number;
@@ -137,7 +139,9 @@ export interface TimesheetLineProjection {
 export interface TimesheetProjection {
   timesheetId: string;
   organizationId: string;
-  employeeId: string;
+  employeeId?: string;
+  resourceType: "employee" | "contractor";
+  resourceId: string;
   periodStart: string;
   periodEnd: string;
   totalHours: number;
@@ -255,15 +259,193 @@ export function listVendorRates(contractorId?: string): VendorRateProjection[] {
   return rows.map(rowToVendorRate);
 }
 
+export interface EmployeeCostRateProjection {
+  employeeCostRateId: string;
+  organizationId: string;
+  employeeId: string;
+  costElementId: string;
+  currency: string;
+  hourlyRate: number;
+  effectiveFrom: string;
+  effectiveUntil?: string;
+  status: "Active" | "Inactive";
+  approvedBy: string;
+  approvedAt: string;
+}
+
+export function listEmployeeCostRates(filters: { organizationId?: string; employeeId?: string } = {}): EmployeeCostRateProjection[] {
+  const conditions: string[] = [];
+  const values: string[] = [];
+  if (filters.organizationId) {
+    conditions.push("organization_id = ?");
+    values.push(filters.organizationId);
+  }
+  if (filters.employeeId) {
+    conditions.push("employee_id = ?");
+    values.push(filters.employeeId);
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const rows = db.prepare(
+    `SELECT * FROM h2r_employee_cost_rate ${where} ORDER BY effective_from DESC LIMIT 500`
+  ).all(...values) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    employeeCostRateId: String(row.employee_cost_rate_id),
+    organizationId: String(row.organization_id),
+    employeeId: String(row.employee_id),
+    costElementId: String(row.cost_element_id),
+    currency: String(row.currency),
+    hourlyRate: Number(row.hourly_rate),
+    effectiveFrom: String(row.effective_from),
+    effectiveUntil: row.effective_until ? String(row.effective_until) : undefined,
+    status: row.status as "Active" | "Inactive",
+    approvedBy: String(row.approved_by),
+    approvedAt: String(row.approved_at)
+  }));
+}
+
+export function createEmployeeCostRate(input: {
+  organizationId: string;
+  employeeId: string;
+  costElementId: string;
+  currency?: string;
+  hourlyRate: number;
+  effectiveFrom: string;
+  effectiveUntil?: string;
+}, actor?: EventActor): EmployeeCostRateProjection {
+  const rate = Number(input.hourlyRate);
+  if (!Number.isFinite(rate) || rate < 0) {
+    throw new HttpError(400, "invalid_request", "hourlyRate must be a non-negative number");
+  }
+  if (input.effectiveUntil && input.effectiveUntil < input.effectiveFrom) {
+    throw new HttpError(400, "invalid_request", "effectiveUntil must not precede effectiveFrom");
+  }
+  if (!db.prepare("SELECT employee_id FROM h2r_employee WHERE employee_id = ?").get(input.employeeId)) {
+    throw new HttpError(404, "not_found", "Employee not found");
+  }
+  if (!db.prepare("SELECT organization_id FROM inv_organization WHERE organization_id = ?").get(input.organizationId)) {
+    throw new HttpError(404, "not_found", "Organization not found");
+  }
+  if (!db.prepare("SELECT cost_element_id FROM r2r_cost_element WHERE cost_element_id = ?").get(input.costElementId)) {
+    throw new HttpError(404, "not_found", "Cost element not found");
+  }
+
+  const employeeCostRateId = newId("ECR-");
+  const timestamp = now();
+  const actorId = actor?.id ?? "system";
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO h2r_employee_cost_rate(
+         employee_cost_rate_id, organization_id, employee_id, cost_element_id, currency, hourly_rate,
+         effective_from, effective_until, status, approved_by, approved_at, created_by, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?)`
+    ).run(
+      employeeCostRateId,
+      input.organizationId,
+      input.employeeId,
+      input.costElementId,
+      input.currency ?? "USD",
+      rate,
+      input.effectiveFrom,
+      input.effectiveUntil ?? null,
+      actorId,
+      timestamp,
+      actorId,
+      timestamp,
+      timestamp
+    );
+    appendEvent({
+      entityId: employeeCostRateId,
+      entityType: "EmployeeCostRate",
+      eventType: "h2r.employee_cost_rate_created",
+      version: 1,
+      actor,
+      payload: {
+        employeeCostRateId,
+        organizationId: input.organizationId,
+        employeeId: input.employeeId,
+        costElementId: input.costElementId,
+        hourlyRate: rate,
+        effectiveFrom: input.effectiveFrom,
+        effectiveUntil: input.effectiveUntil ?? null
+      }
+    });
+  });
+  return listEmployeeCostRates({ employeeId: input.employeeId, organizationId: input.organizationId })
+    .find((row) => row.employeeCostRateId === employeeCostRateId)!;
+}
+
+export function resolveTimesheetRate(input: {
+  organizationId: string;
+  resourceId: string;
+  resourceType: "employee" | "contractor";
+  costElementId: string;
+  workDate: string;
+  role?: string;
+}): { hourlyRate: number; vendorRateId?: string; rateSource: "EmployeeRate" | "VendorRate" } {
+  if (input.resourceType === "employee") {
+    const rows = db.prepare(
+      `SELECT employee_cost_rate_id, hourly_rate, effective_from
+       FROM h2r_employee_cost_rate
+       WHERE organization_id = ? AND employee_id = ? AND cost_element_id = ? AND status = 'Active'
+         AND date(effective_from) <= date(?) AND (effective_until IS NULL OR date(effective_until) >= date(?))
+       ORDER BY date(effective_from) DESC, created_at DESC LIMIT 2`
+    ).all(input.organizationId, input.resourceId, input.costElementId, input.workDate, input.workDate) as Array<{
+      employee_cost_rate_id: string;
+      hourly_rate: number;
+      effective_from: string;
+    }>;
+    if (rows.length === 0) {
+      throw new HttpError(400, "employee_rate_missing", `No approved employee cost rate for '${input.resourceId}' on ${input.workDate}`);
+    }
+    if (rows.length > 1 && rows[0].effective_from === rows[1].effective_from && rows[0].hourly_rate !== rows[1].hourly_rate) {
+      throw new HttpError(409, "employee_rate_ambiguous", `Multiple employee cost rates match '${input.resourceId}' on ${input.workDate}`);
+    }
+    return { hourlyRate: Number(rows[0].hourly_rate), rateSource: "EmployeeRate" };
+  }
+
+  const rows = db.prepare(
+    `SELECT vendor_rate_id, hourly_rate, role
+     FROM h2r_vendor_rate
+     WHERE contractor_id = ? AND status = 'Active'
+       AND date(effective_from) <= date(?) AND (effective_until IS NULL OR date(effective_until) >= date(?))
+       AND (? IS NULL OR LOWER(role) = LOWER(?))
+     ORDER BY date(effective_from) DESC LIMIT 2`
+  ).all(input.resourceId, input.workDate, input.workDate, input.role ?? null, input.role ?? null) as Array<{
+    vendor_rate_id: string;
+    hourly_rate: number;
+    role: string;
+  }>;
+  if (rows.length === 0) {
+    throw new HttpError(400, "vendor_rate_missing", `No active contractor rate for '${input.resourceId}' on ${input.workDate}`);
+  }
+  if (rows.length > 1 && rows[0].role.toLowerCase() === rows[1].role.toLowerCase()) {
+    throw new HttpError(409, "vendor_rate_ambiguous", `Multiple contractor rates match '${input.resourceId}' on ${input.workDate}`);
+  }
+  return { hourlyRate: Number(rows[0].hourly_rate), vendorRateId: rows[0].vendor_rate_id, rateSource: "VendorRate" };
+}
+
 export function createTimesheet(
   input: {
     organizationId: string;
-    employeeId: string;
+    employeeId?: string;
+    resourceType?: "employee" | "contractor";
+    resourceId?: string;
     periodStart: string;
     periodEnd: string;
   },
   actor?: EventActor
 ): TimesheetProjection {
+  const resourceType = input.resourceType ?? "employee";
+  const resourceId = input.resourceId ?? input.employeeId;
+  if (!resourceId) {
+    throw new HttpError(400, "invalid_request", "resourceId or employeeId is required");
+  }
+  if (resourceType === "employee" && input.employeeId && input.employeeId !== resourceId) {
+    throw new HttpError(400, "invalid_request", "employeeId must match resourceId for employee timesheets");
+  }
+  if (resourceType === "contractor" && input.employeeId) {
+    throw new HttpError(400, "invalid_request", "Contractor timesheets cannot specify employeeId");
+  }
   const timesheetId = newId("TS-");
   const timestamp = now();
 
@@ -271,17 +453,19 @@ export function createTimesheet(
     transaction(() => {
       db.prepare(
         `INSERT INTO h2r_timesheet(
-          timesheet_id, organization_id, employee_id,
+          timesheet_id, organization_id, employee_id, resource_type, resource_id,
           timesheet_period_start, timesheet_period_end,
           timesheet_period_year, timesheet_period_month,
           total_hours, total_cost,
           status, approval_status,
           line_count, created_by, created_at, version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         timesheetId,
         input.organizationId,
-        input.employeeId,
+        resourceType === "employee" ? resourceId : null,
+        resourceType,
+        resourceId,
         input.periodStart,
         input.periodEnd,
         new Date(input.periodStart).getFullYear(),
@@ -306,6 +490,8 @@ export function createTimesheet(
           timesheetId,
           organizationId: input.organizationId,
           employeeId: input.employeeId,
+          resourceType,
+          resourceId,
           periodStart: input.periodStart,
           periodEnd: input.periodEnd,
         } as unknown as Record<string, unknown>,
@@ -354,6 +540,7 @@ export function addTimesheetLine(
     costElementId: string;
     description?: string;
     hourlyRate?: number;
+    hourlyRateSource?: "EmployeeOverride" | "RoleDefault" | "LookupCard";
   },
   actor?: EventActor
 ): TimesheetLineProjection {
@@ -416,7 +603,7 @@ export function addTimesheetLine(
   const lineNumber = (db.prepare("SELECT COALESCE(MAX(line_number), 0) + 1 AS next_line FROM h2r_timesheet_line WHERE timesheet_id = ?").get(timesheetId) as { next_line: number } | undefined)?.next_line ?? 1;
   const lineCost = roundMoney(hours * effectiveRate);
   const quantityUom = "Hour";
-  const laborRateSource = vendorRate ? "LookupCard" : "EmployeeOverride";
+  const laborRateSource = input.hourlyRateSource ?? (vendorRate ? "LookupCard" : "EmployeeOverride");
 
   const version = 1;
 
@@ -589,7 +776,9 @@ export function getTimesheetById(timesheetId: string): TimesheetProjection | nul
   return {
     timesheetId: row.timesheet_id,
     organizationId: row.organization_id,
-    employeeId: row.employee_id,
+    employeeId: row.employee_id ?? undefined,
+    resourceType: row.resource_type,
+    resourceId: row.resource_id,
     periodStart: row.timesheet_period_start,
     periodEnd: row.timesheet_period_end,
     totalHours: row.total_hours,
@@ -617,7 +806,9 @@ export function listTimesheets(organizationId: string, limit = 100, offset = 0) 
   return rows.map((row) => ({
     timesheetId: row.timesheet_id,
     organizationId: row.organization_id,
-    employeeId: row.employee_id,
+    employeeId: row.employee_id ?? undefined,
+    resourceType: row.resource_type,
+    resourceId: row.resource_id,
     periodStart: row.timesheet_period_start,
     periodEnd: row.timesheet_period_end,
     totalHours: row.total_hours,

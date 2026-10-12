@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
+import { HttpError } from "../../utils/errors";
 import {
   createEmployee,
   getEmployeeById,
@@ -35,7 +36,12 @@ import {
   getAuthorityRuleById,
   listAuthorityRules
 } from "../../domain/h2r/authorityRule/authorityRuleService";
-import { createVendorRate, listVendorRates } from "../../domain/h2r/timesheetService";
+import {
+  createEmployeeCostRate,
+  createVendorRate,
+  listEmployeeCostRates,
+  listVendorRates
+} from "../../domain/h2r/timesheetService";
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -94,6 +100,23 @@ const createVendorRateSchema = z.object({
   currency: z.string().optional(),
   status: z.enum(["Active", "Inactive"]).optional(),
 });
+
+const createEmployeeCostRateSchema = z.object({
+  organizationId: z.string().min(1),
+  employeeId: z.string().min(1),
+  costElementId: z.string().min(1),
+  currency: z.string().length(3).optional(),
+  hourlyRate: z.number().nonnegative(),
+  effectiveFrom: z.string().min(1),
+  effectiveUntil: z.string().optional()
+});
+
+function requireRateAdmin(req: import("express").Request): void {
+  const tier = Number(req.actor?.authorityTier ?? 0);
+  if (!Number.isFinite(tier) || tier < 4) {
+    throw new HttpError(403, "insufficient_authority", "Rate management requires authority tier 4 or higher");
+  }
+}
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────
 
@@ -375,12 +398,28 @@ h2rRouter.post("/authority-rules", validateBody(createAuthorityRuleSchema), (req
 // -- Vendor Rates --
 
 h2rRouter.get("/vendor-rates", (req, res) => {
+  requireRateAdmin(req);
   const contractorId = typeof req.query.contractorId === "string" ? req.query.contractorId : undefined;
   const rates = listVendorRates(contractorId);
   res.json({ data: rates, count: rates.length });
 });
 
 h2rRouter.post("/vendor-rates", validateBody(createVendorRateSchema), (req, res) => {
+  requireRateAdmin(req);
   const rate = createVendorRate(req.body, req.actor);
+  res.status(201).json({ data: rate });
+});
+
+h2rRouter.get("/employee-cost-rates", (req, res) => {
+  requireRateAdmin(req);
+  const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : undefined;
+  const employeeId = typeof req.query.employeeId === "string" ? req.query.employeeId : undefined;
+  const rates = listEmployeeCostRates({ organizationId, employeeId });
+  res.json({ data: rates, count: rates.length });
+});
+
+h2rRouter.post("/employee-cost-rates", validateBody(createEmployeeCostRateSchema), (req, res) => {
+  requireRateAdmin(req);
+  const rate = createEmployeeCostRate(req.body, req.actor);
   res.status(201).json({ data: rate });
 });

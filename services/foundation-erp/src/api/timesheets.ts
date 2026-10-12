@@ -1,4 +1,6 @@
 import { Router, Request, Response } from "express";
+import { z } from "zod";
+import { validateBody } from "../middleware/validate";
 import {
   createTimesheet,
   submitTimesheet,
@@ -7,8 +9,79 @@ import {
   listTimesheets,
   addTimesheetLine,
 } from "../domain/h2r/timesheetService";
+import {
+  commitTimesheetCsvImport,
+  getTimesheetCsvTemplate,
+  getTimesheetImportBatch,
+  listTimesheetImportBatches,
+  previewTimesheetCsvImport
+} from "../domain/h2r/timesheetImportService";
+import { HttpError } from "../utils/errors";
 
 const router = Router();
+
+const previewImportSchema = z.object({
+  organizationId: z.string().min(1),
+  sourceFilename: z.string().min(1).max(255).optional(),
+  csvText: z.string().min(1).max(2_000_000)
+});
+
+function requireImportAuthority(req: Request): void {
+  const tier = Number(req.actor?.authorityTier ?? 0);
+  if (!Number.isFinite(tier) || tier < 4) {
+    throw new HttpError(403, "insufficient_authority", "Timesheet import requires authority tier 4 or higher");
+  }
+}
+
+function sendError(res: Response, err: unknown): void {
+  const status = err instanceof HttpError ? err.status : 500;
+  const error = err instanceof Error ? err.message : String(err);
+  res.status(status).json({ success: false, error });
+}
+
+router.get("/import-template.csv", (_req, res) => {
+  res.type("text/csv").attachment("timesheet-template.csv").send(getTimesheetCsvTemplate());
+});
+
+router.get("/imports", (req, res) => {
+  try {
+    requireImportAuthority(req);
+    const organizationId = typeof req.query.organizationId === "string" ? req.query.organizationId : "";
+    if (!organizationId) throw new HttpError(400, "invalid_request", "organizationId is required");
+    res.json({ success: true, data: listTimesheetImportBatches(organizationId) });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post("/imports/preview", validateBody(previewImportSchema), (req, res) => {
+  try {
+    requireImportAuthority(req);
+    const batch = previewTimesheetCsvImport(req.body, req.actor);
+    res.status(201).json({ success: true, data: batch });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.get("/imports/:importBatchId", (req, res) => {
+  try {
+    requireImportAuthority(req);
+    res.json({ success: true, data: getTimesheetImportBatch(req.params.importBatchId) });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+router.post("/imports/:importBatchId/commit", (req, res) => {
+  try {
+    requireImportAuthority(req);
+    const batch = commitTimesheetCsvImport(req.params.importBatchId, req.actor);
+    res.json({ success: true, data: batch });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
 
 /**
  * POST /api/v1/timesheets
@@ -17,12 +90,14 @@ const router = Router();
 router.post("/", (req: Request, res: Response) => {
   try {
     const actor = req.actor;
-    const { organizationId, employeeId, periodStart, periodEnd } = req.body;
+    const { organizationId, employeeId, resourceType, resourceId, periodStart, periodEnd } = req.body;
 
     const timesheet = createTimesheet(
       {
         organizationId,
         employeeId,
+        resourceType,
+        resourceId,
         periodStart,
         periodEnd,
       },
@@ -86,6 +161,15 @@ router.get("/", (req: Request, res: Response) => {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/import-template.csv", (req: Request, res: Response) => {
+  try {
+    requireImportAuthority(req);
+    res.type("text/csv").attachment("timesheet-template.csv").send(getTimesheetCsvTemplate());
+  } catch (err) {
+    sendError(res, err);
   }
 });
 

@@ -36,7 +36,7 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(express.json());
+  app.use(express.json({ limit: "5mb" }));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "foundation-erp" });

@@ -2702,6 +2702,137 @@ test("Timesheet API supports unified labor workflow for employees", async () => 
   assert.equal(approved.body.data.status, "Approved");
 });
 
+test("Timesheet CSV import previews stored rates and commits mixed resources idempotently", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `CSV Timesheet Org ${unique}` })
+    .expect(201);
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: `CSV Employee ${unique}`, email: `csv.employee.${unique}@example.com` })
+    .expect(201);
+  const accounts = await request(app)
+    .get("/api/v1/query/r2r_account?limit=10&offset=0")
+    .set(headers)
+    .expect(200);
+  const costElement = await request(app)
+    .post("/api/v1/cost-elements")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      costElementName: `CSV Labor ${unique}`,
+      costElementType: "Labor",
+      glAccountId: accounts.body.data[0].account_id,
+      allocationMethod: "Direct"
+    })
+    .expect(201);
+  await request(app)
+    .post("/api/v1/h2r/employee-cost-rates")
+    .set(headers)
+    .send({
+      organizationId: organization.body.organization_id,
+      employeeId: employee.body.employee_id,
+      costElementId: costElement.body.data.costElementId,
+      hourlyRate: 50,
+      effectiveFrom: "2026-01-01"
+    })
+    .expect(201);
+  const contractorId = `CONT-CSV-${unique}`;
+  await request(app)
+    .post("/api/v1/h2r/vendor-rates")
+    .set(headers)
+    .send({
+      contractorId,
+      vendorName: `CSV Vendor ${unique}`,
+      role: "Senior Engineer",
+      hourlyRate: 125,
+      effectiveFrom: "2026-01-01"
+    })
+    .expect(201);
+
+  const csvText = [
+    "resourceType,resourceId,periodStart,periodEnd,projectId,taskId,workDate,hours,costElementId,role,description",
+    `employee,${employee.body.employee_id},2026-10-01,2026-10-07,,,2026-10-02,7.5,${costElement.body.data.costElementId},,Employee work with comma, quoted`,
+    `contractor,${contractorId},2026-10-01,2026-10-07,,,2026-10-03,4,${costElement.body.data.costElementId},Senior Engineer,Contractor delivery`
+  ].join("\n").replace("Employee work with comma, quoted", '"Employee work, quoted"');
+
+  const before = await request(app)
+    .get(`/api/v1/timesheets?organizationId=${organization.body.organization_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(before.body.count, 0);
+
+  const preview = await request(app)
+    .post("/api/v1/timesheets/imports/preview")
+    .set(headers)
+    .send({ organizationId: organization.body.organization_id, sourceFilename: "mixed.csv", csvText })
+    .expect(201);
+  assert.equal(preview.body.data.status, "Validated");
+  assert.equal(preview.body.data.rowCount, 2);
+  assert.equal(preview.body.data.rows[0].hourlyRate, 50);
+  assert.equal(preview.body.data.rows[0].lineCost, 375);
+  assert.equal(preview.body.data.rows[1].hourlyRate, 125);
+  assert.equal(preview.body.data.rows[1].lineCost, 500);
+
+  const repeatedPreview = await request(app)
+    .post("/api/v1/timesheets/imports/preview")
+    .set(headers)
+    .send({ organizationId: organization.body.organization_id, sourceFilename: "mixed.csv", csvText })
+    .expect(201);
+  assert.equal(repeatedPreview.body.data.importBatchId, preview.body.data.importBatchId);
+
+  const afterPreview = await request(app)
+    .get(`/api/v1/timesheets?organizationId=${organization.body.organization_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(afterPreview.body.count, 0);
+
+  const committed = await request(app)
+    .post(`/api/v1/timesheets/imports/${preview.body.data.importBatchId}/commit`)
+    .set(headers)
+    .expect(200);
+  assert.equal(committed.body.data.status, "Committed");
+  assert.equal(committed.body.data.timesheetIds.length, 2);
+
+  const retry = await request(app)
+    .post(`/api/v1/timesheets/imports/${preview.body.data.importBatchId}/commit`)
+    .set(headers)
+    .expect(200);
+  assert.deepEqual(retry.body.data.timesheetIds, committed.body.data.timesheetIds);
+
+  const timesheets = await request(app)
+    .get(`/api/v1/timesheets?organizationId=${organization.body.organization_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(timesheets.body.count, 2);
+  assert.equal(timesheets.body.data.reduce((sum: number, row: any) => sum + row.totalCost, 0), 875);
+  assert.ok(timesheets.body.data.every((row: any) => row.status === "Draft"));
+  assert.ok(timesheets.body.data.some((row: any) => row.resourceType === "contractor" && row.resourceId === contractorId));
+  assert.ok(timesheets.body.data.some((row: any) => row.resourceType === "employee" && row.resourceId === employee.body.employee_id));
+
+  const invalidCsv = csvText.replace("2026-10-03,4", "2026-10-08,4");
+  const invalidPreview = await request(app)
+    .post("/api/v1/timesheets/imports/preview")
+    .set(headers)
+    .send({ organizationId: organization.body.organization_id, sourceFilename: "invalid.csv", csvText: invalidCsv })
+    .expect(201);
+  assert.equal(invalidPreview.body.data.status, "Rejected");
+  assert.equal(invalidPreview.body.data.errorRowCount, 1);
+  await request(app)
+    .post(`/api/v1/timesheets/imports/${invalidPreview.body.data.importBatchId}/commit`)
+    .set(headers)
+    .expect(409);
+  const afterRejectedCommit = await request(app)
+    .get(`/api/v1/timesheets?organizationId=${organization.body.organization_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(afterRejectedCommit.body.count, 2);
+});
+
 test("Inventory service SKUs can be created as non-stock deliverables", async () => {
   const headers = authHeaders();
   const unique = Date.now();
