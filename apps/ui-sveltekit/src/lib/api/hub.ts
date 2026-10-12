@@ -23,6 +23,27 @@ export async function fetchHubJson<T>(path: string, actor: ActorContext): Promis
 	return (await response.json()) as T;
 }
 
+export async function postHubJson<T>(path: string, actor: ActorContext, body: unknown): Promise<T> {
+	const response = await fetch(path, {
+		method: 'POST',
+		headers: {
+			'content-type': 'application/json',
+			'x-actor-id': actor.actorId,
+			'x-actor-tier': String(actor.authorityTier)
+		},
+		body: JSON.stringify(body)
+	});
+	if (!response.ok) {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (contentType.includes('application/json')) {
+			throw new Error(formatProblemMessage(await response.json(), `Integration Hub request failed (${response.status})`));
+		}
+		const bodyText = await response.text();
+		throw new Error(bodyText.trim() || `Integration Hub request failed (${response.status})`);
+	}
+	return (await response.json()) as T;
+}
+
 function formatProblemMessage(problem: unknown, fallback: string): string {
 	if (!problem || typeof problem !== 'object') {
 		return fallback;

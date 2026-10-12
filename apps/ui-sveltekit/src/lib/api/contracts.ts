@@ -16,6 +16,7 @@ export interface ContractOptionsResponse {
 	data: ContractOption[];
 }
 
-export function getActiveContracts(actor: ActorContext): Promise<ContractOptionsResponse> {
-	return fetchHubJson<ContractOptionsResponse>('/api/hub/o2c/contracts/active', actor);
+export function getActiveContracts(actor: ActorContext, customerId: string): Promise<ContractOptionsResponse> {
+	const query = new URLSearchParams({ customerId });
+	return fetchHubJson<ContractOptionsResponse>(`/api/hub/o2c/contracts/active?${query.toString()}`, actor);
 }

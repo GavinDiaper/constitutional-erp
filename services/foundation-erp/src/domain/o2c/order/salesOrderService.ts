@@ -74,6 +74,8 @@ export function listOrderLines(orderId: string) {
          wbs_id,
          contract_version_id,
          wbs_element_id,
+         (SELECT sku_id FROM inv_sku WHERE sku_id = o2c_sales_order_line.sku OR sku_code = o2c_sales_order_line.sku) AS sku_id,
+         COALESCE((SELECT sku_type FROM inv_sku WHERE sku_id = o2c_sales_order_line.sku OR sku_code = o2c_sales_order_line.sku), 'physical') AS sku_type,
          tax_code_id,
          tax_applicability,
          tax_rate_percent,

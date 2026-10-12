@@ -57,6 +57,7 @@ interface QuoteLineRow {
   quote_line_id: string;
   quote_id: string;
   sku: string;
+  sku_type: string;
   quantity: number;
   unit_price: number;
   line_total: number;
@@ -251,7 +252,14 @@ export function listQuoteLines(quoteId: string): QuoteLineRow[] {
   ensureQuoteExists(quoteId);
   return db
     .prepare(
-      "SELECT quote_line_id, quote_id, sku, quantity, unit_price, line_total, tax_code_id, tax_applicability, tax_rate_percent, tax_amount, created_at FROM o2c_quote_line WHERE quote_id = ? ORDER BY created_at ASC"
+            `SELECT q.quote_line_id, q.quote_id, q.sku, s.sku_id,
+              COALESCE(s.sku_type, 'physical') AS sku_type,
+          q.quantity, q.unit_price, q.line_total, q.tax_code_id, q.tax_applicability,
+          q.tax_rate_percent, q.tax_amount, q.created_at
+       FROM o2c_quote_line q
+       LEFT JOIN inv_sku s ON s.sku_id = q.sku OR s.sku_code = q.sku
+       WHERE q.quote_id = ?
+       ORDER BY q.created_at ASC`
     )
     .all(quoteId) as QuoteLineRow[];
 }

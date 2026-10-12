@@ -304,9 +304,8 @@ export function listContracts(customerId?: string) {
   return db.prepare("SELECT * FROM o2c_contract ORDER BY created_at DESC LIMIT 100").all();
 }
 
-export function listSelectableContracts() {
-  return db.prepare(
-    `SELECT c.contract_id AS contractId, c.customer_id AS customerId,
+export function listSelectableContracts(customerId?: string) {
+  const query = `SELECT c.contract_id AS contractId, c.customer_id AS customerId,
             c.external_reference AS externalReference, c.name,
             v.contract_version_id AS contractVersionId, v.version_number AS versionNumber,
             v.contract_value AS contractValue, v.currency_code AS currencyCode
@@ -315,8 +314,11 @@ export function listSelectableContracts() {
        ON v.contract_id = c.contract_id
       AND v.version_number = c.current_version
       AND v.status = 'Approved'
-     WHERE c.status = 'Active'
-     ORDER BY c.name ASC
-     LIMIT 500`
+     WHERE c.status = 'Active'`;
+  if (customerId) {
+    return db.prepare(`${query} AND c.customer_id = ? ORDER BY c.name ASC LIMIT 500`).all(customerId);
+  }
+  return db.prepare(
+    `${query} ORDER BY c.name ASC LIMIT 500`
   ).all();
 }

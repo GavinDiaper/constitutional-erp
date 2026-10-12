@@ -14,7 +14,6 @@
 		initialProjects: Project[];
 		initialOrganizations: OrganizationRow[];
 		initialManagers: EmployeeRow[];
-		initialContracts: ContractOption[];
 	};
 
 	interface OrganizationRow {
@@ -29,6 +28,12 @@
 		last_name?: string;
 		display_name?: string;
 		full_name?: string;
+	}
+
+	interface CustomerRow {
+		customer_id: string;
+		customer_name: string;
+		status?: string;
 	}
 
 	interface ProjectTableRow {
@@ -72,6 +77,7 @@
 	let newProjectName = '';
 	let newProjectDescription = '';
 	let newProjectType: 'Internal' | 'Capital' | 'Billable' | 'Service' = 'Internal';
+	let newProjectCustomerId = '';
 	let newProjectContractId = '';
 	let newProjectBudget = '10000';
 	let newProjectStartDate = new Date().toISOString().split('T')[0];
@@ -82,7 +88,9 @@
 	let newProjectCloseAccountId = 'ACCT-CLOSE-001';
 	let organizationOptions: OrganizationRow[] = data.initialOrganizations ?? [];
 	let managerOptions: EmployeeRow[] = data.initialManagers ?? [];
-	let contractOptions: ContractOption[] = data.initialContracts ?? [];
+	let customerOptions: CustomerRow[] = [];
+	let contractOptions: ContractOption[] = [];
+	let contractsLoading = false;
 
 	const statusOptions = ['Draft', 'Active', 'OnHold', 'Completed', 'Cancelled'];
 	const typeOptions: Array<'Internal' | 'Capital' | 'Billable' | 'Service'> = ['Internal', 'Capital', 'Billable', 'Service'];
@@ -174,15 +182,15 @@
 	async function loadCreateProjectOptions() {
 		try {
 			const actor = $actorStore;
-			const [organizationResponse, employeeResponse, contractResponse] = await Promise.all([
+			const [organizationResponse, employeeResponse, customerResponse] = await Promise.all([
 				queryTable<OrganizationRow>('inv_organization', actor),
 				queryTable<EmployeeRow>('h2r_employee', actor),
-				getActiveContracts(actor)
+				queryTable<CustomerRow>('o2c_customer', actor)
 			]);
 
 			organizationOptions = organizationResponse.data ?? [];
 			managerOptions = employeeResponse.data ?? [];
-			contractOptions = contractResponse.data ?? [];
+			customerOptions = (customerResponse.data ?? []).filter((customer) => customer.status !== 'Inactive');
 
 			if (organizationOptions.length === 0) {
 				const organization = await createInventoryOrganization(actor, {
@@ -210,6 +218,20 @@
 		}
 	}
 
+	async function loadContractOptions(customerId: string) {
+		newProjectContractId = '';
+		contractOptions = [];
+		if (!customerId) return;
+		contractsLoading = true;
+		try {
+			contractOptions = (await getActiveContracts($actorStore, customerId)).data ?? [];
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to load approved contracts';
+		} finally {
+			contractsLoading = false;
+		}
+	}
+
 	async function handleCreateProject() {
 		loading = true;
 		errorMessage = '';
@@ -227,7 +249,10 @@
 				throw new Error('Organization is required');
 			}
 			const selectedContract = contractOptions.find((contract) => contract.contractId === newProjectContractId);
-			if (newProjectType === 'Service' && !selectedContract) {
+			if (newProjectType === 'Service' && !newProjectCustomerId) {
+				throw new Error('Select a customer for a Service project');
+			}
+			if (newProjectType === 'Service' && (!selectedContract || selectedContract.customerId !== newProjectCustomerId)) {
 				throw new Error('Select an active approved contract for a Service project');
 			}
 
@@ -237,7 +262,7 @@
 				description: newProjectDescription || undefined,
 				projectType: newProjectType,
 				...(newProjectType === 'Service' && selectedContract
-					? { contractId: selectedContract.contractId, customerId: selectedContract.customerId }
+					? { contractId: selectedContract.contractId, customerId: newProjectCustomerId }
 					: {}),
 				budgetAmount: parseFloat(newProjectBudget),
 				startDate: newProjectStartDate,
@@ -255,6 +280,9 @@
 			// Reset form
 			newProjectName = '';
 			newProjectDescription = '';
+			newProjectCustomerId = '';
+			newProjectContractId = '';
+			contractOptions = [];
 			newProjectContractId = '';
 			newProjectBudget = '10000';
 			newProjectStartDate = new Date().toISOString().split('T')[0];
@@ -412,8 +440,27 @@
 				</div>
 				{#if newProjectType === 'Service'}
 					<div>
+						<label for="serviceCustomer" class="block text-sm font-medium mb-1">Customer</label>
+						<select
+							id="serviceCustomer"
+							bind:value={newProjectCustomerId}
+							on:change={() => void loadContractOptions(newProjectCustomerId)}
+							class="input-base w-full"
+						>
+							<option value="">Select a customer</option>
+							{#each customerOptions as customer (customer.customer_id)}
+								<option value={customer.customer_id}>{customer.customer_name} ({customer.customer_id})</option>
+							{/each}
+						</select>
+					</div>
+					<div>
 						<label for="serviceContract" class="block text-sm font-medium mb-1">Approved Service Contract</label>
-						<select id="serviceContract" bind:value={newProjectContractId} class="input-base w-full">
+						<select
+							id="serviceContract"
+							bind:value={newProjectContractId}
+							class="input-base w-full"
+							disabled={!newProjectCustomerId || contractsLoading}
+						>
 							<option value="">Select a contract</option>
 							{#each contractOptions as contract (contract.contractId)}
 								<option value={contract.contractId}>
@@ -421,7 +468,9 @@
 								</option>
 							{/each}
 						</select>
-						{#if contractOptions.length === 0}
+						{#if contractsLoading}
+							<p class="ui-muted mt-1 text-sm">Loading approved contracts...</p>
+						{:else if newProjectCustomerId && contractOptions.length === 0}
 							<p class="ui-muted mt-1 text-sm">No active approved contracts are available.</p>
 						{/if}
 					</div>

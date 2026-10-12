@@ -1325,6 +1325,13 @@ test("O2C contracts retain immutable SOW versions through amendment approval", a
   assert.equal(option.versionNumber, 1);
   assert.equal("sowSnapshot" in option, false);
 
+  const customerContracts = await request(app)
+    .get(`/api/v1/o2c/contracts/active?customerId=${encodeURIComponent(contract.customerId)}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(customerContracts.body.data.length, 1);
+  assert.equal(customerContracts.body.data[0].customerId, contract.customerId);
+
   const amendment = await request(app)
     .post(`/api/v1/o2c/contracts/${contract.contractId}/amendments`)
     .set(headers)
@@ -1493,6 +1500,8 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     .expect(200);
 
   assert.equal(lines.body.data.length, 2);
+  assert.equal(lines.body.data[0].sku_type, "service");
+  assert.equal(lines.body.data[0].sku_id, serviceSku.body.sku_id);
   assert.equal(lines.body.data[0].contract_version_id, approvedContract.contractVersionId);
   assert.equal(lines.body.data[0].wbs_element_id, null);
 

@@ -419,8 +419,8 @@ o2cRouter.get("/contracts", (req, res) => {
   res.json({ data: listContracts(req.query.customerId as string | undefined) });
 });
 
-o2cRouter.get("/contracts/active", (_req, res) => {
-  res.json({ data: listSelectableContracts() });
+o2cRouter.get("/contracts/active", (req, res) => {
+  res.json({ data: listSelectableContracts(req.query.customerId as string | undefined) });
 });
 
 o2cRouter.post("/contracts", validateBody(createContractSchema), (req, res) => {

@@ -11,6 +11,7 @@ import type {
 	ProjectProcurementPreview,
 	ProjectRequisitionGenerationResult
 } from '$lib/types/projects';
+import type { ProjectWbsElement } from '$lib/types/projects';
 
 interface DataResponse<T> {
 	data: T;
@@ -201,6 +202,36 @@ export function listProjectBomAssignments(
 		`/api/hub/proj/${projectId}/bom-assignments`,
 		actor,
 		'GET'
+	);
+}
+
+export function listProjectWbsElements(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataListResponse<ProjectWbsElement>> {
+	return requestHubJson<DataListResponse<ProjectWbsElement>>(
+		`/api/hub/proj/${projectId}/wbs-elements`,
+		actor,
+		'GET'
+	);
+}
+
+export function createProjectWbsElement(
+	actor: ActorContext,
+	projectId: string,
+	payload: {
+		parentWbsElementId?: string;
+		wbsCode: string;
+		name: string;
+		phaseName?: string;
+		deliverableSkuId?: string;
+	}
+): Promise<DataResponse<ProjectWbsElement>> {
+	return requestHubJson<DataResponse<ProjectWbsElement>>(
+		`/api/hub/proj/${projectId}/wbs-elements`,
+		actor,
+		'POST',
+		payload
 	);
 }
 

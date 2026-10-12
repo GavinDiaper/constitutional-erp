@@ -19,12 +19,14 @@
 		completeProject,
 		cancelProject,
 		assignBomToProject,
+		createProjectWbsElement,
+		listProjectWbsElements,
 		postLaborCost,
 		createProjectFinishedItem,
 		getProjectProcurementPreview,
 		generateProjectRequisitionLines
 	} from '$lib/api/projects';
-	import type { Project, ProjectProcurementPreview } from '$lib/types/projects';
+	import type { Project, ProjectProcurementPreview, ProjectWbsElement } from '$lib/types/projects';
 
 	interface BomOption {
 		bom_id: string;
@@ -40,6 +42,7 @@
 	interface SkuOption {
 		sku_id: string;
 		sku_code?: string;
+		sku_type?: 'physical' | 'service';
 		description?: string;
 		name?: string;
 	}
@@ -52,7 +55,7 @@
 		last_name?: string;
 	}
 
-	let activeTab: 'overview' | 'boms' | 'labor' | 'finished' | 'financials' | 'linked' = 'overview';
+	let activeTab: 'overview' | 'wbs' | 'boms' | 'labor' | 'finished' | 'financials' | 'linked' = 'overview';
 	let loading = false;
 	let errorMessage = '';
 	let successMessage = '';
@@ -60,6 +63,12 @@
 	// Form states
 	let newBomId = '';
 	let newBomQuantity = '1';
+	let newWbsCode = '';
+	let newWbsName = '';
+	let newWbsPhaseName = '';
+	let newWbsParentElementId = '';
+	let newWbsDeliverableSkuId = '';
+	let wbsElements: ProjectWbsElement[] = [];
 
 	let newResourceId = '';
 	let newHours = '8';
@@ -199,6 +208,42 @@
 		bomSearchQuery = '';
 		resourceSearchQuery = '';
 		skuSearchQuery = '';
+	}
+
+	async function loadWbsElements(currentProjectId: string): Promise<void> {
+		try {
+			wbsElements = (await listProjectWbsElements($actorStore, currentProjectId)).data ?? [];
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to load WBS elements';
+		}
+	}
+
+	async function handleCreateWbsElement(): Promise<void> {
+		const currentProject = $projectStore.currentProject;
+		if (!currentProject) return;
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+		try {
+			await createProjectWbsElement($actorStore, currentProject.projectId, {
+				parentWbsElementId: newWbsParentElementId || undefined,
+				wbsCode: newWbsCode,
+				name: newWbsName,
+				phaseName: newWbsPhaseName || undefined,
+				deliverableSkuId: newWbsDeliverableSkuId || undefined
+			});
+			newWbsCode = '';
+			newWbsName = '';
+			newWbsPhaseName = '';
+			newWbsParentElementId = currentProject.wbsId ?? '';
+			newWbsDeliverableSkuId = '';
+			await loadWbsElements(currentProject.projectId);
+			successMessage = 'WBS element created.';
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to create WBS element';
+		} finally {
+			loading = false;
+		}
 	}
 
 	async function handleTransition(project: Project | null) {
@@ -399,7 +444,7 @@
 		if (projectId) {
 			void (async () => {
 				await loadProject(projectId);
-				await loadReferenceOptions();
+				await Promise.all([loadReferenceOptions(), loadWbsElements(projectId)]);
 			})();
 		}
 
@@ -421,6 +466,12 @@
 	$: filteredSkuOptions = skuOptions.filter((sku) =>
 		getSkuDisplayText(sku).toLowerCase().includes(normalizeSearch(skuSearchQuery))
 	);
+	$: wbsSkuOptions = skuOptions.filter((sku) =>
+		$projectStore.currentProject?.projectType === 'Service' ? sku.sku_type === 'service' : true
+	);
+	$: if ($projectStore.currentProject?.wbsId && !newWbsParentElementId) {
+		newWbsParentElementId = $projectStore.currentProject.wbsId;
+	}
 	$: kpiCurrencyCode =
 		$projectStore.salesOrders.find((order) => Boolean(order.currencyCode))?.currencyCode ??
 		$projectStore.purchaseOrders.find((order) => Boolean(order.currencyCode))?.currencyCode ??
@@ -575,7 +626,7 @@
 		<!-- Tabs -->
 		<div class="border-b border-slate-300 dark:border-white/15 mb-6">
 			<div class="flex gap-4">
-				{#each (['overview', 'boms', 'labor', 'finished', 'financials', 'linked'] as const) as tab}
+				{#each (['overview', 'wbs', 'boms', 'labor', 'finished', 'financials', 'linked'] as const) as tab}
 					<button
 						on:click={() => (activeTab = tab)}
 						class={`px-4 py-2 border-b-2 font-medium text-sm ${
@@ -586,7 +637,9 @@
 					>
 						{tab === 'overview'
 							? 'Overview'
-							: tab === 'boms'
+							: tab === 'wbs'
+								? 'WBS'
+								: tab === 'boms'
 								? 'BOM Assignments'
 								: tab === 'labor'
 									? 'Labor Entries'
@@ -650,6 +703,89 @@
 						</div>
 					</div>
 				{/if}
+			</div>
+		{/if}
+
+		{#if activeTab === 'wbs'}
+			<div class="space-y-5">
+				<div class="bg-slate-50 border border-slate-300 dark:bg-white/5 dark:border-white/15 rounded-lg p-6">
+					<h2 class="text-lg font-semibold">Work Breakdown Structure</h2>
+					<p class="mt-1 text-sm text-slate-600 dark:text-white/70">
+						Root: {$projectStore.currentProject.wbsId || 'No project WBS root is configured'}
+					</p>
+					<div class="mt-4 overflow-x-auto">
+						<table class="w-full text-left text-sm">
+							<thead class="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white/75">
+								<tr>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Code</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Element</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Phase</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Deliverable SKU</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each wbsElements as element (element.wbsElementId)}
+									<tr class="hover:bg-slate-100 dark:hover:bg-white/5">
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{element.wbsCode}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">
+											{#if element.parentWbsElementId}<span class="mr-2 text-slate-400">↳</span>{/if}{element.name}
+										</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{element.phaseName || '—'}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{element.deliverableSkuId || '—'}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{element.status}</td>
+									</tr>
+								{:else}
+									<tr><td colspan="5" class="px-3 py-4 text-slate-500 dark:text-white/60">No WBS elements found.</td></tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="bg-slate-50 border border-slate-300 dark:bg-white/5 dark:border-white/15 rounded-lg p-6">
+					<h3 class="text-base font-semibold mb-4">Add WBS Child Element</h3>
+					<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+						<div>
+							<label for="wbsParent" class="mb-1 block text-sm font-medium">Parent element</label>
+							<select id="wbsParent" bind:value={newWbsParentElementId} class="input-base w-full">
+								{#each wbsElements as element (element.wbsElementId)}
+									{#if element.status !== 'Completed' && element.status !== 'Cancelled'}
+										<option value={element.wbsElementId}>{element.wbsCode} · {element.name}</option>
+									{/if}
+								{/each}
+							</select>
+						</div>
+						<div>
+							<label for="wbsCode" class="mb-1 block text-sm font-medium">Code</label>
+							<input id="wbsCode" bind:value={newWbsCode} class="input-base w-full" />
+						</div>
+						<div>
+							<label for="wbsName" class="mb-1 block text-sm font-medium">Name</label>
+							<input id="wbsName" bind:value={newWbsName} class="input-base w-full" />
+						</div>
+						<div>
+							<label for="wbsPhase" class="mb-1 block text-sm font-medium">Phase</label>
+							<input id="wbsPhase" bind:value={newWbsPhaseName} class="input-base w-full" />
+						</div>
+						<div>
+							<label for="wbsSku" class="mb-1 block text-sm font-medium">Deliverable SKU</label>
+							<select id="wbsSku" bind:value={newWbsDeliverableSkuId} class="input-base w-full">
+								<option value="">No SKU</option>
+								{#each wbsSkuOptions as sku (sku.sku_id)}
+									<option value={sku.sku_id}>{getSkuDisplayText(sku)}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+					<button
+						on:click={() => void handleCreateWbsElement()}
+						class="mt-4 rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+						disabled={loading || !newWbsCode.trim() || !newWbsName.trim() || !$projectStore.currentProject.wbsId}
+					>
+						Add WBS Element
+					</button>
+				</div>
 			</div>
 		{/if}
 

@@ -48,6 +48,22 @@ export interface ProjectWIP {
 	version: number;
 }
 
+export interface ProjectWbsElement {
+	wbsElementId: string;
+	projectId: string;
+	contractVersionId?: string;
+	parentWbsElementId?: string;
+	wbsCode: string;
+	name: string;
+	phaseName?: string;
+	deliverableSkuId?: string;
+	status: 'Planned' | 'Active' | 'Completed' | 'Cancelled';
+	version: number;
+	createdBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface BomAssignment {
 	assignmentId: string;
 	projectId: string;
