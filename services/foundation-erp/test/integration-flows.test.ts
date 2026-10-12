@@ -1984,3 +1984,141 @@ test("Internal trade lifecycle: Draft → Released → Approved", async () => {
     .expect(200);
   assert.ok(list.body.data.some((t: { tradeId: string }) => t.tradeId === tradeId));
 });
+
+test("Project-linked timesheets post labour into project WIP on approval", async () => {
+  const headers = authHeaders();
+  const managerHeaders = { ...headers, "x-actor-type": "user", "x-actor-id": "test-manager", "x-actor-tier": "1" };
+  const unique = Date.now();
+
+  const org = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `Timesheet Org ${unique}` })
+    .expect(201);
+
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({
+      name: `Timesheet Employee ${unique}`,
+      email: `timesheet-${unique}@example.com`,
+      status: "Active"
+    })
+    .expect(201);
+
+  const costElement = await request(app)
+    .post("/api/v1/cost-elements")
+    .set(headers)
+    .send({
+      organizationId: org.body.organization_id,
+      costElementName: `Labor ${unique}`,
+      costElementType: "Labor",
+      costCategory: "DirectLabor",
+      glAccountId: "SYS-500-EXP-COGS",
+      allocationMethod: "Direct"
+    })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: `Timesheet Project ${unique}`,
+      projectType: "Internal",
+      budgetAmount: 25000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: org.body.organization_id,
+    })
+    .expect(201);
+
+  const projectId = project.body.data.projectId;
+  await request(app).post(`/api/v1/projects/${projectId}/activate`).set(managerHeaders).send({}).expect(200);
+
+  const timesheet = await request(app)
+    .post("/api/v1/timesheets")
+    .set(headers)
+    .send({
+      organizationId: org.body.organization_id,
+      employeeId: employee.body.employee_id,
+      periodStart: "2026-01-05",
+      periodEnd: "2026-01-11"
+    })
+    .expect(201);
+
+  const timesheetId = timesheet.body.data.timesheetId;
+
+  const line = await request(app)
+    .post(`/api/v1/timesheets/${timesheetId}/lines`)
+    .set(headers)
+    .send({
+      projectId,
+      costElementId: costElement.body.data.costElementId,
+      workDate: "2026-01-06",
+      hours: 8,
+      hourlyRate: 62.5,
+      description: "Assembly work"
+    })
+    .expect(201);
+
+  assert.equal(line.body.data.lineCount, 1);
+  assert.equal(line.body.data.totalHours, 8);
+  assert.equal(line.body.data.totalCost, 500);
+
+  const listedLines = await request(app)
+    .get(`/api/v1/timesheets/${timesheetId}/lines`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(listedLines.body.count, 1);
+  assert.equal(listedLines.body.data[0].projectId, projectId);
+
+  const submitted = await request(app)
+    .post(`/api/v1/timesheets/${timesheetId}/submit`)
+    .set(headers)
+    .send({})
+    .expect(200);
+
+  assert.equal(submitted.body.data.status, "Submitted");
+
+  const approved = await request(app)
+    .post(`/api/v1/timesheets/${timesheetId}/approve`)
+    .set(headers)
+    .send({})
+    .expect(200);
+
+  assert.equal(approved.body.data.status, "Posted");
+  assert.equal(approved.body.data.totalCost, 500);
+  assert.equal(approved.body.data.lines[0].status, "Posted");
+
+  const fetchedTimesheet = await request(app)
+    .get(`/api/v1/timesheets/${timesheetId}`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(fetchedTimesheet.body.data.lineCount, 1);
+  assert.equal(fetchedTimesheet.body.data.lines[0].costElementId, costElement.body.data.costElementId);
+
+  const timesheetList = await request(app)
+    .get("/api/v1/timesheets")
+    .query({ organizationId: org.body.organization_id })
+    .set(headers)
+    .expect(200);
+
+  assert.ok(timesheetList.body.data.some((row: { timesheetId: string }) => row.timesheetId === timesheetId));
+
+  const wip = await request(app).get(`/api/v1/projects/${projectId}/wip`).set(headers).expect(200);
+  assert.equal(wip.body.data.wipLaborBalance, 500);
+  assert.equal(wip.body.data.wipTotalBalance, 500);
+
+  const laborEntries = await request(app)
+    .get(`/api/v1/projects/${projectId}/labor-entries`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(laborEntries.body.data.length, 1);
+  assert.equal(laborEntries.body.data[0].resourceId, employee.body.employee_id);
+  assert.equal(laborEntries.body.data[0].totalCost, 500);
+});

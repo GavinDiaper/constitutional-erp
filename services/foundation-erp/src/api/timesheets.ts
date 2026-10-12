@@ -1,11 +1,14 @@
 import { Router, Request, Response } from "express";
 import {
   createTimesheet,
+  addTimesheetLine,
   submitTimesheet,
   approveTimesheet,
   getTimesheetById,
   listTimesheets,
+  listTimesheetLines,
 } from "../domain/h2r/timesheetService";
+import { HttpError } from "../utils/errors";
 
 const router = Router();
 
@@ -34,8 +37,9 @@ router.post("/", (req: Request, res: Response) => {
       message: `Timesheet '${timesheet.timesheetId}' created successfully`,
     });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
@@ -54,8 +58,9 @@ router.get("/:timesheetId", (req: Request, res: Response) => {
 
     res.json({ success: true, data: timesheet });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
@@ -83,8 +88,50 @@ router.get("/", (req: Request, res: Response) => {
       count: timesheets.length,
     });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/timesheets/:timesheetId/lines
+ * Add a line to a draft timesheet
+ */
+router.post("/:timesheetId/lines", (req: Request, res: Response) => {
+  try {
+    const { timesheetId } = req.params;
+    const { projectId, costElementId, workDate, hours, hourlyRate, description, laborRateFrom } = req.body;
+    const timesheet = addTimesheetLine(
+      { timesheetId, projectId, costElementId, workDate, hours, hourlyRate, description, laborRateFrom },
+      req.actor
+    );
+
+    res.status(201).json({
+      success: true,
+      data: timesheet,
+      message: `Line added to timesheet '${timesheetId}'`,
+    });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/timesheets/:timesheetId/lines
+ * List line items for a timesheet
+ */
+router.get("/:timesheetId/lines", (req: Request, res: Response) => {
+  try {
+    const { timesheetId } = req.params;
+    const lines = listTimesheetLines(timesheetId);
+    res.json({ success: true, data: lines, count: lines.length });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
@@ -105,15 +152,15 @@ router.post("/:timesheetId/submit", (req: Request, res: Response) => {
       message: `Timesheet '${timesheetId}' submitted`,
     });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    const statusCode = error.message.includes("invalid_state") ? 400 : 500;
-    res.status(statusCode).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
 /**
  * POST /api/v1/timesheets/:timesheetId/approve
- * Approve timesheet (emits labor posting event)
+ * Approve and process a timesheet
  */
 router.post("/:timesheetId/approve", (req: Request, res: Response) => {
   try {
@@ -128,9 +175,9 @@ router.post("/:timesheetId/approve", (req: Request, res: Response) => {
       message: `Timesheet '${timesheetId}' approved`,
     });
   } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
-    const statusCode = error.message.includes("invalid_state") ? 400 : 500;
-    res.status(statusCode).json({ success: false, error: error.message });
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 
