@@ -12,6 +12,18 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function resolveAccountId(accountIdentifier: string): string {
+  const row = db
+    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ? OR account_code = ?")
+    .get(accountIdentifier, accountIdentifier) as { account_id: string } | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", "GL account not found");
+  }
+
+  return row.account_id;
+}
+
 interface CostElementRow {
   cost_element_id: string;
   organization_id: string;
@@ -54,17 +66,9 @@ export function createCostElement(
   },
   actor?: EventActor
 ): CostElementProjection {
+  const resolvedGlAccountId = resolveAccountId(input.glAccountId);
   const costElementId = newId("CE-");
   const timestamp = now();
-
-  // Verify GL account exists (optional guard)
-  const glAccount = db
-    .prepare("SELECT account_id FROM r2r_chart_of_accounts WHERE account_id = ?")
-    .get(input.glAccountId) as { account_id: string } | undefined;
-
-  if (!glAccount) {
-    throw new HttpError(404, "not_found", "GL account not found");
-  }
 
   try {
     transaction(() => {
@@ -80,7 +84,7 @@ export function createCostElement(
         input.costElementName,
         input.costElementType,
         input.costCategory ?? "Standard",
-        input.glAccountId,
+        resolvedGlAccountId,
         input.taxCodeId ?? null,
         input.allocationMethod ?? "Direct",
         1,
@@ -100,7 +104,7 @@ export function createCostElement(
           organizationId: input.organizationId,
           costElementName: input.costElementName,
           costElementType: input.costElementType,
-          glAccountId: input.glAccountId,
+          glAccountId: resolvedGlAccountId,
         } as unknown as Record<string, unknown>,
       });
     });

@@ -122,6 +122,18 @@ function getProjectWIPByProjectId(projectId: string): ProjectWIPRow {
   return row;
 }
 
+function resolveAccountId(accountIdentifier: string, notFoundMessage: string): string {
+  const row = db
+    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ? OR account_code = ?")
+    .get(accountIdentifier, accountIdentifier) as { account_id: string } | undefined;
+
+  if (!row) {
+    throw new HttpError(404, "not_found", notFoundMessage);
+  }
+
+  return row.account_id;
+}
+
 function validateProjectInput(input: {
   name: string;
   budgetAmount: number;
@@ -196,19 +208,8 @@ export function createProject(
     throw new HttpError(404, "not_found", "Project manager not found");
   }
 
-  const wipAccount = db
-    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ?")
-    .get(input.defaultWIPAccountId) as { account_id: string } | undefined;
-  if (!wipAccount) {
-    throw new HttpError(404, "not_found", "Default WIP account not found");
-  }
-
-  const closeAccount = db
-    .prepare("SELECT account_id FROM r2r_account WHERE account_id = ?")
-    .get(input.defaultCloseAccountId) as { account_id: string } | undefined;
-  if (!closeAccount) {
-    throw new HttpError(404, "not_found", "Default close account not found");
-  }
+  const resolvedWipAccountId = resolveAccountId(input.defaultWIPAccountId, "Default WIP account not found");
+  const resolvedCloseAccountId = resolveAccountId(input.defaultCloseAccountId, "Default close account not found");
 
   try {
     transaction(() => {
@@ -235,8 +236,8 @@ export function createProject(
         input.budgetAmount,
         0, // actual_cost_amount starts at 0
         null, // revenue_amount
-        input.defaultWIPAccountId,
-        input.defaultCloseAccountId,
+        resolvedWipAccountId,
+        resolvedCloseAccountId,
         input.startDate,
         input.endDate ?? null,
         input.projectManagerId,
@@ -287,8 +288,8 @@ export function createProject(
         contractId: input.contractId,
         wbsId: input.wbsId,
         budgetAmount: input.budgetAmount,
-        defaultWIPAccountId: input.defaultWIPAccountId,
-        defaultCloseAccountId: input.defaultCloseAccountId,
+        defaultWIPAccountId: resolvedWipAccountId,
+        defaultCloseAccountId: resolvedCloseAccountId,
         startDate: input.startDate,
         projectManagerId: input.projectManagerId,
         organizationId: input.organizationId,
