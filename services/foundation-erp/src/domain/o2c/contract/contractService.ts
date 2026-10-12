@@ -65,6 +65,49 @@ export function assertApprovedContract(contractId: string, customerId: string | 
   return row.contract_version_id;
 }
 
+export function assertApprovedContractVersion(
+  contractVersionId: string,
+  customerId: string,
+  effectiveDate: string,
+  allowSuperseded = false
+) {
+  const row = db.prepare(
+    `SELECT c.contract_id, c.customer_id, c.status AS contract_status, c.current_version,
+            v.contract_version_id, v.version_number, v.status AS version_status,
+            v.contract_value, v.currency_code, v.effective_from, v.effective_until
+     FROM o2c_contract_version v
+     JOIN o2c_contract c ON c.contract_id = v.contract_id
+     WHERE v.contract_version_id = ?`
+  ).get(contractVersionId) as {
+    contract_id: string;
+    customer_id: string;
+    contract_status: string;
+    current_version: number | null;
+    contract_version_id: string;
+    version_number: number;
+    version_status: string;
+    contract_value: number;
+    currency_code: string;
+    effective_from: string;
+    effective_until: string | null;
+  } | undefined;
+  if (!row) {
+    throw new HttpError(404, "not_found", "Contract version not found");
+  }
+  if (row.customer_id !== customerId) {
+    throw new HttpError(409, "contract_customer_mismatch", "Contract customer does not match the sales order customer");
+  }
+  const isCurrentApproved = row.version_status === "Approved" && row.current_version === row.version_number;
+  const isPinnedSuperseded = allowSuperseded && row.version_status === "Superseded";
+  if (row.contract_status !== "Active" || (!isCurrentApproved && !isPinnedSuperseded)) {
+    throw new HttpError(409, "contract_not_approved", "Sales orders require a valid approved contract version");
+  }
+  if (effectiveDate < row.effective_from || (row.effective_until && effectiveDate > row.effective_until)) {
+    throw new HttpError(409, "contract_not_effective", "Contract version is not effective on the sales order date");
+  }
+  return row;
+}
+
 function getContractVersion(contractId: string, versionNumber: number) {
   const row = db.prepare(
     `SELECT c.contract_id, c.customer_id, c.external_reference, c.name, c.status AS contract_status,

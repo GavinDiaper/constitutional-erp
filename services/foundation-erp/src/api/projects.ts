@@ -39,8 +39,31 @@ import {
   generateProjectRequisitionLinesFromPreview,
 } from "../domain/proj/projectService";
 import { HttpError } from "../utils/errors";
+import { createProjectWbsElement, listProjectWbsElements } from "../domain/proj/wbsService";
 
 const router = Router();
+
+router.get("/:projectId/wbs-elements", (req: Request, res: Response) => {
+  try {
+    const elements = listProjectWbsElements(req.params.projectId);
+    res.json({ success: true, data: elements, count: elements.length });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:projectId/wbs-elements", (req: Request, res: Response) => {
+  try {
+    const element = createProjectWbsElement(req.params.projectId, req.body ?? {}, req.actor);
+    res.status(201).json({ success: true, data: element });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
 
 /**
  * POST /api/v1/projects

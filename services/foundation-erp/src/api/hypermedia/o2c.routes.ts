@@ -34,6 +34,7 @@ import {
   getOrderById,
   listOrders,
   listOrderLines,
+  assignOrderLineWbs,
   assignOrderProject,
   confirmOrder,
   allocateOrder,
@@ -109,7 +110,13 @@ const addQuoteLineSchema = z.object({
 const convertQuoteSchema = z.object({
   legalEntityId: z.string().min(1).optional(),
   projectId: z.string().min(1).optional(),
-  wbsId: z.string().min(1).optional()
+  wbsId: z.string().min(1).optional(),
+  contractVersionId: z.string().min(1).optional()
+});
+
+const assignOrderLineWbsSchema = z.object({
+  projectId: z.string().min(1),
+  wbsElementId: z.string().min(1)
 });
 
 const assignOrderProjectSchema = z.object({
@@ -527,7 +534,13 @@ o2cRouter.post("/quotes/:quoteId/expire", (req, res) => {
 });
 
 o2cRouter.post("/quotes/:quoteId/convert", validateBody(convertQuoteSchema), (req, res) => {
-  const order = createOrderFromQuote(req.params.quoteId, req.body.legalEntityId, req.body.projectId, req.body.wbsId);
+  const order = createOrderFromQuote(
+    req.params.quoteId,
+    req.body.legalEntityId,
+    req.body.projectId,
+    req.body.wbsId,
+    req.body.contractVersionId
+  );
   res.status(201).json(entityWithLinks(order as any, orderLinks((order as any).order_id, (order as any).state)));
 });
 
@@ -547,6 +560,21 @@ o2cRouter.get("/orders/:orderId/lines", (req, res) => {
   const lines = listOrderLines(req.params.orderId);
   res.json({ data: lines });
 });
+
+o2cRouter.post(
+  "/orders/:orderId/lines/:orderLineId/wbs-mapping",
+  validateBody(assignOrderLineWbsSchema),
+  (req, res) => {
+    const mapping = assignOrderLineWbs(
+      req.params.orderId,
+      req.params.orderLineId,
+      req.body.projectId,
+      req.body.wbsElementId,
+      req.actor
+    );
+    res.status(200).json({ data: mapping });
+  }
+);
 
 o2cRouter.post("/orders/:orderId/confirm", (req, res) => {
   const order = confirmOrder(req.params.orderId, req.actor);

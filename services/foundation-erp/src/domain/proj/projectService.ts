@@ -279,6 +279,24 @@ export function createProject(
         null // closed_expense_cost
       );
 
+      if (input.wbsId) {
+        db.prepare(
+          `INSERT INTO proj_wbs_element(
+             wbs_element_id, project_id, contract_version_id, parent_wbs_element_id, wbs_code,
+             name, phase_name, status, version, created_by, created_at, updated_at
+           ) VALUES (?, ?, ?, NULL, ?, ?, 'Root', 'Active', 1, ?, ?, ?)`
+        ).run(
+          input.wbsId,
+          projectId,
+          contractVersionId ?? null,
+          input.wbsId,
+          input.name,
+          actor?.id ?? "system",
+          timestamp,
+          timestamp
+        );
+      }
+
       // Insert WIP ledger
       db.prepare(
         `INSERT INTO proj_wip(

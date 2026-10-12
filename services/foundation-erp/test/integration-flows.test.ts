@@ -74,7 +74,11 @@ async function createApprovedContract(headers: ReturnType<typeof authHeaders>, e
     .post(`/api/v1/o2c/contracts/${contract.body.data.contract_id}/versions/1/approve`)
     .set(headers)
     .expect(200);
-  return { customerId: customer.body.customer_id, contractId: contract.body.data.contract_id };
+  return {
+    customerId: customer.body.customer_id,
+    contractId: contract.body.data.contract_id,
+    contractVersionId: contract.body.data.contract_version_id
+  };
 }
 
 let app: any;
@@ -1390,6 +1394,36 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     })
     .expect(201);
 
+  const serviceSku = await request(app)
+    .post("/api/v1/inv/skus")
+    .set(headers)
+    .send({
+      skuCode: `SKU-SVC-ORDER-${unique}`,
+      description: "Orderable service deliverable",
+      uom: "EA",
+      valuationMethod: "standard",
+      skuType: "service"
+    })
+    .expect(201);
+
+  const childWbs = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/wbs-elements`)
+    .set(headers)
+    .send({
+      wbsCode: `WBS-LINE-CHILD-${unique}`,
+      name: "Implementation deliverable",
+      phaseName: "Implementation",
+      deliverableSkuId: serviceSku.body.sku_id
+    })
+    .expect(201);
+
+  const wbsElements = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/wbs-elements`)
+    .set(headers)
+    .expect(200);
+  assert.equal(wbsElements.body.data.length, 2);
+  assert.equal(wbsElements.body.data[0].wbsElementId, project.body.data.wbsId);
+
   await request(app)
     .post(`/api/v1/o2c/customers/${approvedContract.customerId}/activate`)
     .set(headers)
@@ -1409,7 +1443,13 @@ test("Sales order lines persist project and WBS mapping for service contract ord
   await request(app)
     .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/lines`)
     .set(headers)
-    .send({ sku: "SKU-SVC-ORDER-1", quantity: 1, unitPrice: 2500 })
+    .send({ sku: serviceSku.body.sku_code, quantity: 1, unitPrice: 2500 })
+    .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/lines`)
+    .set(headers)
+    .send({ sku: serviceSku.body.sku_code, quantity: 1, unitPrice: 1500 })
     .expect(201);
 
   await request(app)
@@ -1425,17 +1465,67 @@ test("Sales order lines persist project and WBS mapping for service contract ord
   const order = await request(app)
     .post(`/api/v1/o2c/quotes/${quote.body.quote_id}/convert`)
     .set(headers)
-    .send({ projectId: project.body.data.projectId, wbsId: project.body.data.wbsId })
+    .send({
+      projectId: project.body.data.projectId,
+      wbsId: project.body.data.wbsId,
+      contractVersionId: approvedContract.contractVersionId
+    })
     .expect(201);
+
+  await request(app)
+    .post(`/api/v1/o2c/contracts/${approvedContract.contractId}/amendments`)
+    .set(headers)
+    .send({
+      contractValue: 30000,
+      currencyCode: "USD",
+      effectiveFrom: "2030-01-01",
+      sowSnapshot: { deliverables: ["Future scope"] }
+    })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/o2c/contracts/${approvedContract.contractId}/versions/2/approve`)
+    .set(headers)
+    .expect(200);
 
   const lines = await request(app)
     .get(`/api/v1/o2c/orders/${order.body.order_id}/lines`)
     .set(headers)
     .expect(200);
 
-  assert.equal(lines.body.data.length, 1);
-  assert.equal(lines.body.data[0].project_id, project.body.data.projectId);
-  assert.equal(lines.body.data[0].wbs_id, project.body.data.wbsId);
+  assert.equal(lines.body.data.length, 2);
+  assert.equal(lines.body.data[0].contract_version_id, approvedContract.contractVersionId);
+  assert.equal(lines.body.data[0].wbs_element_id, null);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/confirm`)
+    .set(headers)
+    .expect(409);
+
+  const rootMapping = await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/lines/${lines.body.data[0].order_line_id}/wbs-mapping`)
+    .set(headers)
+    .send({ projectId: project.body.data.projectId, wbsElementId: project.body.data.wbsId })
+    .expect(200);
+  assert.equal(rootMapping.body.data.wbsElementId, project.body.data.wbsId);
+
+  await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/lines/${lines.body.data[1].order_line_id}/wbs-mapping`)
+    .set(headers)
+    .send({ projectId: project.body.data.projectId, wbsElementId: project.body.data.wbsId })
+    .expect(409);
+
+  const childMapping = await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/lines/${lines.body.data[1].order_line_id}/wbs-mapping`)
+    .set(headers)
+    .send({ projectId: project.body.data.projectId, wbsElementId: childWbs.body.data.wbsElementId })
+    .expect(200);
+  assert.equal(childMapping.body.data.contractVersionId, approvedContract.contractVersionId);
+
+  const confirmed = await request(app)
+    .post(`/api/v1/o2c/orders/${order.body.order_id}/confirm`)
+    .set(headers)
+    .expect(200);
+  assert.equal(confirmed.body.state, "Confirmed");
 });
 
 test("Project task tracking decrements remaining hours when labor is posted", async () => {
