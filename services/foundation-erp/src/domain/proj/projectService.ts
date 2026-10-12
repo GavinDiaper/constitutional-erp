@@ -1,3 +1,4 @@
+import { assertApprovedContract } from "../o2c/contract/contractService";
 import { db, transaction } from "../../db/connection";
 import { appendEvent, EventActor } from "../../events/eventStore";
 import { HttpError } from "../../utils/errors";
@@ -31,6 +32,7 @@ interface ProjectRow {
   description: string | null;
   customer_id: string | null;
   contract_id: string | null;
+  contract_version_id: string | null;
   wbs_id: string | null;
   project_type: "Internal" | "Capital" | "Billable" | "Service";
   status: ProjectStatus;
@@ -129,6 +131,7 @@ function validateProjectInput(input: {
   defaultWIPAccountId: string;
   defaultCloseAccountId: string;
   projectManagerId: string;
+  customerId?: string;
   projectType?: "Internal" | "Capital" | "Billable" | "Service";
   contractId?: string;
   wbsId?: string;
@@ -168,6 +171,9 @@ function validateProjectInput(input: {
         "invalid_request",
         "ERR_PROJECT_SERVICE_NO_WBS: wbsId is required for Service projects"
       );
+    }
+    if (!input.customerId || input.customerId.trim().length === 0) {
+      throw new HttpError(400, "invalid_request", "customerId is required for Service projects");
     }
   }
 }
@@ -210,6 +216,9 @@ export function createProject(
   actor?: EventActor
 ): ProjectProjection {
   validateProjectInput(input);
+  const contractVersionId = input.projectType === "Service"
+    ? assertApprovedContract(input.contractId!, input.customerId, input.startDate)
+    : undefined;
 
   const projectId = input.projectId ?? newId("PRJ-");
   const wipId = newId("WIP-");
@@ -231,20 +240,21 @@ export function createProject(
       // Insert project row
       db.prepare(
         `INSERT INTO proj_project(
-          project_id, name, description, customer_id, contract_id, wbs_id, project_type, status,
+          project_id, name, description, customer_id, contract_id, contract_version_id, wbs_id, project_type, status,
           budget_amount, baseline_budget_amount, actual_cost_amount, revenue_amount,
           default_wip_account_id, default_close_account_id,
           start_date, end_date, project_manager_id, organization_id,
           created_at, created_by, version, last_event_at,
           wip_material_balance, wip_labor_balance, wip_total_balance,
           closed_fg_cost, closed_expense_cost
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         projectId,
         input.name,
         input.description ?? null,
         input.customerId ?? null,
         input.contractId ?? null,
+        contractVersionId ?? null,
         input.wbsId ?? null,
         input.projectType,
         "Draft",
@@ -302,6 +312,7 @@ export function createProject(
         projectType: input.projectType,
         customerId: input.customerId,
         contractId: input.contractId,
+        contractVersionId,
         wbsId: input.wbsId,
         budgetAmount: input.budgetAmount,
         defaultWIPAccountId: resolvedWipAccountId,
@@ -677,6 +688,7 @@ function toProjectProjection(row: ProjectRow): ProjectProjection {
     description: row.description ?? undefined,
     customerId: row.customer_id ?? undefined,
     contractId: row.contract_id ?? undefined,
+    contractVersionId: row.contract_version_id ?? undefined,
     wbsId: row.wbs_id ?? undefined,
     projectType: row.project_type,
     status: row.status,

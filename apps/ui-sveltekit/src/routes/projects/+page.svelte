@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { createInventoryOrganization } from '$lib/api/inventory';
+	import { getActiveContracts, type ContractOption } from '$lib/api/contracts';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
 	import { projectStore, projectStatusBadge, loadProject, clearProjectStore } from '$lib/stores/projectStore';
@@ -13,6 +14,7 @@
 		initialProjects: Project[];
 		initialOrganizations: OrganizationRow[];
 		initialManagers: EmployeeRow[];
+		initialContracts: ContractOption[];
 	};
 
 	interface OrganizationRow {
@@ -70,6 +72,7 @@
 	let newProjectName = '';
 	let newProjectDescription = '';
 	let newProjectType: 'Internal' | 'Capital' | 'Billable' | 'Service' = 'Internal';
+	let newProjectContractId = '';
 	let newProjectBudget = '10000';
 	let newProjectStartDate = new Date().toISOString().split('T')[0];
 	let newProjectEndDate = '';
@@ -79,6 +82,7 @@
 	let newProjectCloseAccountId = 'ACCT-CLOSE-001';
 	let organizationOptions: OrganizationRow[] = data.initialOrganizations ?? [];
 	let managerOptions: EmployeeRow[] = data.initialManagers ?? [];
+	let contractOptions: ContractOption[] = data.initialContracts ?? [];
 
 	const statusOptions = ['Draft', 'Active', 'OnHold', 'Completed', 'Cancelled'];
 	const typeOptions: Array<'Internal' | 'Capital' | 'Billable' | 'Service'> = ['Internal', 'Capital', 'Billable', 'Service'];
@@ -170,13 +174,15 @@
 	async function loadCreateProjectOptions() {
 		try {
 			const actor = $actorStore;
-			const [organizationResponse, employeeResponse] = await Promise.all([
+			const [organizationResponse, employeeResponse, contractResponse] = await Promise.all([
 				queryTable<OrganizationRow>('inv_organization', actor),
-				queryTable<EmployeeRow>('h2r_employee', actor)
+				queryTable<EmployeeRow>('h2r_employee', actor),
+				getActiveContracts(actor)
 			]);
 
 			organizationOptions = organizationResponse.data ?? [];
 			managerOptions = employeeResponse.data ?? [];
+			contractOptions = contractResponse.data ?? [];
 
 			if (organizationOptions.length === 0) {
 				const organization = await createInventoryOrganization(actor, {
@@ -220,12 +226,19 @@
 			if (!newProjectOrganizationId.trim()) {
 				throw new Error('Organization is required');
 			}
+			const selectedContract = contractOptions.find((contract) => contract.contractId === newProjectContractId);
+			if (newProjectType === 'Service' && !selectedContract) {
+				throw new Error('Select an active approved contract for a Service project');
+			}
 
 			const actor = $actorStore;
 			const newProject = await createProject(actor, {
 				name: newProjectName,
 				description: newProjectDescription || undefined,
 				projectType: newProjectType,
+				...(newProjectType === 'Service' && selectedContract
+					? { contractId: selectedContract.contractId, customerId: selectedContract.customerId }
+					: {}),
 				budgetAmount: parseFloat(newProjectBudget),
 				startDate: newProjectStartDate,
 				endDate: newProjectEndDate || undefined,
@@ -242,6 +255,7 @@
 			// Reset form
 			newProjectName = '';
 			newProjectDescription = '';
+			newProjectContractId = '';
 			newProjectBudget = '10000';
 			newProjectStartDate = new Date().toISOString().split('T')[0];
 			newProjectEndDate = '';
@@ -396,6 +410,22 @@
 						{/each}
 					</select>
 				</div>
+				{#if newProjectType === 'Service'}
+					<div>
+						<label for="serviceContract" class="block text-sm font-medium mb-1">Approved Service Contract</label>
+						<select id="serviceContract" bind:value={newProjectContractId} class="input-base w-full">
+							<option value="">Select a contract</option>
+							{#each contractOptions as contract (contract.contractId)}
+								<option value={contract.contractId}>
+									{contract.name} · {contract.externalReference || contract.contractId} · v{contract.versionNumber}
+								</option>
+							{/each}
+						</select>
+						{#if contractOptions.length === 0}
+							<p class="ui-muted mt-1 text-sm">No active approved contracts are available.</p>
+						{/if}
+					</div>
+				{/if}
 				<div>
 					<label for="description" class="block text-sm font-medium mb-1">Description</label>
 					<input id="description" type="text" bind:value={newProjectDescription} class="input-base w-full" placeholder="Description (optional)" />
@@ -475,7 +505,7 @@
 				<tr>
 					<th class="px-4 py-2 text-left">Name</th>
 					<th class="px-4 py-2 text-left">Type</th>
-					<th class="px-4 py-2 text-left text-center">Status</th>
+					<th class="px-4 py-2 text-left">Status</th>
 					<th class="px-4 py-2 text-right">Budget</th>
 					<th class="px-4 py-2 text-right">WIP Balance</th>
 					<th class="px-4 py-2 text-left">Start Date</th>

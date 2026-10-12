@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import type { ContractOption } from '$lib/api/contracts';
 
 interface OrganizationRow {
 	organization_id: string;
@@ -87,16 +88,32 @@ async function loadTable<T>(fetchFn: typeof fetch, table: string): Promise<T[]> 
 	return payload.data ?? [];
 }
 
+async function loadActiveContracts(fetchFn: typeof fetch): Promise<ContractOption[]> {
+	const response = await fetchFn('/api/hub/o2c/contracts/active', {
+		headers: {
+			'x-actor-id': 'principal.system',
+			'x-actor-tier': '5'
+		}
+	});
+	if (!response.ok) {
+		return [];
+	}
+	const payload = (await response.json()) as { data?: ContractOption[] };
+	return payload.data ?? [];
+}
+
 export const load: PageServerLoad = async ({ fetch }) => {
-	const [projectRows, organizationOptions, managerOptions] = await Promise.all([
+	const [projectRows, organizationOptions, managerOptions, activeContracts] = await Promise.all([
 		loadTable<ProjectTableRow>(fetch, 'proj_project'),
 		loadTable<OrganizationRow>(fetch, 'inv_organization'),
-		loadTable<EmployeeRow>(fetch, 'h2r_employee')
+		loadTable<EmployeeRow>(fetch, 'h2r_employee'),
+		loadActiveContracts(fetch)
 	]);
 
 	return {
 		initialProjects: projectRows.map(mapProjectRow),
 		initialOrganizations: organizationOptions,
-		initialManagers: managerOptions
+		initialManagers: managerOptions,
+		initialContracts: activeContracts
 	};
 };

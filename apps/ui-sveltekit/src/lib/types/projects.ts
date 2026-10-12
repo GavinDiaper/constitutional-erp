@@ -5,6 +5,7 @@ export interface Project {
 	description?: string;
 	customerId?: string;
 	contractId?: string;
+	contractVersionId?: string;
 	wbsId?: string;
 	projectType: 'Internal' | 'Capital' | 'Billable' | 'Service';
 	status: 'Draft' | 'Active' | 'OnHold' | 'Completed' | 'Cancelled';

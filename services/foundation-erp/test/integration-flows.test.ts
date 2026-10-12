@@ -49,6 +49,34 @@ function authHeaders() {
   };
 }
 
+async function createApprovedContract(headers: ReturnType<typeof authHeaders>, externalReference: string, contractValue = 25000) {
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: `Contract Customer ${externalReference}` })
+    .expect(201);
+  const contract = await request(app)
+    .post("/api/v1/o2c/contracts")
+    .set(headers)
+    .send({
+      customerId: customer.body.customer_id,
+      externalReference,
+      name: `Service Contract ${externalReference}`,
+      version: {
+        contractValue,
+        currencyCode: "USD",
+        effectiveFrom: "2026-01-01",
+        sowSnapshot: { reference: externalReference, deliverables: [] }
+      }
+    })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/o2c/contracts/${contract.body.data.contract_id}/versions/1/approve`)
+    .set(headers)
+    .expect(200);
+  return { customerId: customer.body.customer_id, contractId: contract.body.data.contract_id };
+}
+
 let app: any;
 
 before(async () => {
@@ -1202,13 +1230,69 @@ test("Projects API requires service contracts and WBS for Service projects", asy
 
   assert.match(invalid.body.error, /contractId.*required|wbsId.*required/i);
 
+  const draftCustomer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: `Draft Contract Customer ${unique}` })
+    .expect(201);
+  const draftContract = await request(app)
+    .post("/api/v1/o2c/contracts")
+    .set(headers)
+    .send({
+      customerId: draftCustomer.body.customer_id,
+      name: `Draft Service Contract ${unique}`,
+      version: { contractValue: 5000, currencyCode: "USD", effectiveFrom: "2026-01-01" }
+    })
+    .expect(201);
+
+  const unapproved = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "Service Project With Draft Contract",
+      projectType: "Service",
+      customerId: draftCustomer.body.customer_id,
+      contractId: draftContract.body.data.contract_id,
+      wbsId: `WBS-DRAFT-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(409);
+  assert.match(unapproved.body.error, /approved version/i);
+
+  const approvedContract = await createApprovedContract(headers, `CON-${unique}`);
+
+  const mismatched = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "Service Project With Mismatched Customer",
+      projectType: "Service",
+      customerId: `OTHER-${unique}`,
+      contractId: approvedContract.contractId,
+      wbsId: `WBS-MISMATCH-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(409);
+  assert.match(mismatched.body.error, /customer does not match/i);
+
   const created = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: "Service Project With Contract",
       projectType: "Service",
-      contractId: `CON-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-SVC-${unique}`,
       budgetAmount: 5000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1220,8 +1304,51 @@ test("Projects API requires service contracts and WBS for Service projects", asy
     .expect(201);
 
   assert.equal(created.body.success, true);
-  assert.equal(created.body.data.contractId, `CON-${unique}`);
+  assert.equal(created.body.data.contractId, approvedContract.contractId);
+  assert.ok(created.body.data.contractVersionId);
   assert.equal(created.body.data.wbsId, `WBS-SVC-${unique}`);
+});
+
+test("O2C contracts retain immutable SOW versions through amendment approval", async () => {
+  const headers = authHeaders();
+  const contract = await createApprovedContract(headers, `CON-VERSION-${Date.now()}`, 10000);
+
+  const selectable = await request(app)
+    .get("/api/v1/o2c/contracts/active")
+    .set(headers)
+    .expect(200);
+  const option = selectable.body.data.find((entry: any) => entry.contractId === contract.contractId);
+  assert.equal(option.versionNumber, 1);
+  assert.equal("sowSnapshot" in option, false);
+
+  const amendment = await request(app)
+    .post(`/api/v1/o2c/contracts/${contract.contractId}/amendments`)
+    .set(headers)
+    .send({
+      contractValue: 12000,
+      currencyCode: "USD",
+      effectiveFrom: "2026-06-01",
+      sowSnapshot: { deliverables: ["Additional service"] }
+    })
+    .expect(201);
+
+  assert.equal(amendment.body.data.version_number, 2);
+  assert.equal(amendment.body.data.version_status, "Draft");
+
+  const beforeApproval = await request(app)
+    .post(`/api/v1/o2c/contracts/${contract.contractId}/versions/2/approve`)
+    .set(headers)
+    .expect(200);
+
+  assert.equal(beforeApproval.body.data.version_status, "Approved");
+  const fetched = await request(app)
+    .get(`/api/v1/o2c/contracts/${contract.contractId}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(fetched.body.data.current_version, 2);
+  assert.equal(fetched.body.data.versions.length, 2);
+  assert.equal(fetched.body.data.versions.find((version: any) => version.version_number === 1).status, "Superseded");
+  assert.equal(fetched.body.data.versions.find((version: any) => version.version_number === 1).contract_value, 10000);
 });
 
 test("Sales order lines persist project and WBS mapping for service contract orders", async () => {
@@ -1243,13 +1370,16 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-LINE-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Service Project Mapping ${unique}`,
       projectType: "Service",
-      contractId: `CON-LINE-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-LINE-${unique}`,
       budgetAmount: 12000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1260,14 +1390,8 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     })
     .expect(201);
 
-  const customer = await request(app)
-    .post("/api/v1/o2c/customers")
-    .set(headers)
-    .send({ customerName: `Service Order Customer ${unique}`, email: `svc.order.${unique}@example.com` })
-    .expect(201);
-
   await request(app)
-    .post(`/api/v1/o2c/customers/${customer.body.customer_id}/activate`)
+    .post(`/api/v1/o2c/customers/${approvedContract.customerId}/activate`)
     .set(headers)
     .expect(200);
 
@@ -1275,7 +1399,7 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     .post("/api/v1/o2c/quotes")
     .set(headers)
     .send({
-      customerId: customer.body.customer_id,
+      customerId: approvedContract.customerId,
       currencyCode: "USD",
       legalEntityId: "LE-SEED-US",
       projectId: project.body.data.projectId
@@ -1464,13 +1588,16 @@ test("Project financial summary calculates cost-to-cost completion and margin", 
     .send({ name: `Finance Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-FIN-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Finance Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-FIN-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-FIN-${unique}`,
       budgetAmount: 1000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1518,13 +1645,16 @@ test("Project revenue recognition recognizes approved milestone billing before f
     .send({ name: `Revenue Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-REV-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Revenue Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-REV-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-REV-${unique}`,
       budgetAmount: 12000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1584,13 +1714,16 @@ test("Project profitability ledger tracks deferred WIP against milestone revenue
     .send({ name: `Profitability Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-PROF-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Profitability Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-PROF-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-PROF-${unique}`,
       budgetAmount: 5000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1664,13 +1797,16 @@ test("Project governance stage-gates require sign-offs and track risk exposure",
     .send({ name: `Governance Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-GOV-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Governance Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-GOV-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-GOV-${unique}`,
       budgetAmount: 5000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1745,13 +1881,16 @@ test("Project change control records a revised budget without overwriting the or
     .send({ name: `Change Control Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-CC-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Change Control Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-CC-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-CC-${unique}`,
       budgetAmount: 5000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -1802,13 +1941,16 @@ test("Project milestone billing requires a ready gate before a phase can be appr
     .send({ name: `Milestone Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-MILESTONE-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Milestone Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-MILESTONE-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-MILESTONE-${unique}`,
       budgetAmount: 10000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -2265,13 +2407,16 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
     .send({ name: `Vendor Rate Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-VENDOR-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Vendor Rate Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-VENDOR-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-VENDOR-${unique}`,
       budgetAmount: 5000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
@@ -2835,13 +2980,16 @@ test("Service BOM requirements capture role, estimated hours, and required certi
     .send({ name: `Service BOM Org ${unique}` })
     .expect(201);
 
+  const approvedContract = await createApprovedContract(headers, `CON-SVC-BOM-${unique}`);
+
   const project = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
       name: `Service BOM Project ${unique}`,
       projectType: "Service",
-      contractId: `CON-SVC-BOM-${unique}`,
+      customerId: approvedContract.customerId,
+      contractId: approvedContract.contractId,
       wbsId: `WBS-SVC-BOM-${unique}`,
       budgetAmount: 25000,
       defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",

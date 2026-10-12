@@ -3,6 +3,14 @@ import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
 import {
+  approveContractVersion,
+  createContract,
+  createContractAmendment,
+  getContractById,
+  listContracts,
+  listSelectableContracts
+} from "../../domain/o2c/contract/contractService";
+import {
   createCustomer,
   getCustomerById,
   listCustomers,
@@ -65,6 +73,21 @@ const createCustomerSchema = z.object({
   email: z.string().email().optional(),
   billingAddress: z.string().optional(),
   shippingAddress: z.string().optional()
+});
+
+const contractVersionSchema = z.object({
+  contractValue: z.number().nonnegative(),
+  currencyCode: z.string().regex(/^[A-Z]{3}$/),
+  effectiveFrom: z.string().min(1),
+  effectiveUntil: z.string().optional(),
+  sowSnapshot: z.record(z.unknown()).optional()
+});
+
+const createContractSchema = z.object({
+  customerId: z.string().min(1),
+  externalReference: z.string().min(1).optional(),
+  name: z.string().min(1),
+  version: contractVersionSchema
 });
 
 const createQuoteSchema = z.object({
@@ -382,6 +405,42 @@ function paymentLinks(paymentId: string, state: string) {
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export const o2cRouter = Router();
+
+// -- Contracts --
+
+o2cRouter.get("/contracts", (req, res) => {
+  res.json({ data: listContracts(req.query.customerId as string | undefined) });
+});
+
+o2cRouter.get("/contracts/active", (_req, res) => {
+  res.json({ data: listSelectableContracts() });
+});
+
+o2cRouter.post("/contracts", validateBody(createContractSchema), (req, res) => {
+  const contract = createContract(req.body, req.actor);
+  res.status(201).json({ data: contract });
+});
+
+o2cRouter.get("/contracts/:contractId", (req, res) => {
+  res.json({ data: getContractById(req.params.contractId) });
+});
+
+o2cRouter.post("/contracts/:contractId/versions/:versionNumber/approve", (req, res) => {
+  const versionNumber = Number(req.params.versionNumber);
+  if (!Number.isInteger(versionNumber) || versionNumber < 1) {
+    return res.status(400).json({ error: "versionNumber must be a positive integer" });
+  }
+  res.json({ data: approveContractVersion(req.params.contractId, versionNumber, req.actor) });
+});
+
+o2cRouter.post(
+  "/contracts/:contractId/amendments",
+  validateBody(contractVersionSchema),
+  (req, res) => {
+    const version = createContractAmendment(req.params.contractId, req.body, req.actor);
+    res.status(201).json({ data: version });
+  }
+);
 
 // -- Customers --
 
