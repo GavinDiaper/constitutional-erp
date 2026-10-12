@@ -8,6 +8,9 @@ import {
   getTimesheetById,
   listTimesheets,
   addTimesheetLine,
+  listTimesheetLines,
+  rejectTimesheet,
+  reopenRejectedTimesheet,
 } from "../domain/h2r/timesheetService";
 import {
   commitTimesheetCsvImport,
@@ -111,7 +114,7 @@ router.post("/", (req: Request, res: Response) => {
     });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
-    res.status(500).json({ success: false, error: error.message });
+    res.status(err instanceof HttpError ? err.status : 500).json({ success: false, error: error.message });
   }
 });
 
@@ -132,6 +135,15 @@ router.get("/:timesheetId", (req: Request, res: Response) => {
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get("/:timesheetId/lines", (req: Request, res: Response) => {
+  try {
+    const lines = listTimesheetLines(req.params.timesheetId);
+    res.json({ success: true, data: lines, count: lines.length });
+  } catch (err: unknown) {
+    sendError(res, err);
   }
 });
 
@@ -191,7 +203,7 @@ router.post("/:timesheetId/submit", (req: Request, res: Response) => {
     });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
-    const statusCode = error.message.includes("invalid_state") ? 400 : 500;
+    const statusCode = err instanceof HttpError ? err.status : 500;
     res.status(statusCode).json({ success: false, error: error.message });
   }
 });
@@ -214,8 +226,26 @@ router.post("/:timesheetId/approve", (req: Request, res: Response) => {
     });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
-    const statusCode = error.message.includes("invalid_state") ? 400 : 500;
+    const statusCode = err instanceof HttpError ? err.status : 500;
     res.status(statusCode).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/:timesheetId/reject", (req: Request, res: Response) => {
+  try {
+    const timesheet = rejectTimesheet(req.params.timesheetId, String(req.body?.reason ?? ""), req.actor);
+    res.json({ success: true, data: timesheet });
+  } catch (err: unknown) {
+    sendError(res, err);
+  }
+});
+
+router.post("/:timesheetId/reopen", (req: Request, res: Response) => {
+  try {
+    const timesheet = reopenRejectedTimesheet(req.params.timesheetId, req.actor);
+    res.json({ success: true, data: timesheet });
+  } catch (err: unknown) {
+    sendError(res, err);
   }
 });
 

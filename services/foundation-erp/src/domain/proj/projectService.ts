@@ -2097,9 +2097,16 @@ export interface PostLaborCostInput {
   hours: number;
   rate: number;
   costElementId?: string;
+  taskId?: string;
+  sourceTimesheetLineId?: string;
 }
 
 export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): LaborEntryProjection {
+  if (input.sourceTimesheetLineId) {
+    const existing = db.prepare("SELECT * FROM proj_labor_entry WHERE source_timesheet_line_id = ?")
+      .get(input.sourceTimesheetLineId) as LaborEntryRow | undefined;
+    if (existing) return rowToLaborEntry(existing);
+  }
   const project = getProjectRow(input.projectId);
 
   if (project.status !== "Active") {
@@ -2113,6 +2120,14 @@ export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): La
   if (!wip) {
     throw new HttpError(409, "wip_not_found", "No open WIP record found for this project");
   }
+  if (input.taskId) {
+    const task = db.prepare("SELECT project_id FROM proj_task WHERE task_id = ?").get(input.taskId) as
+      | { project_id: string }
+      | undefined;
+    if (!task || task.project_id !== input.projectId) {
+      throw new HttpError(409, "task_project_mismatch", "Timesheet task does not belong to the project");
+    }
+  }
 
   const entryId = newId("LABR");
   const totalCost = roundMoney(input.hours * input.rate);
@@ -2120,9 +2135,9 @@ export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): La
 
   transaction(() => {
     db.prepare(
-      `INSERT INTO proj_labor_entry(entry_id, project_id, wip_id, wbs_id, resource_id, hours, rate, total_cost, cost_element_id, posted_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(entryId, input.projectId, wip.wip_id, input.wbsId ?? null, input.resourceId, input.hours, input.rate, totalCost, input.costElementId ?? null, ts, ts);
+      `INSERT INTO proj_labor_entry(entry_id, project_id, wip_id, wbs_id, resource_id, hours, rate, total_cost, cost_element_id, posted_at, created_at, source_timesheet_line_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     ).run(entryId, input.projectId, wip.wip_id, input.wbsId ?? null, input.resourceId, input.hours, input.rate, totalCost, input.costElementId ?? null, ts, ts, input.sourceTimesheetLineId ?? null);
 
     db.prepare(
       `UPDATE proj_wip
@@ -2143,6 +2158,26 @@ export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): La
            last_event_at      = ?
        WHERE project_id = ?`
     ).run(totalCost, totalCost, totalCost, ts, input.projectId);
+
+    if (input.taskId) {
+      const task = db.prepare("SELECT estimated_hours, actual_hours, remaining_hours FROM proj_task WHERE task_id = ?")
+        .get(input.taskId) as { estimated_hours: number; actual_hours: number; remaining_hours: number };
+      const actualHours = roundMoney(task.actual_hours + input.hours);
+      const remainingHours = Math.max(0, roundMoney(task.remaining_hours - input.hours));
+      const percentComplete = task.estimated_hours > 0 ? roundMoney((actualHours / task.estimated_hours) * 100) : 100;
+      const status = remainingHours > 0 ? "InProgress" : "Completed";
+      db.prepare(
+        `UPDATE proj_task SET actual_hours = ?, remaining_hours = ?, percent_complete = ?, status = ?, updated_at = ?
+         WHERE task_id = ?`
+      ).run(actualHours, remainingHours, percentComplete, status, ts, input.taskId);
+    }
+
+    if (input.sourceTimesheetLineId) {
+      db.prepare(
+        `UPDATE h2r_timesheet_line SET project_labor_entry_id = ?, project_posted_at = ?, updated_at = ?
+         WHERE timesheet_line_id = ? AND project_labor_entry_id IS NULL`
+      ).run(entryId, ts, ts, input.sourceTimesheetLineId);
+    }
   });
 
   const payload: EventPayload_LaborCosted = {

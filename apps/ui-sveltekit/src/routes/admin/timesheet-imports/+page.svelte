@@ -6,9 +6,17 @@
 		commitTimesheetImport,
 		downloadTimesheetImportTemplate,
 		listTimesheetImportHistory,
+		listTimesheetsForOrganization,
+		getTimesheetLines,
+		submitTimesheetForApproval,
+		approveTimesheet,
+		rejectTimesheet,
+		reopenTimesheet,
 		previewTimesheetImport,
 		type TimesheetImportBatch,
-		type TimesheetImportHistoryItem
+		type TimesheetImportHistoryItem,
+		type TimesheetSummary,
+		type TimesheetDetailLine
 	} from '$lib/api/timesheetImports';
 
 	interface OrganizationRow {
@@ -21,6 +29,10 @@
 	let selectedFile: File | null = null;
 	let preview: TimesheetImportBatch | null = null;
 	let history: TimesheetImportHistoryItem[] = [];
+	let timesheets: TimesheetSummary[] = [];
+	let selectedTimesheet: TimesheetSummary | null = null;
+	let selectedLines: TimesheetDetailLine[] = [];
+	let rejectionReason = '';
 	let loading = false;
 	let pageError = '';
 	let pageMessage = '';
@@ -52,9 +64,55 @@
 			return;
 		}
 		try {
-			history = (await listTimesheetImportHistory($actorStore, organizationId)).data ?? [];
+			const [historyResponse, timesheetResponse] = await Promise.all([
+				listTimesheetImportHistory($actorStore, organizationId),
+				listTimesheetsForOrganization($actorStore, organizationId)
+			]);
+			history = historyResponse.data ?? [];
+			timesheets = timesheetResponse.data ?? [];
+			if (selectedTimesheet) {
+				selectedTimesheet = timesheets.find((sheet) => sheet.timesheetId === selectedTimesheet?.timesheetId) ?? null;
+				if (selectedTimesheet) await loadSelectedLines(selectedTimesheet.timesheetId);
+			}
 		} catch (error) {
 			pageError = error instanceof Error ? error.message : 'Failed to load import history';
+		}
+	}
+
+	async function selectTimesheet(timesheet: TimesheetSummary): Promise<void> {
+		selectedTimesheet = timesheet;
+		rejectionReason = '';
+		await loadSelectedLines(timesheet.timesheetId);
+	}
+
+	async function loadSelectedLines(timesheetId: string): Promise<void> {
+		try {
+			selectedLines = (await getTimesheetLines($actorStore, timesheetId)).data ?? [];
+		} catch (error) {
+			pageError = error instanceof Error ? error.message : 'Failed to load timesheet lines';
+		}
+	}
+
+	async function runReviewAction(action: 'submit' | 'approve' | 'reject' | 'reopen'): Promise<void> {
+		if (!selectedTimesheet) return;
+		if (action === 'reject' && !rejectionReason.trim()) {
+			pageError = 'Enter a rejection reason.';
+			return;
+		}
+		loading = true;
+		pageError = '';
+		pageMessage = '';
+		try {
+			if (action === 'submit') await submitTimesheetForApproval($actorStore, selectedTimesheet.timesheetId);
+			if (action === 'approve') await approveTimesheet($actorStore, selectedTimesheet.timesheetId);
+			if (action === 'reject') await rejectTimesheet($actorStore, selectedTimesheet.timesheetId, rejectionReason.trim());
+			if (action === 'reopen') await reopenTimesheet($actorStore, selectedTimesheet.timesheetId);
+			pageMessage = `Timesheet ${selectedTimesheet.timesheetId} ${action === 'submit' ? 'submitted' : action === 'approve' ? 'approved and project actuals posted' : action === 'reject' ? 'rejected' : 'reopened for correction'}.`;
+			await loadHistory();
+		} catch (error) {
+			pageError = error instanceof Error ? error.message : `Unable to ${action} timesheet`;
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -238,5 +296,77 @@
 				</tbody>
 			</table>
 		</div>
+	</section>
+
+	<section class="section-card space-y-4 p-5">
+		<div class="flex items-center justify-between gap-3">
+			<div>
+				<h2 class="text-lg font-semibold">Timesheet Review</h2>
+				<p class="mt-1 text-sm text-slate-600 dark:text-white/65">Review Draft imports, submit them, and approve or reject submitted hours.</p>
+			</div>
+			<button type="button" class="btn-ghost rounded-md px-3 py-1.5 text-xs" on:click={() => void loadHistory()} disabled={!organizationId || loading}>Refresh</button>
+		</div>
+		<div class="overflow-x-auto">
+			<table class="ui-table w-full text-sm">
+				<thead><tr class="ui-table-compact-head"><th>Resource</th><th>Period</th><th>Hours</th><th>Cost</th><th>Status</th><th>Lines</th><th>Review</th></tr></thead>
+				<tbody>
+					{#each timesheets as timesheet (timesheet.timesheetId)}
+						<tr class="ui-table-compact-row">
+							<td>{timesheet.resourceType}: {timesheet.resourceId}</td>
+							<td>{timesheet.periodStart} – {timesheet.periodEnd}</td>
+							<td>{timesheet.totalHours}</td><td>{timesheet.totalCost.toFixed(2)}</td>
+							<td>{timesheet.status}{timesheet.rejectionReason ? ` · ${timesheet.rejectionReason}` : ''}</td>
+							<td>{timesheet.lineCount}</td>
+							<td><button type="button" class="rounded border dark:border-white/25 border-slate-300 px-2 py-1 text-xs" on:click={() => void selectTimesheet(timesheet)}>Inspect</button></td>
+						</tr>
+					{:else}
+						<tr class="ui-table-compact-row"><td colspan="7">No timesheets for this organization.</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		{#if selectedTimesheet}
+			<div class="space-y-4 border-t border-slate-200 pt-4 dark:border-white/15">
+				<div class="flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<h3 class="font-semibold">{selectedTimesheet.timesheetId}</h3>
+						<p class="mt-1 text-sm text-slate-600 dark:text-white/65">{selectedTimesheet.resourceType}: {selectedTimesheet.resourceId} · {selectedTimesheet.totalHours} h · {selectedTimesheet.totalCost.toFixed(2)}</p>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						{#if selectedTimesheet.status === 'Draft'}
+							<button type="button" class="rounded bg-blue-700 px-3 py-2 text-xs font-medium text-white disabled:opacity-50" on:click={() => void runReviewAction('submit')} disabled={loading || selectedLines.length === 0}>Submit for approval</button>
+						{:else if selectedTimesheet.status === 'Submitted'}
+							<button type="button" class="rounded bg-emerald-700 px-3 py-2 text-xs font-medium text-white disabled:opacity-50" on:click={() => void runReviewAction('approve')} disabled={loading}>Approve and post actuals</button>
+							<button type="button" class="rounded border border-red-400 px-3 py-2 text-xs font-medium text-red-700 disabled:opacity-50 dark:text-red-300" on:click={() => void runReviewAction('reject')} disabled={loading || !rejectionReason.trim()}>Reject</button>
+						{:else if selectedTimesheet.status === 'Rejected'}
+							<button type="button" class="rounded bg-amber-700 px-3 py-2 text-xs font-medium text-white disabled:opacity-50" on:click={() => void runReviewAction('reopen')} disabled={loading}>Reopen for correction</button>
+						{/if}
+					</div>
+				</div>
+				{#if selectedTimesheet.status === 'Submitted'}
+					<div>
+						<label for="rejectionReason" class="mb-1 block text-sm font-medium">Rejection reason</label>
+						<textarea id="rejectionReason" bind:value={rejectionReason} rows="2" class="input-base w-full" placeholder="Required only when rejecting"></textarea>
+					</div>
+				{/if}
+				<div class="overflow-x-auto">
+					<table class="ui-table w-full text-sm">
+						<thead><tr class="ui-table-compact-head"><th>Work date</th><th>Project / Task</th><th>Resource</th><th>Hours</th><th>Rate</th><th>Cost</th><th>Activity</th></tr></thead>
+						<tbody>
+							{#each selectedLines as line (line.timesheetLineId)}
+								<tr class="ui-table-compact-row">
+									<td>{line.workDate}</td><td>{line.projectId ?? '—'}{line.taskId ? ` / ${line.taskId}` : ''}</td>
+									<td>{line.resourceType ?? selectedTimesheet.resourceType}: {line.resourceId ?? selectedTimesheet.resourceId}</td>
+									<td>{line.hours}</td><td>{line.hourlyRate.toFixed(2)}</td><td>{line.lineCost.toFixed(2)}</td><td>{line.description ?? '—'}</td>
+								</tr>
+							{:else}
+								<tr class="ui-table-compact-row"><td colspan="7">No timesheet lines.</td></tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		{/if}
 	</section>
 </section>

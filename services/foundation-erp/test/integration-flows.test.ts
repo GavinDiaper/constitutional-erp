@@ -2551,6 +2551,23 @@ test("Timesheet task locking validates assignments and updates remaining project
   assert.equal(line.body.data.taskId, task.body.data.taskId);
   assert.equal(line.body.data.resourceType, "employee");
 
+  const draftTask = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/tasks`)
+    .set(headers)
+    .expect(200);
+  const draftTaskRow = draftTask.body.data.find((entry: any) => entry.taskId === task.body.data.taskId);
+  assert.equal(draftTaskRow.actualHours, 0);
+  assert.equal(draftTaskRow.remainingHours, 12);
+
+  await request(app)
+    .post(`/api/v1/timesheets/${timesheet.body.data.timesheetId}/submit`)
+    .set(headers)
+    .expect(200);
+  await request(app)
+    .post(`/api/v1/timesheets/${timesheet.body.data.timesheetId}/approve`)
+    .set(headers)
+    .expect(200);
+
   const refreshedTask = await request(app)
     .get(`/api/v1/projects/${project.body.data.projectId}/tasks`)
     .set(headers)
@@ -2561,6 +2578,23 @@ test("Timesheet task locking validates assignments and updates remaining project
   assert.equal(updatedTask.actualHours, 4);
   assert.equal(updatedTask.remainingHours, 8);
   assert.equal(updatedTask.percentComplete, 33.33);
+
+  const laborEntries = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/labor-entries`)
+    .set(headers)
+    .expect(200);
+  assert.equal(laborEntries.body.data.length, 1);
+  assert.equal(laborEntries.body.data[0].totalCost, 0);
+
+  await request(app)
+    .post(`/api/v1/timesheets/${timesheet.body.data.timesheetId}/approve`)
+    .set(headers)
+    .expect(400);
+  const afterRepeatedApproval = await request(app)
+    .get(`/api/v1/projects/${project.body.data.projectId}/labor-entries`)
+    .set(headers)
+    .expect(200);
+  assert.equal(afterRepeatedApproval.body.data.length, 1);
 });
 
 test("Timesheet API supports contractor vendor-rate entries alongside employee timesheets", async () => {
@@ -2813,6 +2847,40 @@ test("Timesheet CSV import previews stored rates and commits mixed resources ide
   assert.ok(timesheets.body.data.every((row: any) => row.status === "Draft"));
   assert.ok(timesheets.body.data.some((row: any) => row.resourceType === "contractor" && row.resourceId === contractorId));
   assert.ok(timesheets.body.data.some((row: any) => row.resourceType === "employee" && row.resourceId === employee.body.employee_id));
+
+  const employeeSheet = timesheets.body.data.find((row: any) => row.resourceType === "employee");
+  const contractorSheet = timesheets.body.data.find((row: any) => row.resourceType === "contractor");
+  const employeeLines = await request(app)
+    .get(`/api/v1/timesheets/${employeeSheet.timesheetId}/lines`)
+    .set(headers)
+    .expect(200);
+  assert.equal(employeeLines.body.data[0].lineCost, 375);
+
+  await request(app)
+    .post(`/api/v1/timesheets/${employeeSheet.timesheetId}/submit`)
+    .set(headers)
+    .expect(200);
+  const approvedEmployeeSheet = await request(app)
+    .post(`/api/v1/timesheets/${employeeSheet.timesheetId}/approve`)
+    .set(headers)
+    .expect(200);
+  assert.equal(approvedEmployeeSheet.body.data.status, "Approved");
+
+  await request(app)
+    .post(`/api/v1/timesheets/${contractorSheet.timesheetId}/submit`)
+    .set(headers)
+    .expect(200);
+  const rejectedContractorSheet = await request(app)
+    .post(`/api/v1/timesheets/${contractorSheet.timesheetId}/reject`)
+    .set(headers)
+    .send({ reason: "Please clarify the activity" })
+    .expect(200);
+  assert.equal(rejectedContractorSheet.body.data.status, "Rejected");
+  const reopenedContractorSheet = await request(app)
+    .post(`/api/v1/timesheets/${contractorSheet.timesheetId}/reopen`)
+    .set(headers)
+    .expect(200);
+  assert.equal(reopenedContractorSheet.body.data.status, "Draft");
 
   const invalidCsv = csvText.replace("2026-10-03,4", "2026-10-08,4");
   const invalidPreview = await request(app)

@@ -7,6 +7,7 @@ import { db, transaction } from "../../db/connection";
 import { appendEvent, EventActor } from "../../events/eventStore";
 import { HttpError } from "../../utils/errors";
 import { newId } from "../../utils/id";
+import { postLaborCost } from "../proj/projectService";
 
 function now(): string {
   return new Date().toISOString();
@@ -58,6 +59,7 @@ interface TimesheetRow {
   submitted_at: string | null;
   approved_by: string | null;
   approved_at: string | null;
+  rejection_reason: string | null;
   line_count: number;
   created_by: string;
   created_at: string;
@@ -152,6 +154,7 @@ export interface TimesheetProjection {
   submittedAt?: string;
   approvedBy?: string;
   approvedAt?: string;
+  rejectionReason?: string;
   lineCount: number;
   createdBy: string;
   createdAt: string;
@@ -548,8 +551,8 @@ export function addTimesheetLine(
   if (!timesheet) {
     throw new HttpError(404, "not_found", "Timesheet not found");
   }
-  if (timesheet.status === "Approved" || timesheet.status === "Posted") {
-    throw new HttpError(400, "invalid_state", "Cannot add timesheet lines once the timesheet is approved or posted");
+  if (timesheet.status !== "Draft") {
+    throw new HttpError(400, "invalid_state", "Cannot add timesheet lines after submission");
   }
 
   const hours = Number(input.hours);
@@ -608,25 +611,6 @@ export function addTimesheetLine(
   const version = 1;
 
   transaction(() => {
-    if (input.taskId) {
-      const task = db
-        .prepare("SELECT * FROM proj_task WHERE task_id = ?")
-        .get(input.taskId) as { actual_hours: number; remaining_hours: number; estimated_hours: number; status: string } | undefined;
-
-      if (task) {
-        const updatedActualHours = roundMoney(Number(task.actual_hours ?? 0) + hours);
-        const updatedRemaining = Math.max(0, roundMoney(Number(task.remaining_hours ?? 0) - hours));
-        const updatedPercent = task.estimated_hours > 0 ? roundMoney((updatedActualHours / task.estimated_hours) * 100) : 100;
-        const updatedStatus = updatedRemaining > 0 ? "InProgress" : "Completed";
-
-        db.prepare(
-          `UPDATE proj_task
-           SET actual_hours = ?, remaining_hours = ?, percent_complete = ?, status = ?, updated_at = ?
-           WHERE task_id = ?`
-        ).run(updatedActualHours, updatedRemaining, updatedPercent, updatedStatus, ts, input.taskId);
-      }
-    }
-
     db.prepare(
       `INSERT INTO h2r_timesheet_line(
         timesheet_line_id, timesheet_id, line_number, project_id, task_id, resource_id, resource_type,
@@ -694,6 +678,14 @@ export function addTimesheetLine(
   );
 }
 
+export function listTimesheetLines(timesheetId: string): TimesheetLineProjection[] {
+  if (!getTimesheetById(timesheetId)) throw new HttpError(404, "not_found", "Timesheet not found");
+  const rows = db.prepare(
+    "SELECT * FROM h2r_timesheet_line WHERE timesheet_id = ? ORDER BY line_number ASC"
+  ).all(timesheetId) as TimesheetLineRow[];
+  return rows.map(rowToTimesheetLine);
+}
+
 export function submitTimesheet(timesheetId: string, actor?: EventActor): TimesheetProjection {
   const timesheet = getTimesheetById(timesheetId);
   if (!timesheet) {
@@ -735,6 +727,41 @@ export function approveTimesheet(timesheetId: string, actor?: EventActor): Times
     throw new HttpError(400, "invalid_state", "Timesheet must be Submitted to approve");
   }
 
+  const projectLines = db.prepare(
+    `SELECT l.timesheet_line_id, l.project_id, l.task_id, l.resource_id, l.hours, l.hourly_rate,
+            l.cost_element_id, l.project_labor_entry_id, p.wbs_id
+     FROM h2r_timesheet_line l
+     LEFT JOIN proj_project p ON p.project_id = l.project_id
+     WHERE l.timesheet_id = ? AND l.project_id IS NOT NULL
+     ORDER BY l.line_number ASC`
+  ).all(timesheetId) as Array<{
+    timesheet_line_id: string;
+    project_id: string;
+    task_id: string | null;
+    resource_id: string | null;
+    hours: number;
+    hourly_rate: number;
+    cost_element_id: string;
+    project_labor_entry_id: string | null;
+    wbs_id: string | null;
+  }>;
+  for (const line of projectLines) {
+    if (line.project_labor_entry_id) continue;
+    if (!line.resource_id) {
+      throw new HttpError(409, "timesheet_resource_missing", `Timesheet line '${line.timesheet_line_id}' has no resource ID`);
+    }
+    postLaborCost({
+      projectId: line.project_id,
+      wbsId: line.wbs_id ?? undefined,
+      resourceId: line.resource_id,
+      hours: line.hours,
+      rate: line.hourly_rate,
+      costElementId: line.cost_element_id,
+      taskId: line.task_id ?? undefined,
+      sourceTimesheetLineId: line.timesheet_line_id
+    }, actor);
+  }
+
   const timestamp = now();
   transaction(() => {
     db.prepare(
@@ -764,6 +791,52 @@ export function approveTimesheet(timesheetId: string, actor?: EventActor): Times
   return getTimesheetById(timesheetId) as TimesheetProjection;
 }
 
+export function rejectTimesheet(timesheetId: string, reason: string, actor?: EventActor): TimesheetProjection {
+  const timesheet = getTimesheetById(timesheetId);
+  if (!timesheet) throw new HttpError(404, "not_found", "Timesheet not found");
+  if (timesheet.status !== "Submitted") throw new HttpError(400, "invalid_state", "Timesheet must be Submitted to reject");
+  const rejectionReason = reason.trim();
+  if (!rejectionReason) throw new HttpError(400, "invalid_request", "rejection reason is required");
+  const timestamp = now();
+  transaction(() => {
+    db.prepare(
+      `UPDATE h2r_timesheet SET status = 'Rejected', approval_status = 'Rejected', rejection_reason = ?,
+       version = version + 1, updated_at = ? WHERE timesheet_id = ?`
+    ).run(rejectionReason, timestamp, timesheetId);
+    appendEvent({
+      entityId: timesheetId,
+      entityType: "timesheet",
+      eventType: "h2r.timesheet_rejected",
+      version: timesheet.version + 1,
+      actor,
+      payload: { timesheetId, rejectionReason }
+    });
+  });
+  return getTimesheetById(timesheetId) as TimesheetProjection;
+}
+
+export function reopenRejectedTimesheet(timesheetId: string, actor?: EventActor): TimesheetProjection {
+  const timesheet = getTimesheetById(timesheetId);
+  if (!timesheet) throw new HttpError(404, "not_found", "Timesheet not found");
+  if (timesheet.status !== "Rejected") throw new HttpError(400, "invalid_state", "Only a Rejected timesheet can be reopened");
+  const timestamp = now();
+  transaction(() => {
+    db.prepare(
+      `UPDATE h2r_timesheet SET status = 'Draft', approval_status = 'Pending', rejection_reason = NULL,
+       submitted_by = NULL, submitted_at = NULL, version = version + 1, updated_at = ? WHERE timesheet_id = ?`
+    ).run(timestamp, timesheetId);
+    appendEvent({
+      entityId: timesheetId,
+      entityType: "timesheet",
+      eventType: "h2r.timesheet_reopened",
+      version: timesheet.version + 1,
+      actor,
+      payload: { timesheetId }
+    });
+  });
+  return getTimesheetById(timesheetId) as TimesheetProjection;
+}
+
 export function getTimesheetById(timesheetId: string): TimesheetProjection | null {
   const row = db
     .prepare("SELECT * FROM h2r_timesheet WHERE timesheet_id = ?")
@@ -789,6 +862,7 @@ export function getTimesheetById(timesheetId: string): TimesheetProjection | nul
     submittedAt: row.submitted_at ?? undefined,
     approvedBy: row.approved_by ?? undefined,
     approvedAt: row.approved_at ?? undefined,
+    rejectionReason: row.rejection_reason ?? undefined,
     lineCount: row.line_count,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -819,6 +893,7 @@ export function listTimesheets(organizationId: string, limit = 100, offset = 0) 
     submittedAt: row.submitted_at ?? undefined,
     approvedBy: row.approved_by ?? undefined,
     approvedAt: row.approved_at ?? undefined,
+    rejectionReason: row.rejection_reason ?? undefined,
     lineCount: row.line_count,
     createdBy: row.created_by,
     createdAt: row.created_at,

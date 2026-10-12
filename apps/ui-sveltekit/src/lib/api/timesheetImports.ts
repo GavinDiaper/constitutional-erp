@@ -82,3 +82,57 @@ export function listTimesheetImportHistory(
 	const query = new URLSearchParams({ organizationId });
 	return fetchHubJson(`/api/hub/timesheets/imports?${query.toString()}`, actor);
 }
+
+export interface TimesheetSummary {
+	timesheetId: string;
+	organizationId: string;
+	employeeId?: string;
+	resourceType: 'employee' | 'contractor';
+	resourceId: string;
+	periodStart: string;
+	periodEnd: string;
+	totalHours: number;
+	totalCost: number;
+	status: 'Draft' | 'Submitted' | 'Approved' | 'Rejected' | 'Posted';
+	approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+	lineCount: number;
+	rejectionReason?: string;
+}
+
+export interface TimesheetDetailLine {
+	timesheetLineId: string;
+	projectId?: string;
+	taskId?: string;
+	resourceId?: string;
+	resourceType?: 'employee' | 'contractor';
+	workDate: string;
+	hours: number;
+	hourlyRate: number;
+	lineCost: number;
+	description?: string;
+}
+
+export function listTimesheetsForOrganization(actor: ActorContext, organizationId: string): Promise<{ data: TimesheetSummary[] }> {
+	const query = new URLSearchParams({ organizationId, limit: '500', offset: '0' });
+	return fetchHubJson(`/api/hub/timesheets?${query.toString()}`, actor);
+}
+
+export function getTimesheetLines(actor: ActorContext, timesheetId: string): Promise<{ data: TimesheetDetailLine[] }> {
+	return fetchHubJson(`/api/hub/timesheets/${encodeURIComponent(timesheetId)}/lines`, actor);
+}
+
+export function submitTimesheetForApproval(actor: ActorContext, timesheetId: string): Promise<{ data: TimesheetSummary }> {
+	return postHubJson(`/api/hub/timesheets/${encodeURIComponent(timesheetId)}/submit`, actor, {});
+}
+
+export function approveTimesheet(actor: ActorContext, timesheetId: string): Promise<{ data: TimesheetSummary }> {
+	return postHubJson(`/api/hub/timesheets/${encodeURIComponent(timesheetId)}/approve`, actor, {});
+}
+
+export function rejectTimesheet(actor: ActorContext, timesheetId: string, reason: string): Promise<{ data: TimesheetSummary }> {
+	return postHubJson(`/api/hub/timesheets/${encodeURIComponent(timesheetId)}/reject`, actor, { reason });
+}
+
+export function reopenTimesheet(actor: ActorContext, timesheetId: string): Promise<{ data: TimesheetSummary }> {
+	return postHubJson(`/api/hub/timesheets/${encodeURIComponent(timesheetId)}/reopen`, actor, {});
+}
