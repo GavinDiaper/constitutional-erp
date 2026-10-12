@@ -78,14 +78,14 @@ export function renderLinaExploreView(
 	}
 
 	const root = d3.hierarchy<TreeNode>(buildTree(nodes, edges));
-	d3.cluster<TreeNode>().size([2 * Math.PI, radius])(root);
+	const clusteredRoot = d3.cluster<TreeNode>().size([2 * Math.PI, radius])(root);
 
 	const g = svg.append('g').attr('transform', `translate(${width / 2},${height / 2})`);
 
 	g
 		.append('g')
 		.selectAll('line')
-		.data(root.links())
+		.data(clusteredRoot.links())
 		.join('line')
 		.attr('x1', (d) => Math.cos(d.source.x - Math.PI / 2) * d.source.y)
 		.attr('y1', (d) => Math.sin(d.source.x - Math.PI / 2) * d.source.y)
@@ -98,7 +98,7 @@ export function renderLinaExploreView(
 	const node = g
 		.append('g')
 		.selectAll('g')
-		.data(root.descendants())
+		.data(clusteredRoot.descendants())
 		.join('g')
 		.attr('transform', (d) => `translate(${Math.cos(d.x - Math.PI / 2) * d.y},${Math.sin(d.x - Math.PI / 2) * d.y})`)
 		.style('cursor', 'pointer')
