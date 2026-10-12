@@ -1535,6 +1535,72 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     .set(headers)
     .expect(200);
   assert.equal(confirmed.body.state, "Confirmed");
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/stage-gates`)
+    .set(headers)
+    .send({ phaseName: "Implementation", requiredSignoffs: ["Project Manager"], approvals: ["Project Manager"] })
+    .expect(201);
+
+  const milestone = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
+    .set(headers)
+    .send({
+      name: `First service milestone ${unique}`,
+      phaseName: "Implementation",
+      billingAmount: 1000,
+      orderLineId: lines.body.data[0].order_line_id,
+      wbsElementId: project.body.data.wbsId
+    })
+    .expect(201);
+
+  const approvedMilestone = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+  assert.equal(approvedMilestone.body.data.status, "Approved");
+  assert.equal(approvedMilestone.body.invoice.state, "Draft");
+  assert.equal(approvedMilestone.body.invoice.order_amount, 1000);
+
+  const orderAfterMilestone = await request(app)
+    .get(`/api/v1/o2c/orders/${order.body.order_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(orderAfterMilestone.body.billing_state, "PartiallyInvoiced");
+
+  const repeatedApproval = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+  assert.equal(repeatedApproval.body.invoice.invoice_id, approvedMilestone.body.invoice.invoice_id);
+
+  await request(app)
+    .post(`/api/v1/o2c/invoices/${approvedMilestone.body.invoice.invoice_id}/cancel`)
+    .set(headers)
+    .expect(200);
+  const orderAfterCancellation = await request(app)
+    .get(`/api/v1/o2c/orders/${order.body.order_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(orderAfterCancellation.body.billing_state, "Unbilled");
+
+  const replacementInvoice = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+  assert.notEqual(replacementInvoice.body.invoice.invoice_id, approvedMilestone.body.invoice.invoice_id);
+
+  await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
+    .set(headers)
+    .send({
+      name: `Excess service milestone ${unique}`,
+      phaseName: "Implementation",
+      billingAmount: 1600,
+      orderLineId: lines.body.data[0].order_line_id,
+      wbsElementId: project.body.data.wbsId
+    })
+    .expect(409);
 });
 
 test("Project task tracking decrements remaining hours when labor is posted", async () => {
@@ -2042,7 +2108,7 @@ test("Project milestone billing requires a ready gate before a phase can be appr
 
   const approvedContract = await createApprovedContract(headers, `CON-MILESTONE-${unique}`);
 
-  const project = await request(app)
+  const projectResponse = await request(app)
     .post("/api/v1/projects")
     .set(headers)
     .send({
@@ -2057,8 +2123,9 @@ test("Project milestone billing requires a ready gate before a phase can be appr
       startDate: "2026-01-01",
       projectManagerId: "EMP-MILESTONE-MGR",
       organizationId: organization.body.organization_id,
-    })
-    .expect(201);
+    });
+  assert.equal(projectResponse.status, 201, JSON.stringify(projectResponse.body));
+  const project = projectResponse;
 
   await request(app)
     .post(`/api/v1/projects/${project.body.data.projectId}/activate`)

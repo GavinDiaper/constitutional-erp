@@ -1120,6 +1120,11 @@ export interface ProjectMilestoneProjection {
   name: string;
   phaseName: string;
   billingAmount: number;
+  contractVersionId?: string;
+  orderLineId?: string;
+  wbsElementId?: string;
+  invoiceId?: string;
+  billedAmount: number;
   status: "Planned" | "Approved" | "Completed";
   readyForBilling: boolean;
   approvedAt?: string;
@@ -1129,7 +1134,13 @@ export interface ProjectMilestoneProjection {
 
 export function createProjectMilestone(
   projectId: string,
-  input: { name: string; phaseName?: string; billingAmount: number },
+  input: {
+    name: string;
+    phaseName?: string;
+    billingAmount: number;
+    orderLineId?: string;
+    wbsElementId?: string;
+  },
   actor?: EventActor
 ): ProjectMilestoneProjection {
   const project = getProjectRow(projectId);
@@ -1144,15 +1155,95 @@ export function createProjectMilestone(
     throw new HttpError(400, "invalid_request", "billingAmount must be a non-negative number");
   }
 
+  let contractVersionId: string | null = null;
+  if (input.orderLineId || input.wbsElementId) {
+    if (!input.orderLineId || !input.wbsElementId) {
+      throw new HttpError(400, "invalid_request", "orderLineId and wbsElementId must be provided together");
+    }
+    if (project.project_type !== "Service" || !project.contract_version_id || !project.customer_id) {
+      throw new HttpError(409, "service_contract_required", "Linked milestone billing requires a Service project with a contract version");
+    }
+    const line = db.prepare(
+      `SELECT l.order_line_id, l.order_id, l.project_id, l.contract_version_id,
+              l.wbs_element_id, l.line_total, o.customer_id, o.contract_version_id AS order_contract_version_id,
+              o.state AS order_state, s.sku_type
+       FROM o2c_sales_order_line l
+       JOIN o2c_sales_order o ON o.order_id = l.order_id
+       LEFT JOIN inv_sku s ON s.sku_id = l.sku OR s.sku_code = l.sku
+       WHERE l.order_line_id = ?`
+    ).get(input.orderLineId) as {
+      order_line_id: string;
+      order_id: string;
+      project_id: string | null;
+      contract_version_id: string | null;
+      wbs_element_id: string | null;
+      line_total: number;
+      customer_id: string;
+      order_contract_version_id: string | null;
+      order_state: string;
+      sku_type: string | null;
+    } | undefined;
+    if (!line) {
+      throw new HttpError(404, "not_found", "Service sales order line not found");
+    }
+    if (line.sku_type !== "service") {
+      throw new HttpError(400, "invalid_request", "Milestone billing is limited to service SKU order lines");
+    }
+    if (line.project_id !== projectId || line.customer_id !== project.customer_id ||
+        line.contract_version_id !== project.contract_version_id ||
+        line.order_contract_version_id !== project.contract_version_id ||
+        line.wbs_element_id !== input.wbsElementId) {
+      throw new HttpError(409, "milestone_mapping_mismatch", "Milestone must use a mapped service line belonging to this project and contract version");
+    }
+    if (!["Confirmed", "Allocated", "Shipped", "PartiallyInvoiced"].includes(line.order_state)) {
+      throw new HttpError(409, "invalid_transition", "Sales order must be confirmed before milestone billing");
+    }
+    const wbs = db.prepare(
+      "SELECT wbs_element_id FROM proj_wbs_element WHERE wbs_element_id = ? AND project_id = ? AND contract_version_id = ?"
+    ).get(input.wbsElementId, projectId, project.contract_version_id);
+    if (!wbs) {
+      throw new HttpError(409, "milestone_mapping_mismatch", "WBS element does not belong to this project contract version");
+    }
+    const plannedForLine = (db.prepare(
+      "SELECT COALESCE(SUM(billing_amount), 0) AS amount FROM proj_project_milestone WHERE order_line_id = ?"
+    ).get(input.orderLineId) as { amount: number }).amount;
+    const billedForLine = (db.prepare(
+      `SELECT COALESCE(SUM(il.line_total), 0) AS amount
+       FROM o2c_invoice_line il JOIN o2c_invoice i ON i.invoice_id = il.invoice_id
+       WHERE il.order_line_id = ? AND i.state <> 'Cancelled'`
+    ).get(input.orderLineId) as { amount: number }).amount;
+    if (roundMoney(plannedForLine + billingAmount) > roundMoney(line.line_total) || roundMoney(billedForLine) > roundMoney(line.line_total)) {
+      throw new HttpError(409, "milestone_amount_exceeds_line", "Milestone billing exceeds the service order line value");
+    }
+    const contractValue = (db.prepare(
+      "SELECT contract_value FROM o2c_contract_version WHERE contract_version_id = ?"
+    ).get(project.contract_version_id) as { contract_value: number } | undefined)?.contract_value;
+    if (contractValue === undefined) {
+      throw new HttpError(404, "not_found", "Project contract version not found");
+    }
+    const plannedForContract = (db.prepare(
+      `SELECT COALESCE(SUM(billing_amount), 0) AS amount
+       FROM proj_project_milestone WHERE contract_version_id = ?`
+    ).get(project.contract_version_id) as { amount: number }).amount;
+    if (roundMoney(plannedForContract + billingAmount) > roundMoney(contractValue)) {
+      throw new HttpError(409, "milestone_amount_exceeds_contract", "Milestone billing exceeds the contract version value");
+    }
+    contractVersionId = project.contract_version_id;
+  }
+
   const milestoneId = newId("MILESTONE-");
   const timestamp = now();
 
   db.prepare(
     `INSERT INTO proj_project_milestone(
       milestone_id, project_id, name, phase_name, billing_amount, status, ready_for_billing,
+      contract_version_id, order_line_id, wbs_element_id, billed_amount,
       approved_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(milestoneId, projectId, name, phaseName, roundMoney(billingAmount), "Planned", 0, null, timestamp, timestamp);
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    milestoneId, projectId, name, phaseName, roundMoney(billingAmount), "Planned", 0,
+    contractVersionId, input.orderLineId ?? null, input.wbsElementId ?? null, 0, null, timestamp, timestamp
+  );
 
   const row = db.prepare("SELECT * FROM proj_project_milestone WHERE milestone_id = ?").get(milestoneId) as any;
   return {
@@ -1161,12 +1252,46 @@ export function createProjectMilestone(
     name: row.name,
     phaseName: row.phase_name,
     billingAmount: Number(row.billing_amount ?? 0),
+    contractVersionId: row.contract_version_id ?? undefined,
+    orderLineId: row.order_line_id ?? undefined,
+    wbsElementId: row.wbs_element_id ?? undefined,
+    invoiceId: row.invoice_id ?? undefined,
+    billedAmount: Number(row.billed_amount ?? 0),
     status: row.status,
     readyForBilling: Boolean(row.ready_for_billing),
     approvedAt: row.approved_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function listProjectMilestones(projectId: string): ProjectMilestoneProjection[] {
+  getProjectRow(projectId);
+  const rows = db.prepare(
+    `SELECT m.*, i.state AS invoice_state
+     FROM proj_project_milestone m
+     LEFT JOIN o2c_invoice i ON i.invoice_id = m.invoice_id
+     WHERE m.project_id = ?
+     ORDER BY m.created_at ASC`
+  ).all(projectId) as any[];
+  return rows.map((row) => ({
+    milestoneId: row.milestone_id,
+    projectId: row.project_id,
+    name: row.name,
+    phaseName: row.phase_name,
+    billingAmount: Number(row.billing_amount ?? 0),
+    contractVersionId: row.contract_version_id ?? undefined,
+    orderLineId: row.order_line_id ?? undefined,
+    wbsElementId: row.wbs_element_id ?? undefined,
+    invoiceId: row.invoice_id ?? undefined,
+    billedAmount: Number(row.billed_amount ?? 0),
+    status: row.status,
+    readyForBilling: Boolean(row.ready_for_billing),
+    approvedAt: row.approved_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    invoiceState: row.invoice_state ?? undefined
+  }));
 }
 
 export function approveProjectMilestone(
@@ -1205,6 +1330,11 @@ export function approveProjectMilestone(
     name: updated.name,
     phaseName: updated.phase_name,
     billingAmount: Number(updated.billing_amount ?? 0),
+    contractVersionId: updated.contract_version_id ?? undefined,
+    orderLineId: updated.order_line_id ?? undefined,
+    wbsElementId: updated.wbs_element_id ?? undefined,
+    invoiceId: updated.invoice_id ?? undefined,
+    billedAmount: Number(updated.billed_amount ?? 0),
     status: updated.status,
     readyForBilling: Boolean(updated.ready_for_billing),
     approvedAt: updated.approved_at ?? undefined,

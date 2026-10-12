@@ -11,7 +11,7 @@ import type {
 	ProjectProcurementPreview,
 	ProjectRequisitionGenerationResult
 } from '$lib/types/projects';
-import type { ProjectWbsElement } from '$lib/types/projects';
+import type { ProjectMilestone, ProjectWbsElement } from '$lib/types/projects';
 
 interface DataResponse<T> {
 	data: T;
@@ -232,6 +232,48 @@ export function createProjectWbsElement(
 		actor,
 		'POST',
 		payload
+	);
+}
+
+export function listProjectMilestones(
+	actor: ActorContext,
+	projectId: string
+): Promise<DataListResponse<ProjectMilestone>> {
+	return requestHubJson<DataListResponse<ProjectMilestone>>(
+		`/api/hub/proj/${projectId}/milestones`,
+		actor,
+		'GET'
+	);
+}
+
+export function createProjectMilestone(
+	actor: ActorContext,
+	projectId: string,
+	payload: {
+		name: string;
+		phaseName: string;
+		billingAmount: number;
+		orderLineId: string;
+		wbsElementId: string;
+	}
+): Promise<DataResponse<ProjectMilestone>> {
+	return requestHubJson<DataResponse<ProjectMilestone>>(
+		`/api/hub/proj/${projectId}/milestones`,
+		actor,
+		'POST',
+		payload
+	);
+}
+
+export function approveProjectMilestone(
+	actor: ActorContext,
+	projectId: string,
+	milestoneId: string
+): Promise<DataResponse<ProjectMilestone> & { invoice?: Record<string, unknown> }> {
+	return requestHubJson<DataResponse<ProjectMilestone> & { invoice?: Record<string, unknown> }>(
+		`/api/hub/proj/${projectId}/milestones/${milestoneId}/approve`,
+		actor,
+		'POST'
 	);
 }
 

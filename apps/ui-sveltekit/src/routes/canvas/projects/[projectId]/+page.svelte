@@ -18,15 +18,18 @@
 		resumeProject,
 		completeProject,
 		cancelProject,
+		approveProjectMilestone,
 		assignBomToProject,
+		createProjectMilestone,
 		createProjectWbsElement,
+		listProjectMilestones,
 		listProjectWbsElements,
 		postLaborCost,
 		createProjectFinishedItem,
 		getProjectProcurementPreview,
 		generateProjectRequisitionLines
 	} from '$lib/api/projects';
-	import type { Project, ProjectProcurementPreview, ProjectWbsElement } from '$lib/types/projects';
+	import type { Project, ProjectMilestone, ProjectProcurementPreview, ProjectWbsElement } from '$lib/types/projects';
 
 	interface BomOption {
 		bom_id: string;
@@ -55,7 +58,17 @@
 		last_name?: string;
 	}
 
-	let activeTab: 'overview' | 'wbs' | 'boms' | 'labor' | 'finished' | 'financials' | 'linked' = 'overview';
+	interface BillableServiceLine {
+		orderLineId: string;
+		orderId: string;
+		sku: string;
+		lineTotal: number;
+		wbsElementId: string;
+		contractVersionId: string;
+		orderState: string;
+	}
+
+	let activeTab: 'overview' | 'wbs' | 'milestones' | 'boms' | 'labor' | 'finished' | 'financials' | 'linked' = 'overview';
 	let loading = false;
 	let errorMessage = '';
 	let successMessage = '';
@@ -69,6 +82,12 @@
 	let newWbsParentElementId = '';
 	let newWbsDeliverableSkuId = '';
 	let wbsElements: ProjectWbsElement[] = [];
+	let projectMilestones: ProjectMilestone[] = [];
+	let billableServiceLines: BillableServiceLine[] = [];
+	let newMilestoneName = '';
+	let newMilestonePhaseName = '';
+	let newMilestoneAmount = '';
+	let newMilestoneOrderLineId = '';
 
 	let newResourceId = '';
 	let newHours = '8';
@@ -215,6 +234,93 @@
 			wbsElements = (await listProjectWbsElements($actorStore, currentProjectId)).data ?? [];
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Failed to load WBS elements';
+		}
+	}
+
+	async function loadProjectMilestones(currentProjectId: string): Promise<void> {
+		try {
+			const [milestoneResponse, lineResponse] = await Promise.all([
+				listProjectMilestones($actorStore, currentProjectId),
+				queryTable<Record<string, unknown>>('o2c_sales_order_line', $actorStore, 500, 0)
+			]);
+			projectMilestones = milestoneResponse.data ?? [];
+			const orderStates = new Map($projectStore.salesOrders.map((order) => [order.orderId, order.state]));
+			billableServiceLines = (lineResponse.data ?? [])
+				.filter((line) => line.project_id === currentProjectId && typeof line.wbs_element_id === 'string' &&
+					typeof line.contract_version_id === 'string' &&
+					['Confirmed', 'Allocated', 'Shipped', 'PartiallyInvoiced'].includes(orderStates.get(String(line.order_id)) ?? '') &&
+					skuOptions.some((sku) => sku.sku_type === 'service' && (sku.sku_id === line.sku || sku.sku_code === line.sku)))
+				.map((line) => ({
+					orderLineId: String(line.order_line_id),
+					orderId: String(line.order_id),
+					sku: String(line.sku),
+					lineTotal: Number(line.line_total ?? 0),
+					wbsElementId: String(line.wbs_element_id),
+					contractVersionId: String(line.contract_version_id),
+					orderState: orderStates.get(String(line.order_id)) ?? ''
+				}));
+			if (!newMilestoneOrderLineId && billableServiceLines.length > 0) {
+				newMilestoneOrderLineId = billableServiceLines[0].orderLineId;
+			}
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to load project milestones';
+		}
+	}
+
+	async function handleCreateMilestone(): Promise<void> {
+		const currentProject = $projectStore.currentProject;
+		if (!currentProject || !newMilestoneOrderLineId) return;
+		const serviceLine = billableServiceLines.find((line) => line.orderLineId === newMilestoneOrderLineId);
+		if (!serviceLine) return;
+		const reservedAmount = projectMilestones
+			.filter((milestone) => milestone.orderLineId === serviceLine.orderLineId)
+			.reduce((sum, milestone) => sum + milestone.billingAmount, 0);
+		const availableAmount = Math.max(0, serviceLine.lineTotal - reservedAmount);
+		const amount = Number(newMilestoneAmount);
+		if (!Number.isFinite(amount) || amount <= 0 || amount > availableAmount) {
+			errorMessage = `Enter an amount greater than zero and no more than ${availableAmount.toFixed(2)}.`;
+			return;
+		}
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+		try {
+			await createProjectMilestone($actorStore, currentProject.projectId, {
+				name: newMilestoneName,
+				phaseName: newMilestonePhaseName,
+				billingAmount: amount,
+				orderLineId: serviceLine.orderLineId,
+				wbsElementId: serviceLine.wbsElementId
+			});
+			newMilestoneName = '';
+			newMilestoneAmount = '';
+			await loadProjectMilestones(currentProject.projectId);
+			successMessage = 'Milestone created.';
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to create milestone';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleApproveMilestone(milestone: ProjectMilestone): Promise<void> {
+		const currentProject = $projectStore.currentProject;
+		if (!currentProject) return;
+		loading = true;
+		errorMessage = '';
+		successMessage = '';
+		try {
+			const response = await approveProjectMilestone($actorStore, currentProject.projectId, milestone.milestoneId);
+			await loadProjectMilestones(currentProject.projectId);
+			if (response.invoice && typeof response.invoice.invoice_id === 'string') {
+				successMessage = `Approved milestone and created draft invoice ${response.invoice.invoice_id}.`;
+			} else {
+				successMessage = 'Milestone approved. No linked service line invoice was generated.';
+			}
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Failed to approve milestone';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -445,6 +551,7 @@
 			void (async () => {
 				await loadProject(projectId);
 				await Promise.all([loadReferenceOptions(), loadWbsElements(projectId)]);
+				await loadProjectMilestones(projectId);
 			})();
 		}
 
@@ -469,6 +576,11 @@
 	$: wbsSkuOptions = skuOptions.filter((sku) =>
 		$projectStore.currentProject?.projectType === 'Service' ? sku.sku_type === 'service' : true
 	);
+	$: selectedMilestoneLine = billableServiceLines.find((line) => line.orderLineId === newMilestoneOrderLineId);
+	$: reservedMilestoneAmount = projectMilestones
+		.filter((milestone) => milestone.orderLineId === selectedMilestoneLine?.orderLineId)
+		.reduce((sum, milestone) => sum + milestone.billingAmount, 0);
+	$: milestoneAvailableAmount = Math.max(0, (selectedMilestoneLine?.lineTotal ?? 0) - reservedMilestoneAmount);
 	$: if ($projectStore.currentProject?.wbsId && !newWbsParentElementId) {
 		newWbsParentElementId = $projectStore.currentProject.wbsId;
 	}
@@ -626,7 +738,7 @@
 		<!-- Tabs -->
 		<div class="border-b border-slate-300 dark:border-white/15 mb-6">
 			<div class="flex gap-4">
-				{#each (['overview', 'wbs', 'boms', 'labor', 'finished', 'financials', 'linked'] as const) as tab}
+				{#each (['overview', 'wbs', 'milestones', 'boms', 'labor', 'finished', 'financials', 'linked'] as const) as tab}
 					<button
 						on:click={() => (activeTab = tab)}
 						class={`px-4 py-2 border-b-2 font-medium text-sm ${
@@ -639,6 +751,8 @@
 							? 'Overview'
 							: tab === 'wbs'
 								? 'WBS'
+								: tab === 'milestones'
+									? 'Milestones'
 								: tab === 'boms'
 								? 'BOM Assignments'
 								: tab === 'labor'
@@ -786,6 +900,90 @@
 						Add WBS Element
 					</button>
 				</div>
+			</div>
+		{/if}
+
+		{#if activeTab === 'milestones'}
+			<div class="space-y-5">
+				<section class="bg-slate-50 border border-slate-300 dark:bg-white/5 dark:border-white/15 rounded-lg p-6">
+					<div class="flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<h2 class="text-lg font-semibold">Contract Milestones</h2>
+							<p class="mt-1 text-sm text-slate-600 dark:text-white/70">Approved milestones create draft invoices after the phase gate is ready.</p>
+						</div>
+						<span class="text-sm text-slate-600 dark:text-white/70">{projectMilestones.length} milestones</span>
+					</div>
+
+					{#if billableServiceLines.length > 0}
+						<div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+							<div>
+								<label for="milestoneName" class="mb-1 block text-sm font-medium">Milestone name</label>
+								<input id="milestoneName" bind:value={newMilestoneName} class="input-base w-full" />
+							</div>
+							<div>
+								<label for="milestonePhase" class="mb-1 block text-sm font-medium">Stage-gate phase</label>
+								<input id="milestonePhase" bind:value={newMilestonePhaseName} class="input-base w-full" placeholder="Must match the gate phase" />
+							</div>
+							<div>
+								<label for="milestoneOrderLine" class="mb-1 block text-sm font-medium">Mapped service line</label>
+								<select id="milestoneOrderLine" bind:value={newMilestoneOrderLineId} class="input-base w-full">
+									{#each billableServiceLines as line (line.orderLineId)}
+										<option value={line.orderLineId}>{line.sku} · {line.orderId} · {line.lineTotal.toFixed(2)}</option>
+									{/each}
+								</select>
+							</div>
+							<div>
+								<label for="milestoneAmount" class="mb-1 block text-sm font-medium">Billing amount</label>
+								<input id="milestoneAmount" type="number" min="0.01" step="0.01" max={milestoneAvailableAmount} bind:value={newMilestoneAmount} class="input-base w-full" />
+								<p class="mt-1 text-xs text-slate-500 dark:text-white/60">Available: {milestoneAvailableAmount.toFixed(2)}</p>
+							</div>
+							<div class="flex items-end">
+								<button on:click={() => void handleCreateMilestone()} class="w-full rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50" disabled={loading || !newMilestoneName.trim() || !newMilestonePhaseName.trim() || !newMilestoneOrderLineId || !newMilestoneAmount}>Create</button>
+							</div>
+						</div>
+					{:else if $projectStore.currentProject.projectType === 'Service'}
+						<p class="mt-4 text-sm text-slate-600 dark:text-white/70">No confirmed, mapped service order lines are available for this project.</p>
+					{/if}
+
+					<div class="mt-5 overflow-x-auto">
+						<table class="w-full text-left text-sm">
+							<thead class="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white/75">
+								<tr>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Milestone</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Phase / Gate</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Billing</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Status</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Invoice</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Action</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each projectMilestones as milestone (milestone.milestoneId)}
+									<tr>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{milestone.name}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{milestone.phaseName}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{milestone.billedAmount.toFixed(2)} / {milestone.billingAmount.toFixed(2)}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">{milestone.status}{milestone.readyForBilling ? ' · Gate ready' : ''}</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">
+											{#if milestone.invoiceId}
+												<a class="text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/o2c_invoice/${milestone.invoiceId}`)}>{milestone.invoiceId} · {milestone.invoiceState || 'Draft'}</a>
+											{:else}Not billed{/if}
+										</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">
+											{#if milestone.status === 'Planned'}
+												<button on:click={() => void handleApproveMilestone(milestone)} class="rounded border dark:border-white/25 border-slate-300 px-3 py-1.5 text-xs font-medium disabled:opacity-50" disabled={loading}>Approve &amp; invoice</button>
+											{:else if !milestone.orderLineId}
+												<span class="text-xs text-slate-500 dark:text-white/60">Legacy milestone</span>
+											{/if}
+										</td>
+									</tr>
+								{:else}
+									<tr><td colspan="6" class="px-3 py-4 text-slate-500 dark:text-white/60">No milestones yet.</td></tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</section>
 			</div>
 		{/if}
 

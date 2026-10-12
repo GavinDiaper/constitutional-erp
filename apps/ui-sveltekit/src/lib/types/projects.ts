@@ -64,6 +64,25 @@ export interface ProjectWbsElement {
 	updatedAt: string;
 }
 
+export interface ProjectMilestone {
+	milestoneId: string;
+	projectId: string;
+	name: string;
+	phaseName: string;
+	billingAmount: number;
+	contractVersionId?: string;
+	orderLineId?: string;
+	wbsElementId?: string;
+	invoiceId?: string;
+	billedAmount: number;
+	status: 'Planned' | 'Approved' | 'Completed';
+	readyForBilling: boolean;
+	approvedAt?: string;
+	createdAt: string;
+	updatedAt: string;
+	invoiceState?: string;
+}
+
 export interface BomAssignment {
 	assignmentId: string;
 	projectId: string;

@@ -28,6 +28,7 @@ import {
   advanceProjectPhase,
   createProjectMilestone,
   approveProjectMilestone,
+  listProjectMilestones,
   createProjectChangeRequest,
   approveProjectChangeRequest,
   createProjectFinishedItem,
@@ -40,6 +41,7 @@ import {
 } from "../domain/proj/projectService";
 import { HttpError } from "../utils/errors";
 import { createProjectWbsElement, listProjectWbsElements } from "../domain/proj/wbsService";
+import { generateProjectMilestoneInvoice } from "../domain/o2c/invoice/invoiceService";
 
 const router = Router();
 
@@ -509,10 +511,21 @@ router.post("/:projectId/advance-phase", (req: Request, res: Response) => {
   }
 });
 
+router.get("/:projectId/milestones", (req: Request, res: Response) => {
+  try {
+    const milestones = listProjectMilestones(req.params.projectId);
+    res.json({ success: true, data: milestones, count: milestones.length });
+  } catch (err: unknown) {
+    const status = err instanceof HttpError ? err.status : 500;
+    const error = err instanceof Error ? err : new Error(String(err));
+    res.status(status).json({ success: false, error: error.message });
+  }
+});
+
 router.post("/:projectId/milestones", (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { name, phaseName, billingAmount } = req.body ?? {};
+    const { name, phaseName, billingAmount, orderLineId, wbsElementId } = req.body ?? {};
 
     const milestone = createProjectMilestone(
       projectId,
@@ -520,6 +533,8 @@ router.post("/:projectId/milestones", (req: Request, res: Response) => {
         name,
         phaseName,
         billingAmount,
+        orderLineId,
+        wbsElementId,
       },
       req.actor
     );
@@ -536,7 +551,10 @@ router.post("/:projectId/milestones/:milestoneId/approve", (req: Request, res: R
   try {
     const { projectId, milestoneId } = req.params;
     const milestone = approveProjectMilestone(projectId, milestoneId, req.actor);
-    res.json({ success: true, data: milestone });
+    const invoice = milestone.orderLineId
+      ? generateProjectMilestoneInvoice(projectId, milestoneId, req.actor)
+      : undefined;
+    res.json({ success: true, data: milestone, invoice });
   } catch (err: unknown) {
     const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));
