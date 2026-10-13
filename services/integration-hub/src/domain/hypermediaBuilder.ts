@@ -123,6 +123,10 @@ export class HypermediaBuilder {
       return normalizedState === "draft";
     }
 
+    if (normalizedAction === "timesheetaccruals") {
+      return normalizedState === "draft" || normalizedState === "validated";
+    }
+
     return true;
   }
 

@@ -2,11 +2,6 @@
 
 You’ve just built:
 
-- Integration Hub  
-- AI Offline Mode  
-- A canonical model  
-- A data‑oriented test strategy  
-- A roadmap that depends heavily on **observability**  
 
 What you’re missing is a **window into the system** — a way to *see* the flows, events, transitions, and data that define the constitutional architecture.
 
@@ -14,53 +9,27 @@ Right now, everything is happening “in the dark” unless you manually inspect
 
 An Admin Interface solves that.
 
----
 
 # 🎯 What the Admin Interface Should Be
 
 A **developer and architect cockpit** that shows:
 
 ### **1. Canonical Data**
-- Entities (Supplier, PO, Invoice, Order, Journal, etc.)
-- Current state
-- Attributes
-- Relationships
 
 ### **2. Event Streams**
-- Canonical events emitted by Mesh / Foundation ERP
-- Replay history
-- Correlation and causation chains
-- Visualised as a timeline or graph
 
 ### **3. Process Graphs (via D3)**
-- PGE transitions
-- Current state highlighted
-- Allowed next actions
-- Risk annotations
-- Authority requirements
 
 ### **4. Integration Hub Hypermedia**
-- Links[]
-- MCP functions
-- Governance metadata
-- Input schemas
 
 ### **5. Navigator Execution**
-- Proposed actions
-- Simulations
-- Explanations
-- Decision logs
 
 ### **6. Test Execution Results**
-- Golden snapshot comparisons
-- Event replay results
-- Cross‑ERP equivalence checks
-- Mesh adapter validation
 
 This becomes the **observability layer** for the entire platform.
 
----
 
+> **Implementation note (2026-10-13):** The current operator UI is SvelteKit. The `/admin/accounting-controls` surface provides contractor accrual allocation, invoice posting/reversal references, cancellation for unpaid invoices, and per-ledger AR/AP/unbilled reconciliation. This extends the data-first Admin design below; it does not replace Integration Hub as the authority for process actions.
 # 🧠 Why D3.js Is the Right Choice
 
 D3 gives you:

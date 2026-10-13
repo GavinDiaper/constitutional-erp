@@ -74,6 +74,8 @@
 						<th class="px-3 py-2">Amount Due</th>
 						<th class="px-3 py-2">Amount Paid</th>
 						<th class="px-3 py-2">State</th>
+						<th class="px-3 py-2">Posting Journal</th>
+						<th class="px-3 py-2">Reversal Journal</th>
 						<th class="px-3 py-2">Actions</th>
 					</tr>
 				</thead>
@@ -85,6 +87,8 @@
 							<td class="px-3 py-3">{formatAmount(invoice.amount_due)}</td>
 							<td class="px-3 py-3">{formatAmount(invoice.amount_paid)}</td>
 							<td class="px-3 py-3">{invoice.state ?? 'Unknown'}</td>
+							<td class="px-3 py-3">{#if invoice.accounting_journal_id}<a class="text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/r2r_journal/${invoice.accounting_journal_id}`)}>{invoice.accounting_journal_id}</a>{:else}—{/if}</td>
+							<td class="px-3 py-3">{#if invoice.reversal_journal_id}<a class="text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/r2r_journal/${invoice.reversal_journal_id}`)}>{invoice.reversal_journal_id}</a>{:else}—{/if}</td>
 							<td class="px-3 py-3">
 								<a class="rounded-md border dark:border-white/35 border-slate-300 px-2 py-1 text-xs dark:text-white text-slate-900" href={resolve(`/canvas/o2c_invoice/${invoice.invoice_id}`)}>
 									Open Process

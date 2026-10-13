@@ -148,7 +148,7 @@ export const p2pTransitions: CanonicalTransition[] = [
     id: "P2P.SupplierInvoice.cancel",
     domain: "P2P",
     aggregateType: "supplier-invoice",
-    fromStates: ["Draft", "Validated"],
+    fromStates: ["Draft", "Validated", "Posted"],
     toStates: ["Cancelled"],
     action: "cancel"
   },

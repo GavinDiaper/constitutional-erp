@@ -937,11 +937,20 @@ export function listContractorAccruals(filters: { timesheetId?: string; supplier
   }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   return db.prepare(
-    `SELECT a.accrual_id AS accrualId, a.timesheet_line_id AS timesheetLineId,
+        `SELECT a.accrual_id AS accrualId, a.timesheet_line_id AS timesheetLineId,
             l.timesheet_id AS timesheetId, a.labor_entry_id AS laborEntryId,
             a.contractor_id AS contractorId, a.vendor_rate_id AS vendorRateId,
             a.supplier_id AS supplierId, a.project_id AS projectId,
-            a.currency, a.amount, a.status, a.gl_journal_id AS glJournalId,
+            a.currency, a.amount, a.amount AS accruedAmount,
+          COALESCE((SELECT SUM(m.matched_amount)
+              FROM p2p_supplier_invoice_timesheet_accrual m
+              JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = m.supplier_invoice_id
+              WHERE m.accrual_id = a.accrual_id AND si.state <> 'Cancelled'), 0) AS matchedAmount,
+          MAX(0, a.amount - COALESCE((SELECT SUM(m.matched_amount)
+                   FROM p2p_supplier_invoice_timesheet_accrual m
+                   JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = m.supplier_invoice_id
+                   WHERE m.accrual_id = a.accrual_id AND si.state <> 'Cancelled'), 0)) AS availableAmount,
+          a.status, a.gl_journal_id AS glJournalId,
             a.supplier_invoice_id AS supplierInvoiceId, a.created_at AS createdAt,
             a.updated_at AS updatedAt
      FROM h2r_contractor_accrual a

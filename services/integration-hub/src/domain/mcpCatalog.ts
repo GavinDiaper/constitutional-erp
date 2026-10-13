@@ -144,7 +144,29 @@ const FUNCTION_DEFS = [
   { id: "p2p_receive_goods", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "receive_goods", operationType: "transition", description: "Receive goods", riskLevel: "Low", governanceTag: "P2P.GoodsReceipt.Receive" },
   { id: "p2p_accept_goods", entity: "GoodsReceipt", domain: "p2p", aggregateType: "goods-receipt", action: "accept_goods", operationType: "transition", description: "Accept goods", riskLevel: "Medium", governanceTag: "P2P.GoodsReceipt.Accept" },
   { id: "p2p_create_supplier_invoice", entity: "SupplierInvoice", domain: "p2p", aggregateType: "supplier-invoice", action: "create_supplier_invoice", operationType: "create", description: "Create supplier invoice", riskLevel: "Low", governanceTag: "P2P.SupplierInvoice.Create" },
-  { id: "p2p_post_supplier_invoice", entity: "SupplierInvoice", domain: "p2p", aggregateType: "supplier-invoice", action: "post_supplier_invoice", operationType: "transition", description: "Post supplier invoice", riskLevel: "Medium", governanceTag: "P2P.SupplierInvoice.Post" },
+  { id: "p2p_post_supplier_invoice", entity: "SupplierInvoice", domain: "p2p", aggregateType: "supplier-invoice", action: "post", actionAliases: ["post_supplier_invoice"], operationType: "transition", description: "Post supplier invoice", riskLevel: "Medium", governanceTag: "P2P.SupplierInvoice.Post" },
+  { id: "p2p_cancel_supplier_invoice", entity: "SupplierInvoice", domain: "p2p", aggregateType: "supplier-invoice", action: "cancel", operationType: "transition", description: "Cancel an unpaid supplier invoice and reverse its posting", riskLevel: "High", governanceTag: "P2P.SupplierInvoice.Cancel" },
+  {
+    id: "p2p_match_timesheet_accruals",
+    entity: "SupplierInvoice",
+    domain: "p2p",
+    aggregateType: "supplier-invoice",
+    action: "timesheet-accruals",
+    operationType: "update",
+    description: "Allocate contractor timesheet accruals to a supplier invoice",
+    riskLevel: "High",
+    governanceTag: "P2P.SupplierInvoice.MatchContractorAccruals",
+    inputSchema: {
+      type: "object",
+      required: ["allocations"],
+      properties: {
+        allocations: {
+          type: "array",
+          description: "JSON array of { accrualId, amount } allocations"
+        }
+      }
+    }
+  },
   { id: "p2p_create_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "create_ap_payment", operationType: "create", description: "Create AP payment", riskLevel: "Medium", governanceTag: "P2P.ApPayment.Create" },
   { id: "p2p_execute_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "execute_ap_payment", operationType: "transition", description: "Execute AP payment", riskLevel: "High", governanceTag: "P2P.ApPayment.Execute" },
   { id: "p2p_reconcile_ap_payment", entity: "ApPayment", domain: "p2p", aggregateType: "ap-payment", action: "reconcile_ap_payment", operationType: "transition", description: "Reconcile AP payment", riskLevel: "Low", governanceTag: "P2P.ApPayment.Reconcile" },

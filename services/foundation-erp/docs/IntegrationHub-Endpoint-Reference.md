@@ -218,6 +218,12 @@ Example request:
 
 - transition invoice Draft to Posted
 
+#### POST /api/v1/o2c/invoices/:invoiceId/cancel
+
+- cancel a Draft or unpaid Posted invoice
+- cancelling a Posted invoice posts a linked reversing journal and returns `reversal_journal_id`
+- invoices with applied payments cannot be cancelled
+
 ### Payments
 
 #### GET /api/v1/o2c/payments
@@ -390,6 +396,39 @@ Example request:
 }
 ```
 
+#### POST /api/v1/p2p/supplier-invoices/:supplierInvoiceId/validate
+
+- transition supplier invoice Draft to Validated
+
+#### POST /api/v1/p2p/supplier-invoices/:supplierInvoiceId/timesheet-accruals
+
+- allocate approved contractor accrual balances to a Draft or Validated supplier invoice
+- the sum of allocations must equal the invoice base amount; for taxed invoices, use the taxable base
+- supplier and currency must match, and allocations cannot exceed each accrual's remaining amount
+
+Example request:
+
+```json
+{
+  "allocations": [
+    { "accrualId": "ACCRUAL-123", "amount": 480.00 },
+    { "accrualId": "ACCRUAL-456", "amount": 220.00 }
+  ]
+}
+```
+
+The legacy `{ "accrualIds": ["ACCRUAL-123"] }` request allocates the remaining balance of each listed accrual.
+
+#### POST /api/v1/p2p/supplier-invoices/:supplierInvoiceId/post
+
+- transition a Validated invoice to Posted and post AP plus the matching accrual reclassification, when present
+
+#### POST /api/v1/p2p/supplier-invoices/:supplierInvoiceId/cancel
+
+- cancel a Draft, Validated, or unpaid Posted invoice
+- cancelling a Posted invoice posts a linked reversing journal, returns its contractor allocation, and exposes `reversal_journal_id`
+- invoices with applied payments cannot be cancelled
+
 #### POST /api/v1/p2p/supplier-invoices/:supplierInvoiceId/post
 
 - transition Draft to Posted
@@ -417,13 +456,17 @@ Example request:
 }
 ```
 
-#### POST /api/v1/p2p/ap-payments/:apPaymentId/execute
+#### POST /api/v1/p2p/ap-payments/:apPaymentId/receive
 
-- transition Initiated to Executed
+- transition Draft to Received
+
+#### POST /api/v1/p2p/ap-payments/:apPaymentId/apply
+
+- apply a Received payment, post Dr AP / Cr Cash, and update invoice and contractor accrual settlement state
 
 #### POST /api/v1/p2p/ap-payments/:apPaymentId/reconcile
 
-- transition Executed to Reconciled
+- transition Applied to Reconciled
 
 ## R2R Endpoint Reference
 
@@ -754,6 +797,15 @@ Example request:
 #### POST /api/v1/r2r/journals/:journalId/post
 
 - transition Draft to Posted
+
+### AR / AP Reconciliation
+
+#### GET /api/v1/r2r/reconciliation/ar-ap
+
+- return AR, AP, and unbilled-receivable control-account balances and corresponding open-subledger balances for each ledger
+- each control includes its ledger-currency GL balance, open subledger balances by transaction currency, and a `difference` when comparable
+- `comparable` is false when open foreign-currency documents have no translated ledger-currency balance; the response reports their count instead of presenting a misleading difference
+- a zero difference indicates the compared ledger-currency balances agree; investigate nonzero differences using the listed source invoices and journal references
 
 ### Trial Balance
 

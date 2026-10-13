@@ -7,6 +7,7 @@
 	export let executingActionName = '';
 
 	let inputValues: Record<string, Record<string, string>> = {};
+	let inputErrors: Record<string, string> = {};
 	// undefined = not yet fetched; null = fetch failed/empty; [...] = fetched with results
 	let lookupOptions: Record<string, Array<{ value: string; label: string }> | null> = {};
 
@@ -120,6 +121,7 @@
 	}
 
 	function setInput(actionName: string, field: string, value: string): void {
+		inputErrors = { ...inputErrors, [actionName]: '' };
 		inputValues = {
 			...inputValues,
 			[actionName]: { ...inputValues[actionName], [field]: value }
@@ -135,6 +137,16 @@
 	}
 
 	function coerceValue(rawValue: string, schema: { type?: string } | undefined): unknown {
+		if (schema?.type === 'array' || schema?.type === 'object') {
+			const parsed: unknown = JSON.parse(rawValue);
+			if (schema.type === 'array' && !Array.isArray(parsed)) {
+				throw new Error('Enter a JSON array.');
+			}
+			if (schema.type === 'object' && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) {
+				throw new Error('Enter a JSON object.');
+			}
+			return parsed;
+		}
 		if (schema?.type === 'number' || schema?.type === 'integer') {
 			const numeric = Number(rawValue);
 			return Number.isFinite(numeric) ? numeric : rawValue;
@@ -158,13 +170,18 @@
 
 	function handleRun(action: { name: string; link: HubActionLink }): void {
 		const payload: Record<string, unknown> = {};
-		for (const field of Object.keys(action.link.inputSchema?.properties ?? {})) {
-			const val = inputValues[action.name]?.[field];
-			if (val !== undefined && val.trim() !== '') {
-				payload[field] = coerceValue(val, action.link.inputSchema?.properties?.[field]);
+		try {
+			for (const field of Object.keys(action.link.inputSchema?.properties ?? {})) {
+				const val = inputValues[action.name]?.[field];
+				if (val !== undefined && val.trim() !== '') {
+					payload[field] = coerceValue(val, action.link.inputSchema?.properties?.[field]);
+				}
 			}
+			inputErrors = { ...inputErrors, [action.name]: '' };
+			onExecute?.(action, payload);
+		} catch (error) {
+			inputErrors = { ...inputErrors, [action.name]: error instanceof Error ? error.message : 'Invalid action input.' };
 		}
-		onExecute?.(action, payload);
 	}
 </script>
 
@@ -172,7 +189,6 @@
 	<h3 class="text-lg font-semibold">Allowed Actions</h3>
 	{#if actions.length === 0}
 		<p class="muted mt-2 text-sm">No actionable links available.</p>
-	{:else}
 		<ul class="mt-3 space-y-3">
 			{#each actions as action (action.name)}
 				{@const requiredFields = action.link.inputSchema?.required ?? []}
@@ -232,6 +248,14 @@
 												>
 													<option value="">No lookup options available</option>
 												</select>
+											{:else if fieldSchema?.type === 'array' || fieldSchema?.type === 'object'}
+												<textarea
+													rows="5"
+													class="input-base w-full font-mono text-xs"
+													placeholder={fieldSchema?.description ?? `JSON ${fieldSchema?.type}`}
+													value={getInput(action.name, field)}
+													on:input={(e) => setInput(action.name, field, (e.target as HTMLTextAreaElement).value)}
+												></textarea>
 											{:else}
 												<input
 													type={getInputType(fieldSchema)}
@@ -319,6 +343,9 @@
 							</div>
 						</div>
 					</div>
+					{#if inputErrors[action.name]}
+						<p class="mt-2 text-xs text-red-700 dark:text-red-300" role="alert">{inputErrors[action.name]}</p>
+					{/if}
 				</li>
 			{/each}
 		</ul>

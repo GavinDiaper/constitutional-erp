@@ -8,6 +8,8 @@ export interface O2CInvoice {
 	amount_due?: number | string;
 	amount_paid?: number | string;
 	currency_code?: string;
+	accounting_journal_id?: string | null;
+	reversal_journal_id?: string | null;
 	_links?: Record<string, { href?: string; method?: string }>;
 }
 

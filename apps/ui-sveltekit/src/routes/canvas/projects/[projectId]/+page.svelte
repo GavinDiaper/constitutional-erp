@@ -954,6 +954,7 @@
 									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Billing</th>
 									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Status</th>
 									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Invoice</th>
+									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Accounting journals</th>
 									<th class="border border-slate-300 dark:border-white/15 px-3 py-2">Action</th>
 								</tr>
 							</thead>
@@ -969,6 +970,11 @@
 												<a class="text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/o2c_invoice/${milestone.invoiceId}`)}>{milestone.invoiceId} · {milestone.invoiceState || 'Draft'}</a>
 											{:else}Not billed{/if}
 										</td>
+										<td class="border border-slate-300 dark:border-white/15 px-3 py-2 text-xs">
+											{#if milestone.revenueJournalId}<a class="block text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/r2r_journal/${milestone.revenueJournalId}`)}>Revenue · {milestone.revenueJournalId}</a>{/if}
+											{#if milestone.wipReleaseJournalId}<a class="mt-1 block text-blue-700 underline dark:text-blue-300" href={resolve(`/canvas/r2r_journal/${milestone.wipReleaseJournalId}`)}>WIP release · {milestone.wipReleaseJournalId} ({milestone.wipReleasedAmount.toFixed(2)})</a>{/if}
+											{#if !milestone.revenueJournalId && !milestone.wipReleaseJournalId}—{/if}
+										</td>
 										<td class="border border-slate-300 dark:border-white/15 px-3 py-2">
 											{#if milestone.status === 'Planned'}
 												<button on:click={() => void handleApproveMilestone(milestone)} class="rounded border dark:border-white/25 border-slate-300 px-3 py-1.5 text-xs font-medium disabled:opacity-50" disabled={loading}>Approve &amp; invoice</button>
@@ -978,7 +984,7 @@
 										</td>
 									</tr>
 								{:else}
-									<tr><td colspan="6" class="px-3 py-4 text-slate-500 dark:text-white/60">No milestones yet.</td></tr>
+									<tr><td colspan="7" class="px-3 py-4 text-slate-500 dark:text-white/60">No milestones yet.</td></tr>
 								{/each}
 							</tbody>
 						</table>

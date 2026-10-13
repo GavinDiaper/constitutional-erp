@@ -3,6 +3,14 @@
 To transition a manufacturing-focused, SKU/BOM-based ERP system into one that supports service-oriented, contract-driven projects, you need to layer Professional Services Automation (PSA) and robust Project Financial Management (PFM) modules over your existing core ledger.
 The essential capabilities required to bridge this gap are outlined below, categorized by your specific operational and methodology requirements.
 
+## Implementation Status (2026-10-13)
+
+The current Foundation ERP slice implements service SKUs, approved contract versions, project/WBS-to-order mapping, milestone billing, approval-gated employee and contractor timesheets, and project WIP posting. Approved milestones accrue unbilled receivables and revenue; invoice posting reclassifies unbilled receivables to trade AR, and customer payments settle AR to cash.
+
+Contractor accruals can be allocated partially across supplier invoices. Posting moves fully allocated contractor accruals to AP; AP settlement marks an accrual Paid only after its full allocation is settled. Cancelling an unpaid posted invoice creates a reversing journal; invoices with applied payments cannot be cancelled. The R2R API provides an AR/AP/unbilled control-account reconciliation by ledger.
+
+Accounting-policy caveats remain: milestone approval currently drives earned-revenue accrual, WIP release is proportional to completed milestone value, and reconciliation does not translate foreign-currency open items into ledger currency. Such balances are explicitly marked non-comparable. Confirm revenue-recognition and WIP-release policies with Finance before production use.
+
 ## 1. Contract & SOW Translation (Commercial to Project Structure)
 
 Because your system relies on SKUs, you must convert contractual service agreements into structures the ERP can process.

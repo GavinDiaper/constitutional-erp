@@ -50,6 +50,9 @@ function jsonResponse(body: unknown, status = 200): Response {
 test("transition registries expose expected counts and stable ids", () => {
   assert.equal(getTransitionsForAggregate("P2P", "requisition").length, 5);
   assert.equal(getTransitionsForAggregate("P2P", "purchase-order").length, 7);
+  assert.ok(getTransitionsForAggregate("P2P", "supplier-invoice").some((transition: { id: string; fromStates: string[] }) =>
+    transition.id === "P2P.SupplierInvoice.cancel" && transition.fromStates.includes("Posted")
+  ));
   assert.equal(getTransitionsForAggregate("O2C", "sales-order").length, 6);
   assert.equal(getTransitionsForAggregate("R2R", "journal").length, 4);
   assert.equal(getTransitionsForAggregate("R2R", "fiscal-period").length, 3);
@@ -67,6 +70,8 @@ test("available transition derivation handles multi-state edges", () => {
   assert.deepEqual(poActions, ["receive"]);
   assert.ok(soActions.includes("ship"));
   assert.ok(soActions.includes("cancel"));
+  assert.ok(getAvailableTransitions("P2P", "supplier-invoice", "Posted").some((item: { action: string }) => item.action === "cancel"));
+  assert.ok(!getAvailableTransitions("P2P", "supplier-invoice", "FullyPaid").some((item: { action: string }) => item.action === "cancel"));
 });
 
 test("replayEvents reconstructs O2C and R2R terminal paths", () => {

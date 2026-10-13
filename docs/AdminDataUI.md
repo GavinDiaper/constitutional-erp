@@ -41,38 +41,17 @@ So for anything related to:
 ---
 
 ## **2. Canonical *data tables* and raw entity views**  
-- Customers  
-- Quotes  
-- Orders  
-- Invoices  
-- Payments  
-- Suppliers  
-- Requisitions  
-- Purchase Orders  
-- Journals  
-- Employees  
 
 This **must** come from **FoundationERP**.
 
 Because:
 
-- FoundationERP is the **canonical data store**  
-- Hub does not expose raw tables  
-- Hub exposes only process‑oriented views  
-- Admin needs full visibility into the underlying data  
 
 So for:
 
-- Table views  
-- Raw entity attributes  
-- Lists  
-- Filters  
-- Audits  
-- Data debugging  
 
 → **FoundationERP is authoritative**.
 
----
 
 # 🎯 **So what’s the rule?**
 
@@ -80,25 +59,21 @@ So for:
 Canvas is about:
 
 - “What state is this entity in?”  
-- “What can I do next?”  
-- “What does Navigator propose?”  
-- “What is the governance requirement?”  
-- “What is the event history?”  
-- “What is the process graph?”  
 
 All of this comes from **Integration Hub v2**.
 
-### Canvas should call:
-- `/process/:entityType/:entityId`
-- `/mcp/functions`
-- `/hub/sessions`
-- `/hub/sessions/:id/navlog`
-- `/hub/sessions/:id/transcript`
 - `/events/entity/:type/:id`
 
 **Canvas = Hub-first.**
-
 ---
+## Accounting Controls UI (Current)
+
+The SvelteKit Admin route `/admin/accounting-controls` follows the data-first rule for accounting operations:
+
+- Supplier invoices and their posting/reversal journal references come from Foundation ERP entity data.
+- Contractor accrual balances are read from the Foundation ERP timesheet accrual endpoint; matching is submitted to the supplier-invoice allocation endpoint through the authenticated server proxy.
+- AR, AP, and unbilled-receivable balances come from the Foundation ERP R2R reconciliation endpoint. The UI shows currency comparability and does not display a numeric difference for open foreign-currency balances without translation.
+- Process transitions remain Integration Hub actions. The supplier invoice process exposes contractor matching only while Draft or Validated, and cancellation only for eligible states; Foundation ERP remains the final authority for payment and balance guards.
 
 ## **Admin (developer/operator cockpit) → FoundationERP first, Hub second**
 
