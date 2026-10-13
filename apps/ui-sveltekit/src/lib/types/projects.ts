@@ -75,6 +75,9 @@ export interface ProjectMilestone {
 	wbsElementId?: string;
 	invoiceId?: string;
 	billedAmount: number;
+	revenueJournalId?: string;
+	wipReleaseJournalId?: string;
+	wipReleasedAmount: number;
 	status: 'Planned' | 'Approved' | 'Completed';
 	readyForBilling: boolean;
 	approvedAt?: string;

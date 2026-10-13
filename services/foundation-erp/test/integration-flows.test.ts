@@ -497,8 +497,8 @@ test("O2C payment registration auto-applies invoice and posts accounting entries
   const ledgerDelta = ledgerAfter.body.data.length - ledgerBefore.body.data.length;
   const journalDelta = journalsAfter.body.data.length - journalsBefore.body.data.length;
 
-  assert.equal(journalDelta, 1);
-  assert.equal(ledgerDelta, 2);
+  assert.equal(journalDelta, 2);
+  assert.equal(ledgerDelta, 4);
 });
 
 test("R2R integration flow enforces period lifecycle and posting rules", async () => {
@@ -1561,6 +1561,22 @@ test("Sales order lines persist project and WBS mapping for service contract ord
   assert.equal(approvedMilestone.body.data.status, "Approved");
   assert.equal(approvedMilestone.body.invoice.state, "Draft");
   assert.equal(approvedMilestone.body.invoice.order_amount, 1000);
+  assert.ok(approvedMilestone.body.data.revenueJournalId);
+  assert.equal(approvedMilestone.body.data.wipReleasedAmount, 0);
+
+  const accountingAccounts = await request(app)
+    .get("/api/v1/query/r2r_account?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const accountingEntries = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const accountCodeById = new Map(accountingAccounts.body.data.map((account: any) => [account.account_id, account.account_code]));
+  const milestoneAccrualLines = accountingEntries.body.data.filter((entry: any) => entry.journal_id === approvedMilestone.body.data.revenueJournalId);
+  assert.equal(milestoneAccrualLines.length, 2);
+  assert.ok(milestoneAccrualLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-130-ASSET-UNBILLED-AR" && Number(entry.debit_amount) === 1000));
+  assert.ok(milestoneAccrualLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-400-REV-SALES" && Number(entry.credit_amount) === 1000));
 
   const orderAfterMilestone = await request(app)
     .get(`/api/v1/o2c/orders/${order.body.order_id}`)
@@ -1589,6 +1605,40 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     .set(headers)
     .expect(200);
   assert.notEqual(replacementInvoice.body.invoice.invoice_id, approvedMilestone.body.invoice.invoice_id);
+  assert.equal(replacementInvoice.body.data.revenueJournalId, approvedMilestone.body.data.revenueJournalId);
+
+  const postedMilestoneInvoice = await request(app)
+    .post(`/api/v1/o2c/invoices/${replacementInvoice.body.invoice.invoice_id}/post`)
+    .set(headers)
+    .expect(200);
+  assert.ok(postedMilestoneInvoice.body.accounting_journal_id);
+  const postedInvoiceLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const invoicePostingLines = postedInvoiceLedger.body.data.filter((entry: any) => entry.journal_id === postedMilestoneInvoice.body.accounting_journal_id);
+  assert.equal(invoicePostingLines.length, 2);
+  assert.ok(invoicePostingLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-110-ASSET-AR" && Number(entry.debit_amount) === 1000));
+  assert.ok(invoicePostingLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-130-ASSET-UNBILLED-AR" && Number(entry.credit_amount) === 1000));
+
+  await request(app)
+    .post("/api/v1/o2c/payments")
+    .set(headers)
+    .send({ invoiceId: replacementInvoice.body.invoice.invoice_id, amount: 1000, currencyCode: "USD" })
+    .expect(201);
+  const paidMilestoneInvoice = await request(app)
+    .get(`/api/v1/o2c/invoices/${replacementInvoice.body.invoice.invoice_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(paidMilestoneInvoice.body.state, "Paid");
+  const paidInvoiceLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const paymentJournalIds = new Set(paidInvoiceLedger.body.data
+    .filter((entry: any) => entry.account_id === accountingAccounts.body.data.find((account: any) => account.account_code === "SYS-100-ASSET-CASH")?.account_id)
+    .map((entry: any) => entry.journal_id));
+  assert.ok([...paymentJournalIds].some((journalId) => paidInvoiceLedger.body.data.some((entry: any) => entry.journal_id === journalId && accountCodeById.get(entry.account_id) === "SYS-110-ASSET-AR" && Number(entry.credit_amount) === 1000)));
 
   await request(app)
     .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
@@ -2632,11 +2682,18 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
     .set(headers)
     .expect(200);
 
+  const supplier = await request(app)
+    .post("/api/v1/p2p/suppliers")
+    .set(headers)
+    .send({ supplierName: `Timesheet Supplier ${unique}`, email: `ap.${unique}@supplier.example` })
+    .expect(201);
+
   const vendorRate = await request(app)
     .post("/api/v1/h2r/vendor-rates")
     .set(headers)
     .send({
       contractorId: `CONT-${unique}`,
+      supplierId: supplier.body.supplier_id,
       vendorName: `Vendor ${unique}`,
       role: "Senior Engineer",
       hourlyRate: 120,
@@ -2685,6 +2742,122 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
   assert.equal(line.body.data.hourlyRate, 120);
   assert.equal(line.body.data.lineCost, 960);
   assert.equal(line.body.data.projectId, project.body.data.projectId);
+
+  await request(app)
+    .post(`/api/v1/timesheets/${created.body.data.timesheetId}/submit`)
+    .set(headers)
+    .expect(200);
+  await request(app)
+    .post(`/api/v1/timesheets/${created.body.data.timesheetId}/approve`)
+    .set(headers)
+    .expect(200);
+
+  const accrualResponse = await request(app)
+    .get(`/api/v1/timesheets/contractor-accruals?supplierId=${supplier.body.supplier_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(accrualResponse.body.data.length, 1);
+  const accrual = accrualResponse.body.data[0];
+  assert.equal(accrual.amount, 960);
+  assert.equal(accrual.status, "Accrued");
+  assert.ok(accrual.glJournalId);
+
+  const accountsResponse = await request(app)
+    .get("/api/v1/query/r2r_account?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const accountCodeById = new Map(accountsResponse.body.data.map((account: any) => [account.account_id, account.account_code]));
+  const laborLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const laborLines = laborLedger.body.data.filter((entry: any) => entry.journal_id === accrual.glJournalId);
+  assert.equal(laborLines.length, 2);
+  assert.ok(laborLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-120-ASSET-INVENTORY" && Number(entry.debit_amount) === 960));
+  assert.ok(laborLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-205-LIAB-ACCRUED-CONTRACTOR" && Number(entry.credit_amount) === 960));
+
+  const requisition = await request(app)
+    .post("/api/v1/p2p/requisitions")
+    .set(headers)
+    .send({ requester: "contractor.ap", currencyCode: "USD", legalEntityId: "LE-SEED-US" })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/lines`)
+    .set(headers)
+    .send({ description: "Approved contractor timesheet", quantity: 1, unitPrice: 960 })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/submit`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/approve`).set(headers).expect(200);
+  const purchaseOrder = await request(app)
+    .post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/convert`)
+    .set(headers)
+    .send({ supplierId: supplier.body.supplier_id })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${purchaseOrder.body.po_id}/approve`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${purchaseOrder.body.po_id}/send`).set(headers).expect(200);
+  const receipt = await request(app)
+    .post("/api/v1/p2p/goods-receipts")
+    .set(headers)
+    .send({ poId: purchaseOrder.body.po_id })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/goods-receipts/${receipt.body.receipt_id}/receive`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/goods-receipts/${receipt.body.receipt_id}/accept`).set(headers).expect(200);
+  const supplierInvoice = await request(app)
+    .post("/api/v1/p2p/supplier-invoices")
+    .set(headers)
+    .send({ receiptId: receipt.body.receipt_id })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/timesheet-accruals`)
+    .set(headers)
+    .send({ accrualIds: [accrual.accrualId] })
+    .expect(200);
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/validate`)
+    .set(headers)
+    .expect(200);
+  const postedSupplierInvoice = await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/post`)
+    .set(headers)
+    .expect(200);
+  assert.ok(postedSupplierInvoice.body.accounting_journal_id);
+  const matchedLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const invoiceLines = matchedLedger.body.data.filter((entry: any) => entry.journal_id === postedSupplierInvoice.body.accounting_journal_id);
+  assert.equal(invoiceLines.length, 2);
+  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-205-LIAB-ACCRUED-CONTRACTOR" && Number(entry.debit_amount) === 960));
+  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.credit_amount) === 960));
+
+  const apPayment = await request(app)
+    .post("/api/v1/p2p/ap-payments")
+    .set(headers)
+    .send({ supplierInvoiceId: supplierInvoice.body.supplier_invoice_id, amount: 960 })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/receive`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/apply`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/reconcile`).set(headers).expect(200);
+  const paidSupplierInvoice = await request(app)
+    .get(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(paidSupplierInvoice.body.state, "Paid");
+  const paidAccruals = await request(app)
+    .get(`/api/v1/timesheets/contractor-accruals?supplierId=${supplier.body.supplier_id}&status=Paid`)
+    .set(headers)
+    .expect(200);
+  assert.equal(paidAccruals.body.data.length, 1);
+  assert.equal(paidAccruals.body.data[0].supplierInvoiceId, supplierInvoice.body.supplier_invoice_id);
+  const paidLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const settlementJournalIds = paidLedger.body.data
+    .filter((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.debit_amount) === 960)
+    .map((entry: any) => entry.journal_id);
+  assert.ok(settlementJournalIds.some((journalId: string) => paidLedger.body.data.some((entry: any) =>
+    entry.journal_id === journalId && accountCodeById.get(entry.account_id) === "SYS-100-ASSET-CASH" && Number(entry.credit_amount) === 960)));
 });
 
 test("Timesheet API supports unified labor workflow for employees", async () => {

@@ -554,7 +554,8 @@ router.post("/:projectId/milestones/:milestoneId/approve", (req: Request, res: R
     const invoice = milestone.orderLineId
       ? generateProjectMilestoneInvoice(projectId, milestoneId, req.actor)
       : undefined;
-    res.json({ success: true, data: milestone, invoice });
+    const refreshedMilestone = listProjectMilestones(projectId).find((entry) => entry.milestoneId === milestoneId) ?? milestone;
+    res.json({ success: true, data: refreshedMilestone, invoice });
   } catch (err: unknown) {
     const status = err instanceof HttpError ? err.status : 500;
     const error = err instanceof Error ? err : new Error(String(err));

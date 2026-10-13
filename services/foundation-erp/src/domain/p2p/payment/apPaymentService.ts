@@ -133,6 +133,13 @@ function updateApState(apPaymentId: string, toState: ApPaymentState, eventType: 
         "UPDATE p2p_supplier_invoice SET amount_paid = ?, state = ?, version = version + 1, updated_at = ? WHERE supplier_invoice_id = ?"
       ).run(nextAmountPaid, supplierInvoiceState, timestamp, apPayment.supplier_invoice_id);
 
+      if (supplierInvoiceState === "Paid") {
+        db.prepare(
+          `UPDATE h2r_contractor_accrual SET status = 'Paid', updated_at = ?
+           WHERE supplier_invoice_id = ? AND status = 'Invoiced'`
+        ).run(timestamp, apPayment.supplier_invoice_id);
+      }
+
       appendEvent({
         entityId: apPayment.supplier_invoice_id,
         entityType: "SupplierInvoice",

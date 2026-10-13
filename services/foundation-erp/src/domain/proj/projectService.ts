@@ -6,6 +6,7 @@ import { newId } from "../../utils/id";
 import { postInventoryMovement } from "../inv/inventoryService";
 import { addRequisitionLine } from "../p2p/requisition/requisitionLineService";
 import { createRequisition, getRequisitionById } from "../p2p/requisition/requisitionService";
+import { createAndPostP2PJournal } from "../p2p/accounting/p2pPostingService";
 import {
   EventPayload_ProjectCreated,
   EventPayload_ProjectActivated,
@@ -1125,6 +1126,9 @@ export interface ProjectMilestoneProjection {
   wbsElementId?: string;
   invoiceId?: string;
   billedAmount: number;
+  revenueJournalId?: string;
+  wipReleaseJournalId?: string;
+  wipReleasedAmount: number;
   status: "Planned" | "Approved" | "Completed";
   readyForBilling: boolean;
   approvedAt?: string;
@@ -1257,6 +1261,9 @@ export function createProjectMilestone(
     wbsElementId: row.wbs_element_id ?? undefined,
     invoiceId: row.invoice_id ?? undefined,
     billedAmount: Number(row.billed_amount ?? 0),
+    revenueJournalId: row.revenue_journal_id ?? undefined,
+    wipReleaseJournalId: row.wip_release_journal_id ?? undefined,
+    wipReleasedAmount: Number(row.wip_released_amount ?? 0),
     status: row.status,
     readyForBilling: Boolean(row.ready_for_billing),
     approvedAt: row.approved_at ?? undefined,
@@ -1285,6 +1292,9 @@ export function listProjectMilestones(projectId: string): ProjectMilestoneProjec
     wbsElementId: row.wbs_element_id ?? undefined,
     invoiceId: row.invoice_id ?? undefined,
     billedAmount: Number(row.billed_amount ?? 0),
+    revenueJournalId: row.revenue_journal_id ?? undefined,
+    wipReleaseJournalId: row.wip_release_journal_id ?? undefined,
+    wipReleasedAmount: Number(row.wip_released_amount ?? 0),
     status: row.status,
     readyForBilling: Boolean(row.ready_for_billing),
     approvedAt: row.approved_at ?? undefined,
@@ -1335,6 +1345,9 @@ export function approveProjectMilestone(
     wbsElementId: updated.wbs_element_id ?? undefined,
     invoiceId: updated.invoice_id ?? undefined,
     billedAmount: Number(updated.billed_amount ?? 0),
+    revenueJournalId: updated.revenue_journal_id ?? undefined,
+    wipReleaseJournalId: updated.wip_release_journal_id ?? undefined,
+    wipReleasedAmount: Number(updated.wip_released_amount ?? 0),
     status: updated.status,
     readyForBilling: Boolean(updated.ready_for_billing),
     approvedAt: updated.approved_at ?? undefined,
@@ -2099,6 +2112,8 @@ export interface PostLaborCostInput {
   costElementId?: string;
   taskId?: string;
   sourceTimesheetLineId?: string;
+  resourceType?: "employee" | "contractor";
+  vendorRateId?: string;
 }
 
 export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): LaborEntryProjection {
@@ -2132,6 +2147,7 @@ export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): La
   const entryId = newId("LABR");
   const totalCost = roundMoney(input.hours * input.rate);
   const ts = now();
+  const resourceType = input.resourceType ?? "employee";
 
   transaction(() => {
     db.prepare(
@@ -2158,6 +2174,48 @@ export function postLaborCost(input: PostLaborCostInput, actor?: EventActor): La
            last_event_at      = ?
        WHERE project_id = ?`
     ).run(totalCost, totalCost, totalCost, ts, input.projectId);
+
+    const wipAccount = db.prepare(
+      "SELECT account_code FROM r2r_account WHERE account_id = ? OR account_code = ?"
+    ).get(project.default_wip_account_id, project.default_wip_account_id) as { account_code: string } | undefined;
+    if (!wipAccount) throw new HttpError(409, "missing_account", "Project WIP account is not configured for GL posting");
+    const accrualAccountCode = resourceType === "contractor"
+      ? "SYS-205-LIAB-ACCRUED-CONTRACTOR"
+      : "SYS-206-LIAB-ACCRUED-PAYROLL";
+    const posting = createAndPostP2PJournal({
+      amount: totalCost,
+      debitAccountCode: wipAccount.account_code,
+      creditAccountCode: accrualAccountCode,
+      description: `Project labor accrual ${entryId}`,
+      memo: `Project WIP labor ${input.projectId}`,
+      referenceEntityType: "ProjectLaborEntry",
+      referenceEntityId: entryId
+    }, actor);
+    db.prepare(
+      `INSERT INTO proj_labor_gl_posting(entry_id, journal_id, resource_type, amount, posted_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(entryId, posting.journalId, resourceType, totalCost, ts);
+
+    if (resourceType === "contractor" && input.sourceTimesheetLineId) {
+      if (!input.vendorRateId) {
+        throw new HttpError(409, "contractor_rate_required", "Project contractor timesheet lines require an approved vendor rate");
+      }
+      const vendorRate = db.prepare(
+        "SELECT supplier_id, currency FROM h2r_vendor_rate WHERE vendor_rate_id = ? AND contractor_id = ? AND status = 'Active'"
+      ).get(input.vendorRateId, input.resourceId) as { supplier_id: string | null; currency: string } | undefined;
+      if (!vendorRate?.supplier_id) {
+        throw new HttpError(409, "contractor_supplier_required", "Project contractor rates must be linked to a P2P supplier before approval");
+      }
+      db.prepare(
+        `INSERT INTO h2r_contractor_accrual(
+           accrual_id, timesheet_line_id, labor_entry_id, contractor_id, vendor_rate_id, supplier_id,
+           project_id, currency, amount, status, gl_journal_id, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Accrued', ?, ?, ?)`
+      ).run(
+        newId("CAP-"), input.sourceTimesheetLineId, entryId, input.resourceId, input.vendorRateId,
+        vendorRate.supplier_id, input.projectId, vendorRate.currency, totalCost, posting.journalId, ts, ts
+      );
+    }
 
     if (input.taskId) {
       const task = db.prepare("SELECT estimated_hours, actual_hours, remaining_hours FROM proj_task WHERE task_id = ?")

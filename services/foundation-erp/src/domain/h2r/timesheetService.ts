@@ -69,6 +69,7 @@ interface TimesheetRow {
 interface VendorRateRow {
   vendor_rate_id: string;
   contractor_id: string;
+  supplier_id: string | null;
   vendor_name: string;
   role: string;
   hourly_rate: number;
@@ -83,6 +84,7 @@ interface VendorRateRow {
 export interface VendorRateProjection {
   vendorRateId: string;
   contractorId: string;
+  supplierId?: string;
   vendorName: string;
   role: string;
   hourlyRate: number;
@@ -165,6 +167,7 @@ function rowToVendorRate(row: VendorRateRow): VendorRateProjection {
   return {
     vendorRateId: row.vendor_rate_id,
     contractorId: row.contractor_id,
+    supplierId: row.supplier_id ?? undefined,
     vendorName: row.vendor_name,
     role: row.role,
     hourlyRate: row.hourly_rate,
@@ -180,6 +183,7 @@ function rowToVendorRate(row: VendorRateRow): VendorRateProjection {
 export function createVendorRate(
   input: {
     contractorId: string;
+    supplierId?: string;
     vendorName: string;
     role: string;
     hourlyRate: number;
@@ -199,6 +203,9 @@ export function createVendorRate(
   if (!input.role || input.role.trim().length === 0) {
     throw new HttpError(400, "invalid_request", "role is required");
   }
+  if (input.supplierId && !db.prepare("SELECT supplier_id FROM p2p_supplier WHERE supplier_id = ?").get(input.supplierId)) {
+    throw new HttpError(404, "not_found", "Supplier not found");
+  }
   const rate = Number(input.hourlyRate);
   if (!Number.isFinite(rate) || rate < 0) {
     throw new HttpError(400, "invalid_request", "hourlyRate must be a non-negative number");
@@ -212,12 +219,13 @@ export function createVendorRate(
   transaction(() => {
     db.prepare(
       `INSERT INTO h2r_vendor_rate(
-        vendor_rate_id, contractor_id, vendor_name, role, hourly_rate, currency,
+        vendor_rate_id, contractor_id, supplier_id, vendor_name, role, hourly_rate, currency,
         effective_from, effective_until, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       vendorRateId,
       input.contractorId,
+      input.supplierId ?? null,
       input.vendorName,
       input.role,
       rate,
@@ -384,7 +392,7 @@ export function resolveTimesheetRate(input: {
   costElementId: string;
   workDate: string;
   role?: string;
-}): { hourlyRate: number; vendorRateId?: string; rateSource: "EmployeeRate" | "VendorRate" } {
+}): { hourlyRate: number; vendorRateId?: string; supplierId?: string; rateSource: "EmployeeRate" | "VendorRate" } {
   if (input.resourceType === "employee") {
     const rows = db.prepare(
       `SELECT employee_cost_rate_id, hourly_rate, effective_from
@@ -407,7 +415,7 @@ export function resolveTimesheetRate(input: {
   }
 
   const rows = db.prepare(
-    `SELECT vendor_rate_id, hourly_rate, role
+    `SELECT vendor_rate_id, supplier_id, hourly_rate, role
      FROM h2r_vendor_rate
      WHERE contractor_id = ? AND status = 'Active'
        AND date(effective_from) <= date(?) AND (effective_until IS NULL OR date(effective_until) >= date(?))
@@ -415,6 +423,7 @@ export function resolveTimesheetRate(input: {
      ORDER BY date(effective_from) DESC LIMIT 2`
   ).all(input.resourceId, input.workDate, input.workDate, input.role ?? null, input.role ?? null) as Array<{
     vendor_rate_id: string;
+    supplier_id: string | null;
     hourly_rate: number;
     role: string;
   }>;
@@ -424,7 +433,12 @@ export function resolveTimesheetRate(input: {
   if (rows.length > 1 && rows[0].role.toLowerCase() === rows[1].role.toLowerCase()) {
     throw new HttpError(409, "vendor_rate_ambiguous", `Multiple contractor rates match '${input.resourceId}' on ${input.workDate}`);
   }
-  return { hourlyRate: Number(rows[0].hourly_rate), vendorRateId: rows[0].vendor_rate_id, rateSource: "VendorRate" };
+  return {
+    hourlyRate: Number(rows[0].hourly_rate),
+    vendorRateId: rows[0].vendor_rate_id,
+    supplierId: rows[0].supplier_id ?? undefined,
+    rateSource: "VendorRate"
+  };
 }
 
 export function createTimesheet(
@@ -728,8 +742,9 @@ export function approveTimesheet(timesheetId: string, actor?: EventActor): Times
   }
 
   const projectLines = db.prepare(
-    `SELECT l.timesheet_line_id, l.project_id, l.task_id, l.resource_id, l.hours, l.hourly_rate,
-            l.cost_element_id, l.project_labor_entry_id, p.wbs_id
+        `SELECT l.timesheet_line_id, l.project_id, l.task_id, l.resource_id, l.resource_type,
+          l.vendor_rate_id, l.hours, l.hourly_rate, l.cost_element_id,
+          l.project_labor_entry_id, p.wbs_id
      FROM h2r_timesheet_line l
      LEFT JOIN proj_project p ON p.project_id = l.project_id
      WHERE l.timesheet_id = ? AND l.project_id IS NOT NULL
@@ -739,6 +754,8 @@ export function approveTimesheet(timesheetId: string, actor?: EventActor): Times
     project_id: string;
     task_id: string | null;
     resource_id: string | null;
+    resource_type: "employee" | "contractor" | null;
+    vendor_rate_id: string | null;
     hours: number;
     hourly_rate: number;
     cost_element_id: string;
@@ -758,7 +775,9 @@ export function approveTimesheet(timesheetId: string, actor?: EventActor): Times
       rate: line.hourly_rate,
       costElementId: line.cost_element_id,
       taskId: line.task_id ?? undefined,
-      sourceTimesheetLineId: line.timesheet_line_id
+      sourceTimesheetLineId: line.timesheet_line_id,
+      resourceType: line.resource_type ?? "employee",
+      vendorRateId: line.vendor_rate_id ?? undefined
     }, actor);
   }
 
@@ -899,4 +918,35 @@ export function listTimesheets(organizationId: string, limit = 100, offset = 0) 
     createdAt: row.created_at,
     version: row.version,
   }));
+}
+
+export function listContractorAccruals(filters: { timesheetId?: string; supplierId?: string; status?: string } = {}) {
+  const conditions: string[] = [];
+  const values: string[] = [];
+  if (filters.timesheetId) {
+    conditions.push("l.timesheet_id = ?");
+    values.push(filters.timesheetId);
+  }
+  if (filters.supplierId) {
+    conditions.push("a.supplier_id = ?");
+    values.push(filters.supplierId);
+  }
+  if (filters.status) {
+    conditions.push("a.status = ?");
+    values.push(filters.status);
+  }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  return db.prepare(
+    `SELECT a.accrual_id AS accrualId, a.timesheet_line_id AS timesheetLineId,
+            l.timesheet_id AS timesheetId, a.labor_entry_id AS laborEntryId,
+            a.contractor_id AS contractorId, a.vendor_rate_id AS vendorRateId,
+            a.supplier_id AS supplierId, a.project_id AS projectId,
+            a.currency, a.amount, a.status, a.gl_journal_id AS glJournalId,
+            a.supplier_invoice_id AS supplierInvoiceId, a.created_at AS createdAt,
+            a.updated_at AS updatedAt
+     FROM h2r_contractor_accrual a
+     JOIN h2r_timesheet_line l ON l.timesheet_line_id = a.timesheet_line_id
+     ${where}
+     ORDER BY a.created_at ASC`
+  ).all(...values);
 }

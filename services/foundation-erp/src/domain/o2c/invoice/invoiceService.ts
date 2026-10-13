@@ -4,6 +4,7 @@ import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { calculateTax, determineTaxByCode, persistTaxLine, getTaxLinesForEntity } from "../../tax/taxService";
 import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
+import { createAndPostP2PJournal } from "../../p2p/accounting/p2pPostingService";
 
 
 type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled" | "Cancelled";
@@ -52,6 +53,7 @@ export function getInvoiceById(invoiceId: string) {
         amount_due: number;
         amount_paid: number;
         project_milestone_id: string | null;
+        accounting_journal_id: string | null;
         version: number;
       }
     | undefined;
@@ -353,6 +355,7 @@ export function generateProjectMilestoneInvoice(
     `SELECT m.milestone_id, m.project_id, m.name AS milestone_name, m.phase_name,
             m.billing_amount, m.status AS milestone_status, m.ready_for_billing,
             m.contract_version_id, m.order_line_id, m.wbs_element_id, m.invoice_id,
+            m.revenue_journal_id,
             p.customer_id AS project_customer_id, p.contract_version_id AS project_contract_version_id,
             o.order_id, o.customer_id AS order_customer_id, o.contract_version_id AS order_contract_version_id,
             o.state AS order_state, o.billing_state, o.total_amount AS order_total,
@@ -381,6 +384,7 @@ export function generateProjectMilestoneInvoice(
     order_line_id: string;
     wbs_element_id: string;
     invoice_id: string | null;
+    revenue_journal_id: string | null;
     project_customer_id: string | null;
     project_contract_version_id: string | null;
     order_id: string;
@@ -405,6 +409,7 @@ export function generateProjectMilestoneInvoice(
     throw new HttpError(404, "not_found", "Linked project milestone not found");
   }
   if (context.invoice_id) {
+    accountProjectMilestoneCompletion(context.milestone_id, context.invoice_id, context.billing_amount, actor);
     return getInvoiceById(context.invoice_id);
   }
   if (context.milestone_status !== "Approved" || !context.ready_for_billing || !context.gate_ready) {
@@ -546,8 +551,11 @@ export function generateProjectMilestoneInvoice(
   });
 
   if (existingInvoiceId) {
+    accountProjectMilestoneCompletion(milestoneId, existingInvoiceId, amount, actor);
     return getInvoiceById(existingInvoiceId);
   }
+
+  accountProjectMilestoneCompletion(milestoneId, invoiceId, amount, actor);
 
   if (taxDetermination && tax.taxAmount > 0) {
     persistTaxLine({
@@ -568,6 +576,102 @@ export function generateProjectMilestoneInvoice(
     });
   }
   return getInvoiceById(invoiceId);
+}
+
+function accountProjectMilestoneCompletion(milestoneId: string, invoiceId: string, amount: number, actor?: EventActor): void {
+  transaction(() => {
+    const milestone = db.prepare(
+      `SELECT m.revenue_journal_id, m.wip_release_journal_id, m.wip_released_amount,
+              m.billing_amount, m.contract_version_id, m.phase_name, m.status,
+              p.project_id, p.organization_id, p.default_wip_account_id, p.default_close_account_id,
+              w.wip_id, w.wip_labor_balance, w.wip_total_balance,
+              c.contract_value
+       FROM proj_project_milestone m
+       JOIN proj_project p ON p.project_id = m.project_id
+       LEFT JOIN proj_wip w ON w.project_id = p.project_id
+       LEFT JOIN o2c_contract_version c ON c.contract_version_id = m.contract_version_id
+       WHERE m.milestone_id = ?`
+    ).get(milestoneId) as {
+      revenue_journal_id: string | null;
+      wip_release_journal_id: string | null;
+      wip_released_amount: number;
+      billing_amount: number;
+      contract_version_id: string | null;
+      phase_name: string;
+      status: string;
+      project_id: string;
+      organization_id: string;
+      default_wip_account_id: string;
+      default_close_account_id: string;
+      wip_id: string | null;
+      wip_labor_balance: number | null;
+      wip_total_balance: number | null;
+      contract_value: number | null;
+    } | undefined;
+    if (!milestone) throw new HttpError(404, "not_found", "Project milestone not found");
+    const timestamp = now();
+    if (!milestone.revenue_journal_id) {
+      const posting = createAndPostP2PJournal({
+        amount: roundMoney(Math.min(amount, milestone.billing_amount)),
+        debitAccountCode: "SYS-130-ASSET-UNBILLED-AR",
+        creditAccountCode: "SYS-400-REV-SALES",
+        description: `Milestone revenue accrual ${milestoneId}`,
+        memo: `Earned revenue for project milestone ${milestoneId}`,
+        referenceEntityType: "Invoice",
+        referenceEntityId: invoiceId
+      }, actor);
+      db.prepare("UPDATE proj_project_milestone SET revenue_journal_id = ?, updated_at = ? WHERE milestone_id = ? AND revenue_journal_id IS NULL")
+        .run(posting.journalId, timestamp, milestoneId);
+    }
+
+    if (milestone.status === "Approved" && milestone.wip_id && milestone.contract_version_id &&
+        milestone.contract_value && milestone.contract_value > 0 && !milestone.wip_release_journal_id) {
+      const completedBilling = (db.prepare(
+        `SELECT COALESCE(SUM(billing_amount), 0) AS amount FROM proj_project_milestone
+         WHERE project_id = ? AND contract_version_id = ? AND status IN ('Approved', 'Completed')`
+      ).get(milestone.project_id, milestone.contract_version_id) as { amount: number }).amount;
+      const totalProjectLabor = (db.prepare(
+        "SELECT COALESCE(SUM(total_cost), 0) AS amount FROM proj_labor_entry WHERE project_id = ?"
+      ).get(milestone.project_id) as { amount: number }).amount;
+      const previouslyReleased = (db.prepare(
+        `SELECT COALESCE(SUM(wip_released_amount), 0) AS amount FROM proj_project_milestone
+         WHERE project_id = ? AND contract_version_id = ?`
+      ).get(milestone.project_id, milestone.contract_version_id) as { amount: number }).amount;
+      const targetReleased = roundMoney(totalProjectLabor * Math.min(1, completedBilling / milestone.contract_value));
+      const availableWip = Math.min(Number(milestone.wip_labor_balance ?? 0), Number(milestone.wip_total_balance ?? 0));
+      const releaseAmount = roundMoney(Math.min(availableWip, Math.max(0, targetReleased - previouslyReleased)));
+      if (releaseAmount > 0) {
+        const closeAccount = db.prepare("SELECT account_code FROM r2r_account WHERE account_id = ?")
+          .get(milestone.default_close_account_id) as { account_code: string } | undefined;
+        const wipAccount = db.prepare("SELECT account_code FROM r2r_account WHERE account_id = ?")
+          .get(milestone.default_wip_account_id) as { account_code: string } | undefined;
+        if (!closeAccount || !wipAccount) throw new HttpError(409, "missing_account", "Project close or WIP account is not configured");
+        const releaseJournal = createAndPostP2PJournal({
+          amount: releaseAmount,
+          debitAccountCode: closeAccount.account_code,
+          creditAccountCode: wipAccount.account_code,
+          description: `Project WIP release for milestone ${milestoneId}`,
+          memo: `WIP release on milestone completion ${milestoneId}`,
+          referenceEntityType: "ProjectMilestone",
+          referenceEntityId: milestoneId
+        }, actor);
+        db.prepare(
+          `UPDATE proj_wip SET wip_labor_balance = MAX(0, wip_labor_balance - ?),
+             wip_total_balance = MAX(0, wip_total_balance - ?), version = version + 1
+           WHERE wip_id = ?`
+        ).run(releaseAmount, releaseAmount, milestone.wip_id);
+        db.prepare(
+          `UPDATE proj_project SET wip_labor_balance = MAX(0, wip_labor_balance - ?),
+             wip_total_balance = MAX(0, wip_total_balance - ?), version = version + 1, last_event_at = ?
+           WHERE project_id = ?`
+        ).run(releaseAmount, releaseAmount, timestamp, milestone.project_id);
+        db.prepare(
+          `UPDATE proj_project_milestone SET wip_release_journal_id = ?, wip_released_amount = ?, updated_at = ?
+           WHERE milestone_id = ? AND wip_release_journal_id IS NULL`
+        ).run(releaseJournal.journalId, releaseAmount, timestamp, milestoneId);
+      }
+    }
+  });
 }
 
 export function updateInvoiceState(invoiceId: string, toState: InvoiceState, actor?: EventActor) {
@@ -600,22 +704,34 @@ function _doInvoiceTransition(invoiceId: string, toState: InvoiceState, actor?: 
 
 export function postARInvoice(invoiceId: string, actor?: EventActor) {
   const invoice = getInvoiceById(invoiceId);
-  _doInvoiceTransition(invoiceId, "Posted", actor);
-
-  const taxLines = getTaxLinesForEntity(invoiceId).filter(l => l.accounting_status === "pending");
-  if (taxLines.length > 0) {
-    createAndPostTaxAwareJournal({
-      eventType: "ar-invoice.posted",
+  if (invoice.accounting_journal_id) return invoice;
+  if (invoice.state !== "Draft") throw new HttpError(409, "invalid_transition", "Only a Draft invoice can be posted");
+  const timestamp = now();
+  transaction(() => {
+    const posting = createAndPostTaxAwareJournal({
+      eventType: invoice.project_milestone_id ? "ar-invoice.milestone_posted" : "ar-invoice.posted",
       baseAmount: invoice.order_amount,
       debitAccountCode: "SYS-110-ASSET-AR",
-      creditAccountCode: "SYS-400-REV-SALES",
+      creditAccountCode: invoice.project_milestone_id ? "SYS-130-ASSET-UNBILLED-AR" : "SYS-400-REV-SALES",
       sourceEntityId: invoiceId,
       sourceEntityType: "Invoice",
-      description: `AR Invoice posted: ${invoiceId}`,
+      description: invoice.project_milestone_id
+        ? `Milestone invoice reclassification: ${invoiceId}`
+        : `AR Invoice posted: ${invoiceId}`,
       transactionType: "ar-invoice"
     }, actor);
-  }
-
+    const nextVersion = invoice.version + 1;
+    db.prepare("UPDATE o2c_invoice SET state = 'Posted', accounting_journal_id = ?, version = ?, updated_at = ? WHERE invoice_id = ? AND state = 'Draft'")
+      .run(posting.journalId, nextVersion, timestamp, invoiceId);
+    appendEvent({
+      entityId: invoiceId,
+      entityType: "Invoice",
+      eventType: "ar-invoice.posted",
+      version: nextVersion,
+      actor,
+      payload: { journalId: posting.journalId, projectMilestoneId: invoice.project_milestone_id ?? null }
+    });
+  });
   return getInvoiceById(invoiceId);
 }
 

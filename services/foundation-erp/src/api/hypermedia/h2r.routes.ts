@@ -92,6 +92,7 @@ const setEmployeeAvailabilitySchema = z.object({
 
 const createVendorRateSchema = z.object({
   contractorId: z.string().min(1),
+  supplierId: z.string().min(1).optional(),
   vendorName: z.string().min(1),
   role: z.string().min(1),
   hourlyRate: z.number().nonnegative(),

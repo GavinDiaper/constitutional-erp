@@ -78,6 +78,44 @@ function resolveSourceLedgerId(referenceEntityType: string, referenceEntityId: s
       return getLedgerIdForLegalEntity(row?.legal_entity_id);
     }
 
+    case "Invoice": {
+      const row = db.prepare(
+        `SELECT so.legal_entity_id FROM o2c_invoice i
+         JOIN o2c_sales_order so ON so.order_id = i.order_id
+         WHERE i.invoice_id = ?`
+      ).get(referenceEntityId) as { legal_entity_id: string | null } | undefined;
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    case "SupplierInvoice": {
+      const row = db.prepare(
+        `SELECT po.legal_entity_id FROM p2p_supplier_invoice si
+         JOIN p2p_purchase_order po ON po.po_id = si.po_id
+         WHERE si.supplier_invoice_id = ?`
+      ).get(referenceEntityId) as { legal_entity_id: string | null } | undefined;
+      return getLedgerIdForLegalEntity(row?.legal_entity_id);
+    }
+
+    case "ProjectLaborEntry": {
+      const row = db.prepare(
+        `SELECT org.ledger_id FROM proj_labor_entry e
+         JOIN proj_project p ON p.project_id = e.project_id
+         JOIN inv_organization org ON org.organization_id = p.organization_id
+         WHERE e.entry_id = ?`
+      ).get(referenceEntityId) as { ledger_id: string | null } | undefined;
+      return row?.ledger_id ?? null;
+    }
+
+    case "ProjectMilestone": {
+      const row = db.prepare(
+        `SELECT org.ledger_id FROM proj_project_milestone m
+         JOIN proj_project p ON p.project_id = m.project_id
+         JOIN inv_organization org ON org.organization_id = p.organization_id
+         WHERE m.milestone_id = ?`
+      ).get(referenceEntityId) as { ledger_id: string | null } | undefined;
+      return row?.ledger_id ?? null;
+    }
+
     default:
       return null;
   }

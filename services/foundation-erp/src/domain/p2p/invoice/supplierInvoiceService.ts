@@ -3,7 +3,7 @@ import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { createAndPostP2PJournal } from "../accounting/p2pPostingService";
-import { calculateTax, determineTaxByCode, persistTaxLine } from "../../tax/taxService";
+import { calculateTax, determineTaxByCode, getTaxLinesForEntity, persistTaxLine } from "../../tax/taxService";
 import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
 
 
@@ -33,6 +33,7 @@ export function getSupplierInvoiceById(supplierInvoiceId: string) {
         invoice_date: string | null;
         due_date: string | null;
         currency_code: string | null;
+        accounting_journal_id: string | null;
         version: number;
       }
     | undefined;
@@ -46,6 +47,83 @@ export function getSupplierInvoiceById(supplierInvoiceId: string) {
 
 export function listSupplierInvoices() {
   return db.prepare("SELECT * FROM p2p_supplier_invoice ORDER BY created_at DESC LIMIT 100").all();
+}
+
+export function matchSupplierInvoiceToContractorAccruals(
+  supplierInvoiceId: string,
+  accrualIds: string[],
+  actor?: EventActor
+) {
+  const invoice = getSupplierInvoiceById(supplierInvoiceId) as {
+    supplier_invoice_id: string;
+    supplier_id: string | null;
+    state: SupplierInvoiceState;
+    amount_due: number;
+    currency_code: string | null;
+    version: number;
+  };
+  if (!invoice.supplier_id) throw new HttpError(409, "supplier_required", "Supplier invoice must have a supplier before timesheet matching");
+  if (!['Draft', 'Validated'].includes(invoice.state)) {
+    throw new HttpError(409, "invalid_transition", "Only Draft or Validated supplier invoices can be matched to timesheet accruals");
+  }
+  const uniqueIds = [...new Set(accrualIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0 || uniqueIds.length !== accrualIds.length) {
+    throw new HttpError(400, "invalid_request", "Provide one or more unique contractor accrual IDs");
+  }
+  const accrualRows = uniqueIds.map((accrualId) => db.prepare(
+    "SELECT * FROM h2r_contractor_accrual WHERE accrual_id = ?"
+  ).get(accrualId) as {
+    accrual_id: string;
+    supplier_id: string | null;
+    currency: string;
+    amount: number;
+    status: string;
+    supplier_invoice_id: string | null;
+  } | undefined);
+  if (accrualRows.some((row) => !row)) throw new HttpError(404, "not_found", "One or more contractor accruals were not found");
+  const accruals = accrualRows as NonNullable<(typeof accrualRows)[number]>[];
+  if (accruals.some((row) => row.status !== "Accrued" || row.supplier_invoice_id)) {
+    throw new HttpError(409, "accrual_not_available", "All matched contractor accruals must be accrued and not previously invoiced");
+  }
+  if (accruals.some((row) => row.supplier_id !== invoice.supplier_id)) {
+    throw new HttpError(409, "supplier_mismatch", "Supplier invoice supplier does not match all selected contractor accruals");
+  }
+  if (invoice.currency_code && accruals.some((row) => row.currency !== invoice.currency_code)) {
+    throw new HttpError(409, "currency_mismatch", "Supplier invoice currency does not match contractor accrual currency");
+  }
+
+  const accrualAmount = Math.round(accruals.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100;
+  const taxRows = getTaxLinesForEntity(supplierInvoiceId);
+  const invoiceBaseAmount = taxRows.length > 0
+    ? Math.round(taxRows.reduce((sum, row) => sum + Number(row.taxable_amount), 0) * 100) / 100
+    : Math.round(Number(invoice.amount_due) * 100) / 100;
+  if (accrualAmount !== invoiceBaseAmount) {
+    throw new HttpError(409, "accrual_amount_mismatch", `Matched accrual total ${accrualAmount.toFixed(2)} does not equal supplier invoice base ${invoiceBaseAmount.toFixed(2)}`);
+  }
+
+  const timestamp = now();
+  transaction(() => {
+    const insert = db.prepare(
+      `INSERT INTO p2p_supplier_invoice_timesheet_accrual(supplier_invoice_id, accrual_id, matched_amount, created_at)
+       VALUES (?, ?, ?, ?)`
+    );
+    for (const accrual of accruals) {
+      insert.run(supplierInvoiceId, accrual.accrual_id, accrual.amount, timestamp);
+    }
+    db.prepare(
+      `UPDATE h2r_contractor_accrual SET supplier_invoice_id = ?, updated_at = ?
+       WHERE accrual_id IN (${uniqueIds.map(() => '?').join(',')})`
+    ).run(supplierInvoiceId, timestamp, ...uniqueIds);
+    appendEvent({
+      entityId: supplierInvoiceId,
+      entityType: "SupplierInvoice",
+      eventType: "invoice.timesheet_accruals_matched",
+      version: invoice.version,
+      actor,
+      payload: { accrualIds: uniqueIds, matchedAmount: accrualAmount }
+    });
+  });
+  return getSupplierInvoiceById(supplierInvoiceId);
 }
 
 function assertTransition(fromState: SupplierInvoiceState, toState: SupplierInvoiceState) {
@@ -159,11 +237,15 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
     let accountingJournalId: string | null = null;
 
     if (toState === "Posted") {
+      const matched = db.prepare(
+        `SELECT COUNT(*) AS line_count, COALESCE(SUM(matched_amount), 0) AS amount
+         FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?`
+      ).get(supplierInvoiceId) as { line_count: number; amount: number };
       const posting = createAndPostTaxAwareJournal(
         {
           eventType: "ap-invoice.posted",
-          baseAmount: supplierInvoice.amount_due,
-          debitAccountCode: "SYS-510-EXP-OPEX",
+          baseAmount: matched.line_count > 0 ? matched.amount : supplierInvoice.amount_due,
+          debitAccountCode: matched.line_count > 0 ? "SYS-205-LIAB-ACCRUED-CONTRACTOR" : "SYS-510-EXP-OPEX",
           creditAccountCode: "SYS-200-LIAB-AP",
           sourceEntityId: supplierInvoiceId,
           sourceEntityType: "SupplierInvoice",
@@ -174,10 +256,25 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
         actor
       );
       accountingJournalId = posting.journalId;
+      if (matched.line_count > 0) {
+        db.prepare(
+          `UPDATE h2r_contractor_accrual SET status = 'Invoiced', updated_at = ?
+           WHERE supplier_invoice_id = ? AND status = 'Accrued'`
+        ).run(timestamp, supplierInvoiceId);
+      }
     }
 
-    db.prepare("UPDATE p2p_supplier_invoice SET state = ?, version = ?, updated_at = ? WHERE supplier_invoice_id = ?")
-      .run(toState, nextVersion, timestamp, supplierInvoiceId);
+    db.prepare("UPDATE p2p_supplier_invoice SET state = ?, accounting_journal_id = COALESCE(?, accounting_journal_id), version = ?, updated_at = ? WHERE supplier_invoice_id = ?")
+      .run(toState, accountingJournalId, nextVersion, timestamp, supplierInvoiceId);
+
+    if (toState === "Cancelled") {
+      db.prepare(
+        `UPDATE h2r_contractor_accrual SET status = 'Accrued', supplier_invoice_id = NULL, updated_at = ?
+         WHERE supplier_invoice_id = ? AND status = 'Accrued'`
+      ).run(timestamp, supplierInvoiceId);
+      db.prepare("DELETE FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?")
+        .run(supplierInvoiceId);
+    }
 
     appendEvent({
       entityId: supplierInvoiceId,

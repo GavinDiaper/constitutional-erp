@@ -50,6 +50,7 @@ import {
 } from "../../domain/p2p/receipt/goodsReceiptService";
 import {
   createSupplierInvoiceFromReceipt,
+  matchSupplierInvoiceToContractorAccruals,
   getSupplierInvoiceById,
   listSupplierInvoices,
   validateInvoice,
@@ -112,6 +113,10 @@ const createSupplierInvoiceSchema = z.object({
   currencyCode: z.string().optional(),
   taxCodeId: z.string().optional(),
   countryCode: z.string().optional()
+});
+
+const matchTimesheetAccrualsSchema = z.object({
+  accrualIds: z.array(z.string().min(1)).min(1)
 });
 
 const createApPaymentSchema = z.object({
@@ -538,6 +543,15 @@ p2pRouter.post("/supplier-invoices", validateBody(createSupplierInvoiceSchema), 
 
 p2pRouter.post("/supplier-invoices/:supplierInvoiceId/validate", (req, res) => {
   const supplierInvoice = validateInvoice(req.params.supplierInvoiceId, req.actor);
+  res.json(entityWithLinks(supplierInvoice as any, supplierInvoiceLinks(req.params.supplierInvoiceId, (supplierInvoice as any).state)));
+});
+
+p2pRouter.post("/supplier-invoices/:supplierInvoiceId/timesheet-accruals", validateBody(matchTimesheetAccrualsSchema), (req, res) => {
+  const supplierInvoice = matchSupplierInvoiceToContractorAccruals(
+    req.params.supplierInvoiceId,
+    req.body.accrualIds,
+    req.actor
+  );
   res.json(entityWithLinks(supplierInvoice as any, supplierInvoiceLinks(req.params.supplierInvoiceId, (supplierInvoice as any).state)));
 });
 

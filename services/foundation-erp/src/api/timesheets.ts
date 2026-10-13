@@ -9,6 +9,7 @@ import {
   listTimesheets,
   addTimesheetLine,
   listTimesheetLines,
+  listContractorAccruals,
   rejectTimesheet,
   reopenRejectedTimesheet,
 } from "../domain/h2r/timesheetService";
@@ -122,6 +123,17 @@ router.post("/", (req: Request, res: Response) => {
  * GET /api/v1/timesheets/:timesheetId
  * Retrieve a timesheet by ID
  */
+router.get("/contractor-accruals", (req: Request, res: Response) => {
+  try {
+    const timesheetId = typeof req.query.timesheetId === "string" ? req.query.timesheetId : undefined;
+    const supplierId = typeof req.query.supplierId === "string" ? req.query.supplierId : undefined;
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    res.json({ success: true, data: listContractorAccruals({ timesheetId, supplierId, status }) });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 router.get("/:timesheetId", (req: Request, res: Response) => {
   try {
     const { timesheetId } = req.params;
