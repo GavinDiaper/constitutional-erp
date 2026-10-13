@@ -133,11 +133,40 @@ function updateApState(apPaymentId: string, toState: ApPaymentState, eventType: 
         "UPDATE p2p_supplier_invoice SET amount_paid = ?, state = ?, version = version + 1, updated_at = ? WHERE supplier_invoice_id = ?"
       ).run(nextAmountPaid, supplierInvoiceState, timestamp, apPayment.supplier_invoice_id);
 
-      if (supplierInvoiceState === "Paid") {
+      const affectedAccruals = db.prepare(
+        `SELECT accrual_id FROM p2p_supplier_invoice_timesheet_accrual
+         WHERE supplier_invoice_id = ?`
+      ).all(apPayment.supplier_invoice_id) as Array<{ accrual_id: string }>;
+      for (const { accrual_id: accrualId } of affectedAccruals) {
+        const allocation = db.prepare(
+          `SELECT a.amount, COALESCE(SUM(m.matched_amount), 0) AS matched_amount,
+                  MIN(CASE WHEN si.state IN ('Posted', 'Paid') THEN 1 ELSE 0 END) AS all_posted,
+                  MIN(CASE WHEN si.state = 'Paid' THEN 1 ELSE 0 END) AS all_paid,
+                  MIN(si.supplier_invoice_id) AS any_invoice_id
+           FROM h2r_contractor_accrual a
+           LEFT JOIN p2p_supplier_invoice_timesheet_accrual m ON m.accrual_id = a.accrual_id
+           LEFT JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = m.supplier_invoice_id
+           WHERE a.accrual_id = ?
+           GROUP BY a.accrual_id`
+        ).get(accrualId) as {
+          amount: number;
+          matched_amount: number;
+          all_posted: number | null;
+          all_paid: number | null;
+          any_invoice_id: string | null;
+        };
+        const fullyAllocated = allocation.matched_amount >= allocation.amount - 0.005;
+        const fullyInvoiced = fullyAllocated && allocation.all_posted === 1;
+        const fullyPaid = fullyInvoiced && allocation.all_paid === 1;
         db.prepare(
-          `UPDATE h2r_contractor_accrual SET status = 'Paid', updated_at = ?
-           WHERE supplier_invoice_id = ? AND status = 'Invoiced'`
-        ).run(timestamp, apPayment.supplier_invoice_id);
+          `UPDATE h2r_contractor_accrual SET status = ?, supplier_invoice_id = ?, updated_at = ?
+           WHERE accrual_id = ? AND status <> 'Paid'`
+        ).run(
+          fullyPaid ? "Paid" : fullyInvoiced ? "Invoiced" : "Accrued",
+          fullyInvoiced ? allocation.any_invoice_id : null,
+          timestamp,
+          accrualId
+        );
       }
 
       appendEvent({

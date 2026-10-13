@@ -116,7 +116,10 @@ const createSupplierInvoiceSchema = z.object({
 });
 
 const matchTimesheetAccrualsSchema = z.object({
-  accrualIds: z.array(z.string().min(1)).min(1)
+  allocations: z.array(z.object({ accrualId: z.string().min(1), amount: z.number().positive() })).min(1).optional(),
+  accrualIds: z.array(z.string().min(1)).min(1).optional()
+}).refine((body) => Boolean(body.allocations || body.accrualIds), {
+  message: "Provide allocations or accrualIds"
 });
 
 const createApPaymentSchema = z.object({
@@ -237,9 +240,14 @@ function supplierInvoiceLinks(supplierInvoiceId: string, state: string) {
   if (state === "Draft") {
     links["validate"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/validate`, method: "POST", mcpFunction: "p2p_validate_invoice", governance: { riskLevel: "Medium", requiredTier: 2 } };
     links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["match-timesheet-accruals"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/timesheet-accruals`, method: "POST", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   if (state === "Validated") {
     links["post"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/post`, method: "POST", mcpFunction: "p2p_post_supplier_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
+    links["match-timesheet-accruals"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/timesheet-accruals`, method: "POST", governance: { riskLevel: "High", requiredTier: 3 } };
+  }
+  if (state === "Posted") {
     links["cancel"] = { href: `/api/v1/p2p/supplier-invoices/${supplierInvoiceId}/cancel`, method: "POST", mcpFunction: "p2p_cancel_invoice", governance: { riskLevel: "High", requiredTier: 3 } };
   }
   return links;
@@ -549,7 +557,7 @@ p2pRouter.post("/supplier-invoices/:supplierInvoiceId/validate", (req, res) => {
 p2pRouter.post("/supplier-invoices/:supplierInvoiceId/timesheet-accruals", validateBody(matchTimesheetAccrualsSchema), (req, res) => {
   const supplierInvoice = matchSupplierInvoiceToContractorAccruals(
     req.params.supplierInvoiceId,
-    req.body.accrualIds,
+    req.body.allocations ?? req.body.accrualIds,
     req.actor
   );
   res.json(entityWithLinks(supplierInvoice as any, supplierInvoiceLinks(req.params.supplierInvoiceId, (supplierInvoice as any).state)));

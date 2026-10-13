@@ -1621,16 +1621,47 @@ test("Sales order lines persist project and WBS mapping for service contract ord
   assert.ok(invoicePostingLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-110-ASSET-AR" && Number(entry.debit_amount) === 1000));
   assert.ok(invoicePostingLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-130-ASSET-UNBILLED-AR" && Number(entry.credit_amount) === 1000));
 
+  const cancelledPostedMilestoneInvoice = await request(app)
+    .post(`/api/v1/o2c/invoices/${replacementInvoice.body.invoice.invoice_id}/cancel`)
+    .set(headers)
+    .expect(200);
+  assert.ok(cancelledPostedMilestoneInvoice.body.reversal_journal_id);
+  const reversedInvoiceLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const invoiceReversalLines = reversedInvoiceLedger.body.data.filter((entry: any) => entry.journal_id === cancelledPostedMilestoneInvoice.body.reversal_journal_id);
+  assert.equal(invoiceReversalLines.length, invoicePostingLines.length);
+  for (const originalLine of invoicePostingLines) {
+    const reversingLine = invoiceReversalLines.find((entry: any) => entry.account_id === originalLine.account_id);
+    assert.ok(reversingLine);
+    assert.equal(Number(reversingLine.debit_amount), Number(originalLine.credit_amount));
+    assert.equal(Number(reversingLine.credit_amount), Number(originalLine.debit_amount));
+  }
+
+  const settlementInvoice = await request(app)
+    .post(`/api/v1/projects/${project.body.data.projectId}/milestones/${milestone.body.data.milestoneId}/approve`)
+    .set(headers)
+    .expect(200);
+  const postedSettlementInvoice = await request(app)
+    .post(`/api/v1/o2c/invoices/${settlementInvoice.body.invoice.invoice_id}/post`)
+    .set(headers)
+    .expect(200);
+
   await request(app)
     .post("/api/v1/o2c/payments")
     .set(headers)
-    .send({ invoiceId: replacementInvoice.body.invoice.invoice_id, amount: 1000, currencyCode: "USD" })
+    .send({ invoiceId: settlementInvoice.body.invoice.invoice_id, amount: 1000, currencyCode: "USD" })
     .expect(201);
   const paidMilestoneInvoice = await request(app)
-    .get(`/api/v1/o2c/invoices/${replacementInvoice.body.invoice.invoice_id}`)
+    .get(`/api/v1/o2c/invoices/${settlementInvoice.body.invoice.invoice_id}`)
     .set(headers)
     .expect(200);
   assert.equal(paidMilestoneInvoice.body.state, "Paid");
+  await request(app)
+    .post(`/api/v1/o2c/invoices/${settlementInvoice.body.invoice.invoice_id}/cancel`)
+    .set(headers)
+    .expect(409);
   const paidInvoiceLedger = await request(app)
     .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
     .set(headers)
@@ -1639,6 +1670,19 @@ test("Sales order lines persist project and WBS mapping for service contract ord
     .filter((entry: any) => entry.account_id === accountingAccounts.body.data.find((account: any) => account.account_code === "SYS-100-ASSET-CASH")?.account_id)
     .map((entry: any) => entry.journal_id));
   assert.ok([...paymentJournalIds].some((journalId) => paidInvoiceLedger.body.data.some((entry: any) => entry.journal_id === journalId && accountCodeById.get(entry.account_id) === "SYS-110-ASSET-AR" && Number(entry.credit_amount) === 1000)));
+
+  const arReconciliation = await request(app)
+    .get("/api/v1/r2r/reconciliation/ar-ap")
+    .set(headers)
+    .expect(200);
+  const milestoneInvoiceJournal = await request(app)
+    .get(`/api/v1/query/r2r_journal/${postedSettlementInvoice.body.accounting_journal_id}`)
+    .set(headers)
+    .expect(200);
+  const arLedgerReconciliation = arReconciliation.body.data.find((entry: any) => entry.ledgerId === milestoneInvoiceJournal.body.data.ledger_id);
+  assert.ok(arLedgerReconciliation);
+  assert.equal(typeof arLedgerReconciliation.accountsReceivable.difference, "number");
+  assert.equal(typeof arLedgerReconciliation.unbilledReceivables.difference, "number");
 
   await request(app)
     .post(`/api/v1/projects/${project.body.data.projectId}/milestones`)
@@ -2784,7 +2828,7 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
   await request(app)
     .post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/lines`)
     .set(headers)
-    .send({ description: "Approved contractor timesheet", quantity: 1, unitPrice: 960 })
+    .send({ description: "Approved contractor timesheet installment one", quantity: 1, unitPrice: 480 })
     .expect(201);
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/submit`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/requisitions/${requisition.body.requisition_id}/approve`).set(headers).expect(200);
@@ -2810,7 +2854,7 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
   await request(app)
     .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/timesheet-accruals`)
     .set(headers)
-    .send({ accrualIds: [accrual.accrualId] })
+    .send({ allocations: [{ accrualId: accrual.accrualId, amount: 480 }] })
     .expect(200);
   await request(app)
     .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/validate`)
@@ -2827,37 +2871,153 @@ test("Timesheet API supports contractor vendor-rate entries alongside employee t
     .expect(200);
   const invoiceLines = matchedLedger.body.data.filter((entry: any) => entry.journal_id === postedSupplierInvoice.body.accounting_journal_id);
   assert.equal(invoiceLines.length, 2);
-  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-205-LIAB-ACCRUED-CONTRACTOR" && Number(entry.debit_amount) === 960));
-  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.credit_amount) === 960));
+  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-205-LIAB-ACCRUED-CONTRACTOR" && Number(entry.debit_amount) === 480));
+  assert.ok(invoiceLines.some((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.credit_amount) === 480));
+
+  const cancelledMatchedInvoice = await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}/cancel`)
+    .set(headers)
+    .expect(200);
+  assert.ok(cancelledMatchedInvoice.body.reversal_journal_id);
+  const cancelledAllocation = await request(app)
+    .get(`/api/v1/timesheets/contractor-accruals?supplierId=${supplier.body.supplier_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(cancelledAllocation.body.data[0].status, "Accrued");
+  const cancellationLedger = await request(app)
+    .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
+    .set(headers)
+    .expect(200);
+  const originalMatchedLines = cancellationLedger.body.data.filter((entry: any) => entry.journal_id === postedSupplierInvoice.body.accounting_journal_id);
+  const reversedMatchedLines = cancellationLedger.body.data.filter((entry: any) => entry.journal_id === cancelledMatchedInvoice.body.reversal_journal_id);
+  assert.equal(reversedMatchedLines.length, originalMatchedLines.length);
+  for (const originalLine of originalMatchedLines) {
+    const reversingLine = reversedMatchedLines.find((entry: any) => entry.account_id === originalLine.account_id);
+    assert.ok(reversingLine);
+    assert.equal(Number(reversingLine.debit_amount), Number(originalLine.credit_amount));
+    assert.equal(Number(reversingLine.credit_amount), Number(originalLine.debit_amount));
+  }
+
+  const replacementSupplierInvoice = await request(app)
+    .post("/api/v1/p2p/supplier-invoices")
+    .set(headers)
+    .send({ receiptId: receipt.body.receipt_id })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${replacementSupplierInvoice.body.supplier_invoice_id}/timesheet-accruals`)
+    .set(headers)
+    .send({ allocations: [{ accrualId: accrual.accrualId, amount: 480 }] })
+    .expect(200);
+  await request(app).post(`/api/v1/p2p/supplier-invoices/${replacementSupplierInvoice.body.supplier_invoice_id}/validate`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/supplier-invoices/${replacementSupplierInvoice.body.supplier_invoice_id}/post`).set(headers).expect(200);
+
+  const firstApPayment = await request(app)
+    .post("/api/v1/p2p/ap-payments")
+    .set(headers)
+    .send({ supplierInvoiceId: replacementSupplierInvoice.body.supplier_invoice_id, amount: 480 })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/ap-payments/${firstApPayment.body.ap_payment_id}/receive`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/ap-payments/${firstApPayment.body.ap_payment_id}/apply`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/ap-payments/${firstApPayment.body.ap_payment_id}/reconcile`).set(headers).expect(200);
+  const partiallyAllocatedAccrual = await request(app)
+    .get(`/api/v1/timesheets/contractor-accruals?supplierId=${supplier.body.supplier_id}`)
+    .set(headers)
+    .expect(200);
+  assert.equal(partiallyAllocatedAccrual.body.data[0].status, "Accrued");
+
+  const secondRequisition = await request(app)
+    .post("/api/v1/p2p/requisitions")
+    .set(headers)
+    .send({ requester: "contractor.ap", currencyCode: "USD", legalEntityId: "LE-SEED-US" })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/p2p/requisitions/${secondRequisition.body.requisition_id}/lines`)
+    .set(headers)
+    .send({ description: "Approved contractor timesheet installment two", quantity: 1, unitPrice: 480 })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/requisitions/${secondRequisition.body.requisition_id}/submit`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/requisitions/${secondRequisition.body.requisition_id}/approve`).set(headers).expect(200);
+  const secondPurchaseOrder = await request(app)
+    .post(`/api/v1/p2p/requisitions/${secondRequisition.body.requisition_id}/convert`)
+    .set(headers)
+    .send({ supplierId: supplier.body.supplier_id })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${secondPurchaseOrder.body.po_id}/approve`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/purchase-orders/${secondPurchaseOrder.body.po_id}/send`).set(headers).expect(200);
+  const secondReceipt = await request(app)
+    .post("/api/v1/p2p/goods-receipts")
+    .set(headers)
+    .send({ poId: secondPurchaseOrder.body.po_id })
+    .expect(201);
+  await request(app).post(`/api/v1/p2p/goods-receipts/${secondReceipt.body.receipt_id}/receive`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/goods-receipts/${secondReceipt.body.receipt_id}/accept`).set(headers).expect(200);
+  const secondSupplierInvoice = await request(app)
+    .post("/api/v1/p2p/supplier-invoices")
+    .set(headers)
+    .send({ receiptId: secondReceipt.body.receipt_id })
+    .expect(201);
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}/timesheet-accruals`)
+    .set(headers)
+    .send({ allocations: [{ accrualId: accrual.accrualId, amount: 481 }] })
+    .expect(409);
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}/timesheet-accruals`)
+    .set(headers)
+    .send({ allocations: [{ accrualId: accrual.accrualId, amount: 480 }] })
+    .expect(200);
+  await request(app).post(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}/validate`).set(headers).expect(200);
+  await request(app).post(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}/post`).set(headers).expect(200);
 
   const apPayment = await request(app)
     .post("/api/v1/p2p/ap-payments")
     .set(headers)
-    .send({ supplierInvoiceId: supplierInvoice.body.supplier_invoice_id, amount: 960 })
+    .send({ supplierInvoiceId: secondSupplierInvoice.body.supplier_invoice_id, amount: 480 })
     .expect(201);
   await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/receive`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/apply`).set(headers).expect(200);
   await request(app).post(`/api/v1/p2p/ap-payments/${apPayment.body.ap_payment_id}/reconcile`).set(headers).expect(200);
   const paidSupplierInvoice = await request(app)
-    .get(`/api/v1/p2p/supplier-invoices/${supplierInvoice.body.supplier_invoice_id}`)
+    .get(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}`)
     .set(headers)
     .expect(200);
   assert.equal(paidSupplierInvoice.body.state, "Paid");
+  await request(app)
+    .post(`/api/v1/p2p/supplier-invoices/${secondSupplierInvoice.body.supplier_invoice_id}/cancel`)
+    .set(headers)
+    .expect(409);
+
+  const reconciliation = await request(app)
+    .get("/api/v1/r2r/reconciliation/ar-ap")
+    .set(headers)
+    .expect(200);
+  const invoiceJournal = await request(app)
+    .get(`/api/v1/query/r2r_journal/${postedSupplierInvoice.body.accounting_journal_id}`)
+    .set(headers)
+    .expect(200);
+  const reconciledLedger = reconciliation.body.data.find((entry: any) => entry.ledgerId === invoiceJournal.body.data.ledger_id);
+  assert.ok(reconciledLedger);
+  assert.equal(typeof reconciledLedger.accountsReceivable.comparable, "boolean");
+  assert.equal(typeof reconciledLedger.accountsPayable.comparable, "boolean");
+  assert.equal(typeof reconciledLedger.unbilledReceivables.comparable, "boolean");
+  assert.equal(reconciledLedger.accountsPayable.comparable, true);
+  assert.equal(reconciledLedger.accountsPayable.difference, 0);
+
   const paidAccruals = await request(app)
     .get(`/api/v1/timesheets/contractor-accruals?supplierId=${supplier.body.supplier_id}&status=Paid`)
     .set(headers)
     .expect(200);
   assert.equal(paidAccruals.body.data.length, 1);
-  assert.equal(paidAccruals.body.data[0].supplierInvoiceId, supplierInvoice.body.supplier_invoice_id);
+  assert.ok(paidAccruals.body.data[0].supplierInvoiceId);
   const paidLedger = await request(app)
     .get("/api/v1/query/r2r_ledger_entry?limit=1000&offset=0")
     .set(headers)
     .expect(200);
   const settlementJournalIds = paidLedger.body.data
-    .filter((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.debit_amount) === 960)
+    .filter((entry: any) => accountCodeById.get(entry.account_id) === "SYS-200-LIAB-AP" && Number(entry.debit_amount) === 480)
     .map((entry: any) => entry.journal_id);
   assert.ok(settlementJournalIds.some((journalId: string) => paidLedger.body.data.some((entry: any) =>
-    entry.journal_id === journalId && accountCodeById.get(entry.account_id) === "SYS-100-ASSET-CASH" && Number(entry.credit_amount) === 960)));
+    entry.journal_id === journalId && accountCodeById.get(entry.account_id) === "SYS-100-ASSET-CASH" && Number(entry.credit_amount) === 480)));
 });
 
 test("Timesheet API supports unified labor workflow for employees", async () => {

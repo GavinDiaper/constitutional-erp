@@ -1,4 +1,4 @@
-import { db } from "../../../db/connection";
+import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { HttpError } from "../../../utils/errors";
 import { newId } from "../../../utils/id";
@@ -335,4 +335,85 @@ export function createAndPostP2PJournal(input: {
     journalId,
     ledgerEntryIds: [debitLedgerEntryId, creditLedgerEntryId]
   };
+}
+
+export function reversePostedJournal(
+  originalJournalId: string,
+  description: string,
+  actor?: EventActor
+): { journalId: string; originalJournalId: string } {
+  const existing = db.prepare(
+    "SELECT reversal_journal_id FROM r2r_journal_reversal WHERE original_journal_id = ?"
+  ).get(originalJournalId) as { reversal_journal_id: string } | undefined;
+  if (existing) return { journalId: existing.reversal_journal_id, originalJournalId };
+
+  const original = db.prepare(
+    "SELECT journal_id, ledger_id, fiscal_period_id, state, version FROM r2r_journal WHERE journal_id = ?"
+  ).get(originalJournalId) as {
+    journal_id: string;
+    ledger_id: string;
+    fiscal_period_id: string;
+    state: string;
+    version: number;
+  } | undefined;
+  if (!original) throw new HttpError(404, "not_found", "Original accounting journal not found");
+  if (original.state !== "Posted") throw new HttpError(409, "invalid_transition", "Only a posted journal can be reversed");
+
+  const lines = db.prepare(
+    "SELECT account_id, debit_amount, credit_amount, memo FROM r2r_journal_line WHERE journal_id = ? ORDER BY created_at, journal_line_id"
+  ).all(originalJournalId) as Array<{
+    account_id: string;
+    debit_amount: number;
+    credit_amount: number;
+    memo: string | null;
+  }>;
+  if (lines.length === 0) throw new HttpError(409, "invalid_journal", "Cannot reverse a journal without lines");
+
+  const periodId = getOrCreateOpenFiscalPeriodId(actor);
+  const reversalJournalId = newId("JNL-");
+  const timestamp = now();
+  transaction(() => {
+    db.prepare(
+      `INSERT INTO r2r_journal(journal_id, fiscal_period_id, ledger_id, description, state, version, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'Posted', 2, ?, ?)`
+    ).run(reversalJournalId, periodId, original.ledger_id, description, timestamp, timestamp);
+
+    const insertLine = db.prepare(
+      `INSERT INTO r2r_journal_line(journal_line_id, journal_id, account_id, debit_amount, credit_amount, memo, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    const insertLedger = db.prepare(
+      `INSERT INTO r2r_ledger_entry(ledger_entry_id, journal_id, account_id, posting_date, debit_amount, credit_amount, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    );
+    for (const line of lines) {
+      const debitAmount = Number(line.credit_amount);
+      const creditAmount = Number(line.debit_amount);
+      insertLine.run(newId("JNL-L-"), reversalJournalId, line.account_id, debitAmount, creditAmount, `Reversal: ${line.memo ?? description}`, timestamp);
+      insertLedger.run(newId("LED-"), reversalJournalId, line.account_id, timestamp, debitAmount, creditAmount, timestamp);
+    }
+
+    db.prepare("INSERT INTO r2r_journal_reversal(original_journal_id, reversal_journal_id, created_at) VALUES (?, ?, ?)")
+      .run(originalJournalId, reversalJournalId, timestamp);
+    db.prepare("UPDATE r2r_journal SET state = 'Reversed', version = version + 1, updated_at = ? WHERE journal_id = ? AND state = 'Posted'")
+      .run(timestamp, originalJournalId);
+    appendEvent({
+      entityId: originalJournalId,
+      entityType: "Journal",
+      eventType: "journal.reversed",
+      version: original.version + 1,
+      actor,
+      payload: { reversalJournalId }
+    });
+    appendEvent({
+      entityId: reversalJournalId,
+      entityType: "Journal",
+      eventType: "journal.posted",
+      version: 2,
+      actor,
+      payload: { reversalOf: originalJournalId, ledgerId: original.ledger_id, lineCount: lines.length }
+    });
+  });
+
+  return { journalId: reversalJournalId, originalJournalId };
 }

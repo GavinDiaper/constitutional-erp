@@ -2,7 +2,7 @@ import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor } from "../../../events/eventStore";
 import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
-import { createAndPostP2PJournal } from "../accounting/p2pPostingService";
+import { createAndPostP2PJournal, reversePostedJournal } from "../accounting/p2pPostingService";
 import { calculateTax, determineTaxByCode, getTaxLinesForEntity, persistTaxLine } from "../../tax/taxService";
 import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
 
@@ -12,13 +12,47 @@ type SupplierInvoiceState = "Draft" | "Validated" | "Posted" | "Paid" | "Cancell
 const transitions: Record<SupplierInvoiceState, SupplierInvoiceState[]> = {
   Draft: ["Validated", "Cancelled"],
   Validated: ["Posted", "Cancelled"],
-  Posted: ["Paid"],
+  Posted: ["Paid", "Cancelled"],
   Paid: [],
   Cancelled: []
 };
 
 function now(): string {
   return new Date().toISOString();
+}
+
+function refreshContractorAccrualStatus(accrualId: string, timestamp: string) {
+  const allocation = db.prepare(
+    `SELECT a.amount, COALESCE(SUM(m.matched_amount), 0) AS matched_amount,
+            MIN(CASE WHEN si.state IN ('Posted', 'Paid') THEN 1 ELSE 0 END) AS all_posted,
+            MIN(CASE WHEN si.state = 'Paid' THEN 1 ELSE 0 END) AS all_paid,
+            MIN(si.supplier_invoice_id) AS any_invoice_id
+     FROM h2r_contractor_accrual a
+     LEFT JOIN p2p_supplier_invoice_timesheet_accrual m ON m.accrual_id = a.accrual_id
+     LEFT JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = m.supplier_invoice_id
+     WHERE a.accrual_id = ?
+     GROUP BY a.accrual_id`
+  ).get(accrualId) as {
+    amount: number;
+    matched_amount: number;
+    all_posted: number | null;
+    all_paid: number | null;
+    any_invoice_id: string | null;
+  } | undefined;
+  if (!allocation) return;
+
+  const fullyAllocated = allocation.matched_amount >= allocation.amount - 0.005;
+  const fullyPosted = fullyAllocated && allocation.all_posted === 1;
+  const fullyPaid = fullyPosted && allocation.all_paid === 1;
+  db.prepare(
+    `UPDATE h2r_contractor_accrual SET status = ?, supplier_invoice_id = ?, updated_at = ?
+     WHERE accrual_id = ? AND status <> 'Paid'`
+  ).run(
+    fullyPaid ? "Paid" : fullyPosted ? "Invoiced" : "Accrued",
+    fullyPosted ? allocation.any_invoice_id : null,
+    timestamp,
+    accrualId
+  );
 }
 
 export function getSupplierInvoiceById(supplierInvoiceId: string) {
@@ -51,7 +85,7 @@ export function listSupplierInvoices() {
 
 export function matchSupplierInvoiceToContractorAccruals(
   supplierInvoiceId: string,
-  accrualIds: string[],
+  requestedAllocations: Array<string | { accrualId: string; amount: number }>,
   actor?: EventActor
 ) {
   const invoice = getSupplierInvoiceById(supplierInvoiceId) as {
@@ -66,9 +100,12 @@ export function matchSupplierInvoiceToContractorAccruals(
   if (!['Draft', 'Validated'].includes(invoice.state)) {
     throw new HttpError(409, "invalid_transition", "Only Draft or Validated supplier invoices can be matched to timesheet accruals");
   }
-  const uniqueIds = [...new Set(accrualIds.map((id) => id.trim()).filter(Boolean))];
-  if (uniqueIds.length === 0 || uniqueIds.length !== accrualIds.length) {
-    throw new HttpError(400, "invalid_request", "Provide one or more unique contractor accrual IDs");
+  const allocations = requestedAllocations.map((allocation) => typeof allocation === "string"
+    ? { accrualId: allocation.trim(), requestedAmount: null as number | null }
+    : { accrualId: allocation.accrualId.trim(), requestedAmount: Number(allocation.amount) });
+  const uniqueIds = [...new Set(allocations.map(({ accrualId }) => accrualId).filter(Boolean))];
+  if (uniqueIds.length === 0 || uniqueIds.length !== allocations.length) {
+    throw new HttpError(400, "invalid_request", "Provide one or more unique contractor accrual allocations");
   }
   const accrualRows = uniqueIds.map((accrualId) => db.prepare(
     "SELECT * FROM h2r_contractor_accrual WHERE accrual_id = ?"
@@ -78,11 +115,10 @@ export function matchSupplierInvoiceToContractorAccruals(
     currency: string;
     amount: number;
     status: string;
-    supplier_invoice_id: string | null;
   } | undefined);
   if (accrualRows.some((row) => !row)) throw new HttpError(404, "not_found", "One or more contractor accruals were not found");
   const accruals = accrualRows as NonNullable<(typeof accrualRows)[number]>[];
-  if (accruals.some((row) => row.status !== "Accrued" || row.supplier_invoice_id)) {
+  if (accruals.some((row) => !["Accrued", "Invoiced"].includes(row.status))) {
     throw new HttpError(409, "accrual_not_available", "All matched contractor accruals must be accrued and not previously invoiced");
   }
   if (accruals.some((row) => row.supplier_id !== invoice.supplier_id)) {
@@ -92,7 +128,33 @@ export function matchSupplierInvoiceToContractorAccruals(
     throw new HttpError(409, "currency_mismatch", "Supplier invoice currency does not match contractor accrual currency");
   }
 
-  const accrualAmount = Math.round(accruals.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100;
+  const resolvedAllocations = allocations.map(({ accrualId, requestedAmount }) => {
+    const accrual = accruals.find((row) => row.accrual_id === accrualId)!;
+    const alreadyAllocated = db.prepare(
+      `SELECT COALESCE(SUM(m.matched_amount), 0) AS amount
+       FROM p2p_supplier_invoice_timesheet_accrual m
+       JOIN p2p_supplier_invoice si ON si.supplier_invoice_id = m.supplier_invoice_id
+       WHERE m.accrual_id = ? AND si.state <> 'Cancelled' AND m.supplier_invoice_id <> ?`
+    ).get(accrualId, supplierInvoiceId) as { amount: number };
+    const availableAmount = Math.round((Number(accrual.amount) - Number(alreadyAllocated.amount)) * 100) / 100;
+    const amount = requestedAmount ?? availableAmount;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > availableAmount + 0.005) {
+      throw new HttpError(409, "accrual_amount_unavailable", `Requested amount for accrual ${accrualId} exceeds its available balance ${availableAmount.toFixed(2)}`);
+    }
+    return { accrualId, amount: Math.round(amount * 100) / 100 };
+  });
+  const accrualAmount = Math.round(resolvedAllocations.reduce((sum, allocation) => sum + allocation.amount, 0) * 100) / 100;
+  const existingMatches = db.prepare(
+    `SELECT accrual_id, matched_amount FROM p2p_supplier_invoice_timesheet_accrual
+     WHERE supplier_invoice_id = ? ORDER BY accrual_id`
+  ).all(supplierInvoiceId) as Array<{ accrual_id: string; matched_amount: number }>;
+  if (existingMatches.length > 0) {
+    const sameAllocations = existingMatches.length === resolvedAllocations.length && resolvedAllocations.every((allocation) =>
+      existingMatches.some((existing) => existing.accrual_id === allocation.accrualId && Math.abs(existing.matched_amount - allocation.amount) < 0.005)
+    );
+    if (sameAllocations) return getSupplierInvoiceById(supplierInvoiceId);
+    throw new HttpError(409, "invoice_already_matched", "Supplier invoice already has different contractor accrual allocations");
+  }
   const taxRows = getTaxLinesForEntity(supplierInvoiceId);
   const invoiceBaseAmount = taxRows.length > 0
     ? Math.round(taxRows.reduce((sum, row) => sum + Number(row.taxable_amount), 0) * 100) / 100
@@ -107,20 +169,16 @@ export function matchSupplierInvoiceToContractorAccruals(
       `INSERT INTO p2p_supplier_invoice_timesheet_accrual(supplier_invoice_id, accrual_id, matched_amount, created_at)
        VALUES (?, ?, ?, ?)`
     );
-    for (const accrual of accruals) {
-      insert.run(supplierInvoiceId, accrual.accrual_id, accrual.amount, timestamp);
+    for (const allocation of resolvedAllocations) {
+      insert.run(supplierInvoiceId, allocation.accrualId, allocation.amount, timestamp);
     }
-    db.prepare(
-      `UPDATE h2r_contractor_accrual SET supplier_invoice_id = ?, updated_at = ?
-       WHERE accrual_id IN (${uniqueIds.map(() => '?').join(',')})`
-    ).run(supplierInvoiceId, timestamp, ...uniqueIds);
     appendEvent({
       entityId: supplierInvoiceId,
       entityType: "SupplierInvoice",
       eventType: "invoice.timesheet_accruals_matched",
       version: invoice.version,
       actor,
-      payload: { accrualIds: uniqueIds, matchedAmount: accrualAmount }
+      payload: { allocations: resolvedAllocations, matchedAmount: accrualAmount }
     });
   });
   return getSupplierInvoiceById(supplierInvoiceId);
@@ -229,14 +287,30 @@ export function createSupplierInvoiceFromReceipt(
 function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceState, eventType: string, actor?: EventActor) {
   const supplierInvoice = getSupplierInvoiceById(supplierInvoiceId);
   assertTransition(supplierInvoice.state, toState);
+  if (toState === "Cancelled" && supplierInvoice.amount_paid > 0) {
+    throw new HttpError(409, "invoice_has_payments", "A supplier invoice with applied payments cannot be cancelled");
+  }
 
   const nextVersion = supplierInvoice.version + 1;
   const timestamp = now();
 
   transaction(() => {
     let accountingJournalId: string | null = null;
+    let reversalJournalId: string | null = null;
+    let affectedAccruals: Array<{ accrual_id: string }> = [];
+
+    if (toState === "Cancelled" && supplierInvoice.accounting_journal_id) {
+      reversalJournalId = reversePostedJournal(
+        supplierInvoice.accounting_journal_id,
+        `Reversal of AP invoice ${supplierInvoiceId}`,
+        actor
+      ).journalId;
+    }
 
     if (toState === "Posted") {
+      affectedAccruals = db.prepare(
+        "SELECT accrual_id FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?"
+      ).all(supplierInvoiceId) as Array<{ accrual_id: string }>;
       const matched = db.prepare(
         `SELECT COUNT(*) AS line_count, COALESCE(SUM(matched_amount), 0) AS amount
          FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?`
@@ -256,24 +330,26 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
         actor
       );
       accountingJournalId = posting.journalId;
-      if (matched.line_count > 0) {
-        db.prepare(
-          `UPDATE h2r_contractor_accrual SET status = 'Invoiced', updated_at = ?
-           WHERE supplier_invoice_id = ? AND status = 'Accrued'`
-        ).run(timestamp, supplierInvoiceId);
+    }
+
+    db.prepare("UPDATE p2p_supplier_invoice SET state = ?, accounting_journal_id = COALESCE(?, accounting_journal_id), reversal_journal_id = COALESCE(?, reversal_journal_id), version = ?, updated_at = ? WHERE supplier_invoice_id = ?")
+      .run(toState, accountingJournalId, reversalJournalId, nextVersion, timestamp, supplierInvoiceId);
+
+    if (toState === "Cancelled") {
+      affectedAccruals = db.prepare(
+        "SELECT accrual_id FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?"
+      ).all(supplierInvoiceId) as Array<{ accrual_id: string }>;
+      db.prepare("DELETE FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?")
+        .run(supplierInvoiceId);
+      for (const { accrual_id: accrualId } of affectedAccruals) {
+        refreshContractorAccrualStatus(accrualId, timestamp);
       }
     }
 
-    db.prepare("UPDATE p2p_supplier_invoice SET state = ?, accounting_journal_id = COALESCE(?, accounting_journal_id), version = ?, updated_at = ? WHERE supplier_invoice_id = ?")
-      .run(toState, accountingJournalId, nextVersion, timestamp, supplierInvoiceId);
-
-    if (toState === "Cancelled") {
-      db.prepare(
-        `UPDATE h2r_contractor_accrual SET status = 'Accrued', supplier_invoice_id = NULL, updated_at = ?
-         WHERE supplier_invoice_id = ? AND status = 'Accrued'`
-      ).run(timestamp, supplierInvoiceId);
-      db.prepare("DELETE FROM p2p_supplier_invoice_timesheet_accrual WHERE supplier_invoice_id = ?")
-        .run(supplierInvoiceId);
+    if (toState === "Posted") {
+      for (const { accrual_id: accrualId } of affectedAccruals) {
+        refreshContractorAccrualStatus(accrualId, timestamp);
+      }
     }
 
     appendEvent({
@@ -285,6 +361,7 @@ function updateInvoiceState(supplierInvoiceId: string, toState: SupplierInvoiceS
         from: supplierInvoice.state,
         to: toState,
         accountingJournalId,
+        reversalJournalId,
         amountDue: supplierInvoice.amount_due
       },
       actor

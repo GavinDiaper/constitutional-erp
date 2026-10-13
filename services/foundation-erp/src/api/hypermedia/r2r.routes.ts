@@ -98,6 +98,7 @@ import {
   listTaxAccountMappings
 } from "../../domain/tax/taxConfigService";
 import { getTaxLinesForEntity } from "../../domain/tax/taxService";
+import { getArApReconciliation } from "../../domain/r2r/account/accountingReconciliationService";
 
 
 
@@ -803,6 +804,10 @@ r2rRouter.post("/fiscal-periods/:fiscalPeriodId/lock", (req, res) => {
 });
 
 // -- Journals --
+
+r2rRouter.get("/reconciliation/ar-ap", (_req, res) => {
+  res.json({ data: getArApReconciliation() });
+});
 
 r2rRouter.get("/journals", (_req, res) => {
   const journals = listJournals().map((row: any) => entityWithLinks(row, journalLinks(row.journal_id, row.state)));

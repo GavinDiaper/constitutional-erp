@@ -4,7 +4,7 @@ import { newId } from "../../../utils/id";
 import { HttpError } from "../../../utils/errors";
 import { calculateTax, determineTaxByCode, persistTaxLine, getTaxLinesForEntity } from "../../tax/taxService";
 import { createAndPostTaxAwareJournal } from "../../tax/taxPostingService";
-import { createAndPostP2PJournal } from "../../p2p/accounting/p2pPostingService";
+import { createAndPostP2PJournal, reversePostedJournal } from "../../p2p/accounting/p2pPostingService";
 
 
 type InvoiceState = "Draft" | "Posted" | "Paid" | "Reconciled" | "Cancelled";
@@ -681,13 +681,24 @@ export function updateInvoiceState(invoiceId: string, toState: InvoiceState, act
 function _doInvoiceTransition(invoiceId: string, toState: InvoiceState, actor?: EventActor) {
   const invoice = getInvoiceById(invoiceId);
   assertTransition(invoice.state, toState);
+  if (toState === "Cancelled" && invoice.amount_paid > 0) {
+    throw new HttpError(409, "invoice_has_payments", "An invoice with applied payments cannot be cancelled");
+  }
 
   const nextVersion = invoice.version + 1;
   const timestamp = now();
 
   transaction(() => {
-    db.prepare("UPDATE o2c_invoice SET state = ?, version = ?, updated_at = ? WHERE invoice_id = ?")
-      .run(toState, nextVersion, timestamp, invoiceId);
+    let reversalJournalId: string | null = null;
+    if (toState === "Cancelled" && invoice.accounting_journal_id) {
+      reversalJournalId = reversePostedJournal(
+        invoice.accounting_journal_id,
+        `Reversal of AR invoice ${invoiceId}`,
+        actor
+      ).journalId;
+    }
+    db.prepare("UPDATE o2c_invoice SET state = ?, reversal_journal_id = COALESCE(?, reversal_journal_id), version = ?, updated_at = ? WHERE invoice_id = ?")
+      .run(toState, reversalJournalId, nextVersion, timestamp, invoiceId);
 
     appendEvent({
       entityId: invoiceId,
@@ -695,7 +706,7 @@ function _doInvoiceTransition(invoiceId: string, toState: InvoiceState, actor?: 
       eventType: `ar-invoice.${toState.toLowerCase()}`,
       version: nextVersion,
       actor,
-      payload: { from: invoice.state, to: toState }
+      payload: { from: invoice.state, to: toState, reversalJournalId }
     });
   });
 
