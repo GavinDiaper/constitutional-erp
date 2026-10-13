@@ -21,7 +21,7 @@
 
 	<div class="actions">
 		{#each providers as provider}
-			<a class="action" href={`/login/${provider.id}?next=${encodeURIComponent(next)}`}>{provider.label}</a>
+			<a class="action" data-sveltekit-reload href={`/login/${provider.id}?next=${encodeURIComponent(next)}`}>{provider.label}</a>
 		{/each}
 	</div>
 </section>
