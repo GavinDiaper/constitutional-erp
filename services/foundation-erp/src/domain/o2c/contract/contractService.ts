@@ -1,5 +1,5 @@
 import { db, transaction } from "../../../db/connection";
-import { appendEvent, EventActor } from "../../../events/eventStore";
+import { appendEvent, EventActor, GovernanceContext } from "../../../events/eventStore";
 import { HttpError } from "../../../utils/errors";
 import { newId } from "../../../utils/id";
 
@@ -15,6 +15,51 @@ function now(): string {
   return new Date().toISOString();
 }
 
+export interface SowDeliverable {
+  name: string;
+  amount: number;
+  description?: string;
+}
+
+// Value bands drive the risk level and minimum authority tier for approving a contract version.
+export function contractApprovalGovernance(contractValue: number): Required<Pick<GovernanceContext, "riskLevel" | "requiredTier" | "governanceTag">> {
+  if (contractValue > 100000) {
+    return { riskLevel: "High", requiredTier: 4, governanceTag: "contract_version_approve" };
+  }
+  if (contractValue > 10000) {
+    return { riskLevel: "Medium", requiredTier: 3, governanceTag: "contract_version_approve" };
+  }
+  return { riskLevel: "Low", requiredTier: 2, governanceTag: "contract_version_approve" };
+}
+
+function actorTier(actor?: EventActor): number {
+  const parsed = Number(actor?.authorityTier);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function parseSowDeliverables(snapshot: unknown): SowDeliverable[] {
+  let value = snapshot;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  const raw = (value as { deliverables?: unknown } | null)?.deliverables;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw
+    .filter((d): d is Record<string, unknown> => typeof d === "object" && d !== null && typeof d.name === "string")
+    .map((d) => ({
+      name: String(d.name).trim(),
+      amount: Number(d.amount ?? 0),
+      ...(typeof d.description === "string" ? { description: d.description } : {})
+    }))
+    .filter((d) => d.name.length > 0);
+}
+
 function validateVersion(input: ContractVersionInput): void {
   if (!Number.isFinite(input.contractValue) || input.contractValue < 0) {
     throw new HttpError(400, "invalid_request", "contractValue must be a non-negative number");
@@ -24,6 +69,22 @@ function validateVersion(input: ContractVersionInput): void {
   }
   if (input.effectiveUntil && input.effectiveUntil < input.effectiveFrom) {
     throw new HttpError(400, "invalid_request", "effectiveUntil must not precede effectiveFrom");
+  }
+  const deliverables = parseSowDeliverables(input.sowSnapshot);
+  const names = new Set<string>();
+  let total = 0;
+  for (const d of deliverables) {
+    if (!Number.isFinite(d.amount) || d.amount < 0) {
+      throw new HttpError(400, "invalid_request", `SoW deliverable '${d.name}' amount must be a non-negative number`);
+    }
+    if (names.has(d.name.toLowerCase())) {
+      throw new HttpError(400, "invalid_request", `Duplicate SoW deliverable '${d.name}'`);
+    }
+    names.add(d.name.toLowerCase());
+    total += d.amount;
+  }
+  if (Math.round(total * 100) > Math.round(input.contractValue * 100)) {
+    throw new HttpError(400, "invalid_request", "SoW deliverable amounts exceed the contract value");
   }
 }
 
@@ -251,9 +312,18 @@ export function approveContractVersion(contractId: string, versionNumber: number
     contract_version_id: string;
     current_version: number | null;
     version_status: string;
+    contract_value: number;
   };
   if (version.version_status !== "Draft") {
     throw new HttpError(409, "invalid_transition", `Cannot approve contract version in state ${version.version_status}`);
+  }
+  const governance = contractApprovalGovernance(version.contract_value);
+  if (actorTier(actor) < governance.requiredTier) {
+    throw new HttpError(
+      403,
+      "insufficient_authority",
+      `Insufficient authority to approve a ${governance.riskLevel}-risk contract version (tier ${governance.requiredTier}+ required)`
+    );
   }
   const timestamp = now();
   const approvedBy = actor?.id ?? "system";
@@ -278,6 +348,7 @@ export function approveContractVersion(contractId: string, versionNumber: number
       eventType: "contract.version_approved",
       version: versionNumber,
       actor,
+      governance,
       payload: { contractVersionId: version.contract_version_id, versionNumber, approvedBy }
     });
   });
@@ -293,7 +364,10 @@ export function getContractById(contractId: string) {
   const versions = db.prepare(
     "SELECT * FROM o2c_contract_version WHERE contract_id = ? ORDER BY version_number DESC"
   ).all(contractId);
-  return { ...contract as object, versions };
+  const decorated = (versions as Array<{ status: string; contract_value: number }>).map((v) =>
+    v.status === "Draft" ? { ...v, approval_governance: contractApprovalGovernance(v.contract_value) } : v
+  );
+  return { ...contract as object, versions: decorated };
 }
 
 export function listContracts(customerId?: string) {

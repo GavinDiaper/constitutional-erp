@@ -471,7 +471,10 @@
 						{#if contractsLoading}
 							<p class="ui-muted mt-1 text-sm">Loading approved contracts...</p>
 						{:else if newProjectCustomerId && contractOptions.length === 0}
-							<p class="ui-muted mt-1 text-sm">No active approved contracts are available.</p>
+							<p class="ui-muted mt-1 text-sm">
+								No active approved contracts are available.
+								<a class="underline" href={resolve('/contracts')}>Create or approve a contract</a>
+							</p>
 						{/if}
 					</div>
 				{/if}

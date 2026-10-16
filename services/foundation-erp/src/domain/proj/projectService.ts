@@ -1,4 +1,4 @@
-import { assertApprovedContract } from "../o2c/contract/contractService";
+import { assertApprovedContract, parseSowDeliverables } from "../o2c/contract/contractService";
 import { db, transaction } from "../../db/connection";
 import { appendEvent, EventActor } from "../../events/eventStore";
 import { HttpError } from "../../utils/errors";
@@ -192,6 +192,67 @@ function resolveAccountId(rawAccountRef: string, label: string): string {
 }
 
 /**
+ * Seeds one WBS element, stage gate and planned (unlinked) milestone per SoW deliverable
+ * of the approved contract version. Runs inside the project-creation transaction.
+ */
+function seedStagesFromContractSow(
+  projectId: string,
+  rootWbsId: string,
+  contractVersionId: string,
+  timestamp: string,
+  actor?: EventActor
+): void {
+  const version = db
+    .prepare("SELECT sow_snapshot FROM o2c_contract_version WHERE contract_version_id = ?")
+    .get(contractVersionId) as { sow_snapshot: string } | undefined;
+  const deliverables = parseSowDeliverables(version?.sow_snapshot);
+  const createdBy = actor?.id ?? "system";
+
+  deliverables.forEach((deliverable, index) => {
+    const wbsElementId = newId("WBS-");
+    const wbsCode = `D-${String(index + 1).padStart(2, "0")}`;
+    db.prepare(
+      `INSERT INTO proj_wbs_element(
+         wbs_element_id, project_id, contract_version_id, parent_wbs_element_id, wbs_code,
+         name, phase_name, status, version, created_by, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Active', 1, ?, ?, ?)`
+    ).run(wbsElementId, projectId, contractVersionId, rootWbsId, wbsCode, deliverable.name, deliverable.name, createdBy, timestamp, timestamp);
+
+    db.prepare(
+      `INSERT INTO proj_stage_gate(gate_id, project_id, phase_name, required_signoffs, approvals, is_ready, created_at, updated_at)
+       VALUES (?, ?, ?, '[]', '[]', 0, ?, ?)`
+    ).run(newId("GATE-"), projectId, deliverable.name, timestamp, timestamp);
+
+    db.prepare(
+      `INSERT INTO proj_project_milestone(
+         milestone_id, project_id, name, phase_name, billing_amount, status, ready_for_billing,
+         contract_version_id, order_line_id, wbs_element_id, billed_amount,
+         approved_at, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, 'Planned', 0, NULL, NULL, NULL, 0, NULL, ?, ?)`
+    ).run(newId("MILESTONE-"), projectId, deliverable.name, deliverable.name, roundMoney(deliverable.amount), timestamp, timestamp);
+
+    appendEvent({
+      entityId: wbsElementId,
+      entityType: "ProjectWbsElement",
+      eventType: "proj.wbs_element_created",
+      version: 1,
+      actor,
+      causationId: projectId,
+      payload: {
+        projectId,
+        contractVersionId,
+        parentWbsElementId: rootWbsId,
+        wbsCode,
+        name: deliverable.name,
+        phaseName: deliverable.name,
+        deliverableSkuId: null,
+        seededFromContractSow: true
+      }
+    });
+  });
+}
+
+/**
  * createProject
  * Creates a new project in Draft status and associated WIP ledger.
  * Guards: Input validation only; no authority checks for creation.
@@ -296,6 +357,10 @@ export function createProject(
           timestamp,
           timestamp
         );
+      }
+
+      if (input.projectType === "Service" && input.wbsId && contractVersionId) {
+        seedStagesFromContractSow(projectId, input.wbsId, contractVersionId, timestamp, actor);
       }
 
       // Insert WIP ledger

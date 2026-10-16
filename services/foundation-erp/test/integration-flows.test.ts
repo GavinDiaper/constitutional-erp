@@ -1313,6 +1313,106 @@ test("Projects API requires service contracts and WBS for Service projects", asy
   assert.equal(created.body.data.wbsId, `WBS-SVC-${unique}`);
 });
 
+test("Contract approval is tier-gated by value and SoW seeds Service project stages", async () => {
+  const headers = authHeaders();
+  const unique = Date.now();
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: `SoW Customer ${unique}` })
+    .expect(201);
+
+  const overBudget = await request(app)
+    .post("/api/v1/o2c/contracts")
+    .set(headers)
+    .send({
+      customerId: customer.body.customer_id,
+      name: "Over allocated",
+      version: {
+        contractValue: 1000,
+        currencyCode: "USD",
+        effectiveFrom: "2026-01-01",
+        sowSnapshot: { deliverables: [{ name: "A", amount: 800 }, { name: "B", amount: 400 }] }
+      }
+    })
+    .expect(400);
+  assert.match(overBudget.body.detail, /exceed the contract value/i);
+
+  const contract = await request(app)
+    .post("/api/v1/o2c/contracts")
+    .set(headers)
+    .send({
+      customerId: customer.body.customer_id,
+      name: `SoW Contract ${unique}`,
+      version: {
+        contractValue: 50000,
+        currencyCode: "USD",
+        effectiveFrom: "2026-01-01",
+        sowSnapshot: {
+          deliverables: [{ name: "Discovery", amount: 20000 }, { name: "Build", amount: 30000 }]
+        }
+      }
+    })
+    .expect(201);
+  const contractId = contract.body.data.contract_id;
+
+  const lowTier = { ...headers, "x-actor-type": "user", "x-actor-id": "junior", "x-actor-tier": "2" };
+  const denied = await request(app)
+    .post(`/api/v1/o2c/contracts/${contractId}/versions/1/approve`)
+    .set(lowTier)
+    .expect(403);
+  assert.match(denied.body.detail, /insufficient authority/i);
+
+  const detail = await request(app).get(`/api/v1/o2c/contracts/${contractId}`).set(headers).expect(200);
+  assert.equal(detail.body.data.versions[0].approval_governance.requiredTier, 3);
+
+  await request(app)
+    .post(`/api/v1/o2c/contracts/${contractId}/versions/1/approve`)
+    .set({ ...lowTier, "x-actor-id": "senior", "x-actor-tier": "3" })
+    .expect(200);
+
+  const organization = await request(app)
+    .post("/api/v1/inv/organizations")
+    .set(headers)
+    .send({ name: `SoW Org ${unique}` })
+    .expect(201);
+  const employee = await request(app)
+    .post("/api/v1/h2r/employees")
+    .set(headers)
+    .send({ name: `SoW PM ${unique}`, email: `sow.pm.${unique}@example.com` })
+    .expect(201);
+
+  const project = await request(app)
+    .post("/api/v1/projects")
+    .set(headers)
+    .send({
+      name: "SoW Seeded Project",
+      projectType: "Service",
+      customerId: customer.body.customer_id,
+      contractId,
+      wbsId: `WBS-SOW-${unique}`,
+      budgetAmount: 5000,
+      defaultWIPAccountId: "SYS-120-ASSET-INVENTORY",
+      defaultCloseAccountId: "SYS-500-EXP-COGS",
+      startDate: "2026-01-01",
+      projectManagerId: employee.body.employee_id,
+      organizationId: organization.body.organization_id,
+    })
+    .expect(201);
+  const projectId = project.body.data.projectId;
+
+  const wbs = await request(app).get(`/api/v1/projects/${projectId}/wbs-elements`).set(headers).expect(200);
+  const names = (wbs.body.data ?? wbs.body).map((w: any) => w.name);
+  assert.ok(names.includes("Discovery") && names.includes("Build"));
+
+  const milestones = await request(app).get(`/api/v1/projects/${projectId}/milestones`).set(headers).expect(200);
+  assert.deepEqual(
+    milestones.body.data.map((m: any) => [m.name, m.billingAmount]).sort(),
+    [["Build", 30000], ["Discovery", 20000]]
+  );
+});
+
 test("O2C contracts retain immutable SOW versions through amendment approval", async () => {
   const headers = authHeaders();
   const contract = await createApprovedContract(headers, `CON-VERSION-${Date.now()}`, 10000);
