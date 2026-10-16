@@ -155,3 +155,8 @@ package-lock.json
 
 .gitignore
 workspace.code-workspace
+
+# Build output and runtime state
+build/
+infra/scripts/.runtime/
+infra/scripts/logs/
