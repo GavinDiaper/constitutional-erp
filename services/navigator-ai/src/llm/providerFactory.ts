@@ -1,6 +1,7 @@
 import { AppConfig } from "../config/env";
 import { AzureOpenAiClient } from "./azureOpenAiClient";
 import { DeterministicClient } from "./deterministicClient";
+import { OllamaClient } from "./ollamaClient";
 import { OpenAiClient } from "./openAiClient";
 import { LlmClient } from "./types";
 
@@ -10,6 +11,8 @@ export function createLlmClient(config: AppConfig): LlmClient {
       return new DeterministicClient(config);
     case "openai":
       return new OpenAiClient(config);
+    case "ollama":
+      return new OllamaClient(config);
     case "azure":
     default:
       return new AzureOpenAiClient(config);

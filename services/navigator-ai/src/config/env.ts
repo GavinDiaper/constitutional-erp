@@ -18,7 +18,7 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
-export type LlmProvider = "azure" | "openai" | "deterministic";
+export type LlmProvider = "azure" | "openai" | "ollama" | "deterministic";
 
 export interface AppConfig {
   port: number;
@@ -52,6 +52,10 @@ export interface AppConfig {
   openAiModel: string;
   openAiBaseUrl: string;
   openAiMaxTokens: number;
+  ollamaBaseUrl: string;
+  ollamaModel: string;
+  ollamaMaxTokens: number;
+  ollamaTimeoutMs: number;
   deterministicSeed: string;
   llmTraceStdout: boolean;
   llmTraceMaxChars: number;
@@ -69,11 +73,11 @@ function required(name: string, fallback?: string): string {
 function parseLlmProvider(): LlmProvider {
   const defaultProvider = process.env.CI === "true" ? "deterministic" : "azure";
   const value = (process.env.LLM_PROVIDER ?? defaultProvider).toLowerCase();
-  if (value === "azure" || value === "openai" || value === "deterministic") {
+  if (value === "azure" || value === "openai" || value === "ollama" || value === "deterministic") {
     return value;
   }
 
-  throw new Error("Invalid LLM_PROVIDER. Supported values: azure, openai, deterministic");
+  throw new Error("Invalid LLM_PROVIDER. Supported values: azure, openai, ollama, deterministic");
 }
 
 export function loadConfig(): AppConfig {
@@ -115,6 +119,10 @@ export function loadConfig(): AppConfig {
     openAiModel: usingOpenAi ? required("OPENAI_MODEL") : process.env.OPENAI_MODEL ?? "",
     openAiBaseUrl: process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
     openAiMaxTokens: Number(process.env.OPENAI_MAX_TOKENS ?? 4096),
+    ollamaBaseUrl: (process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434/v1").replace(/\/+$/, ""),
+    ollamaModel: process.env.OLLAMA_MODEL ?? "navigator-llm",
+    ollamaMaxTokens: Number(process.env.OLLAMA_MAX_TOKENS ?? 512),
+    ollamaTimeoutMs: Number(process.env.OLLAMA_TIMEOUT_MS ?? 180000),
     deterministicSeed: process.env.LLM_DETERMINISTIC_SEED ?? "constitutional-erp",
     llmTraceStdout: process.env.NAVIGATOR_LLM_TRACE_STDOUT === "1",
     llmTraceMaxChars: Number(process.env.NAVIGATOR_LLM_TRACE_MAX_CHARS ?? 6000)

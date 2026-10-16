@@ -180,6 +180,13 @@ services:
       AUTHORITY_ENGINE_URL: http://authority-engine:4001
       GOVERNANCE_ENGINE_URL: http://governance-engine:4002
       EVENT_PROCESSOR_URL: http://event-processor:4004
+      LLM_PROVIDER: ${NAVIGATOR_LLM_PROVIDER:-deterministic}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434/v1}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-navigator-llm}
+      OLLAMA_MAX_TOKENS: ${OLLAMA_MAX_TOKENS:-512}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-180000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - process-graph
       - mesh-gateway

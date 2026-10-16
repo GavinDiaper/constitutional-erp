@@ -1,6 +1,8 @@
-const IDENTITY_BASE_URL = (process.env.IDENTITY_BASE_URL ?? 'http://localhost:4008').replace(/\/$/, '');
-const UI_SVELTEKIT_BASE_URL = (process.env.UI_SVELTEKIT_BASE_URL ?? 'http://localhost:4173').replace(/\/$/, '');
-const UI_CALLBACK_PATH = process.env.UI_CALLBACK_PATH ?? '/auth/callback';
+import { env } from '$env/dynamic/private';
+
+const IDENTITY_BASE_URL = (env.IDENTITY_BASE_URL ?? 'http://localhost:4008').replace(/\/$/, '');
+const UI_SVELTEKIT_BASE_URL = (env.UI_SVELTEKIT_BASE_URL ?? 'http://localhost:4173').replace(/\/$/, '');
+const UI_CALLBACK_PATH = env.UI_CALLBACK_PATH ?? '/auth/callback';
 
 export function getIdentityBaseUrl(): string {
 	return IDENTITY_BASE_URL;
