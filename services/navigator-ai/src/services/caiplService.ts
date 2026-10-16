@@ -404,7 +404,17 @@ function buildPurchaseOrderDecisionOptions(
         currencyCode: poProposal.currencyCode,
         deliveryAddress: poProposal.deliveryAddress
       },
-      inputSchema: purchaseOrderInputSchema()
+      inputSchema: {
+        fields: [
+          { id: "supplierId", label: "Supplier ID", type: "string", required: true },
+          { id: "sku", label: "SKU", type: "string", required: true },
+          { id: "itemDescription", label: "Item Description", type: "string", required: true },
+          { id: "quantity", label: "Quantity", type: "number", required: true },
+          { id: "unitPrice", label: "Unit Price", type: "number", required: true },
+          { id: "currencyCode", label: "Currency Code", type: "string", required: true },
+          { id: "deliveryAddress", label: "Delivery Address", type: "string", required: true }
+        ]
+      }
     },
     {
       id: "find-gl-account",
@@ -1625,7 +1635,8 @@ export class CaiplService {
       );
 
       if (poProposal && existingExecuteOption) {
-        existingExecuteOption.description = assistant.decisionDescription;
+        existingExecuteOption.description =
+          assistant.decisionDescription ?? existingExecuteOption.description;
         existingExecuteOption.actionPayload = {
           operation: "execute_purchase_order",
           supplierId: poProposal.supplierId,
@@ -1942,7 +1953,7 @@ export class CaiplService {
             newStatus = "pending";
             decisionSummary = `collect ${resolvedCollectionState.missingFields.length} remaining required field(s) for ${operationDef.label}`;
           } else {
-            const executeOption = buildExecuteCollectionOption(operationDef, resolvedCollectionState, enrichedValues);
+            const executeOption = buildExecuteCollectionOption(operationDef, nextCollectionState, enrichedValues);
             decision.options = [executeOption];
             selectedOperation = "execute_collection_operation";
             keepPendingForExecution = true;
