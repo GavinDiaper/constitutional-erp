@@ -2,7 +2,7 @@ import { z } from "zod";
 import { db } from "../db/connection";
 import { appendGovernanceDecisionLog, appendGovernanceEvent } from "../events/eventStore";
 
-const governanceDomainSchema = z.union([z.literal("O2C"), z.literal("P2P"), z.literal("R2R"), z.literal("H2R")]);
+const governanceDomainSchema = z.union([z.literal("O2C"), z.literal("P2P"), z.literal("R2R"), z.literal("H2R"), z.literal("PROJ"), z.literal("INV")]);
 const riskLevelSchema = z.union([z.literal("Low"), z.literal("Medium"), z.literal("High")]);
 
 const authorityDecisionSchema = z.object({
@@ -47,6 +47,15 @@ const h2rContextSchema = z
   })
   .passthrough();
 
+const operationalContextSchema = z
+  .object({
+    requesterId: z.string().min(1),
+    amount: z.number().finite().nonnegative().optional(),
+    resourceType: z.string().min(1).optional(),
+    credentialType: z.string().min(1).optional()
+  })
+  .passthrough();
+
 export const governanceCheckInputSchema = z.discriminatedUnion("domain", [
   z.object({
     actorId: z.string().min(1),
@@ -75,6 +84,20 @@ export const governanceCheckInputSchema = z.discriminatedUnion("domain", [
     domain: z.literal("H2R"),
     context: h2rContextSchema,
     authorityDecision: authorityDecisionSchema
+  }),
+  z.object({
+    actorId: z.string().min(1),
+    action: z.string().min(1),
+    domain: z.literal("PROJ"),
+    context: operationalContextSchema,
+    authorityDecision: authorityDecisionSchema
+  }),
+  z.object({
+    actorId: z.string().min(1),
+    action: z.string().min(1),
+    domain: z.literal("INV"),
+    context: operationalContextSchema,
+    authorityDecision: authorityDecisionSchema
   })
 ]);
 
@@ -96,6 +119,7 @@ type GovernanceCondition =
   | { type: "ActionIs"; action: string }
   | { type: "AmountGreaterThan"; amount: number }
   | { type: "ActorIsRequester" }
+  | { type: "ContextEquals"; field: string; value: string | number | boolean }
   | { type: "CredentialRequired"; credentialType: string }
   | { type: "TierLessThan"; tier: number }
   | { type: "DomainIs"; domain: z.infer<typeof governanceDomainSchema> }
@@ -115,6 +139,11 @@ const conditionSchema: z.ZodType<GovernanceCondition> = z.lazy(() =>
     z.object({ type: z.literal("ActionIs"), action: z.string().min(1) }),
     z.object({ type: z.literal("AmountGreaterThan"), amount: z.number().finite() }),
     z.object({ type: z.literal("ActorIsRequester") }),
+    z.object({
+      type: z.literal("ContextEquals"),
+      field: z.string().min(1),
+      value: z.union([z.string(), z.number(), z.boolean()])
+    }),
     z.object({ type: z.literal("CredentialRequired"), credentialType: z.string().min(1) }),
     z.object({ type: z.literal("TierLessThan"), tier: z.number().int().min(0).max(5) }),
     z.object({ type: z.literal("DomainIs"), domain: governanceDomainSchema }),
@@ -183,6 +212,8 @@ function evalCondition(condition: GovernanceCondition, input: GovernanceCheckInp
       return getContextNumber(input, "amount") > condition.amount;
     case "ActorIsRequester":
       return input.actorId === input.context.requesterId;
+    case "ContextEquals":
+      return (input.context as Record<string, unknown>)[condition.field] === condition.value;
     case "CredentialRequired":
       return hasCredential(input.actorId, condition.credentialType);
     case "TierLessThan":

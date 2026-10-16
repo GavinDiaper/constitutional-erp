@@ -245,3 +245,5 @@ This unlocks:
 - PGE v2  
 
 Everything else depends on this.
+
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — MCP execution is Mesh-hosted; Navigator writes go via the Mesh.

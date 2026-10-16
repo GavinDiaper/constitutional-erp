@@ -245,3 +245,4 @@ Mappings:
 - **Operational inventory modules** (WMS, reservations, lot/serial, quality) consume and emit the same **core events**, but remain optional.   [docs.oracle.com](https://docs.oracle.com/en/cloud/saas/readiness/erp/24a/ppm24a/24A-ppm-wn-f30826.htm)  
 - **Planning modules** (MRP, project planning, CPQ) use BOM + cost elements but do not mutate constitutional state directly.
 
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — project lifecycle transitions are Mesh-governed (cancel/force needs tier 3).

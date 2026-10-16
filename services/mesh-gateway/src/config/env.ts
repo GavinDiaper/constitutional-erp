@@ -19,6 +19,8 @@ export interface AppConfig {
   jwtIssuer: string;
   jwtAudience: string;
   jwtSigningSecret: string;
+  enforcementMode: "enforce" | "shadow";
+  meshAssertionSecret: string | undefined;
 }
 
 function required(name: string, fallback?: string): string {
@@ -55,6 +57,8 @@ export function loadConfig(): AppConfig {
     governanceEngineApiKey: required("GOVERNANCE_ENGINE_API_KEY", "change-me"),
     jwtIssuer: required("JWT_ISSUER", "constitutionalerp-user-identity"),
     jwtAudience: required("JWT_AUDIENCE", "constitutionalerp-clients"),
-    jwtSigningSecret: required("JWT_SIGNING_SECRET", "change-me-signing-secret")
+    jwtSigningSecret: required("JWT_SIGNING_SECRET", "change-me-signing-secret"),
+    enforcementMode: process.env.ENFORCEMENT_MODE === "shadow" ? "shadow" : "enforce",
+    meshAssertionSecret: process.env.MESH_ASSERTION_SECRET?.trim() || undefined
   };
 }

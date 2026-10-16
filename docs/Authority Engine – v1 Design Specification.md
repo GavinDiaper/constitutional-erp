@@ -327,3 +327,4 @@ interface AuthorityCheckResult {
 
 ---
 
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — PROJ/INV domains and `authority_action_rule` (required tier = max of amount and action rules).

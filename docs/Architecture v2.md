@@ -222,4 +222,4 @@ This is now:
 
 This order builds the constitutional spine first, then the AI, then the distributed substrate, then the UX.
 
-
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — enforcement flow is Authority → Governance → Mesh approval/execute → Foundation; Foundation trusts a Mesh-signed actor (HMAC) and no longer authorises.

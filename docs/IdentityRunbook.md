@@ -185,3 +185,5 @@ Mobile handoff artifacts:
 2. Stable callback contract
 3. Stable JWT trust settings
 4. Verified login/logout/session lifecycle in deployed environment
+
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — `MESH_ASSERTION_SECRET` setup, network restriction and key rotation.

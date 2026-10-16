@@ -1,3 +1,4 @@
+import { MeshClient } from "./meshClient";
 import { AppConfig } from "../config/env";
 import {
   CanonicalResource,
@@ -219,12 +220,24 @@ export class IntegrationHubClient {
   }
 
   async executeAction(input: {
+    domain?: string;
     aggregateType: string;
     aggregateId: string;
     actionId: string;
     actorId: string;
     payload: Record<string, unknown>;
   }): Promise<{ status: number; data: Record<string, unknown> }> {
+    // Writes go through the Mesh Gateway, which enforces authority + governance.
+    if (input.domain) {
+      return new MeshClient(this.config).execute({
+        domain: input.domain,
+        aggregateType: input.aggregateType,
+        aggregateId: input.aggregateId,
+        actionId: input.actionId,
+        actorId: input.actorId,
+        payload: input.payload
+      });
+    }
     const url = `${this.config.integrationHubUrl}/process/${encodeURIComponent(input.aggregateType)}/${encodeURIComponent(input.aggregateId)}/actions/${encodeURIComponent(input.actionId)}`;
 
     return requestJsonAllowError<Record<string, unknown>>(url, {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { mcpCatalog } from "./catalog";
 import { validateBody } from "../../middleware/validate";
+import { createContract, createContractAmendment, approveContractVersion } from "../../domain/o2c/contract/contractService";
 import {
   createCustomer,
   activateCustomer
@@ -191,6 +192,20 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
           billingAddress: input.billingAddress,
           shippingAddress: input.shippingAddress
         }, actor);
+        break;
+      case "o2c_create_contract":
+        result = createContract({
+          customerId: input.customerId,
+          externalReference: input.externalReference,
+          name: input.name,
+          version: input.version
+        }, actor);
+        break;
+      case "o2c_amend_contract":
+        result = createContractAmendment(input.contractId, input.version, actor);
+        break;
+      case "o2c_approve_contract":
+        result = approveContractVersion(input.contractId, Number(input.versionNumber), actor);
         break;
       case "o2c_activate_customer":
         result = activateCustomer(input.customerId, actor);

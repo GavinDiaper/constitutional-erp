@@ -10,4 +10,4 @@ mesh-gateway.db
 mesh-gateway.db-wal
 mesh-gateway.db-shm
 reports/
-.env
+.env.test-mesh.db

@@ -217,3 +217,4 @@ export async function createProject(
 
 No further changes are required for Phase 1.
 
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — contract create/amend/approve run through the Mesh with tier/risk governance; SoW seeds project stages.

@@ -1,4 +1,4 @@
-export type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R";
+export type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV";
 
 export interface CanonicalEventBase<TType extends string, TPayload> {
   type: TType;

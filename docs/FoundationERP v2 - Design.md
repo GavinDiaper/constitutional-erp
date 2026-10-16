@@ -248,3 +248,5 @@ o	Validate that the lifecycle:
 	Exists in Oracle, SAP, Dynamics.
 	Can be mapped via Mesh adapters.
 	Can be replayed from events alone.
+
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — Foundation executes transitions only; Mesh-asserted actors are trusted.

@@ -428,8 +428,34 @@ o2cRouter.post("/contracts", validateBody(createContractSchema), (req, res) => {
   res.status(201).json({ data: contract });
 });
 
+function contractLinks(contract: { contract_id: string; versions: Array<{ status: string }> }) {
+  const id = contract.contract_id;
+  const links: Record<string, { href: string; method: "GET" | "POST" }> = {
+    self: { href: `/api/v1/o2c/contracts/${id}`, method: "GET" },
+    amend: { href: `/api/v1/o2c/contracts/${id}/amendments`, method: "POST" }
+  };
+  if (contract.versions.some((v) => v.status === "Draft")) {
+    links.approve = { href: `/api/v1/o2c/contracts/${id}/approve`, method: "POST" };
+  }
+  return links;
+}
+
 o2cRouter.get("/contracts/:contractId", (req, res) => {
-  res.json({ data: getContractById(req.params.contractId) });
+  const contract = getContractById(req.params.contractId) as any;
+  res.json({ data: { ...contract, _links: contractLinks(contract) } });
+});
+
+// Approves the Draft version awaiting approval (or an explicit versionNumber) so the Mesh can address the contract as one resource.
+o2cRouter.post("/contracts/:contractId/approve", (req, res) => {
+  const contract = getContractById(req.params.contractId) as any;
+  const requested = req.body?.versionNumber;
+  const draft = (contract.versions as Array<{ status: string; version_number: number }>).find((v) =>
+    requested ? v.version_number === Number(requested) : v.status === "Draft"
+  );
+  if (!draft) {
+    return res.status(409).json({ title: "invalid_transition", detail: "No Draft contract version to approve" });
+  }
+  res.json({ data: approveContractVersion(req.params.contractId, draft.version_number, req.actor) });
 });
 
 o2cRouter.post("/contracts/:contractId/versions/:versionNumber/approve", (req, res) => {

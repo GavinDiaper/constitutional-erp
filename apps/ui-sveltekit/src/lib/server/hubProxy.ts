@@ -354,3 +354,37 @@ export async function proxyIhRequest(
 		}
 	});
 }
+
+// Governed writes go through the Mesh Gateway (Authority -> Governance -> approval -> Foundation), never straight to Foundation.
+export async function proxyMeshRequest(
+	path: string,
+	search: string,
+	incomingHeaders: Headers,
+	method: 'GET' | 'POST',
+	body?: unknown
+): Promise<Response> {
+	const config = resolveSubsystemConfig('mesh-gateway');
+	const baseUrl = config.baseUrl.replace(/\/$/, '').replace(/\/api\/v1$/, '');
+	const requestUrl = `${baseUrl}/mesh/${path.replace(/^\//, '')}${search}`;
+	const headers = buildSubsystemHeaders(incomingHeaders, config);
+	if (method === 'POST') {
+		headers.set('content-type', 'application/json');
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(requestUrl, {
+			method,
+			headers,
+			body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined
+		});
+	} catch (error) {
+		const detail = error instanceof Error ? error.message : 'Failed to reach mesh-gateway';
+		return buildProxyErrorResponse(502, `Mesh proxy ${method} failed for ${requestUrl}: ${detail}`);
+	}
+
+	return new Response(await response.text(), {
+		status: response.status,
+		headers: { 'content-type': response.headers.get('content-type') ?? 'application/json' }
+	});
+}

@@ -308,3 +308,5 @@ src/
 
 ---
 This architecture is designed to be **scalable, maintainable, and visually stunning** while adhering to the principles of **process‑first, graph‑native design** that you want for ConstitutionalERP.
+
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — `/api/mesh/*` proxy, 202 'pending approval' handling, `/approvals` inbox.

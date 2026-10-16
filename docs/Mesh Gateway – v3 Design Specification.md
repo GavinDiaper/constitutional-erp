@@ -316,3 +316,4 @@ but the design supports **multiple adapters**,
 
 ---
 
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — create and MCP routes, signed actor assertion, `ENFORCEMENT_MODE`, approver re-evaluation.

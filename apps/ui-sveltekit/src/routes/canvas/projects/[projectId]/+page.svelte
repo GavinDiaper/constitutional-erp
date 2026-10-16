@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
+	import { ApprovalPendingError } from '$lib/api/mesh';
 	import {
 		projectStore,
 		projectStatusBadge,
@@ -393,7 +394,14 @@
 			selectedTransition = null;
 			transitionReason = '';
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Failed to transition project';
+			if (err instanceof ApprovalPendingError) {
+				successMessage = err.message;
+				showTransitionMenu = false;
+				selectedTransition = null;
+				transitionReason = '';
+			} else {
+				errorMessage = err instanceof Error ? err.message : 'Failed to transition project';
+			}
 		} finally {
 			loading = false;
 		}

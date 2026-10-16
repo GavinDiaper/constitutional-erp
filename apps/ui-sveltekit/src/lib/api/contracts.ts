@@ -1,4 +1,5 @@
-import { fetchHubJson, postHubJson } from '$lib/api/hub';
+import { fetchHubJson } from '$lib/api/hub';
+import { meshPostJson } from '$lib/api/mesh';
 import type { ActorContext } from '$lib/stores/actorStore';
 
 export interface ContractOption {
@@ -79,7 +80,7 @@ export function getContract(actor: ActorContext, contractId: string): Promise<{ 
 }
 
 export function createContract(actor: ActorContext, input: CreateContractInput): Promise<{ data: ContractVersion }> {
-	return postHubJson('/api/hub/o2c/contracts', actor, input);
+	return meshPostJson('foundation/o2c/contracts', actor, input);
 }
 
 export function approveContractVersion(
@@ -87,11 +88,7 @@ export function approveContractVersion(
 	contractId: string,
 	versionNumber: number
 ): Promise<{ data: ContractVersion }> {
-	return postHubJson(
-		`/api/hub/o2c/contracts/${encodeURIComponent(contractId)}/versions/${versionNumber}/approve`,
-		actor,
-		{}
-	);
+	return meshPostJson(`foundation/o2c/contracts/${encodeURIComponent(contractId)}/approve`, actor, { versionNumber });
 }
 
 export function createContractAmendment(
@@ -99,5 +96,5 @@ export function createContractAmendment(
 	contractId: string,
 	input: ContractVersionInput
 ): Promise<{ data: ContractVersion }> {
-	return postHubJson(`/api/hub/o2c/contracts/${encodeURIComponent(contractId)}/amendments`, actor, input);
+	return meshPostJson(`foundation/o2c/contracts/${encodeURIComponent(contractId)}/amend`, actor, input);
 }

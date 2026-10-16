@@ -2,7 +2,7 @@ import { db } from "../db/connection";
 import { appendAuthorityEvent } from "../events/eventStore";
 import { HttpError } from "../utils/errors";
 
-type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R";
+type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV";
 
 export interface AuthorityCheckInput {
   actorId: string;
@@ -77,7 +77,17 @@ export function evaluateAuthority(input: AuthorityCheckInput): AuthorityCheckRes
     .all(input.domain) as Array<{ threshold: number; required_tier: number }>;
 
   const matchedRules = Number.isFinite(amount) ? rules.filter((rule) => amount > rule.threshold) : [];
-  const requiredTier = matchedRules.reduce((max, rule) => Math.max(max, rule.required_tier), 0);
+  const amountTier = matchedRules.reduce((max, rule) => Math.max(max, rule.required_tier), 0);
+
+  const resourceType = typeof input.context?.resourceType === "string" ? input.context.resourceType : "*";
+  const actionRule = db
+    .prepare(
+      `SELECT required_tier FROM authority_action_rule
+       WHERE domain = ? AND action = ? AND resource_type IN (?, '*')
+       ORDER BY CASE WHEN resource_type = ? THEN 0 ELSE 1 END LIMIT 1`
+    )
+    .get(input.domain, input.action, resourceType, resourceType) as { required_tier: number } | undefined;
+  const requiredTier = Math.max(amountTier, actionRule?.required_tier ?? 0);
 
   if (requiredTier > 0) {
     if (effectiveTier >= requiredTier) {
@@ -88,7 +98,7 @@ export function evaluateAuthority(input: AuthorityCheckInput): AuthorityCheckRes
   }
 
   let credentialSatisfied = true;
-  const requiredCredential = credentialRequirementByAction[input.action];
+  const requiredCredential = resourceType === "contract" ? undefined : credentialRequirementByAction[input.action];
   if (requiredCredential) {
     const credentialRow = db
       .prepare(

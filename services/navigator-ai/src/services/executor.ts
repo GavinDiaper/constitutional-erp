@@ -202,6 +202,7 @@ export async function executeDecision(input: {
   }
 
   const result = await input.integrationHubClient.executeAction({
+    domain: input.context.domain,
     aggregateType: input.context.aggregateType,
     aggregateId: input.context.aggregateId,
     actionId,

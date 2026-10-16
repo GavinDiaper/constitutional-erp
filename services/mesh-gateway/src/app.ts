@@ -72,6 +72,7 @@ export function createApp(overrides: AppOverrides = {}) {
   app.use(
     "/mesh",
     createMeshRouter({
+      enforcementMode: config.enforcementMode,
       actorHeader: config.actorIdHeader,
       authorityClient,
       governanceClient,

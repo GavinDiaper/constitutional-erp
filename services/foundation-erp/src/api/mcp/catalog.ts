@@ -36,6 +36,9 @@ export const mcpCatalog: McpFunctionDef[] = [
       }
     }
   },
+  { name: "o2c_create_contract", domain: "o2c", entity: "Contract", action: "create", description: "Create a service contract with its first Draft version", riskLevel: "Medium", governanceTag: "O2C.Contract.Create" },
+  { name: "o2c_amend_contract", domain: "o2c", entity: "Contract", action: "amend", description: "Create a new Draft amendment version of a contract", riskLevel: "Medium", governanceTag: "O2C.Contract.Amend" },
+  { name: "o2c_approve_contract", domain: "o2c", entity: "Contract", action: "approve", description: "Approve a Draft contract version (governed by value tier and risk)", riskLevel: "High", governanceTag: "O2C.Contract.Approve" },
   { name: "o2c_add_quote_line", domain: "o2c", entity: "Quote", action: "addLine", description: "Add a line item to a quote", riskLevel: "Low", governanceTag: "O2C.Quote.AddLine" },
   { name: "o2c_send_quote", domain: "o2c", entity: "Quote", action: "send", description: "Send a Draft quote to the customer", riskLevel: "Low", governanceTag: "O2C.Quote.Send" },
   { name: "o2c_accept_quote", domain: "o2c", entity: "Quote", action: "accept", description: "Accept a Sent quote", riskLevel: "Low", governanceTag: "O2C.Quote.Accept" },

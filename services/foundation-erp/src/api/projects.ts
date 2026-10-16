@@ -67,6 +67,23 @@ router.post("/:projectId/wbs-elements", (req: Request, res: Response) => {
   }
 });
 
+// Lifecycle transitions available per status; the Mesh Gateway filters these by authority and governance.
+function projectLinks(projectId: string, status: string) {
+  const base = `/api/v1/projects/${projectId}`;
+  const links: Record<string, { href: string; method: "GET" | "POST" }> = {
+    self: { href: base, method: "GET" }
+  };
+  const post = (name: string) => {
+    links[name] = { href: `${base}/${name}`, method: "POST" };
+  };
+  if (status === "Draft") post("activate");
+  if (status === "Active") post("hold");
+  if (status === "OnHold") post("resume");
+  if (status === "Active" || status === "OnHold") post("complete");
+  if (["Draft", "Active", "OnHold"].includes(status)) post("cancel");
+  return links;
+}
+
 /**
  * POST /api/v1/projects
  * Create a new project in Draft status
@@ -136,7 +153,7 @@ router.get("/:projectId", (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: "Project not found" });
     }
 
-    res.json({ success: true, data: project });
+    res.json({ success: true, data: { ...project, _links: projectLinks(project.projectId, project.status) } });
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({ success: false, error: error.message });

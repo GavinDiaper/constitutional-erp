@@ -89,7 +89,7 @@ export function mapFoundationEventToCanonical(row: FoundationEventRow): Canonica
           positionId: entityId,
           title: String(payload.title ?? ""),
           department: String(payload.department ?? ""),
-          authorityDomain: String(payload.authorityDomain ?? "") as "O2C" | "P2P" | "R2R" | "H2R",
+          authorityDomain: String(payload.authorityDomain ?? "") as "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV",
           authorityTier: Number(payload.authorityTier)
         }
       });
@@ -141,7 +141,7 @@ export function mapFoundationEventToCanonical(row: FoundationEventRow): Canonica
         type,
         payload: {
           ruleId: entityId,
-          domain: String(payload.domain ?? "") as "O2C" | "P2P" | "R2R" | "H2R",
+          domain: String(payload.domain ?? "") as "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV",
           threshold: Number(payload.threshold),
           requiredTier: Number(payload.requiredTier)
         }

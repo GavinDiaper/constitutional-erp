@@ -122,6 +122,9 @@
 		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/contracts')}>
 			Contracts
 		</a>
+		<a class="btn-ghost rounded-md px-3 py-1.5 text-xs" href={resolve('/approvals')}>
+			Approvals
+		</a>
 	</div>
 
 	<div class={`app-shell-grid ${navigatorOpen ? 'app-shell-grid--nav' : 'app-shell-grid--full'}`}>

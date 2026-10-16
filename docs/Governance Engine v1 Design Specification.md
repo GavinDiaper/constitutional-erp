@@ -426,3 +426,5 @@ The Governance Engine:
 - is essential for safe AI autonomy  
 
 This design spec provides a clear roadmap for implementation.
+
+> **Update (role refactor):** see [RoleRefactor-Implementation.md](RoleRefactor-Implementation.md) — new SoD, contract value and project rules; PROJ/INV context; `ContextEquals`; thresholds are data.

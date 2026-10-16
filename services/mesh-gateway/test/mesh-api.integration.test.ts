@@ -96,6 +96,10 @@ function buildAdapter(input: {
     executeAction: async (meshPath) => {
       input.onExecute?.(meshPath);
       return { status: 200, data: { ok: true, meshPath } };
+    },
+    createResource: async (meshPath) => {
+      input.onExecute?.(meshPath);
+      return { status: 201, data: { ok: true, meshPath } };
     }
   };
 }
@@ -454,4 +458,153 @@ test("Approval replay uses stored adapter id and meshActionPath for execution", 
   assert.equal(approveResponse.status, 200);
   assert.equal(approveResponse.body.status, "EXECUTED");
   assert.deepEqual(executedPaths, ["/mesh/foundation/p2p/purchase-orders/PO-777/approve"]);
+});
+
+function contractAdapter(executed: string[]): BackendAdapter {
+  const base = buildAdapter({ id: "foundation", canHandle: () => true, health: true, onExecute: (p) => executed.push(p) });
+  return {
+    ...base,
+    fetchResource: async () => ({
+      status: 200,
+      resource: {
+        id: "CON-1",
+        domain: "O2C",
+        type: "contracts",
+        attributes: { versions: [{ version_number: 1, status: "Draft", contract_value: 50000, created_by: "creator" }] },
+        links: { approve: { href: "/mesh/foundation/o2c/contracts/CON-1/approve", method: "POST" } }
+      }
+    })
+  };
+}
+
+// Mirrors the real Governance Engine: approval outcomes come back as allowed:false with requiresApproval:true.
+function realShapedGovernance() {
+  return buildGovernanceClient(true, async (input: any) => {
+    if (input.context.requesterId === input.actorId) {
+      return { allowed: false, requiresApproval: false, violations: ["SelfApprovalNotAllowed"], constraints: [], matchedRules: [] };
+    }
+    if (input.context.amount > 10000 && (input.authorityDecision.effectiveTier ?? 0) < 3) {
+      return { allowed: false, requiresApproval: true, requiredApproverTier: 3, violations: [], constraints: [], matchedRules: [] };
+    }
+    return { allowed: true, requiresApproval: false, violations: [], constraints: [], matchedRules: [] };
+  });
+}
+
+function tieredAuthority(tiers: Record<string, number>) {
+  return {
+    ...buildAuthorityClient(),
+    check: async (input: { actorId: string }) => ({ allowed: true, effectiveTier: tiers[input.actorId] ?? 1, reasons: [] }),
+    getEligibleApprovers: async () => ["approver"]
+  };
+}
+
+test("real-shaped governance approval outcome yields 202, and the approver (not the requester) is re-evaluated", async () => {
+  const executed: string[] = [];
+  const appWithStubs = createApp({
+    authorityClient: tieredAuthority({ requester: 2, approver: 3, creator: 3 }) as unknown as never,
+    governanceClient: realShapedGovernance() as unknown as never,
+    adapterRegistry: new AdapterRegistry([contractAdapter(executed)])
+  });
+
+  const pending = await request(appWithStubs)
+    .post("/mesh/foundation/o2c/contracts/CON-1/approve")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({});
+  assert.equal(pending.status, 202);
+  assert.equal(pending.body.requiredTier, 3);
+  assert.deepEqual(executed, []);
+
+  const approved = await request(appWithStubs)
+    .post(`/mesh/approvals/${pending.body.taskId}/approve`)
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "approver")
+    .send({});
+  assert.equal(approved.status, 200);
+  assert.deepEqual(executed, ["/mesh/foundation/o2c/contracts/CON-1/approve"]);
+});
+
+test("approver who is the original requester is refused and task stays pending", async () => {
+  const executed: string[] = [];
+  const appWithStubs = createApp({
+    authorityClient: { ...tieredAuthority({ requester: 2, creator: 3 }), getEligibleApprovers: async () => ["creator"] } as unknown as never,
+    governanceClient: realShapedGovernance() as unknown as never,
+    adapterRegistry: new AdapterRegistry([contractAdapter(executed)])
+  });
+
+  const pending = await request(appWithStubs)
+    .post("/mesh/foundation/o2c/contracts/CON-1/approve")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({});
+  assert.equal(pending.status, 202);
+
+  const refused = await request(appWithStubs)
+    .post(`/mesh/approvals/${pending.body.taskId}/approve`)
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "creator")
+    .send({});
+  assert.equal(refused.status, 403);
+  assert.deepEqual(executed, []);
+});
+
+test("POST /mesh/:adapter/:domain/:resource creates through the pipeline", async () => {
+  const executed: string[] = [];
+  const appWithStubs = createApp({
+    authorityClient: tieredAuthority({ requester: 2 }) as unknown as never,
+    governanceClient: buildGovernanceClient() as unknown as never,
+    adapterRegistry: new AdapterRegistry([contractAdapter(executed)])
+  });
+
+  const response = await request(appWithStubs)
+    .post("/mesh/foundation/o2c/contracts")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({ customerId: "C1", name: "SoW", version: { contractValue: 100 } });
+  assert.equal(response.status, 201);
+  assert.deepEqual(executed, ["/mesh/foundation/o2c/contracts"]);
+});
+
+test("shadow mode records but does not block a denied action", async () => {
+  const executed: string[] = [];
+  const appWithStubs = createApp({
+    config: { ...config, enforcementMode: "shadow" },
+    authorityClient: tieredAuthority({ requester: 2 }) as unknown as never,
+    governanceClient: realShapedGovernance() as unknown as never,
+    adapterRegistry: new AdapterRegistry([contractAdapter(executed)])
+  });
+
+  const response = await request(appWithStubs)
+    .post("/mesh/foundation/o2c/contracts/CON-1/approve")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({});
+  assert.equal(response.status, 200);
+  assert.deepEqual(executed, ["/mesh/foundation/o2c/contracts/CON-1/approve"]);
+});
+
+test("POST /mesh/:adapter/mcp/:fn is governed by the catalog domain/action", async () => {
+  const executed: string[] = [];
+  const base = contractAdapter(executed);
+  const mcpAdapter = {
+    ...base,
+    getMcpFunction: async () => ({ domain: "o2c", entity: "Contract", action: "create" }),
+    invokeMcp: async (fn: string) => {
+      executed.push(`mcp:${fn}`);
+      return { status: 200, data: { ok: true } };
+    }
+  };
+  const appWithStubs = createApp({
+    authorityClient: tieredAuthority({ requester: 2 }) as unknown as never,
+    governanceClient: buildGovernanceClient() as unknown as never,
+    adapterRegistry: new AdapterRegistry([mcpAdapter as never])
+  });
+
+  const response = await request(appWithStubs)
+    .post("/mesh/foundation/mcp/o2c_create_contract")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({ input: { customerId: "C1", name: "SoW" } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(executed, ["mcp:o2c_create_contract"]);
 });

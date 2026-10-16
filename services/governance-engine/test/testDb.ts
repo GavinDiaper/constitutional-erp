@@ -4,7 +4,7 @@ import { setReplayStatus } from "../src/projection/state";
 
 export type RuleSeed = {
   ruleId: string;
-  domain: "GLOBAL" | "O2C" | "P2P" | "R2R" | "H2R";
+  domain: "GLOBAL" | "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV";
   description: string;
   conditionJson: string;
   effectJson: string;
@@ -50,6 +50,7 @@ const RULES: RuleSeed[] = [
 ];
 
 let initialized = false;
+let migrationRules: Array<Record<string, unknown>> = [];
 
 export function ensureTestDatabase() {
   if (initialized) {
@@ -57,6 +58,9 @@ export function ensureTestDatabase() {
   }
 
   runMigrations();
+  migrationRules = db
+    .prepare("SELECT * FROM governance_rule WHERE rule_id LIKE 'CON-%' OR rule_id LIKE 'PROJ-%' OR rule_id = 'SOD-GLOBAL-001'")
+    .all() as Array<Record<string, unknown>>;
   initialized = true;
 }
 
@@ -78,6 +82,9 @@ function reseedRules() {
 
   for (const rule of RULES) {
     insert.run(rule.ruleId, rule.domain, rule.description, rule.conditionJson, rule.effectJson, rule.priority);
+  }
+  for (const rule of migrationRules) {
+    insert.run(rule.rule_id, rule.domain, rule.description, rule.condition_json, rule.effect_json, rule.priority);
   }
 }
 

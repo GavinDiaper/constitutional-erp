@@ -11,7 +11,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "npm run test:integration",
-    "test:integration": "tsx --test test/**/*.test.ts",
+    "test:integration": "rm -f .test-mesh.db && export DATABASE_PATH=./.test-mesh.db && tsx src/db/migrate.ts && tsx --test test/**/*.test.ts",
     "test:postman": "node scripts/run-postman.js",
     "test:p2p:mesh": "node tests/mesh/run-p2p.js",
     "test:o2c:mesh": "node tests/mesh/run-o2c.js",

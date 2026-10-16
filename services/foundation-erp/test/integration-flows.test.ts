@@ -4270,3 +4270,56 @@ test("Internal trade lifecycle: Draft → Released → Approved", async () => {
     .expect(200);
   assert.ok(list.body.data.some((t: { tradeId: string }) => t.tradeId === tradeId));
 });
+
+test("Mesh-asserted actors are trusted for contracts; unsigned writes are refused once a secret is set", async () => {
+  const { createHmac } = await import("node:crypto");
+  const headers = authHeaders();
+  const unique = Date.now();
+  const secret = "test-mesh-secret";
+  const sign = (id: string, tier: string, ts = String(Date.now())) => ({
+    "x-actor-type": "user",
+    "x-actor-id": id,
+    "x-actor-tier": tier,
+    "x-mesh-actor-ts": ts,
+    "x-mesh-actor-sig": createHmac("sha256", secret).update(`${id}|${tier}|${ts}`).digest("hex")
+  });
+
+  const customer = await request(app)
+    .post("/api/v1/o2c/customers")
+    .set(headers)
+    .send({ customerName: `Mesh Customer ${unique}` })
+    .expect(201);
+
+  process.env.MESH_ASSERTION_SECRET = secret;
+  try {
+    await request(app)
+      .post("/api/v1/o2c/contracts")
+      .set(headers)
+      .send({ customerId: customer.body.customer_id, name: "Unsigned", version: { contractValue: 500000, currencyCode: "USD", effectiveFrom: "2026-01-01" } })
+      .expect(401);
+
+    await request(app)
+      .post("/api/v1/o2c/contracts")
+      .set({ ...headers, ...sign("creator", "1", String(Date.now() - 3_600_000)) })
+      .send({ customerId: customer.body.customer_id, name: "Stale", version: { contractValue: 500000, currencyCode: "USD", effectiveFrom: "2026-01-01" } })
+      .expect(401);
+
+    const created = await request(app)
+      .post("/api/v1/o2c/contracts")
+      .set({ ...headers, ...sign("creator", "1") })
+      .send({ customerId: customer.body.customer_id, name: `Mesh Contract ${unique}`, version: { contractValue: 500000, currencyCode: "USD", effectiveFrom: "2026-01-01" } })
+      .expect(201);
+    const contractId = created.body.data.contract_id;
+
+    const detail = await request(app).get(`/api/v1/o2c/contracts/${contractId}`).set(headers).expect(200);
+    assert.ok(detail.body.data._links.approve);
+
+    // Foundation does not second-guess the Mesh: a Mesh-asserted actor is not re-tier-checked here.
+    await request(app)
+      .post(`/api/v1/o2c/contracts/${contractId}/approve`)
+      .set({ ...headers, ...sign("approver", "2") })
+      .expect(200);
+  } finally {
+    delete process.env.MESH_ASSERTION_SECRET;
+  }
+});

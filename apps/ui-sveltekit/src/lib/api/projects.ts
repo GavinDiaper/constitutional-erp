@@ -1,4 +1,5 @@
 import type { ActorContext } from '$lib/stores/actorStore';
+import { meshPostJson } from '$lib/api/mesh';
 import type {
 	Project,
 	ProjectWIP,
@@ -65,7 +66,7 @@ export function createProject(
 		organizationId: string;
 	}
 ): Promise<Project> {
-	return requestHubJson<unknown>('/api/hub/proj', actor, 'POST', payload).then((response) =>
+	return meshPostJson<unknown>('foundation/proj/projects', actor, payload).then((response) =>
 		unwrapData<Project>(response)
 	);
 }
@@ -111,7 +112,7 @@ export function getProjectWIPSummary(
  * Transition project from Draft → Active
  */
 export function activateProject(actor: ActorContext, projectId: string): Promise<DataResponse<Project>> {
-	return requestHubJson<DataResponse<Project>>(`/api/hub/proj/${projectId}/activate`, actor, 'POST');
+	return meshPostJson<DataResponse<Project>>(`foundation/proj/projects/${projectId}/activate`, actor);
 }
 
 /**
@@ -122,10 +123,9 @@ export function holdProject(
 	projectId: string,
 	holdReason: string
 ): Promise<DataResponse<Project>> {
-	return requestHubJson<DataResponse<Project>>(
-		`/api/hub/proj/${projectId}/hold`,
+	return meshPostJson<DataResponse<Project>>(
+		`foundation/proj/projects/${projectId}/hold`,
 		actor,
-		'POST',
 		{ holdReason }
 	);
 }
@@ -134,7 +134,7 @@ export function holdProject(
  * Transition project from OnHold → Active
  */
 export function resumeProject(actor: ActorContext, projectId: string): Promise<DataResponse<Project>> {
-	return requestHubJson<DataResponse<Project>>(`/api/hub/proj/${projectId}/resume`, actor, 'POST');
+	return meshPostJson<DataResponse<Project>>(`foundation/proj/projects/${projectId}/resume`, actor);
 }
 
 /**
@@ -146,10 +146,9 @@ export function completeProject(
 	completionType: 'FG_Conversion' | 'Expense_Close',
 	closeAccountId?: string
 ): Promise<DataResponse<Project>> {
-	return requestHubJson<DataResponse<Project>>(
-		`/api/hub/proj/${projectId}/complete`,
+	return meshPostJson<DataResponse<Project>>(
+		`foundation/proj/projects/${projectId}/complete`,
 		actor,
-		'POST',
 		{ completionType, closeAccountId }
 	);
 }
@@ -163,10 +162,9 @@ export function cancelProject(
 	cancellationReason: string,
 	forceCancel?: boolean
 ): Promise<DataResponse<Project>> {
-	return requestHubJson<DataResponse<Project>>(
-		`/api/hub/proj/${projectId}/cancel`,
+	return meshPostJson<DataResponse<Project>>(
+		`foundation/proj/projects/${projectId}/cancel`,
 		actor,
-		'POST',
 		{ cancellationReason, forceCancel }
 	);
 }

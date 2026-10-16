@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
+	import { ApprovalPendingError } from '$lib/api/mesh';
 	import {
 		approveContractVersion,
 		createContract,
@@ -118,7 +119,13 @@
 			resetForm();
 			await refresh();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create contract';
+			if (e instanceof ApprovalPendingError) {
+				notice = e.message;
+				showCreate = false;
+				resetForm();
+			} else {
+				error = e instanceof Error ? e.message : 'Failed to create contract';
+			}
 		} finally {
 			submitting = false;
 		}
@@ -143,7 +150,11 @@
 			notice = `Version ${versionNumber} approved.`;
 			await refresh();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to approve version';
+			if (e instanceof ApprovalPendingError) {
+				notice = e.message;
+			} else {
+				error = e instanceof Error ? e.message : 'Failed to approve version';
+			}
 		}
 	}
 
@@ -175,7 +186,12 @@
 			amendMode = false;
 			await refresh();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create amendment';
+			if (e instanceof ApprovalPendingError) {
+				notice = e.message;
+				amendMode = false;
+			} else {
+				error = e instanceof Error ? e.message : 'Failed to create amendment';
+			}
 		} finally {
 			submitting = false;
 		}
@@ -355,14 +371,10 @@
 							{@const gov = v.approval_governance}
 							<div class="flex items-center gap-2">
 								{#if gov}
-									<span class="ui-muted text-xs">{gov.riskLevel} risk · tier {gov.requiredTier}+ to approve</span>
+									<span class="ui-muted text-xs">{gov.riskLevel} risk · indicative approver tier {gov.requiredTier}+ (decided by governance)</span>
 								{/if}
 								<button
 									class="btn-primary rounded-md px-2 py-1 text-xs"
-									disabled={!!gov && Number($actorStore.authorityTier) < gov.requiredTier}
-									title={gov && Number($actorStore.authorityTier) < gov.requiredTier
-										? `Your authority tier (${$actorStore.authorityTier}) is below the required tier ${gov.requiredTier}`
-										: ''}
 									on:click={() => approve(v.version_number)}>Approve</button
 								>
 							</div>

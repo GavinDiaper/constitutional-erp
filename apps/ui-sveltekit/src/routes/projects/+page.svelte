@@ -6,6 +6,7 @@
 	import { getActiveContracts, type ContractOption } from '$lib/api/contracts';
 	import { queryTable } from '$lib/api/query';
 	import { actorStore } from '$lib/stores/actorStore';
+	import { ApprovalPendingError } from '$lib/api/mesh';
 	import { projectStore, projectStatusBadge, loadProject, clearProjectStore } from '$lib/stores/projectStore';
 	import { createProject, activateProject } from '$lib/api/projects';
 	import type { Project, ProjectFilter } from '$lib/types/projects';
@@ -290,7 +291,11 @@
 			newProjectManagerId = managerOptions[0]?.employee_id ?? actor.actorId;
 			newProjectOrganizationId = organizationOptions[0]?.organization_id ?? '';
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Failed to create project';
+			if (err instanceof ApprovalPendingError) {
+				successMessage = err.message;
+			} else {
+				errorMessage = err instanceof Error ? err.message : 'Failed to create project';
+			}
 		} finally {
 			loading = false;
 		}
@@ -314,7 +319,11 @@
 			projects = projects.map((p) => (p.projectId === projectId ? updated.data : p));
 			successMessage = `Project activated successfully!`;
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Failed to activate project';
+			if (err instanceof ApprovalPendingError) {
+				successMessage = err.message;
+			} else {
+				errorMessage = err instanceof Error ? err.message : 'Failed to activate project';
+			}
 		} finally {
 			loading = false;
 		}

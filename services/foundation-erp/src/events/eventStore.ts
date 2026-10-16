@@ -6,6 +6,8 @@ export interface EventActor {
   type: "user" | "system";
   id: string;
   authorityTier?: string;
+  // True when the Mesh Gateway signed this identity; the Mesh has already applied Authority and Governance.
+  meshAsserted?: boolean;
 }
 
 export interface GovernanceContext {

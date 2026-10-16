@@ -94,7 +94,11 @@ function parseActorTier(actor?: EventActor): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Authority is decided by the Mesh Gateway; this check only remains as a fallback for direct (non-Mesh) calls.
 function requireTier(actor: EventActor | undefined, requiredTier: 1 | 2 | 3 | 4 | 5, message: string): void {
+  if (actor?.meshAsserted) {
+    return;
+  }
   if (parseActorTier(actor) < requiredTier) {
     throw new HttpError(403, "insufficient_authority", message);
   }

@@ -1,6 +1,6 @@
 # Role Refactor Plan: Authority, Governance, Mesh, Foundation
 
-Status: Proposed
+Status: Implemented (phases 1–6; see RoleRefactor-Implementation.md for gaps)
 Author: Copilot (plan), to be reviewed
 Related: Architecture v2, Authority Engine v1, Governance Engine v1, Mesh Gateway v3, Service Contracts Roadmap, Projects docs
 
@@ -175,19 +175,19 @@ Governance Engine (`services/governance-engine`):
 
 | # | Work item | Phase | Status |
 |---|---|---|---|
-| 1 | Confirm open decisions | 0 | Not started |
-| 2 | Baseline test run and flags | 0 | Not started |
-| 3 | Authority: PROJ/INV domains and tier rules | 1 | Not started |
-| 4 | Governance: PROJ/INV schemas and contract/project rules | 1 | Not started |
-| 5 | Mesh: context builders, create routes, adapter mappings | 2 | Not started |
-| 6 | Mesh: actor assertion and `ENFORCEMENT_MODE` | 2 | Not started |
-| 7 | Foundation: hypermedia for contracts/projects/milestones | 3 | Not started |
-| 8 | Foundation: trusted-actor middleware | 3 | Not started |
-| 9 | Foundation: remove in-process tier checks | 3/6 | Not started |
-| 10 | UI: Mesh proxy and client, 202 handling | 4 | Not started |
-| 11 | UI: approvals inbox and identity | 4 | Not started |
-| 12 | Navigator: writes via Mesh only | 5 | Not started |
-| 13 | MCP: Mesh-hosted execution, catalog additions, governance coverage test | 5 | Not started |
-| 14 | Shadow comparison then enforce | 6 | Not started |
-| 15 | Network restriction and key rotation | 6 | Not started |
-| 16 | Documentation and Postman updates | 6 | Not started |
+| 1 | Confirm open decisions | 0 | Done |
+| 2 | Baseline test run and flags | 0 | Done |
+| 3 | Authority: PROJ/INV domains and tier rules | 1 | Done |
+| 4 | Governance: PROJ/INV schemas and contract/project rules | 1 | Done |
+| 5 | Mesh: context builders, create routes, adapter mappings | 2 | Done |
+| 6 | Mesh: actor assertion and `ENFORCEMENT_MODE` | 2 | Done |
+| 7 | Foundation: hypermedia for contracts/projects/milestones | 3 | Done |
+| 8 | Foundation: trusted-actor middleware | 3 | Done |
+| 9 | Foundation: remove in-process tier checks | 3/6 | Partial (skipped for Mesh-asserted actors; fallback kept) |
+| 10 | UI: Mesh proxy and client, 202 handling | 4 | Done |
+| 11 | UI: approvals inbox and identity | 4 | Done |
+| 12 | Navigator: writes via Mesh only | 5 | Done |
+| 13 | MCP: Mesh-hosted execution, catalog additions, governance coverage test | 5 | Done except coverage test |
+| 14 | Shadow comparison then enforce | 6 | Mechanism built; run against real traffic pending |
+| 15 | Network restriction and key rotation | 6 | Documented (deployment action pending) |
+| 16 | Documentation and Postman updates | 6 | Docs done; Postman collection not yet updated |

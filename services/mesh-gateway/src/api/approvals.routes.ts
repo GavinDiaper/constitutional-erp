@@ -11,7 +11,9 @@ import {
   setTaskExecuted,
   setTaskRejected
 } from "../domain/approvals";
-import { parseDomainSegment } from "../domain/contextBuilders";
+import { buildDomainContext, canonicalResourceType } from "../domain/contextBuilders";
+import { evaluatePipeline } from "../domain/pipeline";
+import { adapterHeadersFromRequest } from "./adapterHeaders";
 import { logMeshEvent } from "../events/decisionLog";
 import { requireActorId } from "../middleware/requireActor";
 import { HttpError } from "../utils/errors";
@@ -23,25 +25,6 @@ const taskPathSchema = z.object({
 const listQuerySchema = z.object({
   actorId: z.string().min(1)
 });
-
-function adapterHeadersFromRequest(req: any): Record<string, string> {
-  const headers: Record<string, string> = {};
-  const values: Array<[string, string | undefined]> = [
-    ["authorization", req.header("authorization") ?? undefined],
-    ["x-actor-id", req.header("x-actor-id") ?? undefined],
-    ["x-actor-tier", req.header("x-actor-tier") ?? undefined],
-    ["x-actor-email", req.header("x-actor-email") ?? undefined],
-    ["x-actor-h2r-employee-id", req.header("x-actor-h2r-employee-id") ?? undefined]
-  ];
-
-  for (const [key, value] of values) {
-    if (value && value.trim()) {
-      headers[key] = value;
-    }
-  }
-
-  return headers;
-}
 
 export function createApprovalsRouter(input: {
   actorHeader: string;
@@ -113,38 +96,52 @@ export function createApprovalsRouter(input: {
         throw new HttpError(403, "not_assigned", "Actor is not assigned to this task");
       }
 
-      setTaskApproved(taskId, approverActorId);
-      const context = JSON.parse(task.contextJson) as Record<string, unknown>;
+      const storedContext = JSON.parse(task.contextJson) as Record<string, unknown>;
       const requestBody = JSON.parse(task.originalRequestBody) as Record<string, unknown>;
-
-      const authorityDecision = await input.authorityClient.check({
-        actorId: task.requestedBy,
-        action: task.action,
-        domain: task.domain,
-        context
-      });
-
-      if (!authorityDecision.allowed) {
-        setTaskRejected(taskId, approverActorId, "AuthorityDeniedOnRecheck");
-        throw new HttpError(403, "recheck_denied", "Recheck denied by Authority Engine");
-      }
-
-      const governanceDecision = await input.governanceClient.evaluate({
-        actorId: task.requestedBy,
-        action: task.action,
-        domain: parseDomainSegment(task.domain),
-        context,
-        authorityDecision
-      });
-
-      if (!governanceDecision.allowed || governanceDecision.requiresApproval || governanceDecision.escalatedToTier) {
-        setTaskRejected(taskId, approverActorId, "GovernanceDeniedOnRecheck");
-        throw new HttpError(403, "recheck_denied", "Recheck denied by Governance Engine");
-      }
-
       const adapter = input.adapterRegistry.getById(task.adapterId);
 
-      const upstream = await adapter.executeAction(task.meshActionPath, requestBody, adapterHeadersFromRequest(req));
+      // Re-evaluate as the approver (not the requester) against current resource state; the original
+      // requester stays in the context so separation of duties still applies to the approver.
+      let context = storedContext;
+      const mcpMatch = /\/mcp\/([^/]+)$/.exec(task.meshActionPath);
+      if (task.action !== "create" && !mcpMatch) {
+        const meshResourcePath = task.meshActionPath.split("/").slice(0, 5).join("/");
+        const current = await adapter.fetchResource(meshResourcePath, adapterHeadersFromRequest(req, { id: approverActorId }));
+        context = buildDomainContext(task.domain, current.resource.attributes, approverActorId, {
+          resourceType: canonicalResourceType(task.resourceType),
+          action: task.action,
+          body: requestBody
+        });
+      }
+
+      const decision = await evaluatePipeline(
+        { authorityClient: input.authorityClient, governanceClient: input.governanceClient },
+        { actorId: approverActorId, action: task.action, domain: task.domain, context }
+      );
+
+      if (decision.outcome !== "allow") {
+        const reason = decision.outcome === "deny" ? decision.reason : `RequiresTier${decision.requiredTier}`;
+        logMeshEvent({
+          eventType: "MeshActionDenied",
+          actorId: approverActorId,
+          domain: task.domain,
+          action: task.action,
+          resource: task.resourceId,
+          decision: "ApproverNotPermitted",
+          reason,
+          payload: { taskId }
+        });
+        throw new HttpError(403, "recheck_denied", `Approver is not permitted to approve this task: ${reason}`);
+      }
+
+      setTaskApproved(taskId, approverActorId);
+
+      const headers = adapterHeadersFromRequest(req, { id: approverActorId, tier: decision.authority.effectiveTier });
+      const upstream = mcpMatch
+        ? await adapter.invokeMcp!(decodeURIComponent(mcpMatch[1]), requestBody, headers)
+        : task.action === "create"
+          ? await adapter.createResource(task.meshActionPath, requestBody, headers)
+          : await adapter.executeAction(task.meshActionPath, requestBody, headers);
       if (upstream.status >= 400) {
         setTaskRejected(taskId, approverActorId, "ExecutionFailedAfterApproval");
         throw new HttpError(502, "execution_failed", "Action failed when forwarded to backend adapter");

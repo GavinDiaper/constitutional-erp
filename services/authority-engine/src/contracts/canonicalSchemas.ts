@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const authorityDomainSchema = z.union([z.literal("O2C"), z.literal("P2P"), z.literal("R2R"), z.literal("H2R")]);
+const authorityDomainSchema = z.union([z.literal("O2C"), z.literal("P2P"), z.literal("R2R"), z.literal("H2R"), z.literal("PROJ"), z.literal("INV")]);
 
 const eventBaseSchema = z.object({
   entityId: z.string().min(1),

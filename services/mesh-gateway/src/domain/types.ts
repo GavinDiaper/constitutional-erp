@@ -1,4 +1,4 @@
-export type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R";
+export type AuthorityDomain = "O2C" | "P2P" | "R2R" | "H2R" | "PROJ" | "INV";
 
 export interface AuthorityCheckResult {
   allowed: boolean;
@@ -24,6 +24,7 @@ export interface LinkDef {
   requiresApproval?: boolean;
   requiredApproverTier?: number;
   escalatedToTier?: number;
+  riskLevel?: "Low" | "Medium" | "High";
 }
 
 export interface PendingApprovalTask {

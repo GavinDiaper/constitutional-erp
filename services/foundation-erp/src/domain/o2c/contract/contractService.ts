@@ -318,7 +318,7 @@ export function approveContractVersion(contractId: string, versionNumber: number
     throw new HttpError(409, "invalid_transition", `Cannot approve contract version in state ${version.version_status}`);
   }
   const governance = contractApprovalGovernance(version.contract_value);
-  if (actorTier(actor) < governance.requiredTier) {
+  if (!actor?.meshAsserted && actorTier(actor) < governance.requiredTier) {
     throw new HttpError(
       403,
       "insufficient_authority",

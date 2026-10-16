@@ -107,6 +107,13 @@ export function createApprovalTask(input: {
   return { taskId };
 }
 
+export function findPendingTaskByFingerprint(requestFingerprint: string): { taskId: string } | null {
+  const row = db
+    .prepare("SELECT task_id FROM mesh_approval_task WHERE request_fingerprint = ? AND status = 'PENDING' LIMIT 1")
+    .get(requestFingerprint) as { task_id: string } | undefined;
+  return row ? { taskId: row.task_id } : null;
+}
+
 export function getApprovalTask(taskId: string): PendingApprovalTask | null {
   const row = db.prepare("SELECT * FROM mesh_approval_task WHERE task_id = ?").get(taskId) as ApprovalTaskRow | undefined;
   return row ? mapTask(row) : null;
@@ -115,7 +122,7 @@ export function getApprovalTask(taskId: string): PendingApprovalTask | null {
 export function listApprovalTasksForActor(actorId: string): Array<Record<string, unknown>> {
   const rows = db
     .prepare(
-      `SELECT t.task_id, t.status, t.domain, t.resource_id, t.action, t.required_tier, t.escalated_to_tier,
+      `SELECT t.task_id, t.status, t.requested_by, t.adapter_id, t.resource_type, t.domain, t.resource_id, t.action, t.required_tier, t.escalated_to_tier,
               t.request_fingerprint, t.created_at, t.updated_at
        FROM mesh_approval_task t
        INNER JOIN mesh_approval_assignment a ON a.task_id = t.task_id
