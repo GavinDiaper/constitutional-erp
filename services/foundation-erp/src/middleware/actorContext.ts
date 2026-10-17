@@ -24,7 +24,16 @@ function firstHeaderValue(value: string | string[] | undefined): string | undefi
 const ASSERTION_MAX_AGE_MS = 5 * 60 * 1000;
 
 // Writes to these resources must arrive via the Mesh Gateway once MESH_ASSERTION_SECRET is configured.
-const MESH_GOVERNED_PREFIXES = ["/api/v1/o2c/contracts", "/api/v1/projects", "/api/v1/mcp/invoke"];
+const MESH_GOVERNED_PREFIXES = [
+  "/api/v1/o2c/contracts",
+  "/api/v1/projects",
+  "/api/v1/mcp/invoke",
+  "/api/v1/inv/movements",
+  "/api/v1/h2r/vendor-rates",
+  "/api/v1/h2r/employee-cost-rates",
+  "/api/v1/h2r/authority-rules",
+  "/api/v1/timesheets/imports"
+];
 
 function verifyMeshAssertion(req: Request, secret: string): EventActor | null {
   const sig = firstHeaderValue(req.headers["x-mesh-actor-sig"])?.trim();
@@ -40,13 +49,23 @@ function verifyMeshAssertion(req: Request, secret: string): EventActor | null {
     return null;
   }
 
-  const expected = createHmac("sha256", secret).update(`${id}|${tier}|${ts}`).digest();
+  const governanceHeader = firstHeaderValue(req.headers["x-mesh-governance"])?.trim() ?? "";
+  const expected = createHmac("sha256", secret).update(`${id}|${tier}|${ts}|${governanceHeader}`).digest();
   const provided = Buffer.from(sig, "hex");
   if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     return null;
   }
 
-  return { type: id === "principal.system" ? "system" : "user", id, authorityTier: tier, meshAsserted: true };
+  let meshGovernance: Record<string, unknown> | undefined;
+  if (governanceHeader) {
+    try {
+      meshGovernance = JSON.parse(Buffer.from(governanceHeader, "base64url").toString("utf8"));
+    } catch {
+      meshGovernance = undefined;
+    }
+  }
+
+  return { type: id === "principal.system" ? "system" : "user", id, authorityTier: tier, meshAsserted: true, meshGovernance };
 }
 
 export function actorContext(req: Request, _res: Response, next: NextFunction): void {

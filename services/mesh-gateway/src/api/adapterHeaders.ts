@@ -1,5 +1,5 @@
 // Client-supplied tier is never forwarded: the Mesh asserts the tier the Authority Engine derived.
-export function adapterHeadersFromRequest(req: any, actor?: { id: string; tier?: number }): Record<string, string> {
+export function adapterHeadersFromRequest(req: any, actor?: { id: string; tier?: number; governance?: Record<string, unknown> }): Record<string, string> {
   const headers: Record<string, string> = {};
   const values: Array<[string, string | undefined]> = [
     ["authorization", req.header("authorization") ?? undefined],
@@ -16,6 +16,9 @@ export function adapterHeadersFromRequest(req: any, actor?: { id: string; tier?:
   if (actor) {
     headers["x-actor-id"] = actor.id;
     headers["x-actor-tier"] = String(actor.tier ?? 1);
+    if (actor.governance) {
+      headers["x-mesh-governance"] = Buffer.from(JSON.stringify(actor.governance)).toString("base64url");
+    }
   }
 
   return headers;

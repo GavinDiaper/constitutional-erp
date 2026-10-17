@@ -5,6 +5,7 @@ import { AuthorityClient } from "../clients/authorityClient";
 import { GovernanceClient } from "../clients/governanceClient";
 import { createApprovalTask, findPendingTaskByFingerprint } from "../domain/approvals";
 import { buildDomainContext, canonicalResourceType, parseDomainSegment } from "../domain/contextBuilders";
+import { findGovernedOperation } from "../domain/governedOperations";
 import { buildRequestFingerprint } from "../domain/fingerprint";
 import { evaluatePipeline, PipelineDecision } from "../domain/pipeline";
 import { AuthorityDomain, LinkDef } from "../domain/types";
@@ -221,7 +222,17 @@ export function createMeshRouter(input: {
     }
 
     const effectiveTier = decision.authority.effectiveTier;
-    const upstream = await args.execute(adapterHeadersFromRequest(req, { id: actorId, tier: effectiveTier }));
+    const governance = {
+      outcome: decision.outcome,
+      mode: shadow ? "shadow" : "enforce",
+      riskLevel: decision.governance?.riskLevel,
+      matchedRules: decision.governance?.matchedRules,
+      requesterId: args.context.requesterId,
+      action,
+      resourceType,
+      resourceId
+    };
+    const upstream = await args.execute(adapterHeadersFromRequest(req, { id: actorId, tier: effectiveTier, governance }));
 
     logMeshEvent({
       eventType: "MeshActionAllowed",
@@ -358,6 +369,51 @@ export function createMeshRouter(input: {
     }
   };
 
+  const handleOps = async (req: any, res: any, next: any) => {
+    try {
+      const actorId = requireActorId(req, input.actorHeader);
+      const adapter = input.adapterRegistry.getById(String(req.params.adapterId));
+      if (!adapter.forward) {
+        throw new HttpError(501, "ops_not_supported", "Adapter does not support governed operations");
+      }
+
+      const opPath = String(req.params[0] ?? "");
+      const requestBody = req.body ?? {};
+      const op = findGovernedOperation(opPath, requestBody);
+      if (!op) {
+        throw new HttpError(404, "operation_not_governed", `No governed operation for path: ${opPath}`);
+      }
+
+      const context = buildDomainContext(op.domain, requestBody, actorId, {
+        resourceType: op.resourceType,
+        action: op.action,
+        body: requestBody
+      });
+      // Approvals of nested resources carry no tracked requester, so separation of duties cannot apply.
+      context.requesterId = op.action === "approve" ? "unknown-requester" : actorId;
+      const decision = await evaluatePipeline(clients, { actorId, action: op.action, domain: op.domain, context });
+
+      await enforceAndExecute({
+        req,
+        res,
+        actorId,
+        domain: op.domain,
+        action: op.action,
+        resourceType: op.resourceType,
+        resourceId: op.resourceId,
+        adapterId: adapter.id,
+        meshPath: `/mesh/${adapter.id}/ops/${opPath.replace(/^\/+/, "")}`,
+        requestBody,
+        context,
+        decision,
+        execute: (headers) => adapter.forward!(op.backendPath, requestBody, headers)
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  router.post("/:adapterId/ops/*", handleOps);
   router.post("/:adapterId/mcp/:functionName", handleMcp);
   router.get("/:adapterId/:domain/:resource/:id", handleGet);
   router.post("/:adapterId/:domain/:resource/:id/:action", handlePost);

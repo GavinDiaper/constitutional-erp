@@ -8,6 +8,8 @@ export interface EventActor {
   authorityTier?: string;
   // True when the Mesh Gateway signed this identity; the Mesh has already applied Authority and Governance.
   meshAsserted?: boolean;
+  // Mesh-signed record of the governance decision that allowed this action; stored on the event, not the actor.
+  meshGovernance?: Record<string, unknown>;
 }
 
 export interface GovernanceContext {
@@ -34,6 +36,8 @@ export interface DomainEvent {
 export function appendEvent(event: DomainEvent): string {
   const eventId = event.eventId ?? newId("EVT-");
   try {
+    const { meshGovernance, ...actorForLog } = event.actor ?? ({} as EventActor);
+    const governance = event.governance || meshGovernance ? { ...event.governance, ...(meshGovernance ? { mesh: meshGovernance } : {}) } : undefined;
     db.prepare(
       `INSERT INTO event (
         event_id, entity_id, entity_type, event_type, version, timestamp, payload, correlation_id, causation_id, actor, governance_json
@@ -48,8 +52,8 @@ export function appendEvent(event: DomainEvent): string {
       JSON.stringify(event.payload),
       event.correlationId ?? null,
       event.causationId ?? null,
-      event.actor ? JSON.stringify(event.actor) : null,
-      event.governance ? JSON.stringify(event.governance) : null
+      event.actor ? JSON.stringify(actorForLog) : null,
+      governance ? JSON.stringify(governance) : null
     );
   } catch (err: unknown) {
     const e = err as { code?: string };

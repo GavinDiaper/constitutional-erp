@@ -57,3 +57,16 @@ test("PROJ force cancel needs tier 3", () => {
   assert.equal(input(2).requiredApproverTier, 3);
   assert.equal(input(3).allowed, true);
 });
+
+test("contract thresholds are configurable through governance parameters", async () => {
+  const { db } = await import("../src/db/connection");
+  db.prepare("UPDATE governance_parameter SET value = 2000 WHERE key = 'contract.tier3_threshold'").run();
+  try {
+    const result = contractApprove("approver", 2, 5000);
+    assert.equal(result.requiresApproval, true);
+    assert.equal(result.requiredApproverTier, 3);
+  } finally {
+    db.prepare("UPDATE governance_parameter SET value = 10000 WHERE key = 'contract.tier3_threshold'").run();
+  }
+  assert.equal(contractApprove("approver", 2, 5000).allowed, true);
+});

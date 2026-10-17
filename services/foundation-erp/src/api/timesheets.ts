@@ -21,6 +21,7 @@ import {
   previewTimesheetCsvImport
 } from "../domain/h2r/timesheetImportService";
 import { HttpError } from "../utils/errors";
+import { requireTier } from "../domain/authz";
 
 const router = Router();
 
@@ -31,10 +32,7 @@ const previewImportSchema = z.object({
 });
 
 function requireImportAuthority(req: Request): void {
-  const tier = Number(req.actor?.authorityTier ?? 0);
-  if (!Number.isFinite(tier) || tier < 4) {
-    throw new HttpError(403, "insufficient_authority", "Timesheet import requires authority tier 4 or higher");
-  }
+  requireTier(req.actor, 4, "Timesheet import requires authority tier 4 or higher");
 }
 
 function sendError(res: Response, err: unknown): void {

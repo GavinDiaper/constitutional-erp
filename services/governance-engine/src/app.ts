@@ -4,6 +4,7 @@ import { governanceRouter } from "./api/governance.routes";
 import { eventRouter } from "./api/events.routes";
 import { queryRouter } from "./api/query.routes";
 import { loadConfig } from "./config/env";
+import { parametersRouter } from "./api/parameters.routes";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { readinessGate } from "./middleware/readinessGate";
 import { getReplayError, getReplayStatus } from "./projection/state";
@@ -28,6 +29,7 @@ export function createApp() {
   });
 
   app.use("/governance", apiKeyAuth(config.apiKey), readinessGate(), governanceRouter);
+  app.use("/governance", apiKeyAuth(config.apiKey), parametersRouter);
   app.use("/api/v1", apiKeyAuth(config.apiKey), eventRouter);
   app.use("/api/v1", apiKeyAuth(config.apiKey), queryRouter);
 

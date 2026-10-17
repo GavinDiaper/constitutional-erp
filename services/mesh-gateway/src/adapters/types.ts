@@ -22,5 +22,6 @@ export interface BackendAdapter {
   createResource(meshPath: string, body: unknown, headers: Record<string, string>): Promise<CanonicalActionResult>;
   getMcpFunction?(functionName: string, headers: Record<string, string>): Promise<{ domain: string; entity?: string; action?: string } | null>;
   invokeMcp?(functionName: string, input: unknown, headers: Record<string, string>): Promise<CanonicalActionResult>;
+  forward?(backendPath: string, body: unknown, headers: Record<string, string>): Promise<CanonicalActionResult>;
   health(): Promise<boolean>;
 }

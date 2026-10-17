@@ -1,4 +1,4 @@
-import { proxyHubGet, proxyHubRequest } from '$lib/server/hubProxy';
+import { proxyHubGet, proxyMeshRequest } from '$lib/server/hubProxy';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request }) => {
@@ -7,5 +7,5 @@ export const GET: RequestHandler = async ({ request }) => {
 
 export const POST: RequestHandler = async ({ request }) => {
 	const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-	return proxyHubRequest('/inv/movements', request.headers, 'POST', payload);
+	return proxyMeshRequest(`foundation/ops/inv/movements`, '', request.headers, 'POST', payload);
 };

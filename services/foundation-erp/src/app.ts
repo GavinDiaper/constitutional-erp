@@ -28,6 +28,10 @@ import { runMigrations } from "./db/migrate";
 export function createApp() {
   const config = loadConfig();
 
+  if (process.env.NODE_ENV === "production" && !process.env.MESH_ASSERTION_SECRET?.trim()) {
+    throw new Error("MESH_ASSERTION_SECRET is required in production so only the Mesh Gateway can authorise writes");
+  }
+
   runMigrations();
   seedStarterAccounts();
   seedTaxConfiguration();

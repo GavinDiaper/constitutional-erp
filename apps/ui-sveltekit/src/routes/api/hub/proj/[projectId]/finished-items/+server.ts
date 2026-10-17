@@ -1,4 +1,4 @@
-import { proxyHubGet, proxyHubRequest } from '$lib/server/hubProxy';
+import { proxyHubGet, proxyMeshRequest } from '$lib/server/hubProxy';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, params }) => {
@@ -7,5 +7,5 @@ export const GET: RequestHandler = async ({ request, params }) => {
 
 export const POST: RequestHandler = async ({ request, params }) => {
 	const body = await request.json() as unknown;
-	return proxyHubRequest(`/projects/${params.projectId}/finished-items`, request.headers, 'POST', body);
+	return proxyMeshRequest(`foundation/ops/proj/projects/${params.projectId}/finished-items`, '', request.headers, 'POST', body);
 };

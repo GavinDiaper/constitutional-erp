@@ -4276,12 +4276,13 @@ test("Mesh-asserted actors are trusted for contracts; unsigned writes are refuse
   const headers = authHeaders();
   const unique = Date.now();
   const secret = "test-mesh-secret";
-  const sign = (id: string, tier: string, ts = String(Date.now())) => ({
+  const sign = (id: string, tier: string, ts = String(Date.now()), governance = "") => ({
     "x-actor-type": "user",
     "x-actor-id": id,
     "x-actor-tier": tier,
     "x-mesh-actor-ts": ts,
-    "x-mesh-actor-sig": createHmac("sha256", secret).update(`${id}|${tier}|${ts}`).digest("hex")
+    ...(governance ? { "x-mesh-governance": governance } : {}),
+    "x-mesh-actor-sig": createHmac("sha256", secret).update(`${id}|${tier}|${ts}|${governance}`).digest("hex")
   });
 
   const customer = await request(app)
@@ -4315,10 +4316,27 @@ test("Mesh-asserted actors are trusted for contracts; unsigned writes are refuse
     assert.ok(detail.body.data._links.approve);
 
     // Foundation does not second-guess the Mesh: a Mesh-asserted actor is not re-tier-checked here.
+    const governance = Buffer.from(JSON.stringify({ outcome: "approved", approvalTaskId: "TASK-X", riskLevel: "High" })).toString("base64url");
     await request(app)
       .post(`/api/v1/o2c/contracts/${contractId}/approve`)
-      .set({ ...headers, ...sign("approver", "2") })
+      .set({ ...headers, ...sign("approver", "2", String(Date.now()), governance) })
       .expect(200);
+
+    // The Mesh-signed governance decision is persisted on the event.
+    const { db } = await import("../src/db/connection");
+    const rows = db.prepare("SELECT governance_json, actor FROM event WHERE actor LIKE '%\"approver\"%' AND governance_json LIKE '%TASK-X%'").all() as Array<{ governance_json: string; actor: string }>;
+    assert.ok(rows.length > 0);
+    assert.ok(!rows[0].actor.includes("meshGovernance"));
+
+    // A tampered governance header invalidates the signature.
+    await request(app)
+      .post(`/api/v1/o2c/contracts/${contractId}/approve`)
+      .set({ ...headers, ...sign("approver", "2", String(Date.now()), governance), "x-mesh-governance": Buffer.from("{}").toString("base64url") })
+      .expect(401);
+
+    // Other governed writes are also Mesh-only.
+    await request(app).post("/api/v1/inv/movements").set(headers).send({}).expect(401);
+    await request(app).post("/api/v1/h2r/employee-cost-rates").set(headers).send({}).expect(401);
   } finally {
     delete process.env.MESH_ASSERTION_SECRET;
   }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { validateBody } from "../../middleware/validate";
 import { entityWithLinks } from "../../utils/hypermedia";
 import { HttpError } from "../../utils/errors";
+import { requireTier } from "../../domain/authz";
 import {
   createEmployee,
   getEmployeeById,
@@ -113,10 +114,7 @@ const createEmployeeCostRateSchema = z.object({
 });
 
 function requireRateAdmin(req: import("express").Request): void {
-  const tier = Number(req.actor?.authorityTier ?? 0);
-  if (!Number.isFinite(tier) || tier < 4) {
-    throw new HttpError(403, "insufficient_authority", "Rate management requires authority tier 4 or higher");
-  }
+  requireTier(req.actor, 4, "Rate management requires authority tier 4 or higher");
 }
 
 // ── HATEOAS link builders ────────────────────────────────────────────────────

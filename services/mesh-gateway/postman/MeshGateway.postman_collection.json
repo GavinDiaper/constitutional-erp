@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "c3a2b1d0-e456-7890-abcd-ef1234567890",
     "name": "Mesh Gateway",
-    "description": "Constitutional Mesh Gateway – proxy, hypermedia filtering, action execution, and approval workflow",
+    "description": "Constitutional Mesh Gateway \u2013 proxy, hypermedia filtering, action execution, and approval workflow",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "00 – P2P Setup (Foundation ERP fixture)",
-      "description": "Creates a Supplier → Requisition (submit → approve → convert to PO) directly against Foundation ERP. Captures supplierId, requisitionId, and poId as environment variables for use in the mesh tests below.",
+      "name": "00 \u2013 P2P Setup (Foundation ERP fixture)",
+      "description": "Creates a Supplier \u2192 Requisition (submit \u2192 approve \u2192 convert to PO) directly against Foundation ERP. Captures supplierId, requisitionId, and poId as environment variables for use in the mesh tests below.",
       "item": [
         {
           "name": "Create Supplier",
@@ -250,7 +250,7 @@
       ]
     },
     {
-      "name": "01 – O2C Setup (Foundation ERP fixture)",
+      "name": "01 \u2013 O2C Setup (Foundation ERP fixture)",
       "description": "Creates Customer -> Quote -> Order -> Invoice -> Payment directly in Foundation ERP so O2C mesh GET/POST requests can run against real IDs.",
       "item": [
         {
@@ -721,7 +721,7 @@
       ]
     },
     {
-      "name": "10 – Health",
+      "name": "10 \u2013 Health",
       "item": [
         {
           "name": "GET /health",
@@ -737,7 +737,7 @@
                 "health"
               ]
             },
-            "description": "Liveness probe – no auth required."
+            "description": "Liveness probe \u2013 no auth required."
           }
         },
         {
@@ -755,13 +755,13 @@
                 "ready"
               ]
             },
-            "description": "Readiness probe – returns 200 when Authority Engine and Governance Engine are healthy and at least one registered backend adapter is healthy; 503 otherwise."
+            "description": "Readiness probe \u2013 returns 200 when Authority Engine and Governance Engine are healthy and at least one registered backend adapter is healthy; 503 otherwise."
           }
         }
       ]
     },
     {
-      "name": "20 – Hypermedia Proxy (GET resource)",
+      "name": "20 \u2013 Hypermedia Proxy (GET resource)",
       "item": [
         {
           "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id",
@@ -900,7 +900,7 @@
       ]
     },
     {
-      "name": "21 – O2C Hypermedia Proxy (GET resource)",
+      "name": "21 \u2013 O2C Hypermedia Proxy (GET resource)",
       "item": [
         {
           "name": "GET /mesh/:adapterId/o2c/orders/:id",
@@ -1003,10 +1003,10 @@
       ]
     },
     {
-      "name": "30 – Action Execution (POST action)",
+      "name": "30 \u2013 Action Execution (POST action)",
       "item": [
         {
-          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue – Allow (direct execution)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue \u2013 Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -1041,7 +1041,7 @@
                 "issue"
               ]
             },
-            "description": "Issues a purchase order (Draft → Issued). If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
+            "description": "Issues a purchase order (Draft \u2192 Issued). If authority and governance allow it directly, Mesh forwards execution through the selected backend adapter and returns the adapter response (200/201)."
           },
           "event": [
             {
@@ -1077,7 +1077,7 @@
           ]
         },
         {
-          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/acknowledge – Allow (direct execution)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/acknowledge \u2013 Allow (direct execution)",
           "request": {
             "method": "POST",
             "header": [
@@ -1112,7 +1112,7 @@
                 "acknowledge"
               ]
             },
-            "description": "Acknowledges a purchase order (Issued → Acknowledged). Run after the issue step."
+            "description": "Acknowledges a purchase order (Issued \u2192 Acknowledged). Run after the issue step."
           },
           "event": [
             {
@@ -1143,7 +1143,7 @@
           ]
         },
         {
-          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue – Requires Approval (202 + task, illustrative)",
+          "name": "POST /mesh/:adapterId/p2p/purchase-orders/:id/issue \u2013 Requires Approval (202 + task, illustrative)",
           "request": {
             "method": "POST",
             "header": [
@@ -1178,7 +1178,7 @@
                 "issue"
               ]
             },
-            "description": "Illustrative only – when governance determines the action requires approval, the gateway returns HTTP 202 with a task ID. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Actual outcome (allow vs 202) depends on governance engine configuration for the actor/resource combination."
+            "description": "Illustrative only \u2013 when governance determines the action requires approval, the gateway returns HTTP 202 with a task ID. The response body contains `{ taskId, status: 'PENDING', requiredTier }`. Actual outcome (allow vs 202) depends on governance engine configuration for the actor/resource combination."
           },
           "event": [
             {
@@ -1279,7 +1279,7 @@
       ]
     },
     {
-      "name": "31 – O2C Action Execution (POST action)",
+      "name": "31 \u2013 O2C Action Execution (POST action)",
       "item": [
         {
           "name": "POST /mesh/:adapterId/o2c/orders/:id/confirm",
@@ -1642,7 +1642,7 @@
       ]
     },
     {
-      "name": "02 – R2R Setup (Foundation ERP fixture)",
+      "name": "02 \u2013 R2R Setup (Foundation ERP fixture)",
       "description": "Creates account, fiscal year, fiscal period, and draft journal with lines in Foundation ERP for R2R mesh tests.",
       "item": [
         {
@@ -2009,7 +2009,7 @@
       ]
     },
     {
-      "name": "22 – R2R Hypermedia Proxy (GET resource)",
+      "name": "22 \u2013 R2R Hypermedia Proxy (GET resource)",
       "item": [
         {
           "name": "GET /mesh/:adapterId/r2r/journals/:id",
@@ -2083,7 +2083,7 @@
       ]
     },
     {
-      "name": "32 – R2R Action Execution (POST action)",
+      "name": "32 \u2013 R2R Action Execution (POST action)",
       "item": [
         {
           "name": "POST /mesh/:adapterId/r2r/journals/:id/post",
@@ -2190,7 +2190,7 @@
       ]
     },
     {
-      "name": "03 – H2R Setup (Foundation ERP fixture)",
+      "name": "03 \u2013 H2R Setup (Foundation ERP fixture)",
       "description": "Creates employee, position, assignment, and credential in Foundation ERP for H2R mesh tests.",
       "item": [
         {
@@ -2401,7 +2401,7 @@
       ]
     },
     {
-      "name": "23 – H2R Hypermedia Proxy (GET resource)",
+      "name": "23 \u2013 H2R Hypermedia Proxy (GET resource)",
       "item": [
         {
           "name": "GET /mesh/:adapterId/h2r/employees/:id",
@@ -2475,7 +2475,7 @@
       ]
     },
     {
-      "name": "33 – H2R Action Execution (POST action)",
+      "name": "33 \u2013 H2R Action Execution (POST action)",
       "item": [
         {
           "name": "POST /mesh/:adapterId/h2r/employees/:id/leave",
@@ -2633,7 +2633,7 @@
       ]
     },
     {
-      "name": "40 – Approval Workflow",
+      "name": "40 \u2013 Approval Workflow",
       "item": [
         {
           "name": "GET /mesh/approvals?actorId=",
@@ -2731,7 +2731,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"notes\": \"Approved – reviewed supporting documents\"\n}"
+              "raw": "{\n  \"notes\": \"Approved \u2013 reviewed supporting documents\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/mesh/approvals/{{approvalTaskId}}/approve",
@@ -2788,10 +2788,10 @@
       ]
     },
     {
-      "name": "50 – Error Cases",
+      "name": "50 \u2013 Error Cases",
       "item": [
         {
-          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id – missing x-api-key (401)",
+          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id \u2013 missing x-api-key (401)",
           "request": {
             "method": "GET",
             "header": [
@@ -2813,11 +2813,11 @@
                 "{{poId}}"
               ]
             },
-            "description": "Expect 401 – API key absent."
+            "description": "Expect 401 \u2013 API key absent."
           }
         },
         {
-          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id – missing x-actor-id (400)",
+          "name": "GET /mesh/:adapterId/p2p/purchase-orders/:id \u2013 missing x-actor-id (400)",
           "request": {
             "method": "GET",
             "header": [
@@ -2839,11 +2839,11 @@
                 "{{poId}}"
               ]
             },
-            "description": "Expect 400 missing_actor – actor header absent."
+            "description": "Expect 400 missing_actor \u2013 actor header absent."
           }
         },
         {
-          "name": "POST /mesh/approvals/:taskId/approve – task not found (404)",
+          "name": "POST /mesh/approvals/:taskId/approve \u2013 task not found (404)",
           "request": {
             "method": "POST",
             "header": [
@@ -2878,6 +2878,540 @@
             },
             "description": "Expect 404 task_not_found."
           }
+        }
+      ]
+    },
+    {
+      "name": "60 \u2013 Contracts, Projects & Governed Operations (role refactor)",
+      "item": [
+        {
+          "name": "Create contract via Mesh (create allowed at tier 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/contracts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "o2c",
+                "contracts"
+              ]
+            },
+            "description": "Creation passes through Authority then Governance, then Foundation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"name\": \"SoW \\u2013 Mesh\",\n  \"version\": {\n    \"contractValue\": 50000,\n    \"currencyCode\": \"USD\",\n    \"effectiveFrom\": \"2026-01-01\",\n    \"sowSnapshot\": {\n      \"deliverables\": [\n        {\n          \"name\": \"Discovery\",\n          \"amount\": 20000\n        },\n        {\n          \"name\": \"Build\",\n          \"amount\": 30000\n        }\n      ]\n    }\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', function(){ pm.expect([201]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); const v = (j.data||{}).contract_id; if (v) pm.collectionVariables.set('contractId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve contract as requester-tier-2 (50k needs tier 3 \u2192 202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.o2c-tier2"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/o2c/contracts/{{contractId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "o2c",
+                "contracts",
+                "{{contractId}}",
+                "approve"
+              ]
+            },
+            "description": "Value >10k (configurable parameter contract.tier3_threshold) creates an approval task.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 202', function(){ pm.expect([202]).to.include(pm.response.code); });",
+                  "try { const j = pm.response.json(); const v = j.taskId; if (v) pm.collectionVariables.set('approvalTaskId', v); } catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my approvals (limited to authenticated actor)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.o2c-tier3"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals"
+              ]
+            },
+            "description": "actorId query is optional and must match x-actor-id."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', function(){ pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve task as tier 3 (re-evaluated as approver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.o2c-tier3"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals/{{approvalTaskId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals",
+                "{{approvalTaskId}}",
+                "approve"
+              ]
+            },
+            "description": "SoD applies to the approver; tier 3 satisfies the 50k band.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200/403', function(){ pm.expect([200,403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create project via Mesh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.proj-tier1"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/proj/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "proj",
+                "projects"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mesh Project\",\n  \"projectType\": \"Internal\",\n  \"budgetAmount\": 1000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201/400', function(){ pm.expect([201,400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel project with force as tier 2 (\u2192 202 approval)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.proj-tier2"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/proj/projects/{{projectId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "proj",
+                "projects",
+                "{{projectId}}",
+                "cancel"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellationReason\": \"test\",\n  \"forceCancel\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 202/404/409', function(){ pm.expect([202,404,409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Governed operation: inventory adjustment as tier 1 (denied)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.inv-tier1"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/ops/inv/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "ops",
+                "inv",
+                "movements"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movementType\": \"adjustment\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function(){ pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Governed operation: approve milestone as tier 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.proj-tier2"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/ops/proj/projects/{{projectId}}/milestones/{{milestoneId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "ops",
+                "proj",
+                "projects",
+                "{{projectId}}",
+                "milestones",
+                "{{milestoneId}}",
+                "approve"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200/404/409', function(){ pm.expect([200,404,409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Governed operation: employee cost rate as tier 2 (denied)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.h2r-tier2"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/ops/h2r/employee-cost-rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "ops",
+                "h2r",
+                "employee-cost-rates"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function(){ pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "MCP via Mesh: o2c_create_contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "{{requesterActorId}}"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/{{meshAdapterId}}/mcp/o2c_create_contract",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "{{meshAdapterId}}",
+                "mcp",
+                "o2c_create_contract"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": {\n    \"customerId\": \"{{customerId}}\",\n    \"name\": \"SoW \\u2013 MCP\",\n    \"version\": {\n      \"contractValue\": 50000,\n      \"currencyCode\": \"USD\",\n      \"effectiveFrom\": \"2026-01-01\",\n      \"sowSnapshot\": {\n        \"deliverables\": [\n          {\n            \"name\": \"Discovery\",\n            \"amount\": 20000\n          },\n          {\n            \"name\": \"Build\",\n            \"amount\": 30000\n          }\n        ]\n      }\n    }\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200/201/202', function(){ pm.expect([200,201,202]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approvals list rejects another actor's id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "x-actor-id",
+                "value": "principal.o2c-tier3"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mesh/approvals?actorId=someone-else",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesh",
+                "approvals?actorId=someone-else"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', function(){ pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -2966,6 +3500,18 @@
     {
       "key": "approvalExpected",
       "value": "false"
+    },
+    {
+      "key": "projectId",
+      "value": ""
+    },
+    {
+      "key": "milestoneId",
+      "value": ""
+    },
+    {
+      "key": "contractId",
+      "value": ""
     }
   ]
 }

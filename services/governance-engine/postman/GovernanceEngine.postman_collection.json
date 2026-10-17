@@ -14,8 +14,12 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           }
         }
@@ -44,8 +48,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/governance/evaluate",
-              "host": ["{{baseUrl}}"],
-              "path": ["governance", "evaluate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "governance",
+                "evaluate"
+              ]
             }
           }
         }
@@ -66,14 +75,113 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/events?limit=100",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "events"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "events"
+              ],
               "query": [
                 {
                   "key": "limit",
                   "value": "100"
                 }
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "40 - Governance Parameters",
+      "item": [
+        {
+          "name": "GET /governance/parameters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/governance/parameters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "governance",
+                "parameters"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT contract.tier3_threshold",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/governance/parameters/contract.tier3_threshold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "governance",
+                "parameters",
+                "contract.tier3_threshold"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 10000,\n  \"updatedBy\": \"admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT contract.tier4_threshold",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{apiKey}}"
+              },
+              {
+                "key": "content-type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/governance/parameters/contract.tier4_threshold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "governance",
+                "parameters",
+                "contract.tier4_threshold"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 100000,\n  \"updatedBy\": \"admin\"\n}"
             }
           }
         }

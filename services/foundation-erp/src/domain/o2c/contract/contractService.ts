@@ -1,6 +1,7 @@
 import { db, transaction } from "../../../db/connection";
 import { appendEvent, EventActor, GovernanceContext } from "../../../events/eventStore";
 import { HttpError } from "../../../utils/errors";
+import { requireTier } from "../../authz";
 import { newId } from "../../../utils/id";
 
 type ContractVersionInput = {
@@ -21,20 +22,21 @@ export interface SowDeliverable {
   description?: string;
 }
 
-// Value bands drive the risk level and minimum authority tier for approving a contract version.
+function envThreshold(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+// Indicative bands (hints and direct-call fallback). The authoritative thresholds are the Governance Engine
+// parameters contract.tier3_threshold / contract.tier4_threshold; keep these env values aligned with them.
 export function contractApprovalGovernance(contractValue: number): Required<Pick<GovernanceContext, "riskLevel" | "requiredTier" | "governanceTag">> {
-  if (contractValue > 100000) {
+  if (contractValue > envThreshold("CONTRACT_TIER4_THRESHOLD", 100000)) {
     return { riskLevel: "High", requiredTier: 4, governanceTag: "contract_version_approve" };
   }
-  if (contractValue > 10000) {
+  if (contractValue > envThreshold("CONTRACT_TIER3_THRESHOLD", 10000)) {
     return { riskLevel: "Medium", requiredTier: 3, governanceTag: "contract_version_approve" };
   }
   return { riskLevel: "Low", requiredTier: 2, governanceTag: "contract_version_approve" };
-}
-
-function actorTier(actor?: EventActor): number {
-  const parsed = Number(actor?.authorityTier);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function parseSowDeliverables(snapshot: unknown): SowDeliverable[] {
@@ -318,13 +320,11 @@ export function approveContractVersion(contractId: string, versionNumber: number
     throw new HttpError(409, "invalid_transition", `Cannot approve contract version in state ${version.version_status}`);
   }
   const governance = contractApprovalGovernance(version.contract_value);
-  if (!actor?.meshAsserted && actorTier(actor) < governance.requiredTier) {
-    throw new HttpError(
-      403,
-      "insufficient_authority",
-      `Insufficient authority to approve a ${governance.riskLevel}-risk contract version (tier ${governance.requiredTier}+ required)`
-    );
-  }
+  requireTier(
+    actor,
+    governance.requiredTier,
+    `Insufficient authority to approve a ${governance.riskLevel}-risk contract version (tier ${governance.requiredTier}+ required)`
+  );
   const timestamp = now();
   const approvedBy = actor?.id ?? "system";
 

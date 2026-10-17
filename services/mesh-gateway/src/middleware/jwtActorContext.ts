@@ -53,32 +53,26 @@ function verifyToken(token: string, config: AppConfig): JwtClaims | null {
   }
 }
 
+// A verified token is the source of truth for identity: client-supplied actor headers are overwritten.
+// With requireJwt set (production), unauthenticated /mesh requests are refused.
 export function jwtActorContext(config: AppConfig) {
-  return (req: Request, _res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const token = parseBearerToken(req.header("authorization"));
-    if (!token) {
+    const claims = token ? verifyToken(token, config) : null;
+    const actorId = claims?.h2r_employee_id || claims?.identity_id;
+
+    if (!claims || !actorId) {
+      if (config.requireJwt && req.path.startsWith("/mesh") && req.path !== "/mesh/ready") {
+        res.status(401).json({ title: "authentication_required", status: 401, detail: "A valid bearer token is required" });
+        return;
+      }
       next();
       return;
     }
 
-    const claims = verifyToken(token, config);
-    if (!claims?.identity_id) {
-      next();
-      return;
-    }
-
-    const existingActorId = req.header(config.actorIdHeader)?.trim();
-    const existingActorTier = req.header("x-actor-tier")?.trim();
-
-    if (!existingActorId) {
-      req.headers[config.actorIdHeader] = claims.identity_id;
-    }
-
-    if (!existingActorTier) {
-      req.headers["x-actor-tier"] = claims.is_admin ? "5" : "2";
-    }
-
-    req.headers["x-identity-id"] = claims.identity_id;
+    req.headers[config.actorIdHeader] = actorId;
+    req.headers["x-identity-id"] = claims.identity_id ?? actorId;
+    delete req.headers["x-actor-tier"];
 
     if (claims.email) {
       req.headers["x-actor-email"] = claims.email;

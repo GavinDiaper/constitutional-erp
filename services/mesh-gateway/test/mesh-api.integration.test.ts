@@ -608,3 +608,58 @@ test("POST /mesh/:adapter/mcp/:fn is governed by the catalog domain/action", asy
   assert.equal(response.status, 200);
   assert.deepEqual(executed, ["mcp:o2c_create_contract"]);
 });
+
+test("POST /mesh/:adapter/ops/* governs nested writes (milestone approval) and replays after approval", async () => {
+  const forwarded: string[] = [];
+  const base = contractAdapter([]);
+  const opsAdapter = {
+    ...base,
+    forward: async (backendPath: string) => {
+      forwarded.push(backendPath);
+      return { status: 200, data: { ok: true } };
+    }
+  };
+  const appWithStubs = createApp({
+    authorityClient: tieredAuthority({ requester: 2 }) as unknown as never,
+    governanceClient: buildGovernanceClient() as unknown as never,
+    adapterRegistry: new AdapterRegistry([opsAdapter as never])
+  });
+
+  const response = await request(appWithStubs)
+    .post("/mesh/foundation/ops/proj/projects/P1/milestones/M1/approve")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({});
+  assert.equal(response.status, 200);
+  assert.deepEqual(forwarded, ["/projects/P1/milestones/M1/approve"]);
+
+  const unknown = await request(appWithStubs)
+    .post("/mesh/foundation/ops/p2p/anything")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "requester")
+    .send({});
+  assert.equal(unknown.status, 404);
+});
+
+test("findGovernedOperation maps inventory adjustments and rate admin to governed actions", async () => {
+  const { findGovernedOperation } = await import("../src/domain/governedOperations");
+  assert.equal(findGovernedOperation("inv/movements", { movementType: "adjustment" })?.action, "adjust");
+  assert.equal(findGovernedOperation("inv/movements", { movementType: "receipt" })?.action, "create");
+  assert.equal(findGovernedOperation("h2r/employee-cost-rates", {})?.resourceType, "employee-cost-rate");
+  assert.equal(findGovernedOperation("proj/projects/P1/cancel", {})?.resourceType, "project");
+  assert.equal(findGovernedOperation("proj/projects/P1/tasks", {})?.action, "create");
+});
+
+test("approvals listing is limited to the authenticated actor", async () => {
+  const mismatch = await request(app)
+    .get("/mesh/approvals?actorId=someone-else")
+    .set("x-api-key", config.apiKey)
+    .set("x-actor-id", "me");
+  assert.equal(mismatch.status, 403);
+});
+
+test("requireJwt refuses unauthenticated mesh calls", async () => {
+  const strict = createApp({ config: { ...config, requireJwt: true } });
+  const response = await request(strict).get("/mesh/foundation/p2p/purchase-orders/PO-1").set("x-api-key", config.apiKey).set("x-actor-id", "me");
+  assert.equal(response.status, 401);
+});

@@ -12,6 +12,7 @@ import {
   setTaskRejected
 } from "../domain/approvals";
 import { buildDomainContext, canonicalResourceType } from "../domain/contextBuilders";
+import { findGovernedOperation } from "../domain/governedOperations";
 import { evaluatePipeline } from "../domain/pipeline";
 import { adapterHeadersFromRequest } from "./adapterHeaders";
 import { logMeshEvent } from "../events/decisionLog";
@@ -23,7 +24,7 @@ const taskPathSchema = z.object({
 });
 
 const listQuerySchema = z.object({
-  actorId: z.string().min(1)
+  actorId: z.string().min(1).optional()
 });
 
 export function createApprovalsRouter(input: {
@@ -37,7 +38,11 @@ export function createApprovalsRouter(input: {
   router.get("/", (req, res, next) => {
     try {
       const query = listQuerySchema.parse(req.query);
-      const tasks = listApprovalTasksForActor(query.actorId);
+      const actorId = requireActorId(req, input.actorHeader);
+      if (query.actorId && query.actorId !== actorId) {
+        throw new HttpError(403, "actor_mismatch", "Approvals can only be listed for the authenticated actor");
+      }
+      const tasks = listApprovalTasksForActor(actorId);
       res.json({ data: tasks });
     } catch (error) {
       next(error);
@@ -104,7 +109,8 @@ export function createApprovalsRouter(input: {
       // requester stays in the context so separation of duties still applies to the approver.
       let context = storedContext;
       const mcpMatch = /\/mcp\/([^/]+)$/.exec(task.meshActionPath);
-      if (task.action !== "create" && !mcpMatch) {
+      const opsMatch = /\/ops\/(.+)$/.exec(task.meshActionPath);
+      if (task.action !== "create" && !mcpMatch && !opsMatch) {
         const meshResourcePath = task.meshActionPath.split("/").slice(0, 5).join("/");
         const current = await adapter.fetchResource(meshResourcePath, adapterHeadersFromRequest(req, { id: approverActorId }));
         context = buildDomainContext(task.domain, current.resource.attributes, approverActorId, {
@@ -136,8 +142,28 @@ export function createApprovalsRouter(input: {
 
       setTaskApproved(taskId, approverActorId);
 
-      const headers = adapterHeadersFromRequest(req, { id: approverActorId, tier: decision.authority.effectiveTier });
-      const upstream = mcpMatch
+      const headers = adapterHeadersFromRequest(req, {
+        id: approverActorId,
+        tier: decision.authority.effectiveTier,
+        governance: {
+          outcome: "approved",
+          approvalTaskId: taskId,
+          requestedBy: task.requestedBy,
+          approvedBy: approverActorId,
+          riskLevel: decision.governance.riskLevel,
+          matchedRules: decision.governance.matchedRules,
+          action: task.action,
+          resourceType: task.resourceType,
+          resourceId: task.resourceId
+        }
+      });
+      const op = opsMatch ? findGovernedOperation(opsMatch[1], requestBody) : null;
+      if (opsMatch && !op) {
+        throw new HttpError(409, "operation_not_governed", "Stored operation is no longer recognised");
+      }
+      const upstream = op
+        ? await adapter.forward!(op.backendPath, requestBody, headers)
+        : mcpMatch
         ? await adapter.invokeMcp!(decodeURIComponent(mcpMatch[1]), requestBody, headers)
         : task.action === "create"
           ? await adapter.createResource(task.meshActionPath, requestBody, headers)

@@ -196,8 +196,8 @@ function mapLinks(rawValue: unknown, publicBasePath: string): Record<string, Lin
   return links;
 }
 
-export function signMeshActor(secret: string, actorId: string, tier: string, ts: string): string {
-  return createHmac("sha256", secret).update(`${actorId}|${tier}|${ts}`).digest("hex");
+export function signMeshActor(secret: string, actorId: string, tier: string, ts: string, governance = ""): string {
+  return createHmac("sha256", secret).update(`${actorId}|${tier}|${ts}|${governance}`).digest("hex");
 }
 
 export class FoundationAdapter implements BackendAdapter {
@@ -235,13 +235,20 @@ export class FoundationAdapter implements BackendAdapter {
     if (this.config.meshAssertionSecret && actorId && actorTier) {
       const ts = String(Date.now());
       baseHeaders["x-mesh-actor-ts"] = ts;
-      baseHeaders["x-mesh-actor-sig"] = signMeshActor(this.config.meshAssertionSecret, actorId, actorTier, ts);
+      baseHeaders["x-mesh-actor-sig"] = signMeshActor(
+        this.config.meshAssertionSecret,
+        actorId,
+        actorTier,
+        ts,
+        forwarded["x-mesh-governance"] ?? ""
+      );
     }
 
     const passthrough = [
       "authorization",
       "x-actor-id",
       "x-actor-tier",
+      "x-mesh-governance",
       "x-identity-id",
       "x-actor-email",
       "x-actor-h2r-employee-id"
@@ -309,6 +316,13 @@ export class FoundationAdapter implements BackendAdapter {
       headers: this.headers(headers),
       body: JSON.stringify(body ?? {})
     });
+  }
+
+  async forward(backendPath: string, body: unknown, headers: Record<string, string>) {
+    return requestJsonAllowError<unknown>(
+      `${this.config.foundationAdapterBaseUrl}${this.config.foundationAdapterBackendBasePath}${backendPath}`,
+      { method: "POST", headers: this.headers(headers), body: JSON.stringify(body ?? {}) }
+    );
   }
 
   async getMcpFunction(functionName: string, headers: Record<string, string>) {

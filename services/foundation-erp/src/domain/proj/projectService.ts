@@ -1,6 +1,7 @@
 import { assertApprovedContract, parseSowDeliverables } from "../o2c/contract/contractService";
 import { db, transaction } from "../../db/connection";
 import { appendEvent, EventActor } from "../../events/eventStore";
+import { requireTier } from "../authz";
 import { HttpError } from "../../utils/errors";
 import { newId } from "../../utils/id";
 import { postInventoryMovement } from "../inv/inventoryService";
@@ -83,25 +84,6 @@ function now(): string {
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function parseActorTier(actor?: EventActor): number {
-  if (!actor?.authorityTier) {
-    return 0;
-  }
-
-  const parsed = Number(actor.authorityTier);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-// Authority is decided by the Mesh Gateway; this check only remains as a fallback for direct (non-Mesh) calls.
-function requireTier(actor: EventActor | undefined, requiredTier: 1 | 2 | 3 | 4 | 5, message: string): void {
-  if (actor?.meshAsserted) {
-    return;
-  }
-  if (parseActorTier(actor) < requiredTier) {
-    throw new HttpError(403, "insufficient_authority", message);
-  }
 }
 
 function getProjectRow(projectId: string): ProjectRow {

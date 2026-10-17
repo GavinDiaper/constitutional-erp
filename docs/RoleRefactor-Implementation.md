@@ -24,11 +24,20 @@ Domains `PROJ` and `INV` are first-class in all three services. Contract and pro
 - **UI**: all contract/project writes go via `/api/mesh/*`; direct Hub write proxies removed; 202 shown as "pending approval"; `/approvals` inbox; actor picker has the new principals.
 - **Navigator**: writes through `MeshClient` (`IntegrationHubClient.executeAction` delegates to the Mesh when a domain is supplied).
 
+- **Configurable thresholds**: Governance table `governance_parameter` (migration `005`) holds `contract.tier3_threshold` (10000) and `contract.tier4_threshold` (100000). Rules CON-APPROVAL/RISK-* reference them via `AmountGreaterThan.param`. Change with `PUT /governance/parameters/:key` (`{value, updatedBy}`); `GET /governance/parameters` lists them. Foundation's `CONTRACT_TIER3_THRESHOLD` / `CONTRACT_TIER4_THRESHOLD` only feed UI hints.
+- **Governed operations (`/mesh/:adapter/ops/*`)**: inventory adjustments/cost updates (tier 2/3), H2R vendor/employee cost rates and authority rules (tier 4), timesheet import/commit (tier 4), project milestone/change-request approval (tier 2) and other project sub-writes. Mapped by `governedOperations.ts`; Authority migration `007` holds the rules and `principal.inv-tier1..3`, `principal.h2r-tier4`. These paths are Mesh-only in Foundation.
+- **Governance context persisted**: the Mesh sends a signed `x-mesh-governance` header (HMAC covers `id|tier|ts|governance`); Foundation stores it in `governance_json.mesh` on every event.
+- **Identity hardening**: a verified JWT overrides client actor headers (actor = `h2r_employee_id || identity_id`, client tier discarded); `MESH_REQUIRE_JWT=true` returns 401 for unauthenticated `/mesh/*` (except `/mesh/ready`). `GET /mesh/approvals` uses the authenticated actor and returns 403 `actor_mismatch` for a different `actorId`.
+- **Production**: Foundation refuses to start with `NODE_ENV=production` and no `MESH_ASSERTION_SECRET`.
+- **Postman**: Mesh folder "60 – Contracts, Projects & Governed Operations" and Governance "40 - Governance Parameters"; unified collection rebuilt.
+
 ## 3. Configuration
 
 | Variable | Where | Purpose |
 |---|---|---|
 | `MESH_ASSERTION_SECRET` | Mesh and Foundation (same value) | HMAC signing/verification of `x-actor-id`, `x-actor-tier`, `x-mesh-actor-ts`. Unset = legacy header trust (dev only). |
+| `MESH_REQUIRE_JWT` | Mesh | `true` rejects unauthenticated `/mesh/*` requests. |
+| `CONTRACT_TIER3_THRESHOLD`, `CONTRACT_TIER4_THRESHOLD` | Foundation | Hint/fallback only; authoritative values are Governance parameters. |
 | `ENFORCEMENT_MODE` | Mesh | `shadow` logs `MeshShadowDecision` without blocking; `enforce` (default) blocks. |
 | `MESH_GATEWAY_URL`, `MESH_GATEWAY_API_KEY` | UI, Navigator | Mesh location. Defaults: UI `http://localhost:4003/api/v1`, Navigator `http://localhost:4003`. |
 
@@ -42,15 +51,13 @@ Domains `PROJ` and `INV` are first-class in all three services. Contract and pro
 
 ## 5. Known gaps (follow-ups)
 
-- Inventory, H2R and timesheet tier checks and milestone approval (two-id path) are still enforced in Foundation or are not yet on the Mesh.
-- Events do not yet persist the Mesh-passed governance context.
-- Full JWT identity from `user-identity` is not consumed; the assertion is HMAC only. `GET /mesh/approvals?actorId=` takes the actor from the query string and should be hardened.
-- Contract thresholds (10k / 100k) are assumed and need Finance confirmation.
-- Reads still use the Hub path; the Mesh only filters hypermedia.
-- With no `MESH_ASSERTION_SECRET`, Foundation keeps its in-process tier fallback.
-- A catalog-to-governance coverage test for MCP functions is not yet written.
-- Pre-existing, unrelated test failures: foundation-erp "Timesheet task locking…" and navigator-ai "promptCreate purchase-order intent…".
+- Foundation GET read checks (rate and timesheet import listings) still use header-derived tiers; spoofable without JWT/secret.
+- Hub POST proxies outside the ops table (bom, skus, organizations, bootstrap, process/action, p2p, o2c) are not Mesh-governed.
+- With no `MESH_ASSERTION_SECRET` (dev only), Foundation keeps legacy header trust and in-process tier checks.
+- The UI does not yet perform a JWT login; only the Mesh honours JWTs.
+- Shadow-mode review, network restriction and per-environment secrets are deployment actions.
+- Pre-existing failures: foundation-erp "Timesheet task locking…" and navigator-ai "promptCreate purchase-order intent…" (unverified whether pre-existing).
 
 ## 6. Tests
 
-`authority-engine` 3 action-rule tests, `governance-engine` 20, `mesh-gateway` 17 (its `npm test` now migrates a throwaway `.test-mesh.db` so stale pending tasks cannot leak between runs), `foundation-erp` 64 pass plus the one pre-existing failure.
+`authority-engine` 4, `governance-engine` 21, `mesh-gateway` 21; foundation adds `mcp-catalog-governance.test.ts` (catalog-to-governance coverage) (its `npm test` now migrates a throwaway `.test-mesh.db` so stale pending tasks cannot leak between runs), `foundation-erp` 64 pass plus the one pre-existing failure.

@@ -98,7 +98,8 @@ export function evaluateAuthority(input: AuthorityCheckInput): AuthorityCheckRes
   }
 
   let credentialSatisfied = true;
-  const requiredCredential = resourceType === "contract" ? undefined : credentialRequirementByAction[input.action];
+  // Resources governed by an explicit action rule are gated by tier, not by the generic credential map.
+  const requiredCredential = actionRule ? undefined : credentialRequirementByAction[input.action];
   if (requiredCredential) {
     const credentialRow = db
       .prepare(

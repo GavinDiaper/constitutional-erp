@@ -117,7 +117,7 @@ export interface GovernanceCheckResult {
 type GovernanceCondition =
   | { type: "Always" }
   | { type: "ActionIs"; action: string }
-  | { type: "AmountGreaterThan"; amount: number }
+  | { type: "AmountGreaterThan"; amount: number; param?: string }
   | { type: "ActorIsRequester" }
   | { type: "ContextEquals"; field: string; value: string | number | boolean }
   | { type: "CredentialRequired"; credentialType: string }
@@ -137,7 +137,7 @@ const conditionSchema: z.ZodType<GovernanceCondition> = z.lazy(() =>
   z.discriminatedUnion("type", [
     z.object({ type: z.literal("Always") }),
     z.object({ type: z.literal("ActionIs"), action: z.string().min(1) }),
-    z.object({ type: z.literal("AmountGreaterThan"), amount: z.number().finite() }),
+    z.object({ type: z.literal("AmountGreaterThan"), amount: z.number().finite(), param: z.string().min(1).optional() }),
     z.object({ type: z.literal("ActorIsRequester") }),
     z.object({
       type: z.literal("ContextEquals"),
@@ -202,6 +202,17 @@ function hasCredential(actorId: string, credentialType: string): boolean {
   return Boolean(row);
 }
 
+// A condition may name a governance_parameter so thresholds can be changed without editing rules.
+function resolveThreshold(condition: { amount: number; param?: string }): number {
+  if (!condition.param) {
+    return condition.amount;
+  }
+  const row = db.prepare("SELECT value FROM governance_parameter WHERE key = ?").get(condition.param) as
+    | { value: number }
+    | undefined;
+  return row ? row.value : condition.amount;
+}
+
 function evalCondition(condition: GovernanceCondition, input: GovernanceCheckInput): boolean {
   switch (condition.type) {
     case "Always":
@@ -209,7 +220,7 @@ function evalCondition(condition: GovernanceCondition, input: GovernanceCheckInp
     case "ActionIs":
       return input.action === condition.action;
     case "AmountGreaterThan":
-      return getContextNumber(input, "amount") > condition.amount;
+      return getContextNumber(input, "amount") > resolveThreshold(condition);
     case "ActorIsRequester":
       return input.actorId === input.context.requesterId;
     case "ContextEquals":
