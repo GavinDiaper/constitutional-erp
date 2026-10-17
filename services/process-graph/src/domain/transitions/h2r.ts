@@ -91,5 +91,49 @@ export const h2rTransitions: CanonicalTransition[] = [
     fromStates: ["Draft", "Submitted", "Approved"],
     toStates: ["Cancelled"],
     action: "cancel"
+  },
+
+  // ── Assignment ─────────────────────────────────────────────────────────────
+  {
+    id: "H2R.Assignment.activate",
+    domain: "H2R",
+    aggregateType: "assignment",
+    fromStates: ["Planned"],
+    toStates: ["Active"],
+    action: "activate"
+  },
+  {
+    id: "H2R.Assignment.complete",
+    domain: "H2R",
+    aggregateType: "assignment",
+    fromStates: ["Active"],
+    toStates: ["Completed"],
+    action: "complete"
+  },
+  {
+    id: "H2R.Assignment.cancel",
+    domain: "H2R",
+    aggregateType: "assignment",
+    fromStates: ["Planned", "Active"],
+    toStates: ["Cancelled"],
+    action: "cancel"
+  },
+
+  // ── Credential ─────────────────────────────────────────────────────────────
+  {
+    id: "H2R.Credential.expire",
+    domain: "H2R",
+    aggregateType: "credential",
+    fromStates: ["Valid"],
+    toStates: ["Expired"],
+    action: "expire"
+  },
+  {
+    id: "H2R.Credential.revoke",
+    domain: "H2R",
+    aggregateType: "credential",
+    fromStates: ["Valid"],
+    toStates: ["Revoked"],
+    action: "revoke"
   }
 ];

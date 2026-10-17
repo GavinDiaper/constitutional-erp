@@ -36,9 +36,12 @@ export function findTransition(
   return allTransitions.find((t) => t.domain === domain && t.aggregateType === aggregateType && t.action === action);
 }
 
-/** True when the domain+aggregateType combo has any registered transitions */
+/** Aggregates that are readable but have no lifecycle transitions */
+const stateless = new Set(["H2R:position", "H2R:authority-rule"]);
+
+/** True when the domain+aggregateType combo has registered transitions or is a known stateless aggregate */
 export function isKnownAggregateType(domain: CanonicalDomain, aggregateType: string): boolean {
-  return allTransitions.some((t) => t.domain === domain && t.aggregateType === aggregateType);
+  return stateless.has(`${domain}:${aggregateType}`) || allTransitions.some((t) => t.domain === domain && t.aggregateType === aggregateType);
 }
 
 export function resolveTransitionById(id: string): CanonicalTransition | undefined {

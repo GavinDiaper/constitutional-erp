@@ -22,7 +22,8 @@ const entityDomainMap: Record<string, string> = {
   Employee: "H2R",
   Position: "H2R",
   Assignment: "H2R",
-  Credential: "H2R"
+  Credential: "H2R",
+  AuthorityRule: "H2R"
 };
 
 export function asObject(payload: unknown): Record<string, unknown> {

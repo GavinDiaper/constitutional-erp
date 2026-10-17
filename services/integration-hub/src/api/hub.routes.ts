@@ -102,7 +102,9 @@ const createOperationSchema = z.union([
   z.literal("create-payment"),
   z.literal("create-inventory-sku"),
   z.literal("create-inventory-organization"),
-  z.literal("create-project")
+  z.literal("create-project"),
+  z.literal("create-position"),
+  z.literal("create-assignment")
 ]);
 
 const lookupKindSchema = z.union([
@@ -169,6 +171,16 @@ const CREATE_OPERATION_CONFIG: Record<
     route: "/api/v1/projects",
     entityType: "proj_project",
     entityIdField: "projectId"
+  },
+  "create-position": {
+    route: "/api/v1/h2r/positions",
+    entityType: "h2r_position",
+    entityIdField: "position_id"
+  },
+  "create-assignment": {
+    route: "/api/v1/h2r/assignments",
+    entityType: "h2r_assignment",
+    entityIdField: "assignment_id"
   }
 };
 

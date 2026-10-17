@@ -127,7 +127,9 @@ export type NavigatorCreateOperation =
   | "create-payment"
   | "create-inventory-sku"
   | "create-inventory-organization"
-  | "create-project";
+  | "create-project"
+  | "create-position"
+  | "create-assignment";
 
 export type NavigatorLookupKind =
   | "suppliers"

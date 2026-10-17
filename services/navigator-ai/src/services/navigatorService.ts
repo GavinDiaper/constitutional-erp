@@ -41,6 +41,8 @@ const createOperationRequirements: Record<NavigatorCreateOperation, string[]> = 
   "create-payment": ["invoiceId", "amount", "currencyCode", "method"],
   "create-inventory-sku": ["skuCode", "description", "uom", "valuationMethod"],
   "create-inventory-organization": ["name"],
+  "create-position": ["title", "department", "authorityDomain", "authorityTier"],
+  "create-assignment": ["employeeId", "positionId"],
   "create-project": ["name", "projectType", "budgetAmount", "startDate", "defaultWIPAccountId", "defaultCloseAccountId", "projectManagerId", "organizationId"]
 };
 
@@ -169,6 +171,18 @@ export function extractJsonObject(text: string): Record<string, unknown> | undef
 export function normalizeCreatePayload(operation: NavigatorCreateOperation, payload: Record<string, unknown>): Record<string, unknown> {
   let normalized = { ...payload };
 
+  if (operation === "create-position") {
+    if (typeof normalized["authorityTier"] === "string" && normalized["authorityTier"].trim() !== "") {
+      normalized["authorityTier"] = Number(normalized["authorityTier"]);
+    }
+    if (typeof normalized["authorityDomain"] === "string") {
+      normalized["authorityDomain"] = normalized["authorityDomain"].trim().toUpperCase();
+    }
+    if (!normalized["title"] && typeof normalized["name"] === "string") {
+      normalized["title"] = normalized["name"];
+    }
+  }
+
   if (operation === "create-supplier") {
     // LLMs often return supplier details nested under payload.supplier or payload.data.
     const supplierLike =
@@ -237,6 +251,8 @@ export function inferOperationFromPrompt(prompt: string): NavigatorCreateOperati
   const lower = prompt.toLowerCase();
   if (lower.includes("inventory sku") || lower.includes("create sku") || lower.includes("new sku")) return "create-inventory-sku";
   if (lower.includes("inventory organization") || lower.includes("warehouse") || lower.includes("create organization")) return "create-inventory-organization";
+  if (/\bposition\b/.test(lower) && !lower.includes("assign")) return "create-position";
+  if (/\bassign(ment)?\b/.test(lower)) return "create-assignment";
   if (lower.includes("create project") || lower.includes("new project")) return "create-project";
   if (lower.includes("requisition")) return "create-requisition";
   if (lower.includes("purchase order") || lower.includes("purchase-order") || /\bpo\b/.test(lower)) return "create-purchase-order";
@@ -1234,8 +1250,62 @@ export class NavigatorService {
     return result;
   }
 
-  async promptCreate(input: PromptCreateRequest): Promise<PromptCreateResult> {
-    const operation = inferOperationFromPrompt(input.prompt);
+  private async resolveEmployeeByName(name: string, actorId: string): Promise<{ id?: string; matches: number }> {
+    const rows = await this.integrationHubClient.queryTable<Record<string, unknown>>({ table: "h2r_employee", actorId });
+    const needle = name.trim().toLowerCase();
+    const exact = rows.filter((row) => String(row["name"] ?? "").trim().toLowerCase() === needle);
+    const matches = exact.length > 0
+      ? exact
+      : rows.filter((row) => String(row["name"] ?? "").toLowerCase().split(/\s+/).includes(needle));
+    return { id: matches.length === 1 ? String(matches[0]["employee_id"] ?? "") || undefined : undefined, matches: matches.length };
+  }
+
+  // Handles "create position X and assign it to <employee>" as position creation followed by assignment.
+  private async promptCreatePositionAndAssign(input: PromptCreateRequest, employeeName: string): Promise<PromptCreateResult> {
+    const employee = await this.resolveEmployeeByName(employeeName, input.actorId);
+    if (!employee.id) {
+      return {
+        status: "NEEDS_CLARIFICATION",
+        resolution: {
+          operation: "create-assignment",
+          payload: {},
+          missingFields: ["employeeId"],
+          clarification: employee.matches === 0
+            ? `No employee named '${employeeName}' was found. Create the employee first or use the exact name.`
+            : `Multiple employees match '${employeeName}'. Use the full name.`
+        }
+      };
+    }
+
+    const positionResult = await this.promptCreate(input, "create-position");
+    if (positionResult.status !== "READY" || !positionResult.created?.entityId) {
+      return positionResult;
+    }
+
+    const positionPayload = positionResult.resolution.payload;
+    const assignmentPayload: Record<string, unknown> = {
+      employeeId: employee.id,
+      positionId: positionResult.created.entityId,
+      department: positionPayload["department"],
+      role: positionPayload["title"]
+    };
+    const created = await this.createEntity({ operation: "create-assignment", payload: assignmentPayload, actorId: input.actorId });
+    return {
+      status: "READY",
+      resolution: { operation: "create-assignment", payload: assignmentPayload, missingFields: [] },
+      created
+    };
+  }
+
+  async promptCreate(input: PromptCreateRequest, forcedOperation?: NavigatorCreateOperation): Promise<PromptCreateResult> {
+    if (!forcedOperation && input.dryRun !== true && /\bposition\b/i.test(input.prompt)) {
+      const assignee = input.prompt.match(/\bassign(?:ed)?\s+(?:it\s+|this\s+|the\s+position\s+)?to\s+([A-Za-z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*)*)/i);
+      if (assignee) {
+        return this.promptCreatePositionAndAssign(input, assignee[1]);
+      }
+    }
+
+    const operation = forcedOperation ?? inferOperationFromPrompt(input.prompt);
     if (!operation) {
       return {
         status: "NEEDS_CLARIFICATION",
@@ -1243,7 +1313,7 @@ export class NavigatorService {
           operation: "create-supplier",
           payload: {},
           missingFields: ["operation"],
-          clarification: "Specify what to create (supplier, requisition, purchase order, fiscal year, fiscal period, payment, inventory SKU, inventory organization, or project)."
+          clarification: "Specify what to create (supplier, requisition, purchase order, fiscal year, fiscal period, payment, inventory SKU, inventory organization, project, H2R position, or assignment)."
         }
       };
     }

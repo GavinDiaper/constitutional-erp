@@ -16,6 +16,21 @@ const eventTypeToState: Record<string, string> = {
   "H2R.employee.returned": "Active",
   "H2R.employee.terminated": "Terminated",
 
+  // Position / Authority Rule (stateless definitions)
+  "H2R.position.created": "Active",
+  "H2R.authority-rule.created": "Active",
+
+  // Assignment
+  "H2R.assignment.created": "Planned",
+  "H2R.assignment.activated": "Active",
+  "H2R.assignment.completed": "Completed",
+  "H2R.assignment.cancelled": "Cancelled",
+
+  // Credential
+  "H2R.credential.issued": "Valid",
+  "H2R.credential.expired": "Expired",
+  "H2R.credential.revoked": "Revoked",
+
   // Leave Request
   "H2R.LeaveRequestCreated": "Draft",
   "H2R.LeaveRequestSubmitted": "Submitted",

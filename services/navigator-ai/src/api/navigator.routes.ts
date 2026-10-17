@@ -44,7 +44,9 @@ const createOperationSchema = z.union([
   z.literal("create-payment"),
   z.literal("create-inventory-sku"),
   z.literal("create-inventory-organization"),
-  z.literal("create-project")
+  z.literal("create-project"),
+  z.literal("create-position"),
+  z.literal("create-assignment")
 ]);
 
 const createLookupKindSchema = z.union([

@@ -12,7 +12,8 @@ export const foundationAdapter: SourceAdapter = {
     const entityType = String(row.entity_type ?? row.entityType ?? "Unknown");
     const entityId = String(row.entity_id ?? row.entityId ?? newId("FND-"));
     const eventType = String(row.event_type ?? row.eventType ?? "UnknownEvent");
-    const domain = domainFromEntityType(entityType, typeof payload.domain === "string" ? String(payload.domain) : undefined);
+    // AuthorityRule payloads carry the governed business domain, not the owning domain
+    const domain = domainFromEntityType(entityType, entityType !== "AuthorityRule" && typeof payload.domain === "string" ? String(payload.domain) : undefined);
 
     return canonicalEventSchema.parse({
       eventId: String(row.event_id ?? row.eventId ?? newId("LEVT-")),
