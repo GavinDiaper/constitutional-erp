@@ -7,9 +7,10 @@ import { mcpCatalog } from "../src/api/mcp/catalog";
 import { mcpRegistry } from "../src/api/mcp/mcp.routes";
 import { buildRegistry, inferKind } from "../src/api/mcp/registry";
 
-test("registry exposes exactly the catalog functions with a handler each", () => {
-  const registered = mcpRegistry.list().map((tool) => tool.name).sort();
-  assert.deepEqual(registered, mcpCatalog.map((fn) => fn.name).sort());
+test("registry exposes every catalog function with a handler each", () => {
+  const registered = new Set(mcpRegistry.list().map((tool) => tool.name));
+  const missing = mcpCatalog.map((fn) => fn.name).filter((name) => !registered.has(name));
+  assert.deepEqual(missing, []);
   for (const tool of mcpRegistry.list()) {
     assert.equal(typeof tool.handler, "function", `${tool.name} has no handler`);
   }

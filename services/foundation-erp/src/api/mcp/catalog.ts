@@ -1,6 +1,6 @@
 export interface McpFunctionDef {
   name: string;
-  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "bom" | "proj";
+  domain: "o2c" | "p2p" | "r2r" | "h2r" | "inv" | "bom" | "proj" | "tax" | "itr" | "sys";
   description: string;
   entity?: string; // e.g., "Customer", "PurchaseOrder", "Employee"
   action?: string; // e.g., "create", "activate", "approve"

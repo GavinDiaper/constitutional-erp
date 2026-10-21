@@ -8,6 +8,8 @@ services:
     environment:
       DATABASE_PATH: /data/foundation.db
       INTERNAL_ALLOWLIST: ${FOUNDATION_INTERNAL_ALLOWLIST:-127.0.0.1,::1,172.16.0.0/12}
+      AUTHORITY_ENGINE_URL: http://authority-engine:4001
+      GOVERNANCE_ENGINE_URL: http://governance-engine:4002
     ports:
       - "${FOUNDATION_PORT:-3000}:3000"
     volumes:

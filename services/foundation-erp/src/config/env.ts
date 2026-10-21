@@ -8,6 +8,10 @@ export interface AppConfig {
   ingressIdHeader: string;
   ingressIdValue: string;
   databasePath: string;
+  authorityEngineUrl?: string;
+  authorityEngineApiKey: string;
+  governanceEngineUrl?: string;
+  governanceEngineApiKey: string;
 }
 
 function required(name: string, fallback?: string): string {
@@ -30,6 +34,11 @@ export function loadConfig(): AppConfig {
       .filter(Boolean),
     ingressIdHeader: (process.env.INGRESS_ID_HEADER ?? "x-ingress-id").toLowerCase(),
     ingressIdValue: process.env.INGRESS_ID_VALUE ?? "foundation-ingress",
-    databasePath: process.env.DATABASE_PATH ?? "foundation.db"
+    databasePath: process.env.DATABASE_PATH ?? "foundation.db",
+    // Optional: only the authority_* and gov_* MCP read tools need these.
+    authorityEngineUrl: process.env.AUTHORITY_ENGINE_URL?.replace(/\/+$/, ""),
+    authorityEngineApiKey: process.env.AUTHORITY_ENGINE_API_KEY ?? "change-me",
+    governanceEngineUrl: process.env.GOVERNANCE_ENGINE_URL?.replace(/\/+$/, ""),
+    governanceEngineApiKey: process.env.GOVERNANCE_ENGINE_API_KEY ?? "change-me"
   };
 }

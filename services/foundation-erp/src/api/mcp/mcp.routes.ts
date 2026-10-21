@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { mcpCatalog } from "./catalog";
 import { buildRegistry } from "./registry";
+import { generateReadTools } from "./readTools";
 import type { EventActor } from "../../events/eventStore";
 import { validateBody } from "../../middleware/validate";
 import { createContract, createContractAmendment, approveContractVersion } from "../../domain/o2c/contract/contractService";
@@ -917,7 +918,7 @@ function dispatchLegacy(functionName: string, input: Record<string, any>, actor:
     return result;
 }
 
-export const mcpRegistry = buildRegistry(mcpCatalog, (name, input, ctx) => dispatchLegacy(name, input, ctx.actor));
+export const mcpRegistry = buildRegistry([...mcpCatalog, ...generateReadTools(mcpCatalog.map((fn) => fn.name))], (name, input, ctx) => dispatchLegacy(name, input, ctx.actor));
 
 export const mcpRouter = Router();
 

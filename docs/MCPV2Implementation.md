@@ -100,6 +100,16 @@ The whitelist is stored **in code, in one module**: `services/foundation-erp/src
 - **Other services:** authority-engine and governance-engine keep their own `/query` whitelists in their own databases. The gateway reads them through their HTTP APIs (`authority_*` and `gov_*` tools), not by sharing the registry.
 - **Changing it:** add or edit an entry in `readModel.ts`; the tools appear in `tools/list` automatically.
 
+### 5.2 Phase 1 as built
+
+- `readModel.ts` is a static per-table config validated against the live schema (`validateReadModel()`, covered by `test/mcp-read-tools.test.ts`). `intentionallyExcluded` is currently empty.
+- About 35 tables that were not previously in `/query` (contracts, timesheets, proj_task, tax, itr, inv lot/serial/bin, sys tables and others) are now whitelisted, so `/query` is widened as well as MCP.
+- `h2r_employee.email` is excluded from all read output as PII.
+- Tool names: `<domain>_get_<entity>`, `_list_<plural>`, `_find_<entity>`, `_describe_<entity>`. If the name already exists in the legacy catalog, the existing tool is kept. Tables without a PK (views) get list and describe only.
+- New domains `tax`, `itr` and `sys` exist for read tools. Mesh gateway governance does not yet know them, so reads must be exempted in Phase 4/5.
+- Cross-cutting: `erp_list_tables`, `erp_get_history`, `authority_get_profile`, `authority_list_eligible_approvers`, `gov_get_parameters`. The authority and governance tools call the engines over HTTP (`AUTHORITY_ENGINE_URL`, `GOVERNANCE_ENGINE_URL`) and return 503 when unconfigured.
+- `erp_get_approvals` is deferred to the next-steps phase, because approvals live in navigator-ai and mesh-gateway.
+
 ## 6. Next-steps tools
 
 `erp_get_next_steps(entityType, entityId)` returns:
