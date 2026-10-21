@@ -62,7 +62,7 @@ interface McpTool {
 
 ## 5. Read tools
 
-Per entity, across o2c, p2p, r2r, h2r, inv, bom, proj (derived from the `query.routes.ts` table map plus per-entity config):
+Phase 1 covers **every whitelisted table in every domain**, including H2R positions, assignments, credentials and authority rules (not only employee name lookup). Per entity, across o2c, p2p, r2r, h2r, inv, bom, proj, tax (derived from the `query.routes.ts` table map plus per-entity config):
 
 | Tool | Purpose |
 |---|---|
@@ -139,7 +139,7 @@ The actor always comes from the authenticated request (`req.actor`), never from 
 | Phase | Deliverable | Exit criteria |
 |---|---|---|
 | 0. Foundation | Registry type, zod to JSON Schema, catalog and dispatcher generated from registry, drift test. | `/invoke` behaviour unchanged; existing tests pass. |
-| 1. Reads | get/list/find/describe generators: H2R first (name lookup), then P2P and O2C, then R2R, INV, BOM, PROJ. Cross-cutting history, approvals, authority-profile tools. | Every whitelisted table reachable by a read tool; ambiguous names return candidates. |
+| 1. Reads | **Scope: read access to every whitelisted table in every domain** (o2c, p2p, r2r, h2r, inv, bom, proj, tax, and the governance/navigation tables the query API exposes), not just name lookup. Each whitelisted table, including H2R positions, assignments, credentials and authority rules, gets get/list/find/describe tools generated from the `query.routes.ts` table map plus per-entity config (label column, filterable columns, state column). Delivery order is only a sequencing choice: H2R first (it unblocks name-to-ID), then P2P and O2C, then R2R, INV, BOM, PROJ, TAX. Cross-cutting history, approvals and authority-profile tools. | Every whitelisted table is reachable by get/list/find/describe tools. A coverage test fails if a whitelisted table has no read tools. Ambiguous names return candidates. |
 | 2. Write schemas | `inputSchema`, `stateGuard`, `outputSchema` for all write functions, migrated domain by domain from the `switch`. | No write function without a schema; contract test green. |
 | 3. Next-steps | `erp_get_next_steps`, `erp_get_available_creates`, `erp_get_my_work`. | Table-driven tests of entity state x actor tier, incl. requisition approve / add-lines. |
 | 4. Gated writes | Authority and governance gate in `/invoke`; PROPOSED/confirm token, dryRun, idempotency, approval-request integration. | Low-tier actor blocked; medium-risk returns preview; confirmed call executes exactly once. |
