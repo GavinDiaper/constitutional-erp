@@ -75,6 +75,31 @@ Cross-cutting: `erp_list_tables`, `erp_get_history(entity, id)`, `erp_get_approv
 
 Rules: read-only parameterised SQL with whitelisted columns; limit capped at 100; lean projections (`fields=` for more); domain-level visibility initially (finer rules later); secrets/PII excluded.
 
+### 5.1 Where the whitelist lives: the read-model registry
+
+The whitelist is stored **in code, in one module**: `services/foundation-erp/src/api/mcp/readModel.ts`. It is not stored in the database or in a config file, so every change is code-reviewed, versioned and covered by tests.
+
+- **Replaces** the `tablePrimaryKeys` constant in `query.routes.ts`. `GET /query/*` and the MCP read generators both import from the registry, so there is a single whitelist and it cannot drift.
+- **One entry per table**, richer than today's table-to-primary-key map:
+
+```ts
+{ table: "h2r_position", primaryKey: "position_id", domain: "h2r", entity: "Position",
+  labelColumns: ["title"],                 // used by find_* and list summaries
+  searchColumns: ["title", "department"],  // find_* text search
+  stateColumn: undefined,                  // enables list(state=...) where the table has one
+  filterColumns: ["department", "authority_domain"],
+  excludeColumns: [],                      // PII/secrets never projected
+  mcp: true }                              // false = stays in /query but gets no MCP read tools
+```
+
+- **Validated at startup** against the real schema (`PRAGMA table_info`): every listed table and column must exist, otherwise the service fails to start.
+- **Coverage tests:**
+  - every whitelisted table with `mcp: true` has get/list/find/describe tools;
+  - every table in the database is either listed or explicitly named in an `intentionallyExcluded` list, so a new migration cannot silently expose or hide data.
+- **Column safety:** list filters and `fields=` are checked against `filterColumns` and the schema, and values are bound as parameters. Raw column names from the model are never interpolated into SQL.
+- **Other services:** authority-engine and governance-engine keep their own `/query` whitelists in their own databases. The gateway reads them through their HTTP APIs (`authority_*` and `gov_*` tools), not by sharing the registry.
+- **Changing it:** add or edit an entry in `readModel.ts`; the tools appear in `tools/list` automatically.
+
 ## 6. Next-steps tools
 
 `erp_get_next_steps(entityType, entityId)` returns:
