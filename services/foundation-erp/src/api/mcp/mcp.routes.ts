@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { mcpCatalog } from "./catalog";
+import { buildRegistry } from "./registry";
+import type { EventActor } from "../../events/eventStore";
 import { validateBody } from "../../middleware/validate";
 import { createContract, createContractAmendment, approveContractVersion } from "../../domain/o2c/contract/contractService";
 import {
@@ -49,6 +51,8 @@ import {
   rejectRequisition,
   cancelRequisition
 } from "../../domain/p2p/requisition/requisitionService";
+import { addRequisitionLine } from "../../domain/p2p/requisition/requisitionLineService";
+import { addPurchaseOrderLine } from "../../domain/p2p/purchaseOrder/purchaseOrderLineService";
 import { createSupplier, activateSupplier, suspendSupplier } from "../../domain/p2p/supplier/supplierService";
 import {
   createPurchaseOrder,
@@ -170,17 +174,8 @@ const invokeSchema = z.object({
   input: z.record(z.any()).default({})
 });
 
-export const mcpRouter = Router();
-
-mcpRouter.get("/functions", (_req, res) => {
-  res.json({ data: mcpCatalog });
-});
-
-mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
-  try {
-    const { functionName, input } = req.body as { functionName: string; input: Record<string, any> };
-    const actor = req.actor;
-
+// Legacy dispatcher: handlers are being migrated into registry entries domain by domain.
+function dispatchLegacy(functionName: string, input: Record<string, any>, actor: EventActor | undefined): unknown {
     let result: unknown;
 
     switch (functionName) {
@@ -323,6 +318,24 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         break;
       case "p2p_reject_requisition":
         result = rejectRequisition(input.requisitionId, actor);
+        break;
+      case "p2p_add_requisition_line":
+        result = addRequisitionLine({
+          requisitionId: input.requisitionId,
+          description: input.description,
+          quantity: Number(input.quantity),
+          unitPrice: Number(input.unitPrice),
+          taxCodeId: input.taxCodeId,
+          countryCode: input.countryCode
+        }, actor);
+        break;
+      case "p2p_add_po_line":
+        result = addPurchaseOrderLine({
+          poId: input.poId,
+          description: input.description,
+          quantity: Number(input.quantity),
+          unitPrice: Number(input.unitPrice)
+        }, actor);
         break;
       case "p2p_cancel_requisition":
         result = cancelRequisition(input.requisitionId, actor);
@@ -901,6 +914,42 @@ mcpRouter.post("/invoke", validateBody(invokeSchema), (req, res, next) => {
         throw new HttpError(404, "function_not_found", `Unknown MCP function: ${functionName}`);
     }
 
+    return result;
+}
+
+export const mcpRegistry = buildRegistry(mcpCatalog, (name, input, ctx) => dispatchLegacy(name, input, ctx.actor));
+
+export const mcpRouter = Router();
+
+mcpRouter.get("/functions", (req, res) => {
+  const { domain, entity, kind } = req.query;
+  res.json({
+    data: mcpRegistry.describe({
+      domain: typeof domain === "string" ? domain : undefined,
+      entity: typeof entity === "string" ? entity : undefined,
+      kind: kind === "read" || kind === "write" ? kind : undefined
+    })
+  });
+});
+
+mcpRouter.post("/invoke", validateBody(invokeSchema), async (req, res, next) => {
+  try {
+    const { functionName, input } = req.body as { functionName: string; input: Record<string, any> };
+    const tool = mcpRegistry.get(functionName);
+    if (!tool) {
+      throw new HttpError(404, "function_not_found", `Unknown MCP function: ${functionName}`);
+    }
+
+    let validated = input;
+    if (tool.zodSchema) {
+      const parsed = tool.zodSchema.safeParse(input);
+      if (!parsed.success) {
+        throw new HttpError(400, "invalid_input", parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; "));
+      }
+      validated = parsed.data as Record<string, any>;
+    }
+
+    const result = await tool.handler(validated, { actor: req.actor });
     res.json({ functionName, result });
   } catch (error) {
     next(error);

@@ -421,3 +421,83 @@ curl localhost:4016/health   # may need your API key header
 If navigator-ai runs on a different machine from Ollama, you'll need `OLLAMA_BASE_URL` pointing at a private address. Don't expose port 11434 publicly.
 
 Shall I move on to Phase 3 (compose and docs) and the output-validation retry?
+
+## Comparing a second model: Qwen2.5 3B
+
+Goal: run Qwen2.5 3B Instruct alongside the current `navigator-llm` and compare them on the same prompts. Both aliases can exist at once. With `OLLAMA_MAX_LOADED_MODELS=1`, Ollama unloads one model when you call the other, so there is no RAM problem. Each switch costs a cold load of about 5–15 s.
+
+### 1. Check the current model and disk space
+```bash
+ollama list
+ollama show navigator-llm --modelfile | head -5   # shows the FROM line, i.e. which base model it uses
+df -h /
+```
+A 3B Q4_K_M model needs about 2 GB of disk.
+
+### 2. Pull the model
+```bash
+ollama pull qwen2.5:3b-instruct-q4_K_M
+```
+
+### 3. Create the tuned alias with the same parameters as `navigator-llm`
+```bash
+cd /root/models
+printf 'FROM qwen2.5:3b-instruct-q4_K_M\nPARAMETER temperature 0\nPARAMETER num_ctx 4096\nPARAMETER num_thread 4\n' > Modelfile.qwen
+ollama create navigator-llm-qwen -f Modelfile.qwen
+ollama list
+```
+Keep `temperature`, `num_ctx` and `num_thread` identical to the current Modelfile, or the comparison isn't fair.
+
+### 4. Smoke test
+```bash
+time curl -s http://127.0.0.1:11434/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"model":"navigator-llm-qwen","temperature":0,"messages":[
+        {"role":"system","content":"Reply with JSON only."},
+        {"role":"user","content":"Return {\"status\":\"ok\"}"}]}'
+```
+
+### 5. Benchmark both models on the same prompts
+Use 3–4 real navigator prompts. Include one that requires strict JSON.
+```bash
+for m in navigator-llm navigator-llm-qwen; do
+  echo "=== $m ==="
+  ollama run $m --verbose "Explain a purchase order in 3 sentences." 2>&1 | grep -E "load duration|prompt eval rate|eval rate|total duration"
+done
+```
+Run each model twice and record the second run (warm). Watch `free -h` for swap.
+
+### 6. Compare JSON validity
+```bash
+PROMPT='Return ONLY JSON: {"intent":"create_purchase_order","missing":["supplierId"]}'
+for m in navigator-llm navigator-llm-qwen; do
+  for i in 1 2 3 4 5; do
+    curl -s http://127.0.0.1:11434/v1/chat/completions -H 'content-type: application/json' \
+      -d "{\"model\":\"$m\",\"temperature\":0,\"messages\":[{\"role\":\"user\",\"content\":$(printf '%s' "$PROMPT" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')}]}" \
+    | python3 -c 'import json,sys; c=json.load(sys.stdin)["choices"][0]["message"]["content"]; json.loads(c); print("valid")' 2>/dev/null || echo "INVALID"
+  done | sort | uniq -c | sed "s/^/$m /"
+done
+```
+
+Record the results:
+
+| Model | Warm eval rate (tok/s) | Total time for a navigator prompt | Valid JSON (n/5) | Follows the schema | Peak RAM |
+|---|---|---|---|---|---|
+| navigator-llm | | | | | |
+| navigator-llm-qwen | | | | | |
+
+### 7. Test through navigator-ai
+Switch the model with an env var and no code change:
+```bash
+OLLAMA_MODEL=navigator-llm-qwen LLM_PROVIDER=ollama npm run dev   # from services/navigator-ai
+```
+The startup health check (`GET /api/tags`) confirms the model exists. Run the same navigator requests against each model. Compare the Zod validation failures and retries in the logs, plus the end-to-end latency.
+
+### 8. Choose and clean up
+- Pick the model with valid JSON and acceptable latency. If they're close, prefer the faster one.
+- Set the winner in `.env` as `OLLAMA_MODEL=...`.
+- Remove the loser to free disk space:
+```bash
+ollama rm <loser-alias>
+ollama rm <base-model-tag>    # only if no other alias uses it
+```

@@ -84,6 +84,27 @@ export const mcpCatalog: McpFunctionDef[] = [
       }
     }
   },
+  {
+    name: "p2p_add_requisition_line",
+    domain: "p2p",
+    entity: "Requisition",
+    action: "addLine",
+    description: "Add a line to a Draft requisition",
+    riskLevel: "Low",
+    governanceTag: "P2P.Requisition.AddLine",
+    inputSchema: {
+      type: "object",
+      required: ["requisitionId", "description", "quantity", "unitPrice"],
+      properties: {
+        requisitionId: { type: "string", description: "Draft requisition id", "x-lookup": "query/p2p_requisition" },
+        description: { type: "string", description: "Line description" },
+        quantity: { type: "number", description: "Quantity (> 0)" },
+        unitPrice: { type: "number", description: "Unit price (>= 0)" },
+        taxCodeId: { type: "string", description: "Optional tax code", "x-lookup": "query/tax_code" },
+        countryCode: { type: "string", description: "Optional ISO-3166 alpha-2 country for tax determination" }
+      }
+    }
+  },
   { name: "p2p_submit_requisition", domain: "p2p", entity: "Requisition", action: "submit", description: "Submit a Draft requisition for approval", riskLevel: "Low", governanceTag: "P2P.Requisition.Submit" },
   { name: "p2p_approve_requisition", domain: "p2p", entity: "Requisition", action: "approve", description: "Approve a Submitted requisition", riskLevel: "Medium", governanceTag: "P2P.Requisition.Approve" },
   { name: "p2p_reject_requisition", domain: "p2p", entity: "Requisition", action: "reject", description: "Reject a Submitted requisition", riskLevel: "Low", governanceTag: "P2P.Requisition.Reject" },
@@ -92,6 +113,25 @@ export const mcpCatalog: McpFunctionDef[] = [
   { name: "p2p_create_supplier", domain: "p2p", entity: "Supplier", action: "create", description: "Create a supplier in Draft state", riskLevel: "Low", governanceTag: "P2P.Supplier.Create" },
   { name: "p2p_activate_supplier", domain: "p2p", entity: "Supplier", action: "activate", description: "Activate a Draft supplier", riskLevel: "Medium", governanceTag: "P2P.Supplier.Activate" },
   { name: "p2p_suspend_supplier", domain: "p2p", entity: "Supplier", action: "suspend", description: "Suspend an Active supplier", riskLevel: "High", governanceTag: "P2P.Supplier.Suspend" },
+  {
+    name: "p2p_add_po_line",
+    domain: "p2p",
+    entity: "PurchaseOrder",
+    action: "addLine",
+    description: "Add a line to a Draft purchase order",
+    riskLevel: "Low",
+    governanceTag: "P2P.PurchaseOrder.AddLine",
+    inputSchema: {
+      type: "object",
+      required: ["poId", "description", "quantity", "unitPrice"],
+      properties: {
+        poId: { type: "string", description: "Draft purchase order id", "x-lookup": "query/p2p_purchase_order" },
+        description: { type: "string", description: "Line description" },
+        quantity: { type: "number", description: "Quantity (> 0)" },
+        unitPrice: { type: "number", description: "Unit price (>= 0)" }
+      }
+    }
+  },
   { name: "p2p_create_po", domain: "p2p", entity: "PurchaseOrder", action: "create", description: "Create a purchase order in Draft state", riskLevel: "Low", governanceTag: "P2P.PO.Create" },
   { name: "p2p_approve_po", domain: "p2p", entity: "PurchaseOrder", action: "approve", description: "Approve a Draft purchase order", riskLevel: "High", governanceTag: "P2P.PO.Approve" },
   { name: "p2p_send_po", domain: "p2p", entity: "PurchaseOrder", action: "send", description: "Send an Approved purchase order to the supplier", riskLevel: "Medium", governanceTag: "P2P.PO.Send" },
