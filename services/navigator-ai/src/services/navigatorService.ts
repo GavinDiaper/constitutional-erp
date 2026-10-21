@@ -1260,6 +1260,39 @@ export class NavigatorService {
     return { id: matches.length === 1 ? String(matches[0]["employee_id"] ?? "") || undefined : undefined, matches: matches.length };
   }
 
+  private async resolveByName(table: string, idField: string, nameFields: string[], name: string, actorId: string): Promise<{ id?: string; matches: number }> {
+    const rows = await this.integrationHubClient.queryTable<Record<string, unknown>>({ table, actorId });
+    const needle = name.trim().toLowerCase().replace(/^(the|a|an)\s+/, "").replace(/\s+position$/, "");
+    const text = (row: Record<string, unknown>) => nameFields.map((f) => String(row[f] ?? "").trim().toLowerCase());
+    const exact = rows.filter((row) => text(row).includes(needle));
+    const matches = exact.length > 0 ? exact : rows.filter((row) => text(row).some((t) => t.split(/\s+/).includes(needle)));
+    return { id: matches.length === 1 ? String(matches[0][idField] ?? "") || undefined : undefined, matches: matches.length };
+  }
+
+  // Fills employeeId/positionId from names given in the payload or prompt ("assign Alice to Analyst").
+  private async resolveAssignmentNames(prompt: string, payload: Record<string, unknown>, actorId: string): Promise<string | undefined> {
+    const pick = (...keys: string[]) => keys.map((k) => payload[k]).find((v) => typeof v === "string" && v.trim()) as string | undefined;
+    const m = prompt.match(/\bassign(?:ed)?\s+(.+?)\s+to\s+(?:the\s+)?(.+?)(?:\s+position)?\s*[.!]?$/i);
+    const problems: string[] = [];
+    if (!payload["employeeId"]) {
+      const name = pick("employeeName", "employee", "name") ?? m?.[1];
+      if (name) {
+        const r = await this.resolveByName("h2r_employee", "employee_id", ["name"], name, actorId);
+        if (r.id) payload["employeeId"] = r.id;
+        else problems.push(r.matches === 0 ? `No employee named '${name}' was found.` : `Multiple employees match '${name}'.`);
+      }
+    }
+    if (!payload["positionId"]) {
+      const name = pick("positionTitle", "positionName", "position", "title") ?? m?.[2];
+      if (name) {
+        const r = await this.resolveByName("h2r_position", "position_id", ["title"], name, actorId);
+        if (r.id) payload["positionId"] = r.id;
+        else problems.push(r.matches === 0 ? `No position titled '${name}' was found.` : `Multiple positions match '${name}'.`);
+      }
+    }
+    return problems.length ? problems.join(" ") : undefined;
+  }
+
   // Handles "create position X and assign it to <employee>" as position creation followed by assignment.
   private async promptCreatePositionAndAssign(input: PromptCreateRequest, employeeName: string): Promise<PromptCreateResult> {
     const employee = await this.resolveEmployeeByName(employeeName, input.actorId);
@@ -1325,7 +1358,10 @@ export class NavigatorService {
         `Operator prompt: ${input.prompt}`,
         `Resolved operation: ${operation}`,
         `Return strict JSON object: { "payload": { ... } } using realistic values from the prompt.`,
-        `Do not invent required IDs that are not provided (for example supplierId, invoiceId).`
+        `Do not invent required IDs that are not provided (for example supplierId, invoiceId).`,
+        ...(operation === "create-assignment"
+          ? [`For assignments return employeeName and positionTitle exactly as written in the prompt; never ask for IDs.`]
+          : [])
       ].join("\n");
 
       const llmResponse = await this.llmClient.chat([
@@ -1363,10 +1399,14 @@ export class NavigatorService {
 
     resolution.payload = applyPromptContextDefaults(input, resolution.operation, resolution.payload);
     resolution.payload = normalizeCreatePayload(resolution.operation, resolution.payload);
+    let lookupProblem: string | undefined;
+    if (resolution.operation === "create-assignment") {
+      lookupProblem = await this.resolveAssignmentNames(input.prompt, resolution.payload, input.actorId);
+    }
     resolution.missingFields = missingRequiredFields(resolution.operation, resolution.payload);
 
     if (resolution.missingFields.length > 0) {
-      resolution.clarification = `Missing fields for ${resolution.operation}: ${resolution.missingFields.join(", ")}.`;
+      resolution.clarification = `${lookupProblem ? `${lookupProblem} ` : ""}Missing fields for ${resolution.operation}: ${resolution.missingFields.join(", ")}.`;
       return {
         status: "NEEDS_CLARIFICATION",
         resolution
