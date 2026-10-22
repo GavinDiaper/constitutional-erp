@@ -1184,24 +1184,24 @@ export class CaiplService {
     values: Record<string, unknown>,
     actorId: string
   ): Promise<ExecutionReceiptSummary> {
-    const baseUrl = normalizedBaseUrl(config.foundationErpUrl);
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-      "x-api-key": config.foundationErpApiKey,
-      "x-actor-id": actorId,
-      "x-actor-type": actorId === "principal.system" ? "system" : "user",
-      "x-actor-tier": actorId === "principal.system" ? "5" : "2"
-    };
-    headers[config.foundationErpIngressIdHeader] = config.foundationErpIngressId;
-
-    const response = await fetch(`${baseUrl}/api/v1/mcp/invoke`, {
+    // Governed writes must go through the Mesh Gateway (Authority -> Governance -> approval), not straight to Foundation.
+    const url = `${normalizedBaseUrl(config.meshGatewayUrl)}/mesh/${encodeURIComponent(config.meshAdapterId)}/mcp/${encodeURIComponent(targetOperation)}`;
+    const response = await fetch(url, {
       method: "POST",
-      headers,
-      body: JSON.stringify({
-        functionName: targetOperation,
-        input: values
-      })
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": config.meshGatewayApiKey,
+        "x-actor-id": actorId
+      },
+      body: JSON.stringify({ input: values })
     });
+
+    if (response.status === 202) {
+      const pending = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      throw new Error(
+        `${targetOperation} requires approval (task ${String(pending["taskId"] ?? "unknown")}, tier ${String(pending["requiredTier"] ?? "unknown")}); it will execute once approved`
+      );
+    }
 
     if (!response.ok) {
       let detail = "";
