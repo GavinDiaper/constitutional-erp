@@ -10,6 +10,10 @@ export interface McpToolContext {
 }
 
 export interface McpStateGuard {
+  table: string;
+  idField: string;
+  primaryKey: string;
+  stateColumn: string;
   from: string[];
   to?: string;
 }
@@ -22,7 +26,7 @@ export interface McpTool extends McpFunctionDef {
   handler: (input: Record<string, any>, ctx: McpToolContext) => unknown | Promise<unknown>;
 }
 
-// Dispatches by tool name; used while handlers are still being migrated out of the legacy switch.
+// Optional compatibility path for definitions that have not yet registered a direct handler.
 export type McpFallbackHandler = (name: string, input: Record<string, any>, ctx: McpToolContext) => unknown | Promise<unknown>;
 
 export type McpToolDefinition = Omit<McpTool, "kind" | "handler"> & {
@@ -33,7 +37,9 @@ export type McpToolDefinition = Omit<McpTool, "kind" | "handler"> & {
 const READ_ACTIONS = new Set(["get", "list", "find", "describe"]);
 
 export function inferKind(action: string | undefined): McpToolKind {
-  return action !== undefined && READ_ACTIONS.has(action) ? "read" : "write";
+  return action !== undefined && (READ_ACTIONS.has(action) || /^(get|list|find|describe)/.test(action))
+    ? "read"
+    : "write";
 }
 
 export class McpRegistry {
@@ -53,7 +59,20 @@ export class McpRegistry {
       handler
     };
     if (tool.zodSchema) {
-      tool.inputSchema = toJsonSchema(tool.zodSchema);
+      const declaredSchema = tool.inputSchema;
+      const generatedSchema = toJsonSchema(tool.zodSchema);
+      if (declaredSchema?.properties && generatedSchema.properties) {
+        for (const [name, declaredProperty] of Object.entries(declaredSchema.properties)) {
+          const generatedProperty = generatedSchema.properties[name] ?? {};
+          generatedSchema.properties[name] = {
+            ...declaredProperty,
+            ...generatedProperty,
+            ...(declaredProperty.description ? { description: declaredProperty.description } : {}),
+            ...(declaredProperty["x-lookup"] ? { "x-lookup": declaredProperty["x-lookup"] } : {})
+          };
+        }
+      }
+      tool.inputSchema = { ...declaredSchema, ...generatedSchema };
     }
     this.tools.set(tool.name, tool);
     return tool;
@@ -74,7 +93,7 @@ export class McpRegistry {
 
   // Serializable view for GET /functions: handlers and zod objects stay server-side.
   describe(filter: Parameters<McpRegistry["list"]>[0] = {}): McpFunctionDef[] {
-    return this.list(filter).map(({ handler: _handler, zodSchema: _zod, ...rest }) => rest);
+    return this.list(filter).map(({ handler: _handler, zodSchema: _zod, stateGuard: _guard, ...rest }) => rest);
   }
 }
 

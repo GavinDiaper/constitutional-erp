@@ -16,6 +16,38 @@ test("registry exposes every catalog function with a handler each", () => {
   }
 });
 
+test("every write tool exposes validated inputs and an output contract", () => {
+  const writes = mcpRegistry.list({ kind: "write" });
+  assert.ok(writes.length > 50);
+  for (const tool of writes) {
+    assert.ok(tool.zodSchema, `${tool.name} has no zod input schema`);
+    assert.equal(tool.inputSchema?.type, "object", `${tool.name} has no JSON input schema`);
+    assert.ok(tool.outputSchema, `${tool.name} has no output schema`);
+    assert.ok(tool.zodSchema?.safeParse({}).success || (tool.inputSchema?.required?.length ?? 0) > 0, `${tool.name} has an empty contract`);
+  }
+  assert.ok(mcpRegistry.get("p2p_submit_requisition")?.stateGuard);
+  assert.equal(mcpRegistry.get("p2p_create_requisition")?.stateGuard, undefined);
+
+  const createContract = mcpRegistry.get("o2c_create_contract");
+  assert.equal(createContract?.zodSchema?.safeParse({
+    customerId: "CUS-1",
+    name: "Services",
+    version: { contractValue: 100, currencyCode: "USD", effectiveFrom: "2026-01-01" }
+  }).success, true);
+  assert.equal(createContract?.zodSchema?.safeParse({
+    customerId: "CUS-1",
+    name: "Services",
+    version: { contractValue: -1, currencyCode: "usd", effectiveFrom: "invalid" }
+  }).success, false);
+  assert.equal(mcpRegistry.get("p2p_add_requisition_line")?.zodSchema?.safeParse({
+    requisitionId: "REQ-1", description: "Line", quantity: 1, unitPrice: -1
+  }).success, false);
+  assert.equal(
+    mcpRegistry.get("o2c_create_quote")?.inputSchema?.properties?.projectId?.["x-lookup"],
+    "query/proj_project"
+  );
+});
+
 test("every hypermedia mcpFunction link resolves to a registered tool", () => {
   const dir = path.join(__dirname, "../src/api/hypermedia");
   const referenced = new Set<string>();
@@ -42,6 +74,7 @@ test("describe() omits server-side internals", () => {
   for (const entry of mcpRegistry.describe()) {
     assert.equal("handler" in entry, false);
     assert.equal("zodSchema" in entry, false);
+    assert.equal("stateGuard" in entry, false);
   }
 });
 

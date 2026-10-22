@@ -18,7 +18,7 @@ test("every MCP function carries the metadata the Mesh needs to govern it", () =
 test("MCP function names are unique and each has an invoke handler", () => {
   const names = mcpCatalog.map((fn) => fn.name);
   assert.equal(new Set(names).size, names.length);
-  const unhandled = names.filter((name) => !handlerSource.includes(`case "${name}"`));
+  const unhandled = names.filter((name) => !handlerSource.includes(`${name}: (input, actor) =>`));
   assert.deepEqual(unhandled, []);
 });
 

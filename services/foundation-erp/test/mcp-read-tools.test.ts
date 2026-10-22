@@ -120,7 +120,9 @@ test("name lookup: find positions/employees, ambiguity and get with children", a
 
 test("list: filters, state, paging, field projection and validation errors", async () => {
   for (const requester of ["R1", "R2", "R3"]) {
-    const res = await invoke("p2p_create_requisition", { requester, department: "Ops", currencyCode: "USD" });
+    const res = await invoke("p2p_create_requisition", {
+      requester, department: "Ops", currencyCode: "USD", neededByDate: "2026-12-01", legalEntityId: "LE-SEED-DEFAULT"
+    });
     assert.equal(res.status, 200, JSON.stringify(res.body));
   }
   const page1 = await invoke("p2p_list_requisitions", { limit: 2 });
@@ -142,8 +144,27 @@ test("list: filters, state, paging, field projection and validation errors", asy
   assert.equal(badLimit.status, 400);
 });
 
+test("write invoke validates required fields and blocks a disallowed current state", async () => {
+  const missingId = await invoke("p2p_submit_requisition");
+  assert.equal(missingId.status, 400);
+  assert.equal(missingId.body.title, "invalid_input");
+
+  const created = await invoke("p2p_create_requisition", {
+    requester: "Guard", department: "Ops", currencyCode: "USD", neededByDate: "2026-12-01", legalEntityId: "LE-SEED-DEFAULT"
+  });
+  const requisitionId = created.body.result.requisition?.requisition_id ?? created.body.result.requisition_id ?? created.body.result.requisitionId;
+  assert.ok(requisitionId, JSON.stringify(created.body));
+  const invalidState = await invoke("p2p_submit_requisition", { requisitionId: "not-a-requisition" });
+  assert.equal(invalidState.status, 404);
+  const draftState = await invoke("p2p_approve_requisition", { requisitionId });
+  assert.equal(draftState.status, 409);
+  assert.equal(draftState.body.title, "invalid_entity_state");
+});
+
 test("get with child lines, 404 and describe", async () => {
-  const req = await invoke("p2p_create_requisition", { requester: "Lines", department: "Ops", currencyCode: "USD" });
+  const req = await invoke("p2p_create_requisition", {
+    requester: "Lines", department: "Ops", currencyCode: "USD", neededByDate: "2026-12-01", legalEntityId: "LE-SEED-DEFAULT"
+  });
   const requisitionId = req.body.result.requisition?.requisition_id ?? req.body.result.requisition_id ?? req.body.result.requisitionId;
   assert.ok(requisitionId, JSON.stringify(req.body));
   const line = await invoke("p2p_add_requisition_line", { requisitionId, description: "Laptop", quantity: 2, unitPrice: 1000 });

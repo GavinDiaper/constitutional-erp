@@ -110,6 +110,13 @@ The whitelist is stored **in code, in one module**: `services/foundation-erp/src
 - Cross-cutting: `erp_list_tables`, `erp_get_history`, `authority_get_profile`, `authority_list_eligible_approvers`, `gov_get_parameters`. The authority and governance tools call the engines over HTTP (`AUTHORITY_ENGINE_URL`, `GOVERNANCE_ENGINE_URL`) and return 503 when unconfigured.
 - `erp_get_approvals` is deferred to the next-steps phase, because approvals live in navigator-ai and mesh-gateway.
 
+### 5.3 Phase 2 write contracts
+
+- Every catalog write tool is enriched by `writeContracts.ts` with a Zod input schema and JSON Schema metadata. Required identifiers and fields are validated before handler dispatch; numeric inputs are type/range checked and known enums are constrained.
+- Stateful operations carry a table/key/state-column guard. `/invoke` returns 404 for a missing entity and 409 when the current state is not in the tool's allowed `from` states. The guard reads only whitelisted static table/column metadata; domain services remain the final transition authority.
+- Every write exposes an output schema. Since service projections differ and are not yet normalized, the initial schema describes an open object rather than claiming a false per-entity shape; result validation/normalization remains future work.
+- The legacy `switch` has been replaced with named handler entries bound directly to each registry definition. Those handlers call the existing domain services, preserving their transaction and business-rule behavior.
+
 ## 6. Next-steps tools
 
 `erp_get_next_steps(entityType, entityId)` returns:
@@ -175,7 +182,7 @@ The actor always comes from the authenticated request (`req.actor`), never from 
 |---|---|---|
 | 0. Foundation | Registry type, zod to JSON Schema, catalog and dispatcher generated from registry, drift test. | `/invoke` behaviour unchanged; existing tests pass. |
 | 1. Reads | **Scope: read access to every whitelisted table in every domain** (o2c, p2p, r2r, h2r, inv, bom, proj, tax, and the governance/navigation tables the query API exposes), not just name lookup. Each whitelisted table, including H2R positions, assignments, credentials and authority rules, gets get/list/find/describe tools generated from the `query.routes.ts` table map plus per-entity config (label column, filterable columns, state column). Delivery order is only a sequencing choice: H2R first (it unblocks name-to-ID), then P2P and O2C, then R2R, INV, BOM, PROJ, TAX. Cross-cutting history, approvals and authority-profile tools. | Every whitelisted table is reachable by get/list/find/describe tools. A coverage test fails if a whitelisted table has no read tools. Ambiguous names return candidates. |
-| 2. Write schemas | `inputSchema`, `stateGuard`, `outputSchema` for all write functions, migrated domain by domain from the `switch`. | No write function without a schema; contract test green. |
+| 2. Write schemas | `inputSchema`, `stateGuard`, `outputSchema` for all write functions, migrated domain by domain from the `switch`. | No write function without a schema; contract test green; business handlers no longer depend on the legacy switch. |
 | 3. Next-steps | `erp_get_next_steps`, `erp_get_available_creates`, `erp_get_my_work`. | Table-driven tests of entity state x actor tier, incl. requisition approve / add-lines. |
 | 4. Gated writes | Authority and governance gate in `/invoke`; PROPOSED/confirm token, dryRun, idempotency, approval-request integration. | Low-tier actor blocked; medium-risk returns preview; confirmed call executes exactly once. |
 | 5. Protocol | JSON-RPC endpoint, `tools/list` filters, per-domain tool budget. | A standard MCP client can list and call tools. |

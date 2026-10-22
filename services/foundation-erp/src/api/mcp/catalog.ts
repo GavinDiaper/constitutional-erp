@@ -9,6 +9,12 @@ export interface McpFunctionDef {
     required?: string[];
     properties?: Record<string, { type?: string; enum?: string[]; description?: string; "x-lookup"?: string }>;
   };
+  outputSchema?: {
+    type?: string;
+    description?: string;
+    oneOf?: Array<{ type: string; additionalProperties?: boolean; items?: Record<string, unknown> }>;
+    additionalProperties?: boolean;
+  };
   riskLevel?: "Low" | "Medium" | "High";
   governanceTag?: string; // e.g., "O2C.Customer.Create" or "P2P.PO.Approve"
 }
